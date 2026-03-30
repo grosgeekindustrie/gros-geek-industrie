@@ -34,3 +34,29 @@ Règles :
 - si "figurine", "statue", "garage kit" ou "sculpture" est utilisé, il doit ouvrir le tag
 - ne jamais utiliser de vocabulaire marketing
 - ne jamais inventer un tag hors de la liste fournie
+
+CONSIGNES DE SORTIE STRICTES :
+- n’écris aucune phrase d’introduction
+- n’écris aucune justification
+- n’écris aucune réflexion
+- n’écris aucune auto-correction
+- n’écris jamais “attendez”, “je corrige”, “voici”, “je vais”, “sélection”
+- ne produis qu’une seule liste finale
+- ne recommence jamais une seconde liste
+- si un tag semble interdit ou faible, remplace-le mentalement avant d’écrire
+- la réponse finale doit contenir exactement 13 lignes numérotées, et rien d’autre
+
+FORMAT OBLIGATOIRE :
+1. tag
+2. tag
+3. tag
+4. tag
+5. tag
+6. tag
+7. tag
+8. tag
+9. tag
+10. tag
+11. tag
+12. tag
+13. tag
