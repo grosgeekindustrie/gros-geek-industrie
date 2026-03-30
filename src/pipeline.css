@@ -36,7 +36,7 @@
   .form-section{background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:24px;margin-bottom:32px;}
   .form-section h2{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .fg{display:flex;flex-direction:column;gap:4px;}
+  .fg{display:flex;flex-direction:column;gap:4px;min-width:0;}
   .fg label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
   .fg input,.fg select,.fg textarea{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-family:'Space Mono',monospace;font-size:12px;}
   .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent);}
@@ -115,6 +115,8 @@
   .titre-item.selected{background:rgba(232,197,71,.08);border-color:rgba(232,197,71,.25);}
   .titre-item.validated{border-color:rgba(76,175,125,.4);}
   .titre-item.invalidated{border-color:rgba(255,71,87,.3);opacity:.6;}
+  .titre-item.regen-pending{border-color:rgba(126,184,247,.4);opacity:.75;animation:regen-pulse 1s ease-in-out infinite;}
+  @keyframes regen-pulse{0%,100%{opacity:.75}50%{opacity:.45}}
   .titre-text{flex:1;font-family:'Space Mono',monospace;font-size:12px;line-height:1.6;cursor:pointer;}
   .titre-char{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0;padding-top:2px;}
   .titre-actions{display:flex;gap:4px;flex-shrink:0;}
@@ -184,13 +186,10 @@
   .batch-progress-bar-wrap{background:var(--bg);border-radius:4px;height:6px;overflow:hidden;}
   .batch-progress-bar{height:6px;background:var(--success);border-radius:4px;transition:width .4s;width:0%;}
   .batch-stop-btn{margin-top:10px;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);border-radius:6px;padding:6px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
-  .batch-fiche{background:var(--surface);border:2px dashed var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
-  .batch-fiche-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .batch-fiche{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:16px;display:flex;flex-direction:column;gap:16px;}
+  .batch-fiche-header{display:flex;align-items:center;justify-content:space-between;}
   .batch-fiche-title{font-size:13px;font-weight:800;color:var(--accent);}
   .batch-fiche-status{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);}
-  .batch-fiche.done{border-color:var(--success);border-style:solid;}
-  .batch-fiche.error{border-color:var(--error);border-style:solid;}
-  .batch-fiche.running{border-color:var(--accent);border-style:solid;}
   .batch-drop{border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);}
   .batch-drop:hover,.batch-drop.dragover{border-color:var(--accent);}
   .batch-thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
@@ -686,9 +685,13 @@
 
   /* ── Batch cards ── */
   .batch-fiche {
-    background: var(--surface);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
   .batch-fiche.running { border-color: var(--accent); }
   .batch-fiche.done { border-color: rgba(62,207,142,.3); }

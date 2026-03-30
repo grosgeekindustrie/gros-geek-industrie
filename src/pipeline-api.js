@@ -158,6 +158,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
       }
     }
     card.className = 'agent-card done';
+    updatePipelineTimeline(agent.id, 'done');
     if (agent.hasSelection) {
       stat.className = 'agent-status s-run'; stat.textContent = '⏳ sélection requise';
       if (agent.selectionType === 'titre') buildTitreSelectionUI(agent.id, result);
@@ -175,6 +176,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
   } catch (err) {
     out.textContent = `❌ ${err.message}`;
     card.className = 'agent-card error';
+    updatePipelineTimeline(agent.id, 'error');
     stat.className = 'agent-status s-err';
     stat.textContent = err.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
     document.getElementById(`${p}-br-${agent.id}`).disabled = false;
@@ -247,8 +249,8 @@ async function startPipeline(p) {
     const ok = await runAgent(agent);
     if (!ok) break;
     if (agent.hasSelection) break;
-    // Mode collection — pipeline limité à 3 agents pendant la phase de test
-    if (currentMode === 'collection' && agent.id === 'tags') break;
+      // Mode collection — pipeline limité à 3 agents pendant la phase de test
+    if (currentMode === 'collection' && agent.id === 'description') break;
   }
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   document.getElementById('btnStopGlobal').classList.remove('visible');
@@ -397,17 +399,50 @@ function displaySocialOutput(result, p) {
 function displayCamilleOutput(result, p) { displaySocialOutput(result, p); }
 
 async function runReseauxOnly(type, p) {
-  const overrides = {
-    nom:        document.getElementById(`ro-nom-${p}`)?.value || '',
-    sculpteur:  document.getElementById(`ro-sculpteur-${p}`)?.value || '',
-    echelles:   document.getElementById(`ro-echelles-${p}`)?.value || '',
-    url_boutique: document.getElementById(`ro-url-${p}`)?.value || '',
-    selectedAccrocheText: document.getElementById(`ro-accroche-${p}`)?.value || '',
-    selectedCTAText:      document.getElementById(`ro-cta-${p}`)?.value || '',
-    outputs: { titre_valide: document.getElementById(`ro-titre-${p}`)?.value || '' },
-  };
-  if (type === 'leo' || type === 'both') await runLeoAgent(p);
-  if (type === 'camille' || type === 'both') await runCamilleAgent(p);
+  // Lire les overrides du formulaire "fiche déjà publiée"
+  const nom       = document.getElementById(`ro-nom-${p}`)?.value || '';
+  const sculpteur = document.getElementById(`ro-sculpteur-${p}`)?.value || '';
+  const url       = document.getElementById(`ro-url-${p}`)?.value || '';
+  const accroche  = document.getElementById(`ro-accroche-${p}`)?.value || '';
+  const cta       = document.getElementById(`ro-cta-${p}`)?.value || '';
+  const titre     = document.getElementById(`ro-titre-${p}`)?.value || '';
+
+  // Sauvegarder les valeurs courantes
+  const prevAccroche   = state.selectedAccroche;
+  const prevCTA        = state.selectedCTA;
+  const prevTitre      = state.outputs.titre_valide;
+  const nomEl          = document.getElementById(`${p}-fNom`);
+  const sculpteurEl    = document.getElementById(`${p}-fSculpteur`);
+  const urlEl          = document.getElementById(`${p}-fUrlBoutique`);
+  const prevNom        = nomEl?.value || '';
+  const prevSculpteur  = sculpteurEl?.value || '';
+  const prevUrl        = urlEl?.value || '';
+
+  // Appliquer les overrides
+  if (accroche) state.selectedAccroche = { text: accroche };
+  if (cta)      state.selectedCTA      = { text: cta };
+  if (titre)    state.outputs.titre_valide = titre;
+  if (nom       && nomEl)      nomEl.value      = nom;
+  if (sculpteur && sculpteurEl) sculpteurEl.value = sculpteur;
+  if (url       && urlEl)      urlEl.value      = url;
+  // echelles : injecter via un champ texte libre lu par buildCtx si dispo
+  const nomCourtEl = document.getElementById(`${p}-fNomCourt`);
+  const prevNomCourt = nomCourtEl?.value || '';
+  if (nom && nomCourtEl) nomCourtEl.value = nom;
+
+  try {
+    if (type === 'leo'    || type === 'both') await runLeoAgent(p);
+    if (type === 'camille'|| type === 'both') await runCamilleAgent(p);
+  } finally {
+    // Restaurer
+    state.selectedAccroche     = prevAccroche;
+    state.selectedCTA          = prevCTA;
+    state.outputs.titre_valide = prevTitre;
+    if (nomEl)       nomEl.value       = prevNom;
+    if (nomCourtEl)  nomCourtEl.value  = prevNomCourt;
+    if (sculpteurEl) sculpteurEl.value = prevSculpteur;
+    if (urlEl)       urlEl.value       = prevUrl;
+  }
 }
 
 function parseSocialSections(output) {

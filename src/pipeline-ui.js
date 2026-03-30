@@ -96,7 +96,6 @@ const PROMPT_FILE_MAP_COLLECTION = {
 // ═══════════════════════════════════════════════════════════
 const CACHE_FIXED = {
   marche:      () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
-  tags:        () => `BIBLIOTHÈQUE SÉMANTIQUE:\n${getBiblio('bibliotheque-semantique')}`,
   titre:       () => `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
   description: () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
 };
@@ -129,6 +128,7 @@ function buildPrompt(agentId, ctx) {
     .replace(/\[\[PSYCHO\]\]/g, getBiblio('psycho'))
     .replace(/\[\[BIBLIO_SEMANTIQUE\]\]/g, getBiblio('bibliotheque-semantique'))
     .replace(/\[\[BIBLIO_TITRES\]\]/g, getBiblio('titres'))
+    .replace(/\[\[BIBLIO_TAGS\]\]/g, getBiblioTagsFormatted() || '_(aucun retour enregistré)_')
     .replace(/\[\[MEDIUM\]\]/g, ctx.medium||'')
     .replace(/\[\[LICENSE\]\]/g, ctx.license||'non')
     .replace(/\[\[PARTICULARITES\]\]/g, ctx.particularites||'')
@@ -137,6 +137,7 @@ function buildPrompt(agentId, ctx) {
     .replace(/\[\[BUZZ_COLLECTION\]\]/g, ctx.buzzCollection ? `OUI${ctx.buzzCollectionNote ? ' — ' + ctx.buzzCollectionNote : ''}` : 'NON')
     .replace(/\[\[ACCROCHE\]\]/g, ctx.selectedAccrocheText||'')
     .replace(/\[\[CTA\]\]/g, ctx.selectedCTAText||'')
+    .replace(/\[\[NOTES\]\]/g, ctx.notes||'')
     .replace(/\[\[DESC_P1\]\]/g, ctx.desc_p1||'')
     .replace(/\[\[URL\]\]/g, ctx.url_boutique||'')
     .replace(/\[\[PROFIL_DOMINANT\]\]/g, ctx.profil_dominant||'hobbyiste')
@@ -154,6 +155,119 @@ function buildPrompt(agentId, ctx) {
 // BIBLIOTHÈQUES
 // ═══════════════════════════════════════════════════════════
 function getBiblio(key) { return state.biblios[key] || ''; }
+
+function parseBiblioTags(raw) {
+  const validated = [], blacklisted = [];
+  let section = null;
+  for (const line of (raw || '').split('\n')) {
+    const t = line.trim();
+    if (t === '## VALIDÉS') { section = 'v'; continue; }
+    if (t === '## BLACKLISTÉS') { section = 'b'; continue; }
+    if (section === 'v' && t.startsWith('+ ')) validated.push(t.slice(2));
+    if (section === 'b' && t.startsWith('- ')) blacklisted.push(t.slice(2));
+  }
+  return { validated, blacklisted };
+}
+function buildBiblioTagsRaw(validated, blacklisted) {
+  return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
+}
+function parseBiblioTitres(raw) {
+  const validated = [], blacklisted = [];
+  let section = null;
+  for (const line of (raw || '').split('\n')) {
+    const t = line.trim();
+    if (t === '## VALIDÉS') { section = 'v'; continue; }
+    if (t === '## BLACKLISTÉS') { section = 'b'; continue; }
+    if (section === 'v' && t.startsWith('+ ')) validated.push(t.slice(2));
+    if (section === 'b' && t.startsWith('- ')) blacklisted.push(t.slice(2));
+  }
+  return { validated, blacklisted };
+}
+function buildBiblioTitresRaw(validated, blacklisted) {
+  return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
+}
+function getBlacklistedTerm(text, blacklist) {
+  const lc = text.toLowerCase();
+  return blacklist.find(term => term && lc.includes(term.toLowerCase())) || null;
+}
+async function autoRegenTag(tag, matchedTerm, itemEl) {
+  if (itemEl.classList.contains('regen-pending')) return;
+  itemEl.classList.add('regen-pending');
+  const textSpan = itemEl.querySelector('.titre-text');
+  const lenSpan  = itemEl.querySelector('.titre-char');
+  const origText = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
+  try {
+    const ctx = buildCtx('tags');
+    const prompt = buildPrompt('tags', ctx);
+    const regenPrompt = {
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe tag "${tag}" contient le terme blacklisté "${matchedTerm}". Génère UN SEUL tag de remplacement. Max 30 caractères, français, naturel, ancré au produit.\nFormat: juste le tag, sans numérotation, sans ponctuation finale.`,
+      fixedContent: prompt.fixedContent
+    };
+    const { text: result } = await callClaude('tags', regenPrompt, false, 2);
+    const newTag = result.trim().replace(/^\d+\.\s*/, '').replace(/^[-+•]\s*/, '').split('\n')[0].trim();
+    const { blacklisted } = parseBiblioTags(state.biblios['tags']);
+    const stillBad = getBlacklistedTerm(newTag, blacklisted);
+    textSpan.textContent = newTag;
+    if (lenSpan) { lenSpan.textContent = newTag.length; lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)'; }
+    const safe = newTag.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
+    itemEl.classList.remove('regen-pending');
+    if (stillBad) { autoRegenTag(newTag, stillBad, itemEl); }
+    else { showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7'); }
+  } catch(e) {
+    itemEl.classList.remove('regen-pending');
+    textSpan.textContent = origText;
+    showToast('Erreur remplacement tag', '#ff4757');
+  }
+}
+async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
+  if (itemEl.classList.contains('regen-pending')) return;
+  itemEl.classList.add('regen-pending');
+  const textSpan  = itemEl.querySelector('.titre-text');
+  const charSpan  = itemEl.querySelector('.titre-char');
+  const origText  = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
+  try {
+    const ctx = buildCtx('titre');
+    const prompt = buildPrompt('titre', ctx);
+    const regenPrompt = {
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe titre "${text}" contient un terme blacklisté ("${matchedTerm}"). Génère UN SEUL titre de remplacement. Idéalement 128-140 caractères, naturel, SEO Etsy.\nFormat: juste le titre, sans numérotation, sans compteur de caractères.`,
+      fixedContent: prompt.fixedContent
+    };
+    const { text: result } = await callClaude('titre', regenPrompt, false, 2);
+    const newTitre = result.trim().replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').split('\n')[0].trim();
+    const { blacklisted } = parseBiblioTitres(state.biblios['titres']);
+    const stillBad = getBlacklistedTerm(newTitre, blacklisted);
+    textSpan.textContent = newTitre;
+    const chars = newTitre.length;
+    const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+    if (charSpan) { charSpan.textContent = chars; charSpan.style.color = charColor; }
+    const safe = newTitre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTitreSegment('${safe}','valid')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTitreSegment('${safe}','${itemId}','${agentId}')`);
+    itemEl.classList.remove('regen-pending');
+    if (stillBad) { autoRegenTitre(newTitre, stillBad, itemEl, agentId); }
+    else { showToast(`♻️ Titre remplacé`, '#7eb8f7'); }
+  } catch(e) {
+    itemEl.classList.remove('regen-pending');
+    textSpan.textContent = origText;
+    showToast('Erreur remplacement titre', '#ff4757');
+  }
+}
+function getBiblioTagsFormatted() {
+  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  if (!validated.length && !blacklisted.length) return '';
+  const parts = [];
+  if (validated.length) parts.push(`Tags validés (exemples de qualité à imiter) :\n${validated.map(t => `+ ${t}`).join('\n')}`);
+  if (blacklisted.length) parts.push(`Termes blacklistés (interdits sans exception) :\n${blacklisted.map(t => `- ${t}`).join('\n')}`);
+  return parts.join('\n\n');
+}
 const BIBLIO_MAP = {
   tags: { label: 'Tags' }, accroches: { label: 'Accroches/CTAs' },
   objectif: { label: 'Objectif Global' }, psycho: { label: 'Psychologie Client' },
@@ -611,33 +725,64 @@ function buildTagsUI(output) {
       <span class="titre-char" style="color:${lenColor};">${len}</span>
       <div class="titre-actions">
         <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}')">👎</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}')">👎</button>
       </div></div>`;
   }).join('');
+  // Auto-check blacklist après génération
+  const { blacklisted: blTags } = parseBiblioTags(state.biblios['tags']);
+  if (blTags.length) {
+    tags.forEach((tag, i) => {
+      const term = getBlacklistedTerm(tag, blTags);
+      if (term) {
+        const el = document.getElementById(`tag-item-${i}`);
+        if (el) setTimeout(() => autoRegenTag(tag, term, el), i * 300);
+      }
+    });
+  }
   const bex = document.getElementById(`${p}-bexplore-tags`);
   if (bex) bex.disabled = false;
 }
 
 async function validateTag(tag) {
-  const biblio = state.biblios['tags'] || '';
-  const newLine = `+ ${tag}`;
-  if (biblio.includes(newLine)) { showToast('Déjà validé'); return; }
-  const updated = biblio + '\n' + newLine;
+
+   const parsed = parseBiblioTags(state.biblios['tags']);
+  console.log('VALIDATE parsed =', parsed);
+
+
+  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  if (validated.includes(tag)) { showToast('Déjà validé'); return; }
+  validated.push(tag);
+  const updated = buildBiblioTagsRaw(validated, blacklisted);
+
+   console.log('VALIDATE updated =', updated);
+
   state.biblios['tags'] = updated;
   try { await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated }); showToast(`👍 "${tag}" validé`); }
   catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
-async function invalidateTag(tag) {
+async function invalidateTag(tag, itemId) {
+  console.log(`${currentMode}`);
   const segment = prompt('Quel terme pose problème ?\n(laisse vide pour invalider le tag entier)', '');
   if (segment === null) return;
   const toBlacklist = segment.trim() || tag;
-  const biblio = state.biblios['tags'] || '';
-  const newLine = `- ${toBlacklist}`;
-  if (biblio.includes(newLine)) { showToast('Déjà invalidé'); return; }
-  const updated = biblio + '\n' + newLine;
+
+  const parsed = parseBiblioTags(state.biblios['tags']);
+  console.log('INVALIDATE parsed =', parsed);
+
+
+  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
+  blacklisted.push(toBlacklist);
+  const updated = buildBiblioTagsRaw(validated, blacklisted);
+
+  console.log('INVALIDATE updated =', updated);
   state.biblios['tags'] = updated;
-  try { await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated }); showToast(`👎 "${toBlacklist}" invalidé`); }
+  try {
+    await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
+    showToast(`👎 "${toBlacklist}" blacklisté`);
+    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTag(tag, toBlacklist, el); }
+  }
   catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
@@ -700,10 +845,22 @@ function buildTitreSelectionUI(agentId, output) {
       <span class="titre-char" style="color:${charColor};">${chars}</span>
       <div class="titre-actions">
         <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safeText}','valid')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}')">👎</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}','ti-${i}','${agentId}')">👎</button>
         <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safeText}')">📋</button>
       </div></div>`;
   }).join('');
+  // Auto-check blacklist après génération
+  const { blacklisted: blTitres } = parseBiblioTitres(state.biblios['titres']);
+  if (blTitres.length) {
+    lines.forEach((l, i) => {
+      const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+      const term = getBlacklistedTerm(text, blTitres);
+      if (term) {
+        const el = document.getElementById(`ti-${i}`);
+        if (el) setTimeout(() => autoRegenTitre(text, term, el, agentId), i * 300);
+      }
+    });
+  }
 }
 
 function selectTitre(i, agentId, el) {
@@ -732,25 +889,29 @@ function pasteSelectedTitre(agentId) {
 }
 
 async function validateTitreSegment(text) {
-  const biblio = state.biblios['titres'] || '';
-  const newLine = `+ ${text}`;
-  if (biblio.includes(newLine)) return;
-  const updated = biblio + '\n' + newLine;
+  const { validated, blacklisted } = parseBiblioTitres(state.biblios['titres']);
+  if (validated.includes(text)) return;
+  validated.push(text);
+  const updated = buildBiblioTitresRaw(validated, blacklisted);
   state.biblios['titres'] = updated;
   try { await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated }); showToast('👍 Titre ajouté aux exemples validés'); }
   catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
 }
 
-async function invalidateTitreSegment(text) {
+async function invalidateTitreSegment(text, itemId, agentId) {
   const segment = prompt('Quel segment pose problème ?\n(laisse vide pour invalider le titre entier)', '');
   if (segment === null) return;
   const toBlacklist = segment.trim() || text;
-  const biblio = state.biblios['titres'] || '';
-  const newLine = `- ${toBlacklist}`;
-  if (biblio.includes(newLine)) return;
-  const updated = biblio + '\n' + newLine;
+  const { validated, blacklisted } = parseBiblioTitres(state.biblios['titres']);
+  if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
+  blacklisted.push(toBlacklist);
+  const updated = buildBiblioTitresRaw(validated, blacklisted);
   state.biblios['titres'] = updated;
-  try { await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated }); showToast(`👎 "${toBlacklist}" ajouté à la blacklist`); }
+  try {
+    await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    showToast(`👎 "${toBlacklist}" ajouté à la blacklist`);
+    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTitre(text, toBlacklist, el, agentId || 'titre'); }
+  }
   catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
 }
 
@@ -1106,7 +1267,13 @@ function closeSettings() {
   document.getElementById('settingsPanel').classList.remove('visible');
   // Save API key when closing
   const apiKey = document.getElementById('apiKey')?.value;
-  if (apiKey) localStorage.setItem('pipeline.settings', JSON.stringify({ apiKey }));
+  if (apiKey) {
+    try {
+      const s = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      s.apiKey = apiKey;
+      localStorage.setItem('pipeline.settings', JSON.stringify(s));
+    } catch(e) {}
+  }
 }
 
 
@@ -1170,9 +1337,15 @@ function attachFormPersistence() {
   document.querySelectorAll('#tt-archSecondaires input').forEach(i => i.addEventListener('change', saveFormState));
   document.querySelectorAll('#col-fMediumGroup input').forEach(i => i.addEventListener('change', saveFormState));
   ['col-fParticularites','col-fContextePerso','col-fLienPerso'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', saveFormState); });
-  // Persist API key
+  // Persist API key — settings input
   const apiKeyEl = document.getElementById('apiKey');
-  if (apiKeyEl) apiKeyEl.addEventListener('input', () => localStorage.setItem('pipeline.settings', JSON.stringify({ apiKey: apiKeyEl.value })));
+  if (apiKeyEl) apiKeyEl.addEventListener('input', () => {
+    try {
+      const s = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      s.apiKey = apiKeyEl.value;
+      localStorage.setItem('pipeline.settings', JSON.stringify(s));
+    } catch(e) {}
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1214,20 +1387,22 @@ async function loadAllFiles(silent = false) {
   const BIBLIO_FILES = ['tags','accroches','objectif','psycho','titres','bibliotheque-semantique'];
   const missing = [];
   const mode = currentMode;
-  for (const [agentId, fname] of PROMPT_FILES) {
-    try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
-      if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); continue; }
-      state.prompts[agentId] = await res.text();
-    } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
-  }
-  for (const key of BIBLIO_FILES) {
-    try {
-      const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-      if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); continue; }
-      state.biblios[key] = await res.text();
-    } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
-  }
+  await Promise.all([
+    ...PROMPT_FILES.map(async ([agentId, fname]) => {
+      try {
+        const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+        if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
+        state.prompts[agentId] = await res.text();
+      } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
+    }),
+    ...BIBLIO_FILES.map(async (key) => {
+      try {
+        const res = await fetch(`/files/biblios/${mode}/${key}.md`);
+        if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
+        state.biblios[key] = await res.text();
+      } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
+    }),
+  ]);
   if (mode !== currentMode) return;
   const p = pfx();
   const btn = document.getElementById(`runBtn-${p}`);
@@ -1391,9 +1566,9 @@ const FORM_FIELDS_COL = ['col-fNomCourt','col-fNom','col-fUnivers','col-fSculpte
 
 setupImageHandlers('tt');
 setupImageHandlers('col');
+loadPersistedData();
 buildPipeline();
 buildEchellesUI();
-loadPersistedData();
 loadFormState();
 attachFormPersistence();
 loadAllFiles();
@@ -1728,7 +1903,9 @@ async function startBatch() {
   document.getElementById('batchProgress').classList.remove('visible');
   if (runBtn) { runBtn.disabled = false; }
   if (!batchState.stopped) {
-    document.getElementById('batchExportBtn').classList.add('visible');
+    const exportBtn = document.getElementById('batchExportBtn');
+    exportBtn.classList.add('visible');
+    exportBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
     showToast('✅ Batch terminé !', '#4caf7d');
   }
 }
@@ -1770,7 +1947,7 @@ function getBatchCtx(i) {
 
   // Archetypes TT
   const archPrincipal = isTT ? get('b'+i+'-fArchPrincipal') : '';
-  const archSecEl = document.getElementById('b'+i+'-archSec');
+  const archSecEl = document.getElementById('b'+i+'-archSecondaires');
   const archSec = archSecEl ? [...archSecEl.querySelectorAll('input:checked')].map(cb => cb.value) : [];
   const archSeo = isTT ? get('b'+i+'-fArchSeo') : '';
   const archetypesParts = [];
@@ -1779,7 +1956,7 @@ function getBatchCtx(i) {
   if (archSeo) archetypesParts.push('SEO: '+archSeo);
 
   // Medium COL
-  const mediumEl = document.getElementById('b'+i+'-mediumGroup');
+  const mediumEl = document.getElementById('b'+i+'-fMediumGroup');
   const medium = mediumEl ? [...mediumEl.querySelectorAll('input:checked')].map(cb => cb.value).join(', ') : '';
 
   // Buzz
@@ -1877,6 +2054,7 @@ async function runBatchAgent(agent, ctx) {
       .replace(/\[\[PSYCHO\]\]/g, getBiblio('psycho'))
       .replace(/\[\[BIBLIO_SEMANTIQUE\]\]/g, getBiblio('bibliotheque-semantique'))
       .replace(/\[\[BIBLIO_TITRES\]\]/g, getBiblio('titres'))
+      .replace(/\[\[BIBLIO_TAGS\]\]/g, getBiblioTagsFormatted() || '_(aucun retour enregistré)_')
       .replace(/\[\[MEDIUM\]\]/g, ctx.medium||'')
       .replace(/\[\[LICENSE\]\]/g, ctx.license||'non')
       .replace(/\[\[PARTICULARITES\]\]/g, ctx.particularites||'')

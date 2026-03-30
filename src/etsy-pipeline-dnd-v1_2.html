@@ -108,9 +108,6 @@
           </div>
         </div>
       </div>
-      <div class="home-apikey">
-        <input type="password" id="apiKey" placeholder="Clé API Anthropic — sk-ant-api03-..." autocomplete="off"/>
-      </div>
     </div>
   </div>
 </div>
@@ -661,7 +658,7 @@
     </div>
     <div class="lb-body"><textarea id="rawInputTextarea" spellcheck="false" readonly style="opacity:.85;cursor:default;"></textarea></div>
   </div>
-
+</div>
 
 <!-- EXPLORER LIGHTBOX -->
 <div class="lb-overlay" id="explorerLightbox" onclick="if(event.target.id==='explorerLightbox')closeExplorer()">
@@ -713,8 +710,8 @@
     <div class="batch-progress-bar-wrap"><div class="batch-progress-bar" id="batchProgressBar"></div></div>
     <button class="batch-stop-btn" onclick="stopBatch()">⏹ Stopper le batch</button>
   </div>
-  <button class="batch-export-btn" id="batchExportBtn" onclick="exportBatch()">💾 Exporter le batch</button>
   <div id="batchFiches"></div>
+  <button class="batch-export-btn" id="batchExportBtn" onclick="exportBatch()">💾 Exporter le batch</button>
 </div>
 
 </div><!-- /app-shell -->

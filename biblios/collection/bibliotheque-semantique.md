@@ -1,44 +1,45 @@
 BIBLIOTHÈQUE SÉMANTIQUE COLLECTION
-Version 1.0
+Version 2.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RÈGLES GÉNÉRALES
 → Singulier = pluriel sur Etsy — ne pas doubler
 → Tags en français — Etsy gère la traduction
-→ Max 30 caractères par tag espaces compris
-→ Termes validés sur le marché Etsy collection
-→ Mise à jour au fil de l'eau — jamais effacer, toujours ajouter
+→ Max 30 caractères par tag, espaces compris
+→ Bibliothèque de briques sémantiques utiles
+→ Réservoir d’idées, pas checklist
+→ Mise à jour au fil de l’eau — ajouter seulement des termes réellement utiles
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [PERSONNAGE NOMMÉ]
-Format : figurine [NOM] + statue [NOM]
-→ Généré dynamiquement par l'agent
-→ Toujours en priorité haute
-→ Nommer librement si license non protégée
+Format prioritaire :
+→ figurine [NOM]
+→ statue [NOM]
+
+Règles :
+→ généré dynamiquement par l’agent
+→ priorité haute
+→ nommer librement si licence non protégée
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [SCULPTEUR]
+À utiliser seulement si crédible en recherche :
 → neko figurines sculpture
 → figurine neko figurines
-→ Ajout manuel des futurs sculpteurs au fil de l'eau
+
+Règle :
+→ le sculpteur n’est jamais obligatoire
+→ à compléter manuellement pour les futurs sculpteurs
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [VOCABULAIRE CENTRAL — TYPE PRODUIT]
 → figurine résine
 → statue résine
 → figurine à peindre
 → garage kit
-→ kit résine à peindre
 → figurine non peinte
 → figurine de collection
 → statue de collection
-→ pièce de vitrine
-→ pièce d'exposition
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[USAGE HOBBY / COLLECTION]
-→ figurine à assembler
+[USAGE HOBBY / PEINTURE]
 → modèle résine à peindre
-→ garage kit à assembler
 → figurine impression 3d
-→ kit figurine résine
-→ figurine collector
-→ statue collector
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [UNIVERS / STYLES]
 → figurine jeu vidéo
@@ -48,14 +49,11 @@ Format : figurine [NOM] + statue [NOM]
 → statue anime
 → figurine fantasy
 → figurine dark fantasy
-→ figurine horror
 → figurine gothique
 → figurine sci-fi
-→ figurine fan art
-→ statue fan art
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ÉCHELLES]
-À utiliser en appoint uniquement si pertinent
+À utiliser seulement si vraiment pertinent :
 → figurine 1/7
 → figurine 1/8
 → figurine 1/6
@@ -63,11 +61,16 @@ Format : figurine [NOM] + statue [NOM]
 → figurine grand format
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [GIFT / CADEAU]
-→ cadeau collectionneur
 → cadeau figurine
-→ idée cadeau geek
-→ cadeau fan art
 → cadeau jeu vidéo
+→ idée cadeau geek
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[TERMES À SURVEILLER]
+À utiliser seulement s’ils sont bien ancrés au produit :
+→ figurine de collection
+→ statue de collection
+→ idée cadeau geek
+→ figurine grand format
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [MOTS À ÉVITER]
 → tabletop miniature
@@ -75,10 +78,16 @@ Format : figurine [NOM] + statue [NOM]
 → dungeon master gift
 → wargame miniature
 → rpg miniature
-→ premium / elite / luxury
+→ premium
+→ elite
+→ luxury
+→ horror
+→ fan art
+→ collector
+→ kit seul
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [NOUVEAUX TERMES]
-Zone d'ajout manuel au fil de tes recherches eRank
+Zone d’ajout manuel au fil des recherches eRank
 → ...
 → ...
 → ...
