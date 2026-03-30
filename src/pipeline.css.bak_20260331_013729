@@ -873,28 +873,3 @@
   text-transform: uppercase;
   color: var(--muted);
 }
-
-/* === GGI IMAGE GUARD V1 CSS === */
-.drop-zone.is-busy {
-  opacity: .72 !important;
-  pointer-events: none !important;
-}
-
-.drop-zone.has-images {
-  cursor: default !important;
-}
-
-.drop-zone.has-images:hover,
-.drop-zone.has-images.dragover {
-  background: var(--bg) !important;
-}
-
-.drop-zone .img-thumb,
-.drop-zone img {
-  cursor: pointer;
-}
-
-.drop-zone button {
-  cursor: pointer;
-}
-
