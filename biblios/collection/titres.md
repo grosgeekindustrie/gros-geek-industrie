@@ -7,3 +7,4 @@
 - Garage kit résine Leon Kennedy par Neko Figurines, personnage culte Resident Evil avec accessoires fusil et hache sur base narrative
 - Sculpture résine Leon Kennedy Resident Evil Requiem, figurine Neko Figurines à peindre avec tenue civile et équipement de survie
 - Kit résine Leon Kennedy figurine Neko Figurines, héros Resident Evil Requiem armé fusil à pompe sur base architecturale complexe
+- Figurine résine Leon Kennedy à peindre, héros Resident Evil Requiem armé fusil à pompe, garage kit sculpture Neko Figurines (141 car.)

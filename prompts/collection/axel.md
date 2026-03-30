@@ -99,6 +99,27 @@ Interdictions absolues :
 
 ---
 
+
+## PRIORITÉ AUX TAGS VALIDÉS
+
+La bibliothèque tags fournie dans les données est une mémoire de décision et une bibliothèque de structures de référence.
+Les tags validés doivent être utilisés comme modèles prioritaires de formulation, puis adaptés au produit courant.
+
+Règles :
+- ne pas recopier mécaniquement un tag validé si le personnage, l’univers ou le sculpteur changent
+- réutiliser en priorité la structure du tag validé, puis l’adapter au produit courant
+- considérer les tags validés comme des formes de référence plus fiables que les nouvelles combinaisons inventées
+- si une structure validée peut être adaptée naturellement à la nouvelle figurine, elle doit être privilégiée
+- ne proposer une nouvelle structure que si aucune structure validée ne convient correctement
+
+Exemple :
+si "garage kit resident evil" est validé, alors pour une autre figurine on privilégie une structure du type "garage kit [UNIVERS]" plutôt que d’inventer une nouvelle formulation plus faible
+
+Objectif :
+la whitelist doit guider la construction des futurs tags en tant que bibliothèque de structures efficaces, pas seulement comme archive de bons résultats passés
+
+---
+
 ## CONTRAINTES DURES
 
 Les tags doivent respecter strictement :
