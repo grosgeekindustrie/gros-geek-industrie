@@ -1,0 +1,518 @@
+diff --git a/src/pipeline-ui.js b/src/pipeline-ui.js
+index 1111111..2222222 100644
+--- a/src/pipeline-ui.js
++++ b/src/pipeline-ui.js
+@@
+ const state = {
+
+  images: { tt: [], col: [] },
+
+  outputs: {},
+
+  inputs: {},
+
+  persistentRules: {},
+
+  promptsByMode: { tabletop: {}, collection: {} },
+
+  bibliosByMode: { tabletop: {}, collection: {} },
+
+  selectedAccroche: null,
+
+  selectedCTA: null,
+
+  selectedTitre: null,
+
+  orchestrateurActif: false,
+
+  orchAttempts: {},
+
+  socialSections: {},
+
+  _lastOrchProblems: {},
+  sessionCost: 0,
+
+  mode: 'tabletop',
+
+  agentUsage: {},
+
+ };
++
++let microUxObserver = null;
++
++function normalizeMicroUxText(text = '') {
++
++ return text.replace(/\s+/g, ' ').trim();
++
++}
++
++function getButtonMicroUxMeta(btn) {
++
++ const onclick = btn.getAttribute('onclick') || '';
++
++ const text = normalizeMicroUxText(btn.textContent || '');
++
++ if (onclick.includes('validateTag(') || onclick.includes('validateTitreSegment(')) {
++
++  return { label: 'Valider cet élément', icon: '✓', action: 'validate', iconOnly: true };
++
++ }
++
++ if (onclick.includes('invalidateTag(') || onclick.includes('invalidateTitreSegment(')) {
++
++  return { label: 'Invalider ou blacklister cet élément', icon: '✕', action: 'invalidate', iconOnly: true };
++
++ }
++
++ if (onclick.includes('rerollTag(')) {
++
++  return { label: 'Régénérer une alternative', icon: '↻', action: 'reroll', iconOnly: true };
++
++ }
++
++ if (onclick.includes('copyTitreLine(')) {
++
++  return { label: 'Copier cette ligne', icon: '⧉', action: 'copy', iconOnly: true };
++
++ }
++
++ if (onclick.includes('copyOut(')) {
++
++  return { label: 'Copier la sortie de cet agent', icon: '⧉', action: 'copy', iconOnly: true };
++
++ }
++
++ if (onclick.includes('pasteSelectedTitre(')) {
++
++  return { label: 'Coller le titre sélectionné', icon: '↙', action: 'paste', iconOnly: true };
++
++ }
++
++ if (onclick.includes('showRawInput(')) {
++
++  return { label: 'Afficher l’entrée brute envoyée à l’agent', iconOnly: true };
++
++ }
++
++ if (onclick.includes('openPromptLightbox(')) {
++
++  return { label: 'Éditer le prompt de cet agent', iconOnly: true };
++
++ }
++
++ if (onclick.includes('rerunSuite(')) {
++
++  return { label: 'Relancer cet agent puis exécuter la suite' };
++
++ }
++
++ if (onclick.includes('persistRule(')) {
++
++  return { label: 'Transformer cette correction en règle permanente' };
++
++ }
++
++ if (onclick.includes('rerunAgent(')) {
++
++  return { label: 'Relancer uniquement cet agent' };
++
++ }
++
++ if (onclick.includes('stopAgent(')) {
++
++  return { label: 'Arrêter cet agent en cours' };
++
++ }
++
++ if (onclick.includes('runTagExplorer(')) {
++
++  return { label: 'Explorer plus de propositions de tags' };
++
++ }
++
++ if (onclick.includes('runTitreExplorer(')) {
++
++  return { label: 'Explorer plus de propositions de titres' };
++
++ }
++
++ if (text) return { label: text };
++
++ return null;
++
++}
++
++function enhanceButtonMicroUx(btn) {
++
++ if (!btn || btn.dataset.microUxReady === '1') return;
++
++ const meta = getButtonMicroUxMeta(btn);
++
++ if (!meta) return;
++
++ if (meta.icon && !normalizeMicroUxText(btn.textContent || '')) {
++
++  btn.textContent = meta.icon;
++
++ }
++
++ if (meta.action) {
++
++  btn.dataset.action = meta.action;
++
++ }
++
++ if (meta.label) {
++
++  if (!btn.getAttribute('title')) btn.setAttribute('title', meta.label);
++
++  if (!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', meta.label);
++
++  const isCompact = meta.iconOnly || normalizeMicroUxText(btn.textContent || '').length <= 3 || btn.classList.contains('titre-thumb') || btn.classList.contains('titre-copy');
++
++  if (isCompact) {
++
++   btn.dataset.tooltip = meta.label;
++
++  }
++
++ }
++
++ if ((meta.iconOnly || normalizeMicroUxText(btn.textContent || '').length <= 3) && btn.classList.contains('btn')) {
++
++  btn.classList.add('btn-icon-only');
++
++ }
++
++ btn.dataset.microUxReady = '1';
++
++}
++
++function getFieldMicroUxLabel(field) {
++
++ const placeholder = normalizeMicroUxText(field.getAttribute('placeholder') || '');
++
++ const host = field.closest('.fg, .correction-area, .apikey-row, .settings-section');
++
++ const label = normalizeMicroUxText(host?.querySelector('label, .settings-label')?.textContent || '');
++
++ return label || placeholder || '';
++
++}
++
++function enhanceMicroInteractions(root = document) {
++
++ const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
++
++ scope.querySelectorAll('button').forEach(enhanceButtonMicroUx);
++
++ scope.querySelectorAll('.fg input, .fg select, .fg textarea, .manual-titre-row input, .correction-area textarea, .apikey-row input, .settings-input').forEach(field => {
++
++  const label = getFieldMicroUxLabel(field);
++
++  if (!label) return;
++
++  if (!field.getAttribute('title')) field.setAttribute('title', label);
++
++  if (!field.getAttribute('aria-label')) field.setAttribute('aria-label', label);
++
++ });
++
++}
++
++function initMicroInteractionLayer() {
++
++ if (!document.body) return;
++
++ enhanceMicroInteractions(document);
++
++ if (microUxObserver) return;
++
++ microUxObserver = new MutationObserver((mutations) => {
++
++  for (const mutation of mutations) {
++
++   mutation.addedNodes.forEach((node) => {
++
++    if (node.nodeType === 1) enhanceMicroInteractions(node);
++
++   });
++
++  }
++
++ });
++
++ microUxObserver.observe(document.body, { childList: true, subtree: true });
++
++}
++
++if (document.readyState === 'loading') {
++
++ document.addEventListener('DOMContentLoaded', initMicroInteractionLayer, { once: true });
++
++} else {
++
++ initMicroInteractionLayer();
++
++}
+
+ // ═══════════════════════════════════════════════════════════
+
+ // AGENTS PIPELINE
+diff --git a/src/pipeline.css b/src/pipeline.css
+index 3333333..4444444 100644
+--- a/src/pipeline.css
++++ b/src/pipeline.css
+@@
+ .titre-item.invalid-auto {
+
+  border-color: rgba(255, 71, 87, 0.35);
+
+  background: rgba(255, 71, 87, 0.06);
+
+ }
++
++/* ═══ MICRO INTERACTIONS ═══ */
++
++.fg input,
++.fg select,
++.fg textarea,
++.manual-titre-row input,
++.correction-area textarea,
++.apikey-row input,
++.settings-input {
++
++ transition: border-color .15s, background-color .15s, box-shadow .15s, transform .15s;
++
++}
++
++.fg input:hover,
++.fg select:hover,
++.fg textarea:hover,
++.manual-titre-row input:hover,
++.correction-area textarea:hover,
++.apikey-row input:hover,
++.settings-input:hover {
++
++ border-color: var(--border2);
++
++ background: rgba(255,255,255,.025);
++
++}
++
++.fg input:focus-visible,
++.fg select:focus-visible,
++.fg textarea:focus-visible,
++.manual-titre-row input:focus-visible,
++.correction-area textarea:focus-visible,
++.apikey-row input:focus-visible,
++.settings-input:focus-visible,
++.btn:focus-visible,
++.titre-thumb:focus-visible,
++.titre-copy:focus-visible,
++.lb-close:focus-visible,
++.settings-action:focus-visible,
++.settings-toggle:focus-visible,
++.app-settings-btn:focus-visible,
++.app-back-btn:focus-visible {
++
++ outline: none;
++
++ border-color: var(--accent);
++
++ box-shadow: 0 0 0 3px rgba(232,197,71,.16);
++
++}
++
++.btn:hover:not(:disabled),
++.titre-thumb:hover,
++.titre-copy:hover,
++.settings-action:hover,
++.settings-toggle:hover,
++.app-settings-btn:hover,
++.app-back-btn:hover {
++
++ transform: translateY(-1px);
++
++ box-shadow: 0 10px 22px rgba(0,0,0,.18);
++
++}
++
++.btn-icon-only {
++
++ min-width: 34px;
++
++ justify-content: center;
++
++ padding-inline: 10px;
++
++}
++
++.titre-actions {
++
++ gap: 6px;
++
++}
++
++.titre-thumb,
++.titre-copy {
++
++ min-width: 30px;
++
++ min-height: 28px;
++
++ display: inline-flex;
++
++ align-items: center;
++
++ justify-content: center;
++
++ font-family: 'JetBrains Mono', monospace;
++
++ font-weight: 700;
++
++ color: var(--text2);
++
++ background: rgba(255,255,255,.03);
++
++}
++
++.titre-thumb {
++
++ border-color: var(--border2);
++
++}
++
++.titre-copy {
++
++ background: rgba(255,255,255,.04);
++
++ border-color: var(--border2);
++
++}
++
++.titre-thumb:hover,
++.titre-copy:hover {
++
++ transform: translateY(-1px);
++
++ border-color: var(--accent);
++
++ color: var(--text);
++
++}
++
++.titre-thumb[data-action="validate"] {
++
++ color: var(--success);
++
++ border-color: rgba(62,207,142,.28);
++
++ background: rgba(62,207,142,.08);
++
++}
++
++.titre-thumb[data-action="invalidate"] {
++
++ color: var(--error);
++
++ border-color: rgba(245,66,74,.26);
++
++ background: rgba(245,66,74,.06);
++
++}
++
++.titre-thumb[data-action="reroll"] {
++
++ color: var(--accent2);
++
++ border-color: rgba(255,107,53,.22);
++
++ background: rgba(255,107,53,.07);
++
++}
++
++.titre-copy[data-action="copy"],
++.btn[data-action="copy"] {
++
++ color: var(--accent);
++
++ border-color: rgba(232,197,71,.28);
++
++ background: rgba(232,197,71,.08);
++
++}
++
++[data-tooltip] {
++
++ position: relative;
++
++}
++
++[data-tooltip]:hover::after,
++[data-tooltip]:focus-visible::after {
++
++ content: attr(data-tooltip);
++
++ position: absolute;
++
++ left: 50%;
++
++ bottom: calc(100% + 8px);
++
++ transform: translateX(-50%);
++
++ background: rgba(11,14,18,.96);
++
++ color: var(--text);
++
++ border: 1px solid var(--border2);
++
++ border-radius: 8px;
++
++ padding: 6px 8px;
++
++ font-family: 'JetBrains Mono', monospace;
++
++ font-size: 10px;
++
++ line-height: 1.3;
++
++ white-space: nowrap;
++
++ pointer-events: none;
++
++ box-shadow: 0 14px 30px rgba(0,0,0,.35);
++
++ z-index: 30;
++
++}
++
++[data-tooltip]:hover::before,
++[data-tooltip]:focus-visible::before {
++
++ content: '';
++
++ position: absolute;
++
++ left: 50%;
++
++ bottom: calc(100% + 2px);
++
++ transform: translateX(-50%) rotate(45deg);
++
++ width: 8px;
++
++ height: 8px;
++
++ background: rgba(11,14,18,.96);
++
++ border-right: 1px solid var(--border2);
++
++ border-bottom: 1px solid var(--border2);
++
++ pointer-events: none;
++
++ z-index: 29;
++
++}
