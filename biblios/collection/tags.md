@@ -1,71 +1,43 @@
 ## VALIDÉS
-+ ta mere la grosse truie
-+ statue leon kennedy
-+ figurine leon kennedy résine
-+ figurine resident evil
-+ garage kit resident evil
-+ leon kennedy garage kit
-+ statue résine à peindre
-+ garage kit neko figurines
-+ sculpture leon kennedy
-+ cadeau figurine jeu vidéo
-+ resident evil requiem
-+ cadeau gamer survival horror
++ figurine sarah kerrigan
++ statue sarah kerrigan
++ garage kit starcraft
++ reine des lames résine
++ figurine reine des lames
++ sarah kerrigan résine
++ statue starcraft résine
++ figurine starcraft à peindre
++ cadeau gamer starcraft
++ cadeau figurine sci fi
 
 ## BLACKLISTÉS
-- cadeau gamer resident evil
-- leon kennedy à peindre
-- statue leon kennedy 1/7
-- figurine leon kennedy résine
-- figurine leon kennedy 1/7
-- leon kennedy garage kit
-- figurine survie horreur
-- figurine resident evil résine
-- statue résine détaillée
-- sculpture leon kennedy résine
-- figurine échelle 1/7
-- statue personnage culte
-- cadeau gamer jeu vidéo
-- cadeau figurine résine
-- cadeau figurine leon kennedy
-- cadeau fan resident evil
-- cadeau gamer leon kennedy
-- statue leon kennedy résine
-- figurine leon résine kit
-- garage kit leon kennedy
-- figurine leon survival horror
-- figurine zombie apocalypse
-- figurine survie zombie
-- cadeau figurine zombie
-- cadeau fan jeux vidéo
-- figurine leon kennedy zombie
-- figurine leon police resident
-- policier
-- rpd
-- police
-- figurine leon kennedy combat
-- figurine leon kennedy détail
-- figurine leon kennedy garage
-- leon kennedy résine
-- réaliste
-- figurine leon kennedy survie
-- leon kennedy collection
-- figurine leon kennedy kit
-- cadeau fan zombie
-- cadeau fan survival horror
-- cadeau gamer zombie
-- cadeau gamer survie
-- cadeau gamer figurine
-- cadeau gamer résine
-- cadeau collectionneur zombie
-- cadeau fan leon kennedy
-- cadeau collectionneur gaming
-- cadeau collectionneur résine
-- cadeau collectionneur figurine
-- figurine héros survival horror
-- cadeau figurine jeu vidéo
-- figurine survival horror résine
-- culte
+- personnage
 - héros
-- figurine jeu vidéo résine
-- figurine jeu vidéo neko
+- gaming
+- fan gaming
+- personnage gaming
+- statue gaming
+- figurine gaming
+- sculpture gaming
+- résine gaming
+- figurine héros
+- statue héros
+- cadeau héros
+- cadeau gaming
+- cadeau fan gaming
+- cadeau collectionneur gaming
+- figurine personnage
+- statue personnage
+- sculpture personnage
+- figurine jeu vidéo
+- statue jeu vidéo
+- sculpture jeu vidéo
+- figurine personnage gaming
+- sculpture personnage gaming
+- figurine héros gaming
+- statue résine gaming
+- figurine résine gaming
+- figurine à peindre
+- statue à peindre
+- sculpture à peindre
+- figurine collection gaming

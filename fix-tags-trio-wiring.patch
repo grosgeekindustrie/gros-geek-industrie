@@ -1,0 +1,21 @@
+diff --git a/src/pipeline-ui.js b/src/pipeline-ui.js
+index 1111111..2222222 100644
+--- a/src/pipeline-ui.js
++++ b/src/pipeline-ui.js
+@@ -1,12 +1,12 @@
+ const PROMPT_FILE_MAP_COLLECTION = {
+   analyse:'jules',
+   alt:'iris',
+   marche:'luna',
+
+-  // tags visible dans l’UI + sélection finale = même prompt
+-  tags:'axel-select',
++  // tags = étape 1 du trio (explore)
++  tags:'axel-explore-tags',
+
+   // prompts internes du trio tags
+-  tags_explore:'axel-explore-tags',
+   tags_filter:'celine-filter-tags',
+-  tags_select:'axel-select',
++  tags_select:'axel-select-tags',
+ };
