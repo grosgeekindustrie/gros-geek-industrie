@@ -66,3 +66,6 @@
 - cadeau figurine jeu vidéo
 - figurine survival horror résine
 - culte
+- héros
+- figurine jeu vidéo résine
+- figurine jeu vidéo neko
