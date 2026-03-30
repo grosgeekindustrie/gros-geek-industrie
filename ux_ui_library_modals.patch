@@ -1,0 +1,455 @@
+diff --git a/src/pipeline-ui.js b/src/pipeline-ui.js
+index 1111111..2222222 100644
+--- a/src/pipeline-ui.js
++++ b/src/pipeline-ui.js
+@@
+ function buildBiblioTitresRaw(validated, blacklisted) {
+   return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
+ }
+ function getBlacklistedTerm(text, blacklist) {
+   const lc = text.toLowerCase();
+   return blacklist.find(term => term && lc.includes(term.toLowerCase())) || null;
+ }
++
++function parseBulkLibraryEntries(raw) {
++  return Array.from(new Set(
++    String(raw || '')
++      .split(/[\n,]/)
++      .map(s => s.trim())
++      .filter(Boolean)
++  ));
++}
++
++function ensureLibraryUxStyles() {
++  if (document.getElementById('library-ux-style')) return;
++  const style = document.createElement('style');
++  style.id = 'library-ux-style';
++  style.textContent = `
++    .library-actions-bar,.explorer-library-actions{display:flex;justify-content:flex-end;gap:8px;margin:8px 0 10px}
++    .library-action-btn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--text,#fff);border-radius:10px;padding:8px 12px;font-size:12px;cursor:pointer;transition:.18s ease}
++    .library-action-btn:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
++    .library-modal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
++    .library-modal.visible{display:flex}
++    .library-modal-card{width:min(680px,100%);background:#16181d;border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:18px}
++    .library-modal-title{margin:0 0 12px;font-size:18px;font-weight:700}
++    .library-modal-subtitle{margin:0 0 8px;color:var(--muted,#a7afba);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
++    .library-modal-current{margin:0 0 14px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--text,#fff);font-size:13px;line-height:1.4;word-break:break-word}
++    .library-modal-textarea{width:100%;min-height:110px;resize:vertical;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:var(--text,#fff);padding:12px;font:inherit;outline:none}
++    .library-modal-textarea:focus{border-color:rgba(126,184,247,.55);box-shadow:0 0 0 3px rgba(126,184,247,.12)}
++    .library-modal-hint{margin-top:8px;color:var(--muted,#a7afba);font-size:12px;line-height:1.45}
++    .library-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
++    .library-modal-btn{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--text,#fff);border-radius:10px;padding:10px 14px;cursor:pointer}
++    .library-modal-btn.primary{background:rgba(126,184,247,.18);border-color:rgba(126,184,247,.32)}
++    .library-modal-btn:hover{filter:brightness(1.08)}
++    .library-modal-feedback{min-height:18px;margin-top:10px;font-size:12px;color:var(--muted,#a7afba)}
++    .library-modal-feedback.error{color:#ff6b6b}
++  `;
++  document.head.appendChild(style);
++}
++
++function ensureLibraryModals() {
++  ensureLibraryUxStyles();
++  if (document.getElementById('libraryBlacklistModal')) return;
++
++  const host = document.createElement('div');
++  host.innerHTML = `
++    <div id="libraryBlacklistModal" class="library-modal">
++      <div class="library-modal-card" role="dialog" aria-modal="true" aria-labelledby="libraryBlacklistModalTitle">
++        <h3 id="libraryBlacklistModalTitle" class="library-modal-title">Blacklister</h3>
++        <div class="library-modal-subtitle">Élément actuel</div>
++        <div id="libraryBlacklistCurrent" class="library-modal-current"></div>
++        <textarea id="libraryBlacklistTextarea" class="library-modal-textarea" placeholder="Valeur à blacklister. Tu peux en mettre plusieurs séparées par des virgules."></textarea>
++        <div class="library-modal-hint">Si le champ est vide, le tag ou le titre du bouton sera blacklisté. Tu peux saisir un segment, le texte complet, ou plusieurs entrées séparées par des virgules.</div>
++        <div id="libraryBlacklistFeedback" class="library-modal-feedback"></div>
++        <div class="library-modal-actions">
++          <button type="button" class="library-modal-btn" onclick="closeLibraryBlacklistModal()">Annuler</button>
++          <button type="button" class="library-modal-btn primary" onclick="confirmLibraryBlacklistModal()">OK</button>
++        </div>
++      </div>
++    </div>
++    <div id="libraryValidatedModal" class="library-modal">
++      <div class="library-modal-card" role="dialog" aria-modal="true" aria-labelledby="libraryValidatedModalTitle">
++        <h3 id="libraryValidatedModalTitle" class="library-modal-title">Ajouter aux validés</h3>
++        <div class="library-modal-subtitle">Ajout manuel</div>
++        <div class="library-modal-current">Saisis une ou plusieurs valeurs séparées par des virgules.</div>
++        <textarea id="libraryValidatedTextarea" class="library-modal-textarea" placeholder="Ex: figurine résine à peindre, garage kit anime"></textarea>
++        <div class="library-modal-hint">Si le champ est vide et que tu cliques sur OK, rien ne se passe.</div>
++        <div id="libraryValidatedFeedback" class="library-modal-feedback"></div>
++        <div class="library-modal-actions">
++          <button type="button" class="library-modal-btn" onclick="closeLibraryValidatedModal()">Annuler</button>
++          <button type="button" class="library-modal-btn primary" onclick="confirmLibraryValidatedModal()">OK</button>
++        </div>
++      </div>
++    </div>`;
++
++  document.body.appendChild(host);
++
++  document.getElementById('libraryBlacklistModal').addEventListener('click', (e) => {
++    if (e.target.id === 'libraryBlacklistModal') closeLibraryBlacklistModal();
++  });
++  document.getElementById('libraryValidatedModal').addEventListener('click', (e) => {
++    if (e.target.id === 'libraryValidatedModal') closeLibraryValidatedModal();
++  });
++  document.addEventListener('keydown', (e) => {
++    if (e.key !== 'Escape') return;
++    closeLibraryBlacklistModal();
++    closeLibraryValidatedModal();
++  });
++}
++
++function setLibraryModalFeedback(modalType, text = '', tone = '') {
++  const id = modalType === 'blacklist' ? 'libraryBlacklistFeedback' : 'libraryValidatedFeedback';
++  const el = document.getElementById(id);
++  if (!el) return;
++  el.textContent = text;
++  el.className = `library-modal-feedback${tone ? ' ' + tone : ''}`;
++}
++
++function openLibraryBlacklistModal({ kind, currentValue, itemId = null, source = 'main', agentId = 'titre' }) {
++  ensureLibraryModals();
++  window.__libraryBlacklistState = { kind, currentValue: String(currentValue || '').trim(), itemId, source, agentId };
++  document.getElementById('libraryBlacklistModalTitle').textContent = kind === 'tags' ? 'Blacklister des tags' : 'Blacklister des titres';
++  document.getElementById('libraryBlacklistCurrent').textContent = window.__libraryBlacklistState.currentValue || '—';
++  const textarea = document.getElementById('libraryBlacklistTextarea');
++  textarea.value = window.__libraryBlacklistState.currentValue || '';
++  setLibraryModalFeedback('blacklist', '');
++  document.getElementById('libraryBlacklistModal').classList.add('visible');
++  setTimeout(() => {
++    textarea.focus();
++    textarea.setSelectionRange(0, textarea.value.length);
++  }, 0);
++}
++
++function closeLibraryBlacklistModal() {
++  document.getElementById('libraryBlacklistModal')?.classList.remove('visible');
++  window.__libraryBlacklistState = null;
++}
++
++function openLibraryValidatedModal({ kind, source = 'main', agentId = 'titre' }) {
++  ensureLibraryModals();
++  window.__libraryValidatedState = { kind, source, agentId };
++  document.getElementById('libraryValidatedModalTitle').textContent = kind === 'tags' ? 'Ajouter des tags validés' : 'Ajouter des titres validés';
++  const textarea = document.getElementById('libraryValidatedTextarea');
++  textarea.value = '';
++  setLibraryModalFeedback('validated', '');
++  document.getElementById('libraryValidatedModal').classList.add('visible');
++  setTimeout(() => textarea.focus(), 0);
++}
++
++function closeLibraryValidatedModal() {
++  document.getElementById('libraryValidatedModal')?.classList.remove('visible');
++  window.__libraryValidatedState = null;
++}
++
++async function saveTagsLibrary(validated, blacklisted) {
++  const updated = buildBiblioTagsRaw(validated, blacklisted);
++  const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
++  if (!res.ok) throw new Error(`HTTP ${res.status}`);
++  state.bibliosByMode[currentMode]['tags'] = updated;
++}
++
++async function saveTitresLibrary(validated, blacklisted) {
++  const updated = buildBiblioTitresRaw(validated, blacklisted);
++  const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
++  if (!res.ok) throw new Error(`HTTP ${res.status}`);
++  state.bibliosByMode[currentMode]['titres'] = updated;
++}
++
++async function confirmLibraryBlacklistModal() {
++  const s = window.__libraryBlacklistState;
++  if (!s) return;
++
++  const rawEntries = parseBulkLibraryEntries(document.getElementById('libraryBlacklistTextarea')?.value || '');
++  const entries = rawEntries.length ? rawEntries : (s.currentValue ? [s.currentValue] : []);
++  if (!entries.length) {
++    closeLibraryBlacklistModal();
++    return;
++  }
++
++  try {
++    if (s.kind === 'tags') {
++      const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
++      const added = [];
++      for (const entry of entries.map(x => x.trim()).filter(Boolean)) {
++        if (blacklisted.includes(entry)) continue;
++        blacklisted.push(entry);
++        added.push(entry);
++      }
++      if (added.length) await saveTagsLibrary(validated, blacklisted);
++      if (s.itemId) {
++        const el = document.getElementById(s.itemId);
++        if (el) setTimeout(() => autoRegenTag(s.currentValue, added[0] || s.currentValue, el), 0);
++      }
++      showToast(added.length ? `👎 ${added.length} tag(s) blacklisté(s)` : 'Déjà blacklisté', added.length ? '#ff8c42' : '#7eb8f7');
++    } else {
++      const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
++      const added = [];
++      for (const entry of entries.map(x => x.trim()).filter(Boolean)) {
++        if (blacklisted.includes(entry)) continue;
++        blacklisted.push(entry);
++        added.push(entry);
++      }
++      if (added.length) await saveTitresLibrary(validated, blacklisted);
++      if (s.itemId) {
++        const el = document.getElementById(s.itemId);
++        if (el) setTimeout(() => autoRegenTitre(s.currentValue, added[0] || s.currentValue, el, s.agentId || 'titre'), 0);
++      }
++      showToast(added.length ? `👎 ${added.length} titre(s) blacklisté(s)` : 'Déjà blacklisté', added.length ? '#ff8c42' : '#7eb8f7');
++    }
++    closeLibraryBlacklistModal();
++  } catch (e) {
++    setLibraryModalFeedback('blacklist', 'Erreur de sauvegarde', 'error');
++  }
++}
++
++async function confirmLibraryValidatedModal() {
++  const s = window.__libraryValidatedState;
++  if (!s) return;
++
++  const entries = parseBulkLibraryEntries(document.getElementById('libraryValidatedTextarea')?.value || '');
++  if (!entries.length) {
++    closeLibraryValidatedModal();
++    return;
++  }
++
++  try {
++    if (s.kind === 'tags') {
++      const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
++      const next = [...validated];
++      let added = 0;
++      for (const entry of entries.map(x => x.trim()).filter(Boolean)) {
++        if (next.includes(entry)) continue;
++        next.push(entry);
++        added++;
++      }
++      if (added) await saveTagsLibrary(next, blacklisted);
++      showToast(added ? `✅ ${added} tag(s) validé(s) ajouté(s)` : 'Aucun nouveau tag ajouté', added ? '#2ecc71' : '#7eb8f7');
++    } else {
++      const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
++      const next = [...validated];
++      let added = 0;
++      for (const entry of entries.map(x => x.trim()).filter(Boolean)) {
++        if (next.includes(entry)) continue;
++        next.push(entry);
++        added++;
++      }
++      if (added) await saveTitresLibrary(next, blacklisted);
++      showToast(added ? `✅ ${added} titre(s) validé(s) ajouté(s)` : 'Aucun nouveau titre ajouté', added ? '#2ecc71' : '#7eb8f7');
++    }
++    closeLibraryValidatedModal();
++  } catch (e) {
++    setLibraryModalFeedback('validated', 'Erreur de sauvegarde', 'error');
++  }
++}
++
++function ensureZoneLibraryActionButton(zoneEl, buttonId, label, onClick) {
++  if (!zoneEl) return;
++  let bar = zoneEl.querySelector('.library-actions-bar');
++  if (!bar) {
++    bar = document.createElement('div');
++    bar.className = 'library-actions-bar';
++    zoneEl.prepend(bar);
++  }
++  let btn = document.getElementById(buttonId);
++  if (!btn) {
++    btn = document.createElement('button');
++    btn.type = 'button';
++    btn.id = buttonId;
++    btn.className = 'library-action-btn';
++    bar.appendChild(btn);
++  }
++  btn.textContent = label;
++  btn.onclick = onClick;
++}
++
++function ensureTagsManualAddButton() {
++  const zone = document.getElementById(`${pfx()}-sel-tags`);
++  ensureZoneLibraryActionButton(zone, `${pfx()}-manual-valid-tags`, '➕ Ajouter des tags validés', () => openLibraryValidatedModal({ kind:'tags', source:'main' }));
++}
++
++function ensureTitresManualAddButton(agentId) {
++  const zone = document.getElementById(`${pfx()}-sel-${agentId}`);
++  ensureZoneLibraryActionButton(zone, `${pfx()}-manual-valid-${agentId}`, '➕ Ajouter des titres validés', () => openLibraryValidatedModal({ kind:'titres', source:'main', agentId }));
++}
++
++function ensureExplorerManualAddButton(kind, agentId = 'titre') {
++  const label = document.getElementById('explorerListLabel');
++  if (!label) return;
++  let bar = document.getElementById('explorerLibraryActions');
++  if (!bar) {
++    bar = document.createElement('div');
++    bar.id = 'explorerLibraryActions';
++    bar.className = 'explorer-library-actions';
++    label.insertAdjacentElement('afterend', bar);
++  }
++  let btn = document.getElementById('explorerManualValidBtn');
++  if (!btn) {
++    btn = document.createElement('button');
++    btn.type = 'button';
++    btn.id = 'explorerManualValidBtn';
++    btn.className = 'library-action-btn';
++    bar.appendChild(btn);
++  }
++  btn.textContent = kind === 'tags' ? '➕ Ajouter des tags validés' : '➕ Ajouter des titres validés';
++  btn.onclick = () => openLibraryValidatedModal({ kind, source:'explorer', agentId });
++}
+ // Validation centrale — retourne la raison de rejet ou null si ok
+ function rejectReason(item, blacklist, existing = []) {
+   const term = getBlacklistedTerm(item, blacklist);
+   if (term) return term;
+   if (existing.some(e => e.toLowerCase() === item.toLowerCase())) return '__duplicate__';
+@@
+ function buildTagsUI(output) {
+   const p = pfx();
+   let tags = [];
+   const numbered = output.match(/^\d+\.\s+(.+)$/mg);
+   if (numbered) tags = numbered.map(l => l.replace(/^\d+\.\s+/, '').trim());
+   else tags = output.split(',').map(t => t.trim()).filter(Boolean);
+   if (!tags.length) return;
+   const zone = document.getElementById(`${p}-sel-tags`);
+   const list = document.getElementById(`${p}-sel-list-tags`);
+   if (!zone || !list) return;
++  ensureLibraryModals();
++  ensureTagsManualAddButton();
+   zone.style.display = 'block';
+   list.innerHTML = tags.map((tag, i) => {
+     const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+     const len = tag.length;
+     const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+@@
+ async function invalidateTag(tag, itemId) {
+-  const segment = prompt('Quel terme pose problème ?\n(laisse vide pour invalider le tag entier)', '');
+-  if (segment === null) return;
+-  const toBlacklist = segment.trim() || tag;
+-  const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
+-  if (blacklisted.includes(toBlacklist)) {
+-    showToast('Déjà blacklisté');
+-    return;
+-  }
+-  blacklisted.push(toBlacklist);
+-  const updated = buildBiblioTagsRaw(validated, blacklisted);
+-  try {
+-    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
+-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+-    state.bibliosByMode[currentMode]['tags'] = updated;
+-    showToast(`👎 "${toBlacklist}" blacklisté`);
+-    if (itemId) {
+-      const el = document.getElementById(itemId);
+-      if (el) autoRegenTag(tag, toBlacklist, el);
+-    }
+-  } catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
++  openLibraryBlacklistModal({
++    kind: 'tags',
++    currentValue: tag,
++    itemId,
++    source: itemId && String(itemId).startsWith('exp-') ? 'explorer' : 'main'
++  });
+ }
+@@
+ async function runTagExplorer() {
+   const p = pfx();
+   const btn = document.getElementById(`${p}-bexplore-tags`);
+   if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
+   const ctx = buildCtx('tags');
+   const prompt = buildPrompt('tags', ctx);
+   try {
++    ensureLibraryModals();
+     const { text: result } = await callClaude('tags', { filled: prompt.filled, fixedContent: prompt.fixedContent }, false);
+     const tags = parseTagOutput(result);
+     document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TAGS';
+     document.getElementById('explorerCount').textContent = `${tags.length} tags`;
+     document.getElementById('explorerListLabel').textContent = 'Tags générés — 👍 valider · 👎 blacklister';
++    ensureExplorerManualAddButton('tags');
+     document.getElementById('explorerConversation').value = result;
+     const list = document.getElementById('explorerList');
+     list.innerHTML = tags.map((tag, i) => {
+       const len = tag.length;
+       const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+       const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+       return `<div class="titre-item" id="exp-tag-${i}">
+         <span class="titre-text">${tag}</span>
+         <span class="titre-char" style="color:${lenColor};">${len}</span>
+         <div class="titre-actions">
+           <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('validated')">👍</button>
+-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
++          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','exp-tag-${i}');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
+         </div>
+       </div>`;
+     }).join('');
+@@
+ function buildTitreSelectionUI(agentId, output) {
+   const p = pfx();
+   const lines = output.split('\n').filter(l => l.match(/^\d+\.\s+/));
+   const zone = document.getElementById(`${p}-sel-${agentId}`);
+   const list = document.getElementById(`${p}-sel-list-${agentId}`);
+   if (!zone || !list) return;
++  ensureLibraryModals();
++  ensureTitresManualAddButton(agentId);
+   zone.classList.add('visible');
+   list.innerHTML = lines.map((l, i) => {
+     const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+     const charMatch = l.match(/\((\d+)\s*car/i);
+     const chars = charMatch ? parseInt(charMatch[1]) : text.length;
+@@
+ async function invalidateTitreSegment(text, itemId, agentId) {
+-  const segment = prompt('Quel segment pose problème ?\n(laisse vide pour invalider le titre entier)', '');
+-  if (segment === null) return;
+-  const toBlacklist = segment.trim() || text;
+-  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
+-  if (blacklisted.includes(toBlacklist)) {
+-    showToast('Déjà blacklisté');
+-    return;
+-  }
+-  blacklisted.push(toBlacklist);
+-  const updated = buildBiblioTitresRaw(validated, blacklisted);
+-  try {
+-    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+-    state.bibliosByMode[currentMode]['titres'] = updated;
+-    showToast(`👎 "${toBlacklist}" ajouté à la blacklist`);
+-    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTitre(text, toBlacklist, el, agentId || 'titre'); }
+-  } catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
++  openLibraryBlacklistModal({
++    kind: 'titres',
++    currentValue: text,
++    itemId,
++    source: itemId && String(itemId).startsWith('exp-') ? 'explorer' : 'main',
++    agentId: agentId || 'titre'
++  });
+ }
+@@
+ async function runTitreExplorer() {
+   const p = pfx();
+   const btn = document.getElementById(`${p}-bexplore-titre`);
+   if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
+   const ctx = buildCtx('titre');
+   const prompt = buildPrompt('titre', ctx);
+   const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.';
+   try {
++    ensureLibraryModals();
+     const { text: result } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);
+     const lines = result.split('\n').filter(l => l.match(/^\d+\.\s+/));
+     const titres = lines.map(l => {
+       const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+       const charMatch = l.match(/\((\d+)\s*car/i);
+@@
+     document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TITRES';
+     document.getElementById('explorerCount').textContent = `${titres.length} titres`;
+     document.getElementById('explorerListLabel').textContent = 'Titres générés — 👍 valider · 👎 blacklister';
++    ensureExplorerManualAddButton('titres', 'titre');
+     document.getElementById('explorerConversation').value = result;
+     const list = document.getElementById('explorerList');
+     list.innerHTML = titres.map((t, i) => {
+       const charColor = t.chars > 140 ? 'var(--error)' : t.chars >= 128 ? 'var(--success)' : t.chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+       const safe = t.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+       return `<div class="titre-item" id="exp-titre-${i}">
+         <span class="titre-text">${t.text}</span>
+         <span class="titre-char" style="color:${charColor};">${t.chars}</span>
+         <div class="titre-actions">
+           <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safe}');document.getElementById('exp-titre-${i}').classList.add('validated')">👍</button>
+-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safe}');document.getElementById('exp-titre-${i}').classList.add('invalidated')">👎</button>
++          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safe}','exp-titre-${i}','titre');document.getElementById('exp-titre-${i}').classList.add('invalidated')">👎</button>
+           <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safe}')">📋</button>
+         </div>
+       </div>`;
+     }).join('');
