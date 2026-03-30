@@ -748,21 +748,22 @@ function buildTagsUI(output) {
   const list = document.getElementById(`${p}-sel-list-tags`);
   if (!zone || !list) return;
   zone.style.display = 'block';
+  const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
   list.innerHTML = tags.map((tag, i) => {
     const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
     const len = tag.length;
     const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+    const isRejected = blTags.length > 0 && !!getBlacklistedTerm(tag, blTags);
     return `<div class="titre-item" id="tag-item-${i}">
       <span class="titre-text">${tag}</span>
       <span class="titre-char" style="color:${lenColor};">${len}</span>
       <div class="titre-actions">
         <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}')">👎</button>
+        ${isRejected ? '' : `<button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}')">👎</button>`}
         <button class="titre-thumb" onclick="event.stopPropagation();replaceTag('${safe}','tag-item-${i}')">🔄</button>
       </div></div>`;
   }).join('');
-  // Auto-check blacklist après génération
-  const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
+  // Auto-regen des tags blacklistés
   if (blTags.length) {
     tags.forEach((tag, i) => {
       const term = getBlacklistedTerm(tag, blTags);
@@ -794,7 +795,7 @@ async function invalidateTag(tag, itemId) {
   if (segment === null) return;
 
   const toBlacklist = segment.trim() || tag;
-  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
 
   if (blacklisted.includes(toBlacklist)) {
     showToast('Déjà blacklisté');
@@ -807,7 +808,7 @@ async function invalidateTag(tag, itemId) {
 
   blacklisted.push(toBlacklist);
   const updated = buildBiblioTagsRaw(validated, blacklisted);
-  state.biblios['tags'] = updated;
+  state.bibliosByMode[currentMode]['tags'] = updated;
 
   try {
     await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
@@ -911,25 +912,26 @@ function buildTitreSelectionUI(agentId, output) {
   const list = document.getElementById(`${p}-sel-list-${agentId}`);
   if (!zone || !list) return;
   zone.classList.add('visible');
+  const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
   list.innerHTML = lines.map((l, i) => {
     const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
     const charMatch = l.match(/\((\d+)\s*car/i);
     const chars = charMatch ? parseInt(charMatch[1]) : text.length;
     const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
     const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const isRejected = blTitres.length > 0 && !!getBlacklistedTerm(text, blTitres);
     return `<div class="titre-item" id="ti-${i}" onclick="selectTitre(${i},'${agentId}',this)">
       <input type="radio" name="titre-${agentId}" style="flex-shrink:0;margin-top:3px;accent-color:var(--accent);"/>
       <span class="titre-text">${text}</span>
       <span class="titre-char" style="color:${charColor};">${chars}</span>
       <div class="titre-actions">
         <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safeText}','valid')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}','ti-${i}','${agentId}')">👎</button>
+        ${isRejected ? '' : `<button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}','ti-${i}','${agentId}')">👎</button>`}
         <button class="titre-thumb" onclick="event.stopPropagation();replaceTitreSegment('${safeText}','ti-${i}','${agentId}')">🔄</button>
         <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safeText}')">📋</button>
       </div></div>`;
   }).join('');
-  // Auto-check blacklist après génération
-  const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
+  // Auto-regen des titres blacklistés
   if (blTitres.length) {
     lines.forEach((l, i) => {
       const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
@@ -985,7 +987,11 @@ async function invalidateTitreSegment(text, itemId, agentId) {
   if (segment === null) return;
   const toBlacklist = segment.trim() || text;
   const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
-  if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
+  if (blacklisted.includes(toBlacklist)) {
+    showToast('Déjà blacklisté');
+    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTitre(text, toBlacklist, el, agentId || 'titre'); }
+    return;
+  }
   blacklisted.push(toBlacklist);
   const updated = buildBiblioTitresRaw(validated, blacklisted);
   try {
