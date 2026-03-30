@@ -91,13 +91,13 @@ const PROMPT_FILE_MAP_COLLECTION = {
   alt:'iris',
   marche:'luna',
 
-  // tags visible dans l’UI = prompt de sélection final
+  // tags visible dans l’UI + sélection finale = même prompt
   tags:'axel-select',
 
-  // prompts internes non visibles dans la pipeline
+  // prompts internes du trio tags
   tags_explore:'axel-explore-tags',
   tags_filter:'celine-filter-tags',
-  tags_select:'axel-select-tags',
+  tags_select:'axel-select',
 
   titre:'nova',
   description:'eden',
@@ -202,7 +202,7 @@ function formatTagsNumbered(tags) {
 
 async function runTagsThreeAgents(ctx) {
   // 1) EXPLORE
-  const explorePrompt = buildPrompt('tags_explore', ctx);
+  const explorePrompt = buildPrompt('tags', ctx);
   const { text: rawExplore } = await callClaude('tags', {
     filled: explorePrompt.filled,
     fixedContent: explorePrompt.fixedContent
@@ -898,7 +898,7 @@ async function runTagExplorer() {
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
 
   const ctx = buildCtx('tags');
-  const prompt = buildPrompt('tags_explore', ctx);
+  const prompt = buildPrompt('tags', ctx);
 
   try {
     const { text: result } = await callClaude('tags', {

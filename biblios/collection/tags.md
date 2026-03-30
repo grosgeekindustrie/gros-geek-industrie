@@ -10,6 +10,7 @@
 + sculpture leon kennedy
 + cadeau figurine jeu vidéo
 + resident evil requiem
++ cadeau gamer survival horror
 
 ## BLACKLISTÉS
 - cadeau gamer resident evil
@@ -63,3 +64,5 @@
 - cadeau collectionneur figurine
 - figurine héros survival horror
 - cadeau figurine jeu vidéo
+- figurine survival horror résine
+- culte
