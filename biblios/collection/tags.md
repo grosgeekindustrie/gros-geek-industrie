@@ -9,6 +9,7 @@
 + garage kit neko figurines
 + sculpture leon kennedy
 + cadeau figurine jeu vidéo
++ resident evil requiem
 
 ## BLACKLISTÉS
 - cadeau gamer resident evil
@@ -36,3 +37,28 @@
 - figurine survie zombie
 - cadeau figurine zombie
 - cadeau fan jeux vidéo
+- figurine leon kennedy zombie
+- figurine leon police resident
+- policier
+- rpd
+- police
+- figurine leon kennedy combat
+- figurine leon kennedy détail
+- figurine leon kennedy garage
+- leon kennedy résine
+- réaliste
+- figurine leon kennedy survie
+- leon kennedy collection
+- figurine leon kennedy kit
+- cadeau fan zombie
+- cadeau fan survival horror
+- cadeau gamer zombie
+- cadeau gamer survie
+- cadeau gamer figurine
+- cadeau gamer résine
+- cadeau collectionneur zombie
+- cadeau fan leon kennedy
+- cadeau collectionneur gaming
+- cadeau collectionneur résine
+- cadeau collectionneur figurine
+- figurine héros survival horror
