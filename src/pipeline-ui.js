@@ -10,9 +10,6 @@ function pfx() { return MODE_PREFIX[currentMode]; }
 
 function switchMode(mode) {
   if (mode === currentMode) return;
-  // Clear per-mode state to prevent cross-mode contamination
-  state.outputs = {};
-  state.inputs = {};
   currentMode = mode;
   state.mode = mode;
   const isTT = mode === 'tabletop';
@@ -90,8 +87,23 @@ const PROMPT_FILE_MAP = {
   titre:'maya', description:'claire', social:'leo', camille:'camille', orchestrateur:'felix',
 };
 const PROMPT_FILE_MAP_COLLECTION = {
-  analyse:'jules', alt:'iris', marche:'luna', tags:'axel',
-  titre:'nova', description:'eden', social:'theo', camille:'zoe', orchestrateur:'rex',
+  analyse:'jules',
+  alt:'iris',
+  marche:'luna',
+
+  // tags visible dans l’UI = prompt de sélection final
+  tags:'axel-select',
+
+  // prompts internes non visibles dans la pipeline
+  tags_explore:'axel-explore-tags',
+  tags_filter:'celine-filter-tags',
+  tags_select:'axel-select-tags',
+
+  titre:'nova',
+  description:'eden',
+  social:'theo',
+  camille:'zoe',
+  orchestrateur:'rex',
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -154,6 +166,104 @@ function buildPrompt(agentId, ctx) {
   return { filled, fixedContent };
 }
 
+function parseTagOutput(raw) {
+  if (!raw) return [];
+
+  const cleaned = raw
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .flatMap(line => {
+      // si le modèle renvoie une seule ligne CSV
+      if (line.includes(',') && !/^\d+\.\s/.test(line)) {
+        return line.split(',').map(x => x.trim()).filter(Boolean);
+      }
+      return [line];
+    })
+    .map(l => l.replace(/^\d+\.\s*/, ''))
+    .map(l => l.replace(/^[-•+]\s*/, ''))
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  const seen = new Set();
+  const out = [];
+  for (const tag of cleaned) {
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out;
+}
+
+function formatTagsNumbered(tags) {
+  return tags.map((t, i) => `${i + 1}. ${t}`).join('\n');
+}
+
+async function runTagsThreeAgents(ctx) {
+  // 1) EXPLORE
+  const explorePrompt = buildPrompt('tags_explore', ctx);
+  const { text: rawExplore } = await callClaude('tags', {
+    filled: explorePrompt.filled,
+    fixedContent: explorePrompt.fixedContent
+  }, false);
+
+  const exploreTags = parseTagOutput(rawExplore).slice(0, 60);
+  if (!exploreTags.length) throw new Error('Aucun tag candidat généré');
+
+  // 2) FILTER
+  const filterPrompt = buildPrompt('tags_filter', ctx);
+  const filterInput = {
+    filled:
+      `${filterPrompt.filled}\n\n` +
+      `CANDIDATS À FILTRER :\n` +
+      `${exploreTags.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
+    fixedContent: filterPrompt.fixedContent
+  };
+
+  const { text: rawFiltered } = await callClaude('tags', filterInput, false);
+  const filteredTags = parseTagOutput(rawFiltered);
+
+  const pool = filteredTags.length ? filteredTags : exploreTags;
+
+  // 3) SELECT
+  const selectPrompt = buildPrompt('tags_select', ctx);
+  const selectInput = {
+    filled:
+      `${selectPrompt.filled}\n\n` +
+      `CANDIDATS RETENUS :\n` +
+      `${pool.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
+    fixedContent: selectPrompt.fixedContent
+  };
+
+  const { text: rawFinal } = await callClaude('tags', selectInput, false);
+  const finalTagsRaw = parseTagOutput(rawFinal);
+
+  // sécurisation douce : si le sélecteur renvoie moins de 13 tags,
+  // on complète avec le pool filtré sans doublons
+  const merged = [];
+  const seen = new Set();
+
+  for (const tag of [...finalTagsRaw, ...pool]) {
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(tag);
+    if (merged.length === 13) break;
+  }
+
+  if (!merged.length) throw new Error('Aucun tag final généré');
+
+  return {
+    output: formatTagsNumbered(merged.slice(0, 13)),
+    debug: {
+      explore: rawExplore,
+      filter: rawFiltered,
+      select: rawFinal
+    }
+  };
+}
+
 // ═══════════════════════════════════════════════════════════
 // BIBLIOTHÈQUES
 // ═══════════════════════════════════════════════════════════
@@ -174,128 +284,94 @@ function parseBiblioTags(raw) {
 function buildBiblioTagsRaw(validated, blacklisted) {
   return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
 }
-
-async function autoRegenTag(tag, matchedTerm, itemEl, attempt = 0) {
-  if (!itemEl || itemEl.classList.contains('regen-pending')) return;
-  if (attempt >= 8) {
-    showToast('Impossible de générer un tag valide après plusieurs tentatives', '#ff4757');
-    return;
+function parseBiblioTitres(raw) {
+  const validated = [], blacklisted = [];
+  let section = null;
+  for (const line of (raw || '').split('\n')) {
+    const t = line.trim();
+    if (t === '## VALIDÉS') { section = 'v'; continue; }
+    if (t === '## BLACKLISTÉS') { section = 'b'; continue; }
+    if (section === 'v' && t.startsWith('+ ')) validated.push(t.slice(2));
+    if (section === 'b' && t.startsWith('- ')) blacklisted.push(t.slice(2));
   }
-
+  return { validated, blacklisted };
+}
+function buildBiblioTitresRaw(validated, blacklisted) {
+  return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
+}
+function getBlacklistedTerm(text, blacklist) {
+  const lc = text.toLowerCase();
+  return blacklist.find(term => term && lc.includes(term.toLowerCase())) || null;
+}
+async function autoRegenTag(tag, matchedTerm, itemEl) {
+  if (itemEl.classList.contains('regen-pending')) return;
   itemEl.classList.add('regen-pending');
-
   const textSpan = itemEl.querySelector('.titre-text');
-  const lenSpan = itemEl.querySelector('.titre-char');
-  const actionsWrap = itemEl.querySelector('.titre-actions');
-  const origText = textSpan ? textSpan.textContent : tag;
-  const itemId = itemEl.id;
-
-  if (textSpan) textSpan.textContent = '⟳ remplacement…';
-
+  const lenSpan  = itemEl.querySelector('.titre-char');
+  const origText = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
   try {
     const ctx = buildCtx('tags');
     const prompt = buildPrompt('tags', ctx);
-
-    const reasonText = matchedTerm
-      ? `Le tag précédent a été rejeté à cause de : "${matchedTerm}".`
-      : `Le tag précédent a été rejeté.`;
-
     const regenPrompt = {
-      filled: prompt.filled + `
-
----
-MODE REMPLACEMENT UNIQUE:
-${reasonText}
-Génère UN SEUL tag de remplacement.
-Contraintes obligatoires :
-- max 30 caractères
-- français
-- naturel
-- ancré au produit
-- ne pas contenir de terme blacklisté
-- ne pas être un doublon d'un tag déjà présent
-Format : juste le tag, sans numérotation, sans ponctuation finale.`,
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe tag "${tag}" contient le terme blacklisté "${matchedTerm}". Génère UN SEUL tag de remplacement. Max 30 caractères, français, naturel, ancré au produit.\nFormat: juste le tag, sans numérotation, sans ponctuation finale.`,
       fixedContent: prompt.fixedContent
     };
-
     const { text: result } = await callClaude('tags', regenPrompt, false, 2);
-
-    const newTag = result
-      .trim()
-      .replace(/^\d+\.\s*/, '')
-      .replace(/^[-+•]\s*/, '')
-      .split('\n')[0]
-      .trim();
-
+    const newTag = result.trim().replace(/^\d+\.\s*/, '').replace(/^[-+•]\s*/, '').split('\n')[0].trim();
     const { blacklisted } = parseBiblioTags(getBiblio('tags'));
-
-    const existingTags = Array.from(
-      document.querySelectorAll(`#${pfx()}-sel-list-tags .titre-item`)
-    )
-      .filter(el => el.id !== itemId)
-      .map(el => el.querySelector('.titre-text')?.textContent?.trim() || '')
-      .filter(Boolean);
-
-    const stillBad = rejectReason(newTag, blacklisted, existingTags);
-
-    if (textSpan) textSpan.textContent = newTag;
-    if (lenSpan) {
-      lenSpan.textContent = newTag.length;
-      lenSpan.style.color = stillBad || newTag.length > 30
-        ? 'var(--error)'
-        : 'var(--success)';
-    }
-
+    const stillBad = getBlacklistedTerm(newTag, blacklisted);
+    textSpan.textContent = newTag;
+    if (lenSpan) { lenSpan.textContent = newTag.length; lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)'; }
     const safe = newTag.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-    if (actionsWrap) {
-      if (stillBad) {
-        actionsWrap.innerHTML = `
-          <button class="titre-thumb" onclick="event.stopPropagation();replaceTag('${safe}','${itemId}')">🔄</button>
-        `;
-      } else {
-        actionsWrap.innerHTML = `
-          <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','${itemId}')">👎</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();replaceTag('${safe}','${itemId}')">🔄</button>
-        `;
-      }
-    }
-
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
     itemEl.classList.remove('regen-pending');
-
-    if (stillBad) {
-      setTimeout(() => autoRegenTag(newTag, stillBad, itemEl, attempt + 1), 250);
-      return;
-    }
-
-    showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7');
-    syncTagsOutput();
-
-  } catch (e) {
+    if (stillBad) { autoRegenTag(newTag, stillBad, itemEl); }
+    else { showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7'); }
+  } catch(e) {
     itemEl.classList.remove('regen-pending');
-    if (textSpan) textSpan.textContent = origText;
+    textSpan.textContent = origText;
     showToast('Erreur remplacement tag', '#ff4757');
   }
 }
-
-function syncTagsOutput() {
-  const p = pfx();
-  const items = document.querySelectorAll(`#${p}-sel-list-tags .titre-text`);
-  if (!items.length) return;
-  const newOutput = Array.from(items).map((el, i) => `${i+1}. ${el.textContent.trim()}`).join('\n');
-  state.outputs.tags = newOutput;
-  const outEl = document.getElementById(`${p}-out-tags`);
-  if (outEl) outEl.textContent = newOutput;
-}
-function syncTitresOutput(agentId) {
-  const p = pfx();
-  const items = document.querySelectorAll(`#${p}-sel-list-${agentId} .titre-text`);
-  if (!items.length) return;
-  const newOutput = Array.from(items).map((el, i) => `${i+1}. ${el.textContent.trim()}`).join('\n');
-  state.outputs[agentId] = newOutput;
-  const outEl = document.getElementById(`${p}-out-${agentId}`);
-  if (outEl) outEl.textContent = newOutput;
+async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
+  if (itemEl.classList.contains('regen-pending')) return;
+  itemEl.classList.add('regen-pending');
+  const textSpan  = itemEl.querySelector('.titre-text');
+  const charSpan  = itemEl.querySelector('.titre-char');
+  const origText  = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
+  try {
+    const ctx = buildCtx('titre');
+    const prompt = buildPrompt('titre', ctx);
+    const regenPrompt = {
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe titre "${text}" contient un terme blacklisté ("${matchedTerm}"). Génère UN SEUL titre de remplacement. Idéalement 128-140 caractères, naturel, SEO Etsy.\nFormat: juste le titre, sans numérotation, sans compteur de caractères.`,
+      fixedContent: prompt.fixedContent
+    };
+    const { text: result } = await callClaude('titre', regenPrompt, false, 2);
+    const newTitre = result.trim().replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').split('\n')[0].trim();
+    const { blacklisted } = parseBiblioTitres(getBiblio('titres'));
+    const stillBad = getBlacklistedTerm(newTitre, blacklisted);
+    textSpan.textContent = newTitre;
+    const chars = newTitre.length;
+    const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+    if (charSpan) { charSpan.textContent = chars; charSpan.style.color = charColor; }
+    const safe = newTitre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTitreSegment('${safe}','valid')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTitreSegment('${safe}','${itemId}','${agentId}')`);
+    itemEl.classList.remove('regen-pending');
+    if (stillBad) { autoRegenTitre(newTitre, stillBad, itemEl, agentId); }
+    else { showToast(`♻️ Titre remplacé`, '#7eb8f7'); }
+  } catch(e) {
+    itemEl.classList.remove('regen-pending');
+    textSpan.textContent = origText;
+    showToast('Erreur remplacement titre', '#ff4757');
+  }
 }
 function getBiblioTagsFormatted() {
   const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
@@ -742,180 +818,6 @@ function openCard(id) {
 // ═══════════════════════════════════════════════════════════
 // TAGS — VALIDATION / EXPLORER
 // ═══════════════════════════════════════════════════════════
-function normalizeTagValue(tag) {
-  return (tag || '').replace(/\s+/g, ' ').trim();
-}
-
-function sameTag(a, b) {
-  return normalizeTagValue(a).toLowerCase() === normalizeTagValue(b).toLowerCase();
-}
-
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function escapeForOnclick(str) {
-  return normalizeTagValue(str)
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\r?\n/g, ' ');
-}
-
-function getTagRootSelector(source = 'main') {
-  return source === 'explorer'
-    ? '#explorerList'
-    : `#${pfx()}-sel-list-tags`;
-}
-
-function collectExistingTags(rootSelector, excludeItemId = null) {
-  const root = document.querySelector(rootSelector);
-  if (!root) return [];
-
-  return Array.from(root.querySelectorAll('.titre-item'))
-    .filter(el => !excludeItemId || el.id !== excludeItemId)
-    .map(el => normalizeTagValue(el.querySelector('.titre-text')?.textContent || ''))
-    .filter(Boolean);
-}
-
-function validateGeneratedTag(tag, { blacklisted = [], existingTags = [] } = {}) {
-  const value = normalizeTagValue(tag);
-
-  if (!value) {
-    return { ok: false, reason: 'empty', message: 'Tag vide', value };
-  }
-
-  if (value.length > 30) {
-    return { ok: false, reason: 'length', message: 'Tag > 30 caractères', value };
-  }
-
-  const exactBlacklist = blacklisted.find(term => sameTag(term, value));
-  if (exactBlacklist) {
-    return {
-      ok: false,
-      reason: 'blacklist_exact',
-      matchedTerm: exactBlacklist,
-      message: `Tag exact blacklisté : ${exactBlacklist}`,
-      value
-    };
-  }
-
-  const containsBlacklist = blacklisted.find(term => {
-    const t = normalizeTagValue(term).toLowerCase();
-    return t && value.toLowerCase().includes(t);
-  });
-
-  if (containsBlacklist) {
-    return {
-      ok: false,
-      reason: 'blacklist_contains',
-      matchedTerm: containsBlacklist,
-      message: `Contient un terme blacklisté : ${containsBlacklist}`,
-      value
-    };
-  }
-
-  const duplicate = existingTags.find(existing => sameTag(existing, value));
-  if (duplicate) {
-    return {
-      ok: false,
-      reason: 'duplicate',
-      duplicateOf: duplicate,
-      message: `Doublon : ${duplicate}`,
-      value
-    };
-  }
-
-  // Garde-fou pour les règles déjà codées ailleurs
-  if (typeof rejectReason === 'function') {
-    const extraReason = rejectReason(value, blacklisted, existingTags);
-    if (extraReason) {
-      return {
-        ok: false,
-        reason: 'rule',
-        message: String(extraReason),
-        value
-      };
-    }
-  }
-
-  return { ok: true, value };
-}
-
-function getTagValidation(tag, source = 'main', excludeItemId = null, extraExisting = []) {
-  const { blacklisted } = parseBiblioTags(getBiblio('tags'));
-  const existingTags = [
-    ...collectExistingTags(getTagRootSelector(source), excludeItemId),
-    ...extraExisting.map(normalizeTagValue)
-  ].filter(Boolean);
-
-  return validateGeneratedTag(tag, { blacklisted, existingTags });
-}
-
-function buildTagActionsHtml(tag, itemId, source, validation) {
-  const safe = escapeForOnclick(tag);
-  const actions = [];
-
-  if (validation.ok) {
-    actions.push(
-      `<button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}','${itemId}','${source}')">👍</button>`
-    );
-    actions.push(
-      `<button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','${itemId}','${source}')">👎</button>`
-    );
-  }
-
-  actions.push(
-    `<button class="titre-thumb" onclick="event.stopPropagation();replaceTag('${safe}','${itemId}','${source}')">🔄</button>`
-  );
-
-  return actions.join('');
-}
-
-function buildTagItemHtml(tag, itemId, source = 'main', validation = null) {
-  const v = validation || getTagValidation(tag, source, itemId);
-  const value = v.value || normalizeTagValue(tag);
-  const len = value.length;
-  const lenColor = v.ok ? 'var(--success)' : 'var(--error)';
-
-  return `<div class="titre-item${v.ok ? '' : ' invalid-auto'}" id="${itemId}" data-source="${source}">
-    <span class="titre-text">${escapeHtml(value)}</span>
-    <span class="titre-char" style="color:${lenColor};">${len}</span>
-    <div class="titre-actions">
-      ${buildTagActionsHtml(value, itemId, source, v)}
-    </div>
-  </div>`;
-}
-
-function applyTagItemState(itemEl, tag, source = 'main', validation = null) {
-  if (!itemEl) return null;
-
-  const v = validation || getTagValidation(tag, source, itemEl.id);
-  const value = v.value || normalizeTagValue(tag);
-  const textSpan = itemEl.querySelector('.titre-text');
-  const lenSpan = itemEl.querySelector('.titre-char');
-  const actions = itemEl.querySelector('.titre-actions');
-
-  itemEl.dataset.source = source;
-  itemEl.classList.toggle('invalid-auto', !v.ok);
-  itemEl.classList.remove('validated', 'invalidated');
-
-  if (textSpan) textSpan.textContent = value;
-  if (lenSpan) {
-    lenSpan.textContent = value.length;
-    lenSpan.style.color = v.ok ? 'var(--success)' : 'var(--error)';
-  }
-  if (actions) {
-    actions.innerHTML = buildTagActionsHtml(value, itemEl.id, source, v);
-  }
-
-  return v;
-}
-
 function buildTagsUI(output) {
   const p = pfx();
   let tags = [];
@@ -923,881 +825,165 @@ function buildTagsUI(output) {
   if (numbered) tags = numbered.map(l => l.replace(/^\d+\.\s+/, '').trim());
   else tags = output.split(',').map(t => t.trim()).filter(Boolean);
   if (!tags.length) return;
-
   const zone = document.getElementById(`${p}-sel-tags`);
   const list = document.getElementById(`${p}-sel-list-tags`);
   if (!zone || !list) return;
-
   zone.style.display = 'block';
-
-  const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
-  const seen = [];
-  const rendered = [];
-
-  list.innerHTML = tags.map((rawTag, i) => {
-    const itemId = `tag-item-${i}`;
-    const validation = validateGeneratedTag(rawTag, {
-      blacklisted: blTags,
-      existingTags: seen
-    });
-    const value = validation.value || normalizeTagValue(rawTag);
-
-    rendered.push({ itemId, value, validation });
-
-    if (validation.ok) seen.push(value);
-
-    return buildTagItemHtml(value, itemId, 'main', validation);
+  list.innerHTML = tags.map((tag, i) => {
+    const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const len = tag.length;
+    const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+    return `<div class="titre-item" id="tag-item-${i}">
+      <span class="titre-text">${tag}</span>
+      <span class="titre-char" style="color:${lenColor};">${len}</span>
+      <div class="titre-actions">
+        <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}')">👎</button>
+      </div></div>`;
   }).join('');
-
-  // Auto-remplacement seulement dans la liste principale
-  rendered.forEach(({ itemId, value, validation }, i) => {
-    if (!validation.ok) {
-      setTimeout(() => replaceTag(value, itemId, 'main'), i * 300);
-    }
-  });
-
+  // Auto-check blacklist après génération
+  const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
+  if (blTags.length) {
+    tags.forEach((tag, i) => {
+      const term = getBlacklistedTerm(tag, blTags);
+      if (term) {
+        const el = document.getElementById(`tag-item-${i}`);
+        if (el) setTimeout(() => autoRegenTag(tag, term, el), i * 300);
+      }
+    });
+  }
   const bex = document.getElementById(`${p}-bexplore-tags`);
   if (bex) bex.disabled = false;
 }
 
-async function validateTag(tag, itemId = null, source = 'main') {
-  const value = normalizeTagValue(tag);
+async function validateTag(tag) {
   const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
-
-  const validation = validateGeneratedTag(value, {
-    blacklisted,
-    existingTags: validated
-  });
-
-  if (!validation.ok) {
-    showToast(`Tag invalide : ${validation.message}`, '#ff4757');
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) applyTagItemState(el, value, source, validation);
-    }
-    return;
-  }
-
-  validated.push(validation.value);
+  if (validated.includes(tag)) { showToast('Déjà validé'); return; }
+  validated.push(tag);
   const updated = buildBiblioTagsRaw(validated, blacklisted);
-
   try {
-    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, {
-      method: 'PUT',
-      body: updated
-    });
+    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
     state.bibliosByMode[currentMode]['tags'] = updated;
-
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) {
-        el.classList.remove('invalid-auto', 'invalidated');
-        el.classList.add('validated');
-      }
-    }
-
-    showToast(`👍 "${validation.value}" validé`);
-  } catch (e) {
-    showToast('Erreur sauvegarde', '#ff4757');
-  }
+    showToast(`👍 "${tag}" validé`);
+  } catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
-async function invalidateTag(tag, itemId = null, source = 'main') {
+async function invalidateTag(tag, itemId) {
   const segment = prompt('Quel terme pose problème ?\n(laisse vide pour invalider le tag entier)', '');
   if (segment === null) return;
-
-  const value = normalizeTagValue(tag);
-  const toBlacklist = normalizeTagValue(segment) || value;
+  const toBlacklist = segment.trim() || tag;
   const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
-
-  if (blacklisted.some(entry => sameTag(entry, toBlacklist))) {
-    showToast('Déjà blacklisté');
-    if (itemId) {
-      setTimeout(() => replaceTag(value, itemId, source), 0);
-    }
-    return;
-  }
-
+  if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
   blacklisted.push(toBlacklist);
   const updated = buildBiblioTagsRaw(validated, blacklisted);
-  state.bibliosByMode[currentMode]['tags'] = updated;
-
   try {
-    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, {
-      method: 'PUT',
-      body: updated
-    });
+    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) {
-        el.classList.remove('validated');
-        el.classList.add('invalidated');
-      }
-      setTimeout(() => replaceTag(value, itemId, source), 0);
-    }
-
+    state.bibliosByMode[currentMode]['tags'] = updated;
     showToast(`👎 "${toBlacklist}" blacklisté`);
-  } catch (e) {
-    showToast('Erreur sauvegarde', '#ff4757');
-  }
-}
-
-async function replaceTag(tag, itemId, source = 'main', attempt = 0) {
-  const itemEl = document.getElementById(itemId);
-  if (!itemEl || itemEl.classList.contains('regen-pending')) return;
-  if (attempt > 8) {
-    showToast('Impossible de générer un tag valide après plusieurs tentatives', '#ff4757');
-    return;
-  }
-
-  itemEl.classList.add('regen-pending');
-  const textSpan = itemEl.querySelector('.titre-text');
-  const origText = textSpan ? textSpan.textContent : normalizeTagValue(tag);
-
-  if (textSpan) textSpan.textContent = '⟳ remplacement…';
-
-  try {
-    const existing = collectExistingTags(getTagRootSelector(source), itemId);
-    const ctx = buildCtx('tags');
-    const prompt = buildPrompt('tags', ctx);
-
-    const regenPrompt = {
-      filled: prompt.filled + `
-
----
-MODE REMPLACEMENT UNIQUE:
-Remplace le tag "${tag}" par un meilleur.
-Contraintes obligatoires :
-- Génère UN SEUL tag
-- Max 30 caractères
-- Français
-- Naturel
-- Ancré au produit
-- Ne pas contenir de terme blacklisté
-- Ne pas être un doublon d'un tag déjà présent
-Tags déjà présents à ne pas répéter : ${existing.join(', ') || 'aucun'}
-Format : juste le tag, sans numérotation, sans ponctuation finale.`,
-      fixedContent: prompt.fixedContent
-    };
-
-    const { text: result } = await callClaude('tags', regenPrompt, false, 2);
-
-    const newTag = normalizeTagValue(
-      result
-        .trim()
-        .replace(/^\d+\.\s*/, '')
-        .replace(/^[-+•]\s*/, '')
-        .split('\n')[0]
-    );
-
-    const validation = getTagValidation(newTag, source, itemId);
-
-    applyTagItemState(itemEl, newTag, source, validation);
-    itemEl.classList.remove('regen-pending');
-
-    if (!validation.ok) {
-      setTimeout(() => replaceTag(newTag, itemId, source, attempt + 1), 250);
-      return;
-    }
-
-    if (source === 'main' && typeof syncTagsOutput === 'function') {
-      syncTagsOutput();
-    }
-
-    showToast(`🔄 Tag remplacé : "${validation.value}"`, '#7eb8f7');
-  } catch (e) {
-    itemEl.classList.remove('regen-pending');
-    applyTagItemState(itemEl, origText, source);
-    showToast('Erreur remplacement tag', '#ff4757');
-  }
+    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTag(tag, toBlacklist, el); }
+  } catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
 async function runTagExplorer() {
+async function runTagExplorer() {
   const p = pfx();
   const btn = document.getElementById(`${p}-bexplore-tags`);
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⟳ Exploration...';
-  }
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
 
   const ctx = buildCtx('tags');
-  const prompt = buildPrompt('tags', ctx);
-  const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 100 tags variés. Format : un tag par ligne, numéroté.';
+  const prompt = buildPrompt('tags_explore', ctx);
 
   try {
     const { text: result } = await callClaude('tags', {
-      filled: explorerPrompt,
+      filled: prompt.filled,
       fixedContent: prompt.fixedContent
     }, false);
 
-    const lines = result.split('\n').map(l => l.trim()).filter(Boolean);
-    const tags = lines.map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+    const tags = parseTagOutput(result);
 
     document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TAGS';
     document.getElementById('explorerCount').textContent = `${tags.length} tags`;
-    document.getElementById('explorerListLabel').textContent = 'Tags générés — 👍 valider · 👎 blacklister · 🔄 remplacer';
+    document.getElementById('explorerListLabel').textContent = 'Tags générés — 👍 valider · 👎 blacklister';
     document.getElementById('explorerConversation').value = result;
 
     const list = document.getElementById('explorerList');
-    const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
-    const seen = [];
-
-    list.innerHTML = tags.map((rawTag, i) => {
-      const itemId = `exp-tag-${i}`;
-      const validation = validateGeneratedTag(rawTag, {
-        blacklisted: blTags,
-        existingTags: seen
-      });
-      const value = validation.value || normalizeTagValue(rawTag);
-
-      if (validation.ok) seen.push(value);
-
-      return buildTagItemHtml(value, itemId, 'explorer', validation);
-    }).join('');
-
-    document.getElementById('explorerLightbox').classList.add('visible');
-    showToast('Exploration terminée ✓', '#e8c547');
-  } catch (e) {
-    showToast(`Erreur: ${e.message}`, '#ff4757');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '🔭 Explorer';
-    }
-  }
-}
-
-function closeExplorer() {
-  document.getElementById('explorerLightbox').classList.remove('visible');
-}
-
-// ═══════════════════════════════════════════════════════════
-// TITRE SÉLECTION
-// ═══════════════════════════════════════════════════════════
-
-/**** */
-function parseBiblioTitres(raw) {
-  const validated = [], blacklisted = [];
-  let section = null;
-  for (const line of (raw || '').split('\n')) {
-    const t = line.trim();
-    if (t === '## VALIDÉS') { section = 'v'; continue; }
-    if (t === '## BLACKLISTÉS') { section = 'b'; continue; }
-    if (section === 'v' && t.startsWith('+ ')) validated.push(t.slice(2));
-    if (section === 'b' && t.startsWith('- ')) blacklisted.push(t.slice(2));
-  }
-  return { validated, blacklisted };
-}
-
-function buildBiblioTitresRaw(validated, blacklisted) {
-  return `## VALIDÉS\n${validated.map(t => `+ ${t}`).join('\n')}\n\n## BLACKLISTÉS\n${blacklisted.map(t => `- ${t}`).join('\n')}\n`;
-}
-
-function getBlacklistedTerm(text, blacklist) {
-  const lc = (text || '').toLowerCase();
-  return (blacklist || []).find(term => term && lc.includes(String(term).toLowerCase())) || null;
-}
-
-// Compat tags/titres — garde ce comportement simple
-function rejectReason(item, blacklist, existing = []) {
-  const term = getBlacklistedTerm(item, blacklist);
-  if (term) return term;
-  if ((existing || []).some(e => (e || '').toLowerCase() === (item || '').toLowerCase())) return '__duplicate__';
-  return null;
-}
-
-function normalizeTitreValue(text) {
-  return (text || '').replace(/\s+/g, ' ').trim();
-}
-
-function sameTitre(a, b) {
-  return normalizeTitreValue(a).toLowerCase() === normalizeTitreValue(b).toLowerCase();
-}
-
-function escapeHtmlTitre(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function escapeForOnclickTitre(str) {
-  return normalizeTitreValue(str)
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\r?\n/g, ' ');
-}
-
-function getTitreCharColor(chars) {
-  return chars > 140
-    ? 'var(--error)'
-    : chars >= 128
-      ? 'var(--success)'
-      : chars >= 110
-        ? 'var(--accent)'
-        : 'var(--muted)';
-}
-
-function parseTitreCandidateLine(line) {
-  const text = normalizeTitreValue(
-    String(line || '')
-      .replace(/^\d+\.\s*/, '')
-      .replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '')
-  );
-  const charMatch = String(line || '').match(/\((\d+)\s*car/i);
-  const chars = charMatch ? parseInt(charMatch[1], 10) : text.length;
-  return { text, chars };
-}
-
-function getTitreRootSelector(source = 'main', agentId = 'titre') {
-  return source === 'explorer'
-    ? '#explorerList'
-    : `#${pfx()}-sel-list-${agentId}`;
-}
-
-function collectExistingTitres(rootSelector, excludeItemId = null) {
-  const root = document.querySelector(rootSelector);
-  if (!root) return [];
-
-  return Array.from(root.querySelectorAll('.titre-item'))
-    .filter(el => !excludeItemId || el.id !== excludeItemId)
-    .map(el => normalizeTitreValue(el.querySelector('.titre-text')?.textContent || ''))
-    .filter(Boolean);
-}
-
-function validateGeneratedTitre(text, { blacklisted = [], existingTitles = [] } = {}) {
-  const value = normalizeTitreValue(text);
-
-  if (!value) {
-    return { ok: false, reason: 'empty', message: 'Titre vide', value };
-  }
-
-  if (value.length > 140) {
-    return { ok: false, reason: 'length', message: 'Titre > 140 caractères', value };
-  }
-
-  const exactBlacklist = (blacklisted || []).find(term => sameTitre(term, value));
-  if (exactBlacklist) {
-    return {
-      ok: false,
-      reason: 'blacklist_exact',
-      matchedTerm: exactBlacklist,
-      message: `Titre exact blacklisté : ${exactBlacklist}`,
-      value
-    };
-  }
-
-  const containsBlacklist = getBlacklistedTerm(value, blacklisted);
-  if (containsBlacklist) {
-    return {
-      ok: false,
-      reason: 'blacklist_contains',
-      matchedTerm: containsBlacklist,
-      message: `Contient un terme blacklisté : ${containsBlacklist}`,
-      value
-    };
-  }
-
-  const duplicate = (existingTitles || []).find(existing => sameTitre(existing, value));
-  if (duplicate) {
-    return {
-      ok: false,
-      reason: 'duplicate',
-      matchedTerm: '__duplicate__',
-      message: 'Doublon avec un autre titre affiché',
-      value
-    };
-  }
-
-  return { ok: true, value };
-}
-
-function getTitreValidation(text, source = 'main', agentId = 'titre', excludeItemId = null, extraExisting = []) {
-  const { blacklisted } = parseBiblioTitres(getBiblio('titres'));
-  const existingTitles = [
-    ...collectExistingTitres(getTitreRootSelector(source, agentId), excludeItemId),
-    ...(extraExisting || []).map(normalizeTitreValue)
-  ].filter(Boolean);
-
-  return validateGeneratedTitre(text, { blacklisted, existingTitles });
-}
-
-function buildTitreActionsHtml(text, itemId, source = 'main', agentId = 'titre', validation = null) {
-  const safe = escapeForOnclickTitre(text);
-  const v = validation || { ok: true };
-  const actions = [];
-
-  if (v.ok) {
-    actions.push(
-      `<button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safe}','${itemId}','${source}','${agentId}')">👍</button>`
-    );
-    actions.push(
-      `<button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safe}','${itemId}','${agentId}','${source}')">👎</button>`
-    );
-  }
-
-  actions.push(
-    `<button class="titre-thumb" onclick="event.stopPropagation();replaceTitreSegment('${safe}','${itemId}','${agentId}','${source}')">🔄</button>`
-  );
-  actions.push(
-    `<button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safe}')">📋</button>`
-  );
-
-  return actions.join('');
-}
-
-function buildTitreItemHtml(text, chars, itemId, agentId = 'titre', source = 'main', validation = null) {
-  const v = validation || getTitreValidation(text, source, agentId, itemId);
-  const value = v.value || normalizeTitreValue(text);
-  const finalChars = Number.isFinite(chars) ? chars : value.length;
-  const charColor = v.ok ? getTitreCharColor(finalChars) : 'var(--error)';
-
-  return `<div class="titre-item${v.ok ? '' : ' invalid-auto'}" id="${itemId}" data-source="${source}" onclick="selectTitre(0,'${agentId}',this)">
-    <input type="radio" name="titre-${agentId}" style="flex-shrink:0;margin-top:3px;accent-color:var(--accent);"/>
-    <span class="titre-text">${escapeHtmlTitre(value)}</span>
-    <span class="titre-char" style="color:${charColor};">${finalChars}</span>
-    <div class="titre-actions">
-      ${buildTitreActionsHtml(value, itemId, source, agentId, v)}
-    </div>
-  </div>`;
-}
-
-function applyTitreItemState(itemEl, text, agentId = 'titre', source = 'main', validation = null) {
-  if (!itemEl) return null;
-
-  const currentText = normalizeTitreValue(itemEl.querySelector('.titre-text')?.textContent || '');
-  const v = validation || getTitreValidation(text, source, agentId, itemEl.id);
-  const value = v.value || normalizeTitreValue(text);
-  const chars = value.length;
-
-  const textSpan = itemEl.querySelector('.titre-text');
-  const charSpan = itemEl.querySelector('.titre-char');
-  const actions = itemEl.querySelector('.titre-actions');
-  const radio = itemEl.querySelector('input[type="radio"]');
-  const wasSelected = itemEl.classList.contains('selected');
-
-  itemEl.dataset.source = source;
-  itemEl.classList.toggle('invalid-auto', !v.ok);
-  itemEl.classList.remove('validated', 'invalidated');
-
-  if (textSpan) textSpan.textContent = value;
-  if (charSpan) {
-    charSpan.textContent = chars;
-    charSpan.style.color = v.ok ? getTitreCharColor(chars) : 'var(--error)';
-  }
-  if (actions) {
-    actions.innerHTML = buildTitreActionsHtml(value, itemEl.id, source, agentId, v);
-  }
-
-  if (!v.ok && wasSelected) {
-    itemEl.classList.remove('selected');
-    if (radio) radio.checked = false;
-    if (state.selectedTitre && (sameTitre(state.selectedTitre, currentText) || sameTitre(state.selectedTitre, value))) {
-      state.selectedTitre = '';
-    }
-  }
-
-  if (v.ok && wasSelected) {
-    state.selectedTitre = value;
-    if (radio) radio.checked = true;
-  }
-
-  return v;
-}
-
-function buildTitreSelectionUI(agentId, output) {
-  const p = pfx();
-  const lines = String(output || '').split('\n').filter(l => l.match(/^\d+\.\s+/));
-  const zone = document.getElementById(`${p}-sel-${agentId}`);
-  const list = document.getElementById(`${p}-sel-list-${agentId}`);
-  if (!zone || !list) return;
-
-  zone.classList.add('visible');
-
-  const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
-  const seen = [];
-  const rendered = [];
-
-  list.innerHTML = lines.map((line, i) => {
-    const { text, chars } = parseTitreCandidateLine(line);
-    const itemId = `ti-${i}`;
-    const validation = validateGeneratedTitre(text, {
-      blacklisted: blTitres,
-      existingTitles: seen
-    });
-
-    if (validation.ok) seen.push(text);
-    rendered.push({ itemId, text, validation });
-
-    return `<div class="titre-item${validation.ok ? '' : ' invalid-auto'}" id="${itemId}" data-source="main" onclick="selectTitre(${i},'${agentId}',this)">
-      <input type="radio" name="titre-${agentId}" style="flex-shrink:0;margin-top:3px;accent-color:var(--accent);"/>
-      <span class="titre-text">${escapeHtmlTitre(text)}</span>
-      <span class="titre-char" style="color:${validation.ok ? getTitreCharColor(chars) : 'var(--error)'};">${chars}</span>
-      <div class="titre-actions">
-        ${buildTitreActionsHtml(text, itemId, 'main', agentId, validation)}
-      </div>
-    </div>`;
-  }).join('');
-
-  rendered.forEach(({ itemId, text, validation }, i) => {
-    if (!validation.ok) {
-      const el = document.getElementById(itemId);
-      if (el) setTimeout(() => autoRegenTitre(text, validation.matchedTerm || validation.message, el, agentId, 0, 'main'), i * 300);
-    }
-  });
-}
-
-function selectTitre(i, agentId, el) {
-  if (!el || el.classList.contains('invalid-auto')) {
-    showToast('Titre invalide, remplace-le d’abord', '#ff4757');
-    return;
-  }
-
-  el.parentElement.querySelectorAll('.titre-item').forEach(x => {
-    x.classList.remove('selected');
-    const radio = x.querySelector('input[type="radio"]');
-    if (radio) radio.checked = false;
-  });
-
-  el.classList.add('selected');
-  const radio = el.querySelector('input[type="radio"]');
-  if (radio) radio.checked = true;
-
-  state.selectedTitre = normalizeTitreValue(el.querySelector('.titre-text')?.textContent || '');
-
-  const p = pfx();
-  const manualInput = document.getElementById(`${p}-titre-manual-${agentId}`);
-  if (manualInput) manualInput.value = '';
-}
-
-async function validateTitreSegment(text, itemId = null, source = 'main', agentId = 'titre') {
-  const value = normalizeTitreValue(text);
-  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
-
-  if (validated.some(v => sameTitre(v, value))) {
-    showToast('Déjà présent dans les exemples validés');
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) el.classList.add('validated');
-    }
-    return true;
-  }
-
-  const validation = getTitreValidation(value, source, agentId, itemId);
-  if (!validation.ok) {
-    showToast(`Titre invalide : ${validation.message}`, '#ff4757');
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) applyTitreItemState(el, value, agentId, source, validation);
-    }
-    return false;
-  }
-
-  validated.push(validation.value);
-  const updated = buildBiblioTitresRaw(validated, blacklisted);
-
-  try {
-    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method: 'PUT', body: updated });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    state.bibliosByMode[currentMode]['titres'] = updated;
-
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) {
-        el.classList.remove('invalid-auto', 'invalidated');
-        el.classList.add('validated');
-      }
-    }
-
-    showToast('👍 Titre ajouté aux exemples validés');
-    return true;
-  } catch (e) {
-    showToast('Erreur sauvegarde titres', '#ff4757');
-    return false;
-  }
-}
-
-async function invalidateTitreSegment(text, itemId, agentId, source = 'main') {
-  const segment = prompt('Quel segment pose problème ?\n(laisse vide pour invalider le titre entier)', '');
-  if (segment === null) return;
-
-  const value = normalizeTitreValue(text);
-  const toBlacklist = normalizeTitreValue(segment) || value;
-  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
-
-  if (blacklisted.some(entry => sameTitre(entry, toBlacklist))) {
-    showToast('Déjà blacklisté');
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) setTimeout(() => autoRegenTitre(value, toBlacklist, el, agentId || 'titre', 0, source), 0);
-    }
-    return;
-  }
-
-  blacklisted.push(toBlacklist);
-  const updated = buildBiblioTitresRaw(validated, blacklisted);
-
-  try {
-    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method: 'PUT', body: updated });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    state.bibliosByMode[currentMode]['titres'] = updated;
-    showToast(`👎 "${toBlacklist}" ajouté à la blacklist`);
-
-    if (itemId) {
-      const el = document.getElementById(itemId);
-      if (el) {
-        el.classList.remove('validated');
-        el.classList.add('invalidated');
-        setTimeout(() => autoRegenTitre(value, toBlacklist, el, agentId || 'titre', 0, source), 0);
-      }
-    }
-  } catch (e) {
-    showToast('Erreur sauvegarde titres', '#ff4757');
-  }
-}
-
-async function replaceTitreSegment(text, itemId, agentId, source = 'main', attempt = 0) {
-  const itemEl = document.getElementById(itemId);
-  if (!itemEl || itemEl.classList.contains('regen-pending')) return;
-  if (attempt >= 8) {
-    showToast('Impossible de générer un titre valide après plusieurs tentatives', '#ff4757');
-    return;
-  }
-
-  itemEl.classList.add('regen-pending');
-
-  const textSpan = itemEl.querySelector('.titre-text');
-  const origText = normalizeTitreValue(textSpan?.textContent || text);
-  if (textSpan) textSpan.textContent = '⟳ remplacement…';
-
-  try {
-    const existing = collectExistingTitres(getTitreRootSelector(source, agentId), itemId);
-    const ctx = buildCtx('titre');
-    const prompt = buildPrompt('titre', ctx);
-
-    const regenPrompt = {
-      filled: prompt.filled + `
-
----
-MODE REMPLACEMENT UNIQUE:
-Remplace le titre "${text}" par un meilleur.
-Contraintes obligatoires :
-- Génère UN SEUL titre
-- Longueur maximale 140 caractères
-- Idéalement 128-140 caractères
-- Naturel
-- SEO Etsy
-- Ne pas contenir de terme blacklisté
-- Ne pas être un doublon d'un titre déjà présent
-Titres déjà présents à ne pas répéter : ${existing.join(' | ') || 'aucun'}
-Format : juste le titre, sans numérotation, sans compteur de caractères.`,
-      fixedContent: prompt.fixedContent
-    };
-
-    const { text: result } = await callClaude('titre', regenPrompt, false, 2);
-    const newTitre = normalizeTitreValue(
-      result
-        .trim()
-        .replace(/^\d+\.\s*/, '')
-        .replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '')
-        .split('\n')[0]
-    );
-
-    const validation = getTitreValidation(newTitre, source, agentId, itemId);
-    applyTitreItemState(itemEl, newTitre, agentId, source, validation);
-    itemEl.classList.remove('regen-pending');
-
-    if (!validation.ok) {
-      setTimeout(() => replaceTitreSegment(newTitre, itemId, agentId, source, attempt + 1), 250);
-      return;
-    }
-
-    if (source === 'main' && typeof syncTitresOutput === 'function') {
-      syncTitresOutput(agentId);
-    }
-
-    showToast('🔄 Titre remplacé', '#7eb8f7');
-  } catch (e) {
-    itemEl.classList.remove('regen-pending');
-    applyTitreItemState(itemEl, origText, agentId, source);
-    showToast('Erreur remplacement titre', '#ff4757');
-  }
-}
-
-async function autoRegenTitre(text, matchedTerm, itemEl, agentId, attempt = 0, source = 'main') {
-  if (!itemEl || itemEl.classList.contains('regen-pending')) return;
-  if (attempt >= 8) {
-    showToast('Impossible de générer un titre valide après plusieurs tentatives', '#ff4757');
-    return;
-  }
-
-  itemEl.classList.add('regen-pending');
-
-  const textSpan = itemEl.querySelector('.titre-text');
-  const origText = normalizeTitreValue(textSpan?.textContent || text);
-  if (textSpan) textSpan.textContent = '⟳ remplacement…';
-
-  try {
-    const existing = collectExistingTitres(getTitreRootSelector(source, agentId), itemEl.id);
-    const ctx = buildCtx('titre');
-    const prompt = buildPrompt('titre', ctx);
-
-    const reasonText = matchedTerm
-      ? `Le titre précédent a été rejeté à cause de : "${matchedTerm}".`
-      : `Le titre précédent a été rejeté.`;
-
-    const regenPrompt = {
-      filled: prompt.filled + `
-
----
-MODE REMPLACEMENT UNIQUE:
-${reasonText}
-Génère UN SEUL titre de remplacement.
-Contraintes obligatoires :
-- Longueur maximale 140 caractères
-- Idéalement 128-140 caractères
-- Naturel
-- SEO Etsy
-- Ne pas contenir de terme blacklisté
-- Ne pas être un doublon d'un titre déjà présent
-Titres déjà présents à ne pas répéter : ${existing.join(' | ') || 'aucun'}
-Format : juste le titre, sans numérotation, sans compteur de caractères.`,
-      fixedContent: prompt.fixedContent
-    };
-
-    const { text: result } = await callClaude('titre', regenPrompt, false, 2);
-    const newTitre = normalizeTitreValue(
-      result
-        .trim()
-        .replace(/^\d+\.\s*/, '')
-        .replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '')
-        .split('\n')[0]
-    );
-
-    const validation = getTitreValidation(newTitre, source, agentId, itemEl.id);
-    applyTitreItemState(itemEl, newTitre, agentId, source, validation);
-    itemEl.classList.remove('regen-pending');
-
-    if (!validation.ok) {
-      setTimeout(() => autoRegenTitre(newTitre, validation.matchedTerm || validation.message, itemEl, agentId, attempt + 1, source), 250);
-      return;
-    }
-
-    if (source === 'main' && typeof syncTitresOutput === 'function') {
-      syncTitresOutput(agentId);
-    }
-
-    showToast('♻️ Titre remplacé', '#7eb8f7');
-  } catch (e) {
-    itemEl.classList.remove('regen-pending');
-    applyTitreItemState(itemEl, origText, agentId, source);
-    showToast('Erreur remplacement titre', '#ff4757');
-  }
-}
-
-async function validateTitre(agentId) {
-  const p = pfx();
-  const manual = normalizeTitreValue(document.getElementById(`${p}-titre-manual-${agentId}`)?.value || '');
-  const titre = manual || normalizeTitreValue(state.selectedTitre || '');
-
-  if (!titre) {
-    alert('Choisis ou saisis un titre.');
-    return;
-  }
-
-  const { blacklisted } = parseBiblioTitres(getBiblio('titres'));
-  const validation = validateGeneratedTitre(titre, { blacklisted, existingTitles: [] });
-
-  if (!validation.ok) {
-    showToast(`Titre invalide : ${validation.message}`, '#ff4757');
-    return;
-  }
-
-  state.outputs.titre_valide = validation.value;
-
-  if (manual) {
-    await validateTitreSegment(validation.value, null, 'manual', agentId);
-  }
-
-  document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
-  document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
-  document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
-
-  const idx = getPipelineAgents().findIndex(a => a.id === agentId);
-  (async () => {
-    for (let i = idx + 1; i < getPipelineAgents().length; i++) {
-      if (getPipelineAgents()[i].optional) break;
-      const ok = await runAgent(getPipelineAgents()[i]);
-      if (!ok) break;
-      if (getPipelineAgents()[i].hasSelection) break;
-    }
-  })();
-}
-
-async function runTitreExplorer() {
-  const p = pfx();
-  const btn = document.getElementById(`${p}-bexplore-titre`);
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⟳ Exploration...';
-  }
-
-  const ctx = buildCtx('titre');
-  const prompt = buildPrompt('titre', ctx);
-  const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.';
-
-  try {
-    const { text: result } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);
-    const lines = String(result || '').split('\n').filter(l => l.match(/^\d+\.\s+/));
-    const titres = lines.map(parseTitreCandidateLine);
-
-    document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TITRES';
-    document.getElementById('explorerCount').textContent = `${titres.length} titres`;
-    document.getElementById('explorerListLabel').textContent = 'Titres générés — 👍 valider · 👎 blacklister · 🔄 remplacer · 📋 copier';
-    document.getElementById('explorerConversation').value = result;
-
-    const list = document.getElementById('explorerList');
-    const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
-    const seen = [];
-
-    list.innerHTML = titres.map((t, i) => {
-      const itemId = `exp-titre-${i}`;
-      const validation = validateGeneratedTitre(t.text, {
-        blacklisted: blTitres,
-        existingTitles: seen
-      });
-
-      if (validation.ok) seen.push(t.text);
-
-      return `<div class="titre-item${validation.ok ? '' : ' invalid-auto'}" id="${itemId}" data-source="explorer">
-        <span class="titre-text">${escapeHtmlTitre(t.text)}</span>
-        <span class="titre-char" style="color:${validation.ok ? getTitreCharColor(t.chars) : 'var(--error)'};">${t.chars}</span>
+    list.innerHTML = tags.map((tag, i) => {
+      const len = tag.length;
+      const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+      const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+      return `<div class="titre-item" id="exp-tag-${i}">
+        <span class="titre-text">${tag}</span>
+        <span class="titre-char" style="color:${lenColor};">${len}</span>
         <div class="titre-actions">
-          ${buildTitreActionsHtml(t.text, itemId, 'explorer', 'titre', validation)}
+          <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('validated')">👍</button>
+          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
         </div>
       </div>`;
     }).join('');
 
     document.getElementById('explorerLightbox').classList.add('visible');
     showToast('Exploration terminée ✓', '#e8c547');
-  } catch (e) {
+  } catch(e) {
     showToast(`Erreur: ${e.message}`, '#ff4757');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '🔭 Explorer';
-    }
+    if (btn) { btn.disabled = false; btn.textContent = '🔭 Explorer'; }
+  }
+}
+}
+
+function closeExplorer() { document.getElementById('explorerLightbox').classList.remove('visible'); }
+
+// ═══════════════════════════════════════════════════════════
+// TITRE SÉLECTION
+// ═══════════════════════════════════════════════════════════
+function buildTitreSelectionUI(agentId, output) {
+  const p = pfx();
+  const lines = output.split('\n').filter(l => l.match(/^\d+\.\s+/));
+  const zone = document.getElementById(`${p}-sel-${agentId}`);
+  const list = document.getElementById(`${p}-sel-list-${agentId}`);
+  if (!zone || !list) return;
+  zone.classList.add('visible');
+  list.innerHTML = lines.map((l, i) => {
+    const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+    const charMatch = l.match(/\((\d+)\s*car/i);
+    const chars = charMatch ? parseInt(charMatch[1]) : text.length;
+    const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+    const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return `<div class="titre-item" id="ti-${i}" onclick="selectTitre(${i},'${agentId}',this)">
+      <input type="radio" name="titre-${agentId}" style="flex-shrink:0;margin-top:3px;accent-color:var(--accent);"/>
+      <span class="titre-text">${text}</span>
+      <span class="titre-char" style="color:${charColor};">${chars}</span>
+      <div class="titre-actions">
+        <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safeText}','valid')">👍</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}','ti-${i}','${agentId}')">👎</button>
+        <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safeText}')">📋</button>
+      </div></div>`;
+  }).join('');
+  // Auto-check blacklist après génération
+  const { blacklisted: blTitres } = parseBiblioTitres(state.biblios['titres']);
+  if (blTitres.length) {
+    lines.forEach((l, i) => {
+      const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+      const term = getBlacklistedTerm(text, blTitres);
+      if (term) {
+        const el = document.getElementById(`ti-${i}`);
+        if (el) setTimeout(() => autoRegenTitre(text, term, el, agentId), i * 300);
+      }
+    });
   }
 }
 
-// *****
+function selectTitre(i, agentId, el) {
+  el.parentElement.querySelectorAll('.titre-item').forEach(x => x.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+  state.selectedTitre = el.querySelector('.titre-text').textContent.trim();
+  const p = pfx();
+  document.getElementById(`${p}-titre-manual-${agentId}`).value = '';
+}
 
 function updateTitreCounter(agentId) {
   const p = pfx();
@@ -1815,10 +1001,58 @@ function pasteSelectedTitre(agentId) {
   if (state.selectedTitre) { document.getElementById(`${p}-titre-manual-${agentId}`).value = state.selectedTitre; updateTitreCounter(agentId); }
 }
 
+async function validateTitreSegment(text) {
+  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
+  if (validated.includes(text)) return;
+  validated.push(text);
+  const updated = buildBiblioTitresRaw(validated, blacklisted);
+  try {
+    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['titres'] = updated;
+    showToast('👍 Titre ajouté aux exemples validés');
+  } catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
+}
+
+async function invalidateTitreSegment(text, itemId, agentId) {
+  const segment = prompt('Quel segment pose problème ?\n(laisse vide pour invalider le titre entier)', '');
+  if (segment === null) return;
+  const toBlacklist = segment.trim() || text;
+  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
+  if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
+  blacklisted.push(toBlacklist);
+  const updated = buildBiblioTitresRaw(validated, blacklisted);
+  try {
+    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['titres'] = updated;
+    showToast(`👎 "${toBlacklist}" ajouté à la blacklist`);
+    if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTitre(text, toBlacklist, el, agentId || 'titre'); }
+  } catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
+}
 
 function copyTitreLine(text) { navigator.clipboard.writeText(text); showToast('Titre copié ✓'); }
 
-
+function validateTitre(agentId) {
+  const p = pfx();
+  const manual = document.getElementById(`${p}-titre-manual-${agentId}`).value.trim();
+  const titre = manual || state.selectedTitre;
+  if (!titre) { alert('Choisis ou saisis un titre.'); return; }
+  state.outputs.titre_valide = titre;
+  if (manual) { validateTitreSegment(manual); showToast('✅ Titre manuel ajouté aux exemples validés'); }
+  document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
+  document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
+  document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
+  const idx = getPipelineAgents().findIndex(a => a.id === agentId);
+  (async () => {
+    for (let i = idx + 1; i < getPipelineAgents().length; i++) {
+      if (getPipelineAgents()[i].optional) break;
+      const ok = await runAgent(getPipelineAgents()[i]);
+      if (!ok) break;
+      if (getPipelineAgents()[i].hasSelection) break;
+    }
+  })();
+}
 
 // ═══════════════════════════════════════════════════════════
 // SÉLECTION ACCROCHE / CTA
@@ -2263,51 +1497,42 @@ function loadPersistedData() {
 // ═══════════════════════════════════════════════════════════
 // CHARGEMENT FICHIERS MD
 // ═══════════════════════════════════════════════════════════
-let _loadFilesChain = Promise.resolve();
-const _loadingFor = new Set(); // modes currently being fetched
-const _loadedFor  = new Set(); // modes already fully loaded
 async function loadAllFiles(silent = false) {
+  const map = currentMode === 'collection' ? PROMPT_FILE_MAP_COLLECTION : PROMPT_FILE_MAP;
+  const PROMPT_FILES = Object.entries(map);
+  const BIBLIO_FILES = ['tags','accroches','objectif','psycho','titres','bibliotheque-semantique'];
+  const missing = [];
   const mode = currentMode;
-  if (_loadedFor.has(mode) || _loadingFor.has(mode)) return _loadFilesChain;
-  _loadingFor.add(mode);
-  return (_loadFilesChain = _loadFilesChain.catch(() => {}).then(async () => {
-    _loadingFor.delete(mode);
-    const map = mode === 'collection' ? PROMPT_FILE_MAP_COLLECTION : PROMPT_FILE_MAP;
-    const PROMPT_FILES = Object.entries(map);
-    const BIBLIO_FILES = ['tags','accroches','objectif','psycho','titres','bibliotheque-semantique'];
-    const missing = [];
-    await Promise.all([
-      ...PROMPT_FILES.map(async ([agentId, fname]) => {
-        try {
-          const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
-          if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
-          state.promptsByMode[mode][agentId] = await res.text();
-        } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
-      }),
-      ...BIBLIO_FILES.map(async (key) => {
-        try {
-          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-          if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
-          state.bibliosByMode[mode][key] = await res.text();
-        } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
-      }),
-    ]);
-    if (mode !== currentMode) return;
-    const p = pfx();
-    const btn = document.getElementById(`runBtn-${p}`);
-    if (missing.length > 0) {
-      if (!silent) {
-        const list = missing.map(f => `  • ${f}`).join('\n');
-        alert(`⚠️ Fichiers manquants :\n\n${list}\n\nVérifiez que server.py est lancé.`);
-      } else {
-        showToast(`⚠️ ${missing.length} fichier(s) manquants en mode ${mode}`, '#ff4757', 10000);
-      }
-      if (btn) { btn.disabled = true; btn.textContent = `⚠️ Fichiers manquants (${mode})`; }
+  await Promise.all([
+    ...PROMPT_FILES.map(async ([agentId, fname]) => {
+      try {
+        const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+        if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
+        state.prompts[agentId] = await res.text();
+      } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
+    }),
+    ...BIBLIO_FILES.map(async (key) => {
+      try {
+        const res = await fetch(`/files/biblios/${mode}/${key}.md`);
+        if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
+        state.biblios[key] = await res.text();
+      } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
+    }),
+  ]);
+  if (mode !== currentMode) return;
+  const p = pfx();
+  const btn = document.getElementById(`runBtn-${p}`);
+  if (missing.length > 0) {
+    if (!silent) {
+      const list = missing.map(f => `  • ${f}`).join('\n');
+      alert(`⚠️ Fichiers manquants :\n\n${list}\n\nVérifiez que server.py est lancé.`);
     } else {
-      _loadedFor.add(mode);
-      if (btn) { btn.disabled = false; btn.innerHTML = '▶ Lancer le pipeline'; }
+      showToast(`⚠️ ${missing.length} fichier(s) manquants en mode ${mode}`, '#ff4757', 10000);
     }
-  }));
+    if (btn) { btn.disabled = true; btn.textContent = `⚠️ Fichiers manquants (${mode})`; }
+  } else {
+    if (btn) { btn.disabled = false; btn.innerHTML = '▶ Lancer le pipeline'; }
+  }
 }
 
 
@@ -2411,6 +1636,45 @@ function copyAllOutputs() {
   showToast(`Review globale copiée — ${parts.length} agents ✓`);
 }
 
+async function runTitreExplorer() {
+  const p = pfx();
+  const btn = document.getElementById(`${p}-bexplore-titre`);
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
+  const ctx = buildCtx('titre');
+  const prompt = buildPrompt('titre', ctx);
+  const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.';
+  try {
+    const { text: result } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);
+    const lines = result.split('\n').filter(l => l.match(/^\d+\.\s+/));
+    const titres = lines.map(l => {
+      const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+      const charMatch = l.match(/\((\d+)\s*car/i);
+      const chars = charMatch ? parseInt(charMatch[1]) : text.length;
+      return { text, chars };
+    });
+    document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TITRES';
+    document.getElementById('explorerCount').textContent = `${titres.length} titres`;
+    document.getElementById('explorerListLabel').textContent = 'Titres générés — 👍 valider · 👎 blacklister';
+    document.getElementById('explorerConversation').value = result;
+    const list = document.getElementById('explorerList');
+    list.innerHTML = titres.map((t, i) => {
+      const charColor = t.chars > 140 ? 'var(--error)' : t.chars >= 128 ? 'var(--success)' : t.chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+      const safe = t.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div class="titre-item" id="exp-titre-${i}">
+        <span class="titre-text">${t.text}</span>
+        <span class="titre-char" style="color:${charColor};">${t.chars}</span>
+        <div class="titre-actions">
+          <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safe}');document.getElementById('exp-titre-${i}').classList.add('validated')">👍</button>
+          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safe}');document.getElementById('exp-titre-${i}').classList.add('invalidated')">👎</button>
+          <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safe}')">📋</button>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('explorerLightbox').classList.add('visible');
+    showToast('Exploration terminée ✓', '#e8c547');
+  } catch(e) { showToast(`Erreur: ${e.message}`, '#ff4757'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '🔭 Explorer'; } }
+}
 
 const FORM_FIELDS_TT = ['tt-fNom','tt-fNomCourt','tt-fUnivers','tt-fSculpteur','tt-fPieces','tt-fNotes','tt-fPose','tt-fType','tt-fVersion','tt-fUrlBoutique','tt-fArchPrincipal','tt-fArchSeo'];
 const FORM_FIELDS_COL = ['col-fNomCourt','col-fNom','col-fUnivers','col-fSculpteur','col-fPieces','col-fNotes','col-fPose','col-fUrlBoutique'];
@@ -2882,7 +2146,27 @@ async function runBatchFiche(i) {
 }
 
 async function runBatchAgent(agent, ctx) {
+ async function runBatchAgent(agent, ctx) {
   try {
+    // CAS SPÉCIAL TAGS = flow 3 agents internes
+    if (agent.id === 'tags') {
+      const { output, debug } = await runTagsThreeAgents(ctx);
+
+      state.outputs.tags = output;
+      state.inputs.tags = [
+        '===== TAGS EXPLORE =====',
+        debug.explore || '',
+        '',
+        '===== TAGS FILTER =====',
+        debug.filter || '',
+        '',
+        '===== TAGS SELECT =====',
+        debug.select || ''
+      ].join('\n');
+
+      return true;
+    }
+
     const template = state.promptsByMode[currentMode][agent.id] || '';
     const filled = template
       .replace(/\[\[NOM_COURT\]\]/g, ctx.nomCourt)
@@ -2919,9 +2203,14 @@ async function runBatchAgent(agent, ctx) {
       .replace(/\[\[ACCROCHE\]\]/g, ctx.selectedAccrocheText||'')
       .replace(/\[\[CTA\]\]/g, ctx.selectedCTAText||'')
       .replace(/\[\[PROFIL_DOMINANT\]\]/g, ctx.profil_dominant||'');
+
     const fixedContent = CACHE_FIXED[agent.id] ? CACHE_FIXED[agent.id]() : null;
+
+    state.inputs[agent.id] = filled;
+
     const { text:result, usage } = await callClaude(agent.id, { filled, fixedContent }, agent.usesImages);
     state.outputs[agent.id] = result;
+
     if (usage) {
       const isH = (AGENT_MODELS[agent.id]||'').includes('haiku');
       const P = isH?{input:.80/1e6,cacheWrite:1/1e6,cacheRead:.08/1e6,output:4/1e6}:{input:3/1e6,cacheWrite:3.75/1e6,cacheRead:.30/1e6,output:15/1e6};
@@ -2930,8 +2219,13 @@ async function runBatchAgent(agent, ctx) {
       const sessionEl = document.getElementById('session-cost');
       if (sessionEl) sessionEl.textContent = '💰 ' + state.sessionCost.toFixed(2) + '¢';
     }
+
     return true;
-  } catch(e) { console.error('Batch agent error', agent.id, e.message); return false; }
+  } catch(e) {
+    console.error('Batch agent error', agent.id, e.message);
+    return false;
+  }
+}
 }
 
 async function exportBatch() {
