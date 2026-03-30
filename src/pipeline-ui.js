@@ -887,7 +887,6 @@ async function invalidateTag(tag, itemId) {
 }
 
 async function runTagExplorer() {
-async function runTagExplorer() {
   const p = pfx();
   const btn = document.getElementById(`${p}-bexplore-tags`);
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
@@ -932,7 +931,6 @@ async function runTagExplorer() {
     if (btn) { btn.disabled = false; btn.textContent = '🔭 Explorer'; }
   }
 }
-}
 
 function closeExplorer() { document.getElementById('explorerLightbox').classList.remove('visible'); }
 
@@ -963,7 +961,7 @@ function buildTitreSelectionUI(agentId, output) {
       </div></div>`;
   }).join('');
   // Auto-check blacklist après génération
-  const { blacklisted: blTitres } = parseBiblioTitres(state.biblios['titres']);
+  const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
   if (blTitres.length) {
     lines.forEach((l, i) => {
       const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
@@ -1508,14 +1506,14 @@ async function loadAllFiles(silent = false) {
       try {
         const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
         if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
-        state.prompts[agentId] = await res.text();
+        state.promptsByMode[mode][agentId] = await res.text();
       } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
     }),
     ...BIBLIO_FILES.map(async (key) => {
       try {
         const res = await fetch(`/files/biblios/${mode}/${key}.md`);
         if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
-        state.biblios[key] = await res.text();
+        state.bibliosByMode[mode][key] = await res.text();
       } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
     }),
   ]);
@@ -2146,7 +2144,6 @@ async function runBatchFiche(i) {
 }
 
 async function runBatchAgent(agent, ctx) {
- async function runBatchAgent(agent, ctx) {
   try {
     // CAS SPÉCIAL TAGS = flow 3 agents internes
     if (agent.id === 'tags') {
@@ -2225,7 +2222,6 @@ async function runBatchAgent(agent, ctx) {
     console.error('Batch agent error', agent.id, e.message);
     return false;
   }
-}
 }
 
 async function exportBatch() {
