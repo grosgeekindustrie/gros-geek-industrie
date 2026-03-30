@@ -337,6 +337,11 @@ async function autoRegenTag(tag, matchedTerm, itemEl) {
     showToast('Erreur remplacement tag', '#ff4757');
   }
 }
+function rerollTag(tag, itemId) {
+  const el = document.getElementById(itemId);
+  if (!el) return;
+  autoRegenTag(tag, 'remplacement manuel', el);
+}
 async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
   if (itemEl.classList.contains('regen-pending')) return;
   itemEl.classList.add('regen-pending');
@@ -839,6 +844,7 @@ function buildTagsUI(output) {
       <div class="titre-actions">
         <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
         <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}')">👎</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','tag-item-${i}')">🔄</button>
       </div></div>`;
   }).join('');
   // Auto-check blacklist après génération
@@ -918,7 +924,8 @@ async function runTagExplorer() {
         <span class="titre-char" style="color:${lenColor};">${len}</span>
         <div class="titre-actions">
           <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('validated')">👍</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
+          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','exp-tag-${i}');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
+          <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','exp-tag-${i}')">🔄</button>
         </div>
       </div>`;
     }).join('');

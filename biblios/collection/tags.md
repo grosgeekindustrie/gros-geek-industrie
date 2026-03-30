@@ -62,3 +62,4 @@
 - cadeau collectionneur résine
 - cadeau collectionneur figurine
 - figurine héros survival horror
+- cadeau figurine jeu vidéo
