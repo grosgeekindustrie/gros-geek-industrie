@@ -42,8 +42,8 @@ const state = {
   outputs: {},
   inputs: {},
   persistentRules: {},
-  prompts: {},
-  biblios: {},
+  promptsByMode: { tabletop: {}, collection: {} },
+  bibliosByMode: { tabletop: {}, collection: {} },
   selectedAccroche: null,
   selectedCTA: null,
   selectedTitre: null,
@@ -104,7 +104,7 @@ const CACHE_FIXED = {
 // PROMPT BUILDER
 // ═══════════════════════════════════════════════════════════
 function buildPrompt(agentId, ctx) {
-  const template = state.prompts[agentId] || '';
+  const template = state.promptsByMode[currentMode][agentId] || '';
   const p = pfx();
   const filled = template
     .replace(/\[\[NOM_COURT\]\]/g, ctx.nomCourt||ctx.nom)
@@ -154,7 +154,7 @@ function buildPrompt(agentId, ctx) {
 // ═══════════════════════════════════════════════════════════
 // BIBLIOTHÈQUES
 // ═══════════════════════════════════════════════════════════
-function getBiblio(key) { return state.biblios[key] || ''; }
+function getBiblio(key) { return state.bibliosByMode[currentMode][key] || ''; }
 
 function parseBiblioTags(raw) {
   const validated = [], blacklisted = [];
@@ -206,7 +206,7 @@ async function autoRegenTag(tag, matchedTerm, itemEl) {
     };
     const { text: result } = await callClaude('tags', regenPrompt, false, 2);
     const newTag = result.trim().replace(/^\d+\.\s*/, '').replace(/^[-+•]\s*/, '').split('\n')[0].trim();
-    const { blacklisted } = parseBiblioTags(state.biblios['tags']);
+    const { blacklisted } = parseBiblioTags(getBiblio('tags'));
     const stillBad = getBlacklistedTerm(newTag, blacklisted);
     textSpan.textContent = newTag;
     if (lenSpan) { lenSpan.textContent = newTag.length; lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)'; }
@@ -240,7 +240,7 @@ async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
     };
     const { text: result } = await callClaude('titre', regenPrompt, false, 2);
     const newTitre = result.trim().replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').split('\n')[0].trim();
-    const { blacklisted } = parseBiblioTitres(state.biblios['titres']);
+    const { blacklisted } = parseBiblioTitres(getBiblio('titres'));
     const stillBad = getBlacklistedTerm(newTitre, blacklisted);
     textSpan.textContent = newTitre;
     const chars = newTitre.length;
@@ -261,7 +261,7 @@ async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
   }
 }
 function getBiblioTagsFormatted() {
-  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
   if (!validated.length && !blacklisted.length) return '';
   const parts = [];
   if (validated.length) parts.push(`Tags validés (exemples de qualité à imiter) :\n${validated.map(t => `+ ${t}`).join('\n')}`);
@@ -281,7 +281,7 @@ function switchBiblioTab(tab) {
   currentBiblioTab = tab;
   document.querySelectorAll('.biblio-tab').forEach(b => b.classList.remove('active'));
   document.getElementById(`btab-${tab}`).classList.add('active');
-  document.getElementById('biblio-textarea').value = state.biblios[tab] || '';
+  document.getElementById('biblio-textarea').value = state.bibliosByMode[currentMode][tab] || '';
 }
 async function saveBiblio() {
   if (!confirm(`Écraser biblios/${currentMode}/${currentBiblioTab}.md sur le disque ?`)) return;
@@ -289,7 +289,7 @@ async function saveBiblio() {
   try {
     const res = await fetch(`/files/biblios/${currentMode}/${currentBiblioTab}.md`, { method:'PUT', body:val });
     if (!res.ok) throw new Error((await res.json()).error);
-    state.biblios[currentBiblioTab] = val;
+    state.bibliosByMode[currentMode][currentBiblioTab] = val;
     closeBiblioLightbox();
     showToast(`${BIBLIO_MAP[currentBiblioTab].label} sauvegardée ✓`);
   } catch(e) { showToast(`Erreur: ${e.message}`, '#ff4757'); }
@@ -299,7 +299,7 @@ async function resetBiblio() {
   try {
     const res = await fetch(`/files/biblios/${currentMode}/${currentBiblioTab}.md`);
     if (!res.ok) throw new Error((await res.json()).error);
-    state.biblios[currentBiblioTab] = await res.text();
+    state.bibliosByMode[currentMode][currentBiblioTab] = await res.text();
     switchBiblioTab(currentBiblioTab);
     showToast('Rechargé depuis le fichier ✓');
   } catch(e) { showToast(`Erreur: ${e.message}`, '#ff4757'); }
@@ -313,7 +313,7 @@ function openPromptLightbox(id) {
   currentLbAgentId = id;
   const label = id === 'orchestrateur' ? 'Orchestrateur' : (getPipelineAgents().find(a => a.id === id)?.title || id);
   document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;
-  document.getElementById('lbTextarea').value = state.prompts[id] || '';
+  document.getElementById('lbTextarea').value = state.promptsByMode[currentMode][id] || '';
   document.getElementById('promptLightbox').classList.add('visible');
 }
 function closePromptLightbox() { document.getElementById('promptLightbox').classList.remove('visible'); currentLbAgentId = null; }
@@ -327,7 +327,7 @@ async function saveLbPrompt() {
   try {
     const res = await fetch(`/files/prompts/${currentMode}/${fname}.md`, { method:'PUT', body:val });
     if (!res.ok) throw new Error((await res.json()).error);
-    state.prompts[currentLbAgentId] = val;
+    state.promptsByMode[currentMode][currentLbAgentId] = val;
     closePromptLightbox();
     showToast('Prompt sauvegardé ✓');
   } catch(e) { showToast(`Erreur: ${e.message}`, '#ff4757'); }
@@ -342,7 +342,7 @@ async function resetLbPrompt() {
     const res = await fetch(`/files/prompts/${currentMode}/${fname}.md`);
     if (!res.ok) throw new Error((await res.json()).error);
     const txt = await res.text();
-    state.prompts[currentLbAgentId] = txt;
+    state.promptsByMode[currentMode][currentLbAgentId] = txt;
     document.getElementById('lbTextarea').value = txt;
     showToast('Rechargé depuis le fichier ✓');
   } catch(e) { showToast(`Erreur: ${e.message}`, '#ff4757'); }
@@ -729,7 +729,7 @@ function buildTagsUI(output) {
       </div></div>`;
   }).join('');
   // Auto-check blacklist après génération
-  const { blacklisted: blTags } = parseBiblioTags(state.biblios['tags']);
+  const { blacklisted: blTags } = parseBiblioTags(getBiblio('tags'));
   if (blTags.length) {
     tags.forEach((tag, i) => {
       const term = getBlacklistedTerm(tag, blTags);
@@ -744,46 +744,33 @@ function buildTagsUI(output) {
 }
 
 async function validateTag(tag) {
-
-   const parsed = parseBiblioTags(state.biblios['tags']);
-  console.log('VALIDATE parsed =', parsed);
-
-
-  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
   if (validated.includes(tag)) { showToast('Déjà validé'); return; }
   validated.push(tag);
   const updated = buildBiblioTagsRaw(validated, blacklisted);
-
-   console.log('VALIDATE updated =', updated);
-
-  state.biblios['tags'] = updated;
-  try { await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated }); showToast(`👍 "${tag}" validé`); }
-  catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
+  try {
+    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['tags'] = updated;
+    showToast(`👍 "${tag}" validé`);
+  } catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
 async function invalidateTag(tag, itemId) {
-  console.log(`${currentMode}`);
   const segment = prompt('Quel terme pose problème ?\n(laisse vide pour invalider le tag entier)', '');
   if (segment === null) return;
   const toBlacklist = segment.trim() || tag;
-
-  const parsed = parseBiblioTags(state.biblios['tags']);
-  console.log('INVALIDATE parsed =', parsed);
-
-
-  const { validated, blacklisted } = parseBiblioTags(state.biblios['tags']);
+  const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
   if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
   blacklisted.push(toBlacklist);
   const updated = buildBiblioTagsRaw(validated, blacklisted);
-
-  console.log('INVALIDATE updated =', updated);
-  state.biblios['tags'] = updated;
   try {
-    await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
+    const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['tags'] = updated;
     showToast(`👎 "${toBlacklist}" blacklisté`);
     if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTag(tag, toBlacklist, el); }
-  }
-  catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
+  } catch(e) { showToast('Erreur sauvegarde', '#ff4757'); }
 }
 
 async function runTagExplorer() {
@@ -850,7 +837,7 @@ function buildTitreSelectionUI(agentId, output) {
       </div></div>`;
   }).join('');
   // Auto-check blacklist après génération
-  const { blacklisted: blTitres } = parseBiblioTitres(state.biblios['titres']);
+  const { blacklisted: blTitres } = parseBiblioTitres(getBiblio('titres'));
   if (blTitres.length) {
     lines.forEach((l, i) => {
       const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
@@ -889,30 +876,33 @@ function pasteSelectedTitre(agentId) {
 }
 
 async function validateTitreSegment(text) {
-  const { validated, blacklisted } = parseBiblioTitres(state.biblios['titres']);
+  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
   if (validated.includes(text)) return;
   validated.push(text);
   const updated = buildBiblioTitresRaw(validated, blacklisted);
-  state.biblios['titres'] = updated;
-  try { await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated }); showToast('👍 Titre ajouté aux exemples validés'); }
-  catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
+  try {
+    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['titres'] = updated;
+    showToast('👍 Titre ajouté aux exemples validés');
+  } catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
 }
 
 async function invalidateTitreSegment(text, itemId, agentId) {
   const segment = prompt('Quel segment pose problème ?\n(laisse vide pour invalider le titre entier)', '');
   if (segment === null) return;
   const toBlacklist = segment.trim() || text;
-  const { validated, blacklisted } = parseBiblioTitres(state.biblios['titres']);
+  const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
   if (blacklisted.includes(toBlacklist)) { showToast('Déjà blacklisté'); return; }
   blacklisted.push(toBlacklist);
   const updated = buildBiblioTitresRaw(validated, blacklisted);
-  state.biblios['titres'] = updated;
   try {
-    await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method:'PUT', body:updated });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state.bibliosByMode[currentMode]['titres'] = updated;
     showToast(`👎 "${toBlacklist}" ajouté à la blacklist`);
     if (itemId) { const el = document.getElementById(itemId); if (el) autoRegenTitre(text, toBlacklist, el, agentId || 'titre'); }
-  }
-  catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
+  } catch(e) { showToast('Erreur sauvegarde titres', '#ff4757'); }
 }
 
 function copyTitreLine(text) { navigator.clipboard.writeText(text); showToast('Titre copié ✓'); }
@@ -1381,42 +1371,45 @@ function loadPersistedData() {
 // ═══════════════════════════════════════════════════════════
 // CHARGEMENT FICHIERS MD
 // ═══════════════════════════════════════════════════════════
+let _loadFilesChain = Promise.resolve();
 async function loadAllFiles(silent = false) {
-  const map = currentMode === 'collection' ? PROMPT_FILE_MAP_COLLECTION : PROMPT_FILE_MAP;
-  const PROMPT_FILES = Object.entries(map);
-  const BIBLIO_FILES = ['tags','accroches','objectif','psycho','titres','bibliotheque-semantique'];
-  const missing = [];
   const mode = currentMode;
-  await Promise.all([
-    ...PROMPT_FILES.map(async ([agentId, fname]) => {
-      try {
-        const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
-        if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
-        state.prompts[agentId] = await res.text();
-      } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
-    }),
-    ...BIBLIO_FILES.map(async (key) => {
-      try {
-        const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-        if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
-        state.biblios[key] = await res.text();
-      } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
-    }),
-  ]);
-  if (mode !== currentMode) return;
-  const p = pfx();
-  const btn = document.getElementById(`runBtn-${p}`);
-  if (missing.length > 0) {
-    if (!silent) {
-      const list = missing.map(f => `  • ${f}`).join('\n');
-      alert(`⚠️ Fichiers manquants :\n\n${list}\n\nVérifiez que server.py est lancé.`);
+  return (_loadFilesChain = _loadFilesChain.catch(() => {}).then(async () => {
+    const map = mode === 'collection' ? PROMPT_FILE_MAP_COLLECTION : PROMPT_FILE_MAP;
+    const PROMPT_FILES = Object.entries(map);
+    const BIBLIO_FILES = ['tags','accroches','objectif','psycho','titres','bibliotheque-semantique'];
+    const missing = [];
+    await Promise.all([
+      ...PROMPT_FILES.map(async ([agentId, fname]) => {
+        try {
+          const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+          if (!res.ok) { missing.push(`prompts/${mode}/${fname}.md`); return; }
+          state.promptsByMode[mode][agentId] = await res.text();
+        } catch(e) { missing.push(`prompts/${mode}/${fname}.md`); }
+      }),
+      ...BIBLIO_FILES.map(async (key) => {
+        try {
+          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
+          if (!res.ok) { missing.push(`biblios/${mode}/${key}.md`); return; }
+          state.bibliosByMode[mode][key] = await res.text();
+        } catch(e) { missing.push(`biblios/${mode}/${key}.md`); }
+      }),
+    ]);
+    if (mode !== currentMode) return;
+    const p = pfx();
+    const btn = document.getElementById(`runBtn-${p}`);
+    if (missing.length > 0) {
+      if (!silent) {
+        const list = missing.map(f => `  • ${f}`).join('\n');
+        alert(`⚠️ Fichiers manquants :\n\n${list}\n\nVérifiez que server.py est lancé.`);
+      } else {
+        showToast(`⚠️ ${missing.length} fichier(s) manquants en mode ${mode}`, '#ff4757', 10000);
+      }
+      if (btn) { btn.disabled = true; btn.textContent = `⚠️ Fichiers manquants (${mode})`; }
     } else {
-      showToast(`⚠️ ${missing.length} fichier(s) manquants en mode ${mode}`, '#ff4757', 10000);
+      if (btn) { btn.disabled = false; btn.innerHTML = '▶ Lancer le pipeline'; }
     }
-    if (btn) { btn.disabled = true; btn.textContent = `⚠️ Fichiers manquants (${mode})`; }
-  } else {
-    if (btn) { btn.disabled = false; btn.innerHTML = '▶ Lancer le pipeline'; }
-  }
+  }));
 }
 
 
@@ -2031,7 +2024,7 @@ async function runBatchFiche(i) {
 
 async function runBatchAgent(agent, ctx) {
   try {
-    const template = state.prompts[agent.id] || '';
+    const template = state.promptsByMode[currentMode][agent.id] || '';
     const filled = template
       .replace(/\[\[NOM_COURT\]\]/g, ctx.nomCourt)
       .replace(/\[\[NOM\]\]/g, ctx.nom)
