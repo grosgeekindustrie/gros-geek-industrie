@@ -2977,3 +2977,401 @@ body.mode-collection .form-section {
 .library-modal-feedback.error {
   color: #ff6b6b;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   INLINE MERGED LAYER
+   -----------------------------------------------------------------
+   Fusion temporaire de src/inline.css dans le fichier actif
+   src/css/pipeline.css.
+
+   Les fichiers src/pipeline.css et src/inline.css sont conservés
+   volontairement en backup à la racine.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   TEMP INLINE EXTRACTION LAYER
+   -----------------------------------------------------------------
+   Fichier temporaire dédié à l'extraction des anciens style="..."
+   présents dans le HTML.
+
+   Objectif :
+   - retirer les styles inline du HTML
+   - conserver le rendu existant
+   - préparer une fusion progressive vers pipeline.css plus tard
+
+   Règle ici :
+   - pas de refactor large
+   - pas de changement de thème
+   - classes contextuelles ou helpers limités
+   - lisible et commenté
+   ═══════════════════════════════════════════════════════════ */
+
+
+/* ═══ États et helpers simples ═══ */
+.is-hidden {
+  display: none;
+}
+
+.input-file-hidden {
+  display: none;
+}
+
+.btn-compact-text {
+  font-size: 11px;
+}
+
+.btn-xs-inline {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.btn-strong {
+  font-weight: 800;
+}
+
+.textarea-compact {
+  min-height: 44px;
+}
+
+.textarea-md {
+  min-height: 55px;
+}
+
+.textarea-lg {
+  min-height: 70px;
+}
+
+.field-flex-1 {
+  flex: 1;
+}
+
+
+/* ═══ Home ═══ */
+.home-view-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 24px;
+}
+
+.home-cards-dual {
+  grid-template-columns: 1fr 1fr;
+}
+
+.home-batch-divider {
+  border-top: 1px solid var(--border);
+  margin: 20px 0 0;
+  padding-top: 20px;
+}
+
+.home-batch-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.home-card-batch {
+  padding: 20px 24px;
+}
+
+.home-card-icon-batch {
+  font-size: 24px;
+}
+
+.home-card-title-batch {
+  font-size: 15px;
+}
+
+
+/* ═══ Options et groupes de champs ═══ */
+.option-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.advanced-options-stack {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.social-check-offset {
+  margin-top: 4px;
+}
+
+.field-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.fetch-status {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+
+/* ═══ Toolbars de panels finaux ═══ */
+.final-output-panel {
+  margin-top: 8px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.social-output-panel {
+  margin-top: 16px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 4px;
+}
+
+.panel-toolbar-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.panel-toolbar-title-success {
+  color: var(--success);
+}
+
+.panel-toolbar-title-accent {
+  color: var(--accent);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.copy-all-btn-compact {
+  margin-top: 0;
+  padding: 6px 14px;
+  font-size: 11px;
+}
+
+.copy-all-btn-accent {
+  background: var(--accent);
+}
+
+
+/* ═══ Sections réseaux ═══ */
+.social-section {
+  margin-top: 16px;
+  border-style: solid;
+}
+
+.social-section-tt {
+  border-color: rgba(232, 197, 71, 0.3);
+}
+
+.social-section-col {
+  border-color: rgba(126, 184, 247, 0.3);
+}
+
+.section-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-title-inline {
+  margin-bottom: 0;
+}
+
+.section-stack-md {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.social-platform-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.btn-agent-stop {
+  display: none;
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  color: var(--error);
+}
+
+.reseaux-only-section {
+  margin-top: 16px;
+  border-style: solid;
+  border-color: rgba(255, 107, 53, 0.3);
+}
+
+.reseaux-only-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.reseaux-only-btn {
+  flex: 1;
+}
+
+.reseaux-only-btn-tt {
+  background: rgba(232, 197, 71, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(232, 197, 71, 0.35);
+}
+
+.reseaux-only-btn-col {
+  background: rgba(126, 184, 247, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(126, 184, 247, 0.35);
+}
+
+.reseaux-only-btn-both {
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--accent2);
+  border: 1px solid rgba(255, 107, 53, 0.35);
+}
+
+
+/* ═══ Pinterest sub-panels ═══ */
+.pinterest-subheader {
+  border-top: 1px solid var(--border);
+}
+
+.pinterest-subheader-tt {
+  background: rgba(232, 197, 71, 0.05);
+}
+
+.pinterest-subheader-col {
+  background: rgba(126, 184, 247, 0.05);
+}
+
+.pinterest-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+
+/* ═══ Pipeline header ═══ */
+.pipeline-view-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+
+/* ═══ Lightboxes communes ═══ */
+.lb-box-wide {
+  max-width: 860px;
+}
+
+.lb-body-flush {
+  padding: 0;
+}
+
+.lb-tabs-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.lb-body-block {
+  padding: 16px 18px;
+}
+
+.modal-meta-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.modal-meta-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.readonly-textarea {
+  opacity: 0.85;
+  cursor: default;
+}
+
+
+/* ═══ Explorer ═══ */
+.explorer-body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.explorer-pane {
+  padding: 12px 18px;
+}
+
+.explorer-pane-top {
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.explorer-pane-bottom {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.explorer-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.explorer-label-list {
+  margin-bottom: 10px;
+}
+
+.explorer-conversation {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  resize: none;
+  height: 140px;
+  line-height: 1.6;
+  opacity: 0.85;
+  cursor: default;
+}
+
+.explorer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

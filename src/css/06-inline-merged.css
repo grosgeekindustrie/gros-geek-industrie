@@ -1,0 +1,25 @@
+/* ═══════════════════════════════════════════════════════════
+   INLINE MERGED LAYER
+   -----------------------------------------------------------------
+   Résidu temporaire après le step 3.
+   Les blocs stables ont été redistribués dans les fichiers dédiés.
+   Ce fichier conserve encore les helpers transverses les plus sensibles.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══ Helpers transverses conservés ici ═══ */
+.is-hidden {
+  display: none;
+}
+
+.btn-compact-text {
+  font-size: 11px;
+}
+
+.btn-xs-inline {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.btn-strong {
+  font-weight: 800;
+}
