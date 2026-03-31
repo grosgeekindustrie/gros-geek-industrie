@@ -693,7 +693,7 @@
 <script src="js/ui/config_ui.js"></script>
 <script src="js/ui/shell_ui.js"></script>
 <script src="js/pipeline-ui.js"></script>
-<script src="js/pipeline-api.js"></script>
+<script src="pipeline-api.js"></script>
 
 
 <!-- BATCH MODAL -->
