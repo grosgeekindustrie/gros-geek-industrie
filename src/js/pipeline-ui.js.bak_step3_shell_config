@@ -4,8 +4,16 @@
 // ═══════════════════════════════════════════════════════════
 // MODE
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/shell_ui.js
-const isTT = mode === 'tabletop';
+let currentMode = 'tabletop'; // 'tabletop' | 'collection'
+const MODE_PREFIX = { tabletop: 'tt', collection: 'col' };
+function pfx() { return MODE_PREFIX[currentMode]; }
+
+function switchMode(mode) {
+  if (mode === currentMode) return;
+  currentMode = mode;
+  state.mode = mode;
+  window.currentMode = currentMode;
+  const isTT = mode === 'tabletop';
   document.body.classList.toggle('mode-collection', !isTT);
   const titles = {
     tabletop:   { h1: '🎲 Etsy Pipeline DnD', page: '🎲 Etsy Pipeline DnD v1.2' },
@@ -25,7 +33,7 @@ const isTT = mode === 'tabletop';
   showToast(`Mode ${isTT ? 'Tabletop DnD' : 'Collection'} ✓`, isTT ? '#e8c547' : '#7eb8f7');
   // Persist mode
   try { const s = JSON.parse(localStorage.getItem('pipeline.settings') || '{}'); s.mode = mode; localStorage.setItem('pipeline.settings', JSON.stringify(s)); } catch(e) {}
-
+}
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -56,11 +64,53 @@ window.currentMode = currentMode;
 // ═══════════════════════════════════════════════════════════
 // AGENTS PIPELINE
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/config_ui.js
+const PIPELINE_AGENTS = [
+  { id:'analyse',     title:'🔍 01 — Marcus · Analyse visuelle',    usesImages:true,  hasSelection:false },
+  { id:'alt',         title:'🖼️ 02 — Nadia · Balise ALT',           usesImages:false, hasSelection:false },
+  { id:'marche',      title:'📊 03 — Sophie · Analyse de marché',   usesImages:false, hasSelection:false },
+  { id:'tags',        title:'🔖 04 — Karim · Tags (×13)',            usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 05 — Maya · Titres SEO (×10)',      usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'description', title:'📝 06 — Claire · Description',         usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+];
+const PIPELINE_AGENTS_COLLECTION = [
+  { id:'analyse',     title:'🔍 01 — Jules · Analyse visuelle',     usesImages:true,  hasSelection:false },
+  { id:'alt',         title:'🖼️ 02 — Iris · Balise ALT',            usesImages:false, hasSelection:false },
+  { id:'marche',      title:'📊 03 — Luna · Analyse de marché',     usesImages:false, hasSelection:false },
+  { id:'tags',        title:'🔖 04 — Axel · Tags (×13)',             usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 05 — Nova · Titres SEO (×10)',      usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'description', title:'📝 06 — Eden · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+];
+function getPipelineAgents() {
+  return currentMode === 'collection' ? PIPELINE_AGENTS_COLLECTION : PIPELINE_AGENTS;
+}
+
 // ═══════════════════════════════════════════════════════════
 // PROMPT FILE MAPS
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/config_ui.js
+const PROMPT_FILE_MAP = {
+  analyse:'marcus', alt:'nadia', marche:'sophie', tags:'karim',
+  titre:'maya', description:'claire', social:'leo', camille:'camille', orchestrateur:'felix',
+};
+const PROMPT_FILE_MAP_COLLECTION = {
+  analyse:'jules',
+  alt:'iris',
+  marche:'luna',
+
+  // tags visible dans l’UI + sélection finale = même prompt
+  tags:'axel-explore-tags',
+
+  // prompts internes du trio tags
+  tags_explore:'axel-explore-tags',
+  tags_filter:'celine-filter-tags',
+  tags_select:'axel-select',
+
+  titre:'nova',
+  description:'eden',
+  social:'theo',
+  camille:'zoe',
+  orchestrateur:'rex',
+};
+
 // ═══════════════════════════════════════════════════════════
 // CACHE FIXED
 // ═══════════════════════════════════════════════════════════

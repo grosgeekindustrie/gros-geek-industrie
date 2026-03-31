@@ -696,8 +696,6 @@
 <script src="js/ui/title_ui.js"></script>
 <script src="js/ui/library_ui.js"></script>
 <script src="js/ui/batch_ui.js"></script>
-<script src="js/ui/config_ui.js"></script>
-<script src="js/ui/shell_ui.js"></script>
 <script src="js/pipeline-ui.js"></script>
 <script src="pipeline-api.js"></script>
 
