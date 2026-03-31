@@ -328,6 +328,7 @@ async function autoRegenTag(tag, matchedTerm, itemEl) {
     const btns = itemEl.querySelectorAll('.titre-thumb');
     if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
     if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
+    if (btns[2]) btns[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
     itemEl.classList.remove('regen-pending');
     if (stillBad) { autoRegenTag(newTag, stillBad, itemEl); }
     else { showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7'); }
@@ -429,7 +430,14 @@ async function resetBiblio() {
 let currentLbAgentId = null;
 function openPromptLightbox(id) {
   currentLbAgentId = id;
-  const label = id === 'orchestrateur' ? 'Orchestrateur' : (getPipelineAgents().find(a => a.id === id)?.title || id);
+  const tagLabels = {
+    tags: 'Axel · Explore Tags',
+    tags_filter: 'Céline · Filter Tags',
+    tags_select: 'Axel · Select Tags',
+  };
+  const label = id === 'orchestrateur'
+    ? 'Orchestrateur'
+    : (tagLabels[id] || getPipelineAgents().find(a => a.id === id)?.title || id);
   document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;
   document.getElementById('lbTextarea').value = state.promptsByMode[currentMode][id] || '';
   document.getElementById('promptLightbox').classList.add('visible');
@@ -760,6 +768,9 @@ function buildPipeline() {
           <button class="btn btn-success" id="${p}-bs-${a.id}" onclick="rerunSuite('${a.id}')" disabled>⏩ Suite</button>
           <button class="btn btn-orange" id="${p}-bp-${a.id}" onclick="persistRule('${a.id}')" disabled>📌 Toujours</button>
           <button class="btn btn-muted" onclick="openPromptLightbox('${a.id}')">⚙️</button>
+          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('tags')">⚙️E</button>` : ''}
+          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('tags_filter')">⚙️F</button>` : ''}
+          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('tags_select')">⚙️S</button>` : ''}
           <button class="btn" id="${p}-bstop-${a.id}" onclick="stopAgent('${a.id}')" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);">⏹</button>
           <button class="btn btn-muted" onclick="copyOut('${a.id}')">📋</button>
           <button class="btn btn-muted" onclick="showRawInput('${a.id}')">&lt;/&gt;</button>
