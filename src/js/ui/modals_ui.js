@@ -185,14 +185,18 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-         const autoRegenTagFn =
-  global.PipelineUITags?.autoRegenTag || global.autoRegenTag;
+            const autoRegenTagFn =
+              global.PipelineUITags?.autoRegenTag || global.autoRegenTag;
 
-if (typeof autoRegenTagFn === 'function') {
-  setTimeout(() => autoRegenTagFn(tag, reason, itemEl), 0);
-} else {
-  console.error('autoRegenTag introuvable');
-}
+            if (typeof autoRegenTagFn === 'function') {
+              setTimeout(() => autoRegenTagFn(
+                state.currentValue,
+                added[0] || state.currentValue,
+                item
+              ), 0);
+            } else {
+              console.error('autoRegenTag introuvable');
+            }
           }
         }
 
@@ -220,7 +224,19 @@ if (typeof autoRegenTagFn === 'function') {
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            setTimeout(() => global.autoRegenTitre(state.currentValue, added[0] || state.currentValue, item, state.agentId || 'titre'), 0);
+            const autoRegenTitreFn =
+              global.PipelineUITitles?.autoRegenTitre || global.autoRegenTitre;
+
+            if (typeof autoRegenTitreFn === 'function') {
+              setTimeout(() => autoRegenTitreFn(
+                state.currentValue,
+                added[0] || state.currentValue,
+                item,
+                state.agentId || 'titre'
+              ), 0);
+            } else {
+              console.error('autoRegenTitre introuvable');
+            }
           }
         }
 
