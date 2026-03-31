@@ -53,6 +53,7 @@
 + cadeau gamer naruto
 + figurine resident evil
 + figurine leon kennedy
++ test ajout
 
 ## BLACKLISTÉS
 - personnage
@@ -133,3 +134,4 @@
 - statue personnage culte
 - figurine personnage culte
 - sculpture personnage culte
+- test rejet

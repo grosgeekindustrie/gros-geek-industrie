@@ -1,6 +1,16 @@
 'use strict';
 
-window.PipelineUI = window.PipelineUI || {};
+const state = window.state;
+const { pfx, switchMode } = window.PipelineUIShell;
+const {
+  getPipelineAgents,
+  PROMPT_FILE_MAP,
+  PROMPT_FILE_MAP_COLLECTION,
+} = window.PipelineUIConfig;
+
+// ═══════════════════════════════════════════════════════════
+// CACHE FIXED
+// ═══════════════════════════════════════════════════════════
 
 const {
   extractLastNumberedBlock,
