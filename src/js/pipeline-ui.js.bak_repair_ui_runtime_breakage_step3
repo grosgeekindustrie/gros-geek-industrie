@@ -1,13 +1,66 @@
+
 'use strict';
 
-const state = window.state;
-const { pfx, switchMode } = window.PipelineUIShell;
-const {
-  getPipelineAgents,
-  PROMPT_FILE_MAP,
-  PROMPT_FILE_MAP_COLLECTION,
-} = window.PipelineUIConfig;
+// ═══════════════════════════════════════════════════════════
+// MODE
+// ═══════════════════════════════════════════════════════════
+// Extracted to src/js/ui/shell_ui.js
+const isTT = mode === 'tabletop';
+  document.body.classList.toggle('mode-collection', !isTT);
+  const titles = {
+    tabletop:   { h1: '🎲 Etsy Pipeline DnD', page: '🎲 Etsy Pipeline DnD v1.2' },
+    collection: { h1: '🖼️ Etsy Pipeline Collection', page: '🖼️ Etsy Pipeline Collection v1.2' },
+  };
+  document.getElementById('headerTitle')?.textContent !== undefined && (document.getElementById('headerTitle').textContent = titles[mode].h1);
+  document.getElementById('headerMode') && (document.getElementById('headerMode').textContent = isTT ? 'DnD Tabletop' : 'Collection');
+  document.title = titles[mode].page;
+  document.getElementById('modeTabletop')?.classList.toggle('active', isTT);
+  document.getElementById('modeCollection')?.classList.toggle('active', !isTT);
+  document.getElementById('ui-tt')?.style && (document.getElementById('ui-tt').style.display = isTT ? '' : 'none');
+  document.getElementById('ui-col')?.style && (document.getElementById('ui-col').style.display = isTT ? 'none' : '');
+  buildEchellesUI();
+  buildPipeline();
+  loadFormState();
+  loadAllFiles(true);
+  showToast(`Mode ${isTT ? 'Tabletop DnD' : 'Collection'} ✓`, isTT ? '#e8c547' : '#7eb8f7');
+  // Persist mode
+  try { const s = JSON.parse(localStorage.getItem('pipeline.settings') || '{}'); s.mode = mode; localStorage.setItem('pipeline.settings', JSON.stringify(s)); } catch(e) {}
 
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+  images: { tt: [], col: [] },
+  outputs: {},
+  inputs: {},
+  persistentRules: {},
+  promptsByMode: { tabletop: {}, collection: {} },
+  bibliosByMode: { tabletop: {}, collection: {} },
+  selectedAccroche: null,
+  selectedCTA: null,
+  selectedTitre: null,
+  orchestrateurActif: false,
+  orchAttempts: {},
+  socialSections: {},
+  _lastOrchProblems: {},
+  sessionCost: 0,
+  mode: 'tabletop',
+  agentUsage: {},
+};
+
+window.PipelineUI = window.PipelineUI || {};
+window.state = state;
+window.currentMode = currentMode;
+
+// ═══════════════════════════════════════════════════════════
+// AGENTS PIPELINE
+// ═══════════════════════════════════════════════════════════
+// Extracted to src/js/ui/config_ui.js
+// ═══════════════════════════════════════════════════════════
+// PROMPT FILE MAPS
+// ═══════════════════════════════════════════════════════════
+// Extracted to src/js/ui/config_ui.js
 // ═══════════════════════════════════════════════════════════
 // CACHE FIXED
 // ═══════════════════════════════════════════════════════════
