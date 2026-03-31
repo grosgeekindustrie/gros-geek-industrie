@@ -166,50 +166,23 @@ function buildPrompt(agentId, ctx) {
   return { filled, fixedContent };
 }
 
-function extractLastNumberedTagBlock(raw) {
-  const lines = String(raw || '').split('\n');
-  const blocks = [];
-  let current = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (/^\d+[.)]\s+/.test(trimmed)) {
-      current.push(trimmed);
-      continue;
-    }
-
-    if (current.length) {
-      if (!trimmed) continue;
-      blocks.push(current.slice());
-      current = [];
-    }
-  }
-
-  if (current.length) blocks.push(current.slice());
-  return blocks.length ? blocks[blocks.length - 1] : [];
-}
-
 function parseTagOutput(raw) {
   if (!raw) return [];
 
-  const lastNumberedBlock = extractLastNumberedTagBlock(raw);
-  const sourceLines = lastNumberedBlock.length
-    ? lastNumberedBlock
-    : String(raw).split('\n');
-
-  const cleaned = sourceLines
-    .map(line => line.trim())
+  const cleaned = raw
+    .split('\n')
+    .map(l => l.trim())
     .filter(Boolean)
     .flatMap(line => {
-      if (line.includes(',') && !/^\d+[.)]\s/.test(line)) {
+      // si le modèle renvoie une seule ligne CSV
+      if (line.includes(',') && !/^\d+\.\s/.test(line)) {
         return line.split(',').map(x => x.trim()).filter(Boolean);
       }
       return [line];
     })
-    .map(line => line.replace(/^\d+[.)]\s*/, ''))
-    .map(line => line.replace(/^[-•+]\s*/, ''))
-    .map(line => line.trim())
+    .map(l => l.replace(/^\d+\.\s*/, ''))
+    .map(l => l.replace(/^[-•+]\s*/, ''))
+    .map(l => l.trim())
     .filter(Boolean);
 
   const seen = new Set();
@@ -1367,22 +1340,16 @@ function syncTagsOutputFromUI() {
   const p = pfx();
   const list = document.getElementById(`${p}-sel-list-tags`);
   if (!list) return;
-
   const tags = [...list.querySelectorAll('.titre-item .titre-text')]
     .map(el => el.textContent.trim())
     .filter(Boolean);
   if (!tags.length) return;
 
-  const normalized = formatTagsNumbered(tags);
+  const normalized = tags.map((t, i) => `${i + 1}. ${t}`).join('');
   state.outputs.tags = normalized;
 
   const outEl = document.getElementById(`${p}-out-tags`);
   if (outEl) outEl.textContent = normalized;
-
-  const finalTagsEl = document.getElementById(`fc-tags-${p}`);
-  if (finalTagsEl) finalTagsEl.textContent = normalized;
-
-  if (typeof assembleFinal === 'function') assembleFinal();
 }
 
 
