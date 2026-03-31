@@ -110,8 +110,7 @@
       }
     }
 
-    return lines.join('
-');
+    return lines.join(`\n`);
   }
 
   Object.assign(global.PipelineUIEchelles, {
