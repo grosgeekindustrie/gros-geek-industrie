@@ -109,44 +109,6 @@ const PROMPT_FILE_MAP_COLLECTION = {
 // ═══════════════════════════════════════════════════════════
 // CACHE FIXED
 // ═══════════════════════════════════════════════════════════
-
-const {
-  extractLastNumberedBlock,
-  parseTagOutput,
-  formatTagsNumbered,
-  normalizeTagValue,
-  normalizeTitreValue,
-  sameTag,
-  sameTitre,
-  parseBulkLibraryEntries,
-  getBlacklistedTerm,
-} = window.PipelineUIHelpers;
-
-const {
-  syncSelectionField,
-  syncFinalPre,
-  syncTagsOutputFromUI,
-} = window.PipelineUIRender;
-
-const {
-  ensureLibraryModals,
-  setLibraryModalFeedback,
-  openLibraryBlacklistModal,
-  closeLibraryBlacklistModal,
-  openLibraryValidatedModal,
-  closeLibraryValidatedModal,
-  confirmLibraryBlacklistModal,
-  confirmLibraryValidatedModal,
-  ensureZoneLibraryActionButton,
-  ensureTagsManualAddButton,
-  ensureTitresManualAddButton,
-  ensureExplorerManualAddButton,
-} = window.PipelineUIModals;
-
-const { autoRegenTag, rerollTag } = window.PipelineUITags;
-const { autoRegenTitre } = window.PipelineUITitles;
-
-
 const CACHE_FIXED = {
   marche:      () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
   titre:       () => `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
@@ -204,7 +166,66 @@ function buildPrompt(agentId, ctx) {
   return { filled, fixedContent };
 }
 
-// Extracted to src/js/ui/helper_ui.js
+function extractLastNumberedTagBlock(raw) {
+  const lines = String(raw || '').split('\n');
+  const blocks = [];
+  let current = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (/^\d+[.)]\s+/.test(trimmed)) {
+      current.push(trimmed);
+      continue;
+    }
+
+    if (current.length) {
+      if (!trimmed) continue;
+      blocks.push(current.slice());
+      current = [];
+    }
+  }
+
+  if (current.length) blocks.push(current.slice());
+  return blocks.length ? blocks[blocks.length - 1] : [];
+}
+
+function parseTagOutput(raw) {
+  if (!raw) return [];
+
+  const lastNumberedBlock = extractLastNumberedTagBlock(raw);
+  const sourceLines = lastNumberedBlock.length
+    ? lastNumberedBlock
+    : String(raw).split('\n');
+
+  const cleaned = sourceLines
+    .map(line => line.trim())
+    .filter(Boolean)
+    .flatMap(line => {
+      if (line.includes(',') && !/^\d+[.)]\s/.test(line)) {
+        return line.split(',').map(x => x.trim()).filter(Boolean);
+      }
+      return [line];
+    })
+    .map(line => line.replace(/^\d+[.)]\s*/, ''))
+    .map(line => line.replace(/^[-•+]\s*/, ''))
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const seen = new Set();
+  const out = [];
+  for (const tag of cleaned) {
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out;
+}
+
+function formatTagsNumbered(tags) {
+  return tags.map((t, i) => `${i + 1}. ${t}`).join('\n');
+}
 
 async function runTagsThreeAgents(ctx) {
   // 1) EXPLORE
@@ -307,12 +328,474 @@ function buildBiblioTitresRaw(validated, blacklisted) {
 }
 
 
-// Extracted to src/js/ui/helper_ui.js
+function normalizeTagValue(tag) {
+  return String(tag || '').replace(/\s+/g, ' ').trim();
+}
 
-// Extracted to src/js/ui/modals_ui.js
+function normalizeTitreValue(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
 
-// Extracted to src/js/ui/tags_ui.js and src/js/ui/title_ui.js
+function sameTag(a, b) {
+  return normalizeTagValue(a).toLowerCase() === normalizeTagValue(b).toLowerCase();
+}
 
+function sameTitre(a, b) {
+  return normalizeTitreValue(a).toLowerCase() === normalizeTitreValue(b).toLowerCase();
+}
+
+function parseBulkLibraryEntries(raw) {
+  return Array.from(new Set(
+    String(raw || '')
+      .split(/[\n,]/)
+      .map(s => s.trim())
+      .filter(Boolean)
+  ));
+}
+
+function ensureLibraryModals() {
+  if (document.getElementById('libraryBlacklistModal')) return;
+
+  const host = document.createElement('div');
+  host.innerHTML = `
+    <div id="libraryBlacklistModal" class="library-modal">
+      <div class="library-modal-card" role="dialog" aria-modal="true" aria-labelledby="libraryBlacklistModalTitle">
+        <h3 id="libraryBlacklistModalTitle" class="library-modal-title">Blacklister</h3>
+        <div class="library-modal-subtitle">Élément actuel</div>
+        <div id="libraryBlacklistCurrent" class="library-modal-current"></div>
+        <textarea
+          id="libraryBlacklistTextarea"
+          class="library-modal-textarea"
+          placeholder="Valeur à blacklister. Tu peux en mettre plusieurs séparées par des virgules."
+        ></textarea>
+        <div class="library-modal-hint">
+          Si le champ est vide, le tag ou le titre du bouton sera blacklisté.<br>
+          Tu peux saisir un segment, le texte complet, ou plusieurs entrées séparées par des virgules.
+        </div>
+        <div id="libraryBlacklistFeedback" class="library-modal-feedback"></div>
+        <div class="library-modal-actions">
+          <button type="button" class="library-modal-btn" onclick="closeLibraryBlacklistModal()">Annuler</button>
+          <button type="button" class="library-modal-btn primary" onclick="confirmLibraryBlacklistModal()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="libraryValidatedModal" class="library-modal">
+      <div class="library-modal-card" role="dialog" aria-modal="true" aria-labelledby="libraryValidatedModalTitle">
+        <h3 id="libraryValidatedModalTitle" class="library-modal-title">Ajouter aux validés</h3>
+        <div class="library-modal-subtitle">Ajout manuel</div>
+        <div class="library-modal-current">
+          Saisis une ou plusieurs valeurs séparées par des virgules.
+        </div>
+        <textarea
+          id="libraryValidatedTextarea"
+          class="library-modal-textarea"
+          placeholder="Ex: figurine résine à peindre, garage kit anime"
+        ></textarea>
+        <div class="library-modal-hint">
+          Si le champ est vide et que tu cliques sur OK, rien ne se passe.
+        </div>
+        <div id="libraryValidatedFeedback" class="library-modal-feedback"></div>
+        <div class="library-modal-actions">
+          <button type="button" class="library-modal-btn" onclick="closeLibraryValidatedModal()">Annuler</button>
+          <button type="button" class="library-modal-btn primary" onclick="confirmLibraryValidatedModal()">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(host);
+
+  document.getElementById('libraryBlacklistModal').addEventListener('click', (e) => {
+    if (e.target.id === 'libraryBlacklistModal') closeLibraryBlacklistModal();
+  });
+
+  document.getElementById('libraryValidatedModal').addEventListener('click', (e) => {
+    if (e.target.id === 'libraryValidatedModal') closeLibraryValidatedModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closeLibraryBlacklistModal();
+    closeLibraryValidatedModal();
+  });
+}
+
+function setLibraryModalFeedback(modalType, text = '', tone = '') {
+  const id = modalType === 'blacklist' ? 'libraryBlacklistFeedback' : 'libraryValidatedFeedback';
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = `library-modal-feedback${tone ? ' ' + tone : ''}`;
+}
+
+function openLibraryBlacklistModal({ kind, currentValue, itemId = null, source = 'main', agentId = 'titre' }) {
+  ensureLibraryModals();
+
+  window.__libraryBlacklistState = {
+    kind,
+    currentValue: String(currentValue || '').trim(),
+    itemId,
+    source,
+    agentId
+  };
+
+  const modal = document.getElementById('libraryBlacklistModal');
+  const title = document.getElementById('libraryBlacklistModalTitle');
+  const current = document.getElementById('libraryBlacklistCurrent');
+  const textarea = document.getElementById('libraryBlacklistTextarea');
+
+  title.textContent = kind === 'tags' ? 'Blacklister des tags' : 'Blacklister des titres';
+  current.textContent = window.__libraryBlacklistState.currentValue || '—';
+  textarea.value = window.__libraryBlacklistState.currentValue || '';
+  setLibraryModalFeedback('blacklist', '');
+
+  modal.classList.add('visible');
+
+  setTimeout(() => {
+    textarea.focus();
+    textarea.setSelectionRange(0, textarea.value.length);
+  }, 0);
+}
+
+function closeLibraryBlacklistModal() {
+  const modal = document.getElementById('libraryBlacklistModal');
+  if (modal) modal.classList.remove('visible');
+  window.__libraryBlacklistState = null;
+}
+
+function openLibraryValidatedModal({ kind, source = 'main', agentId = 'titre' }) {
+  ensureLibraryModals();
+
+  window.__libraryValidatedState = {
+    kind,
+    source,
+    agentId
+  };
+
+  const modal = document.getElementById('libraryValidatedModal');
+  const title = document.getElementById('libraryValidatedModalTitle');
+  const textarea = document.getElementById('libraryValidatedTextarea');
+
+  title.textContent = kind === 'tags' ? 'Ajouter des tags validés' : 'Ajouter des titres validés';
+  textarea.value = '';
+  setLibraryModalFeedback('validated', '');
+
+  modal.classList.add('visible');
+
+  setTimeout(() => {
+    textarea.focus();
+  }, 0);
+}
+
+function closeLibraryValidatedModal() {
+  const modal = document.getElementById('libraryValidatedModal');
+  if (modal) modal.classList.remove('visible');
+  window.__libraryValidatedState = null;
+}
+
+async function saveTagsLibrary(validated, blacklisted) {
+  const updated = buildBiblioTagsRaw(validated, blacklisted);
+  const res = await fetch(`/files/biblios/${currentMode}/tags.md`, { method: 'PUT', body: updated });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  state.bibliosByMode[currentMode]['tags'] = updated;
+}
+
+async function saveTitresLibrary(validated, blacklisted) {
+  const updated = buildBiblioTitresRaw(validated, blacklisted);
+  const res = await fetch(`/files/biblios/${currentMode}/titres.md`, { method: 'PUT', body: updated });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  state.bibliosByMode[currentMode]['titres'] = updated;
+}
+
+async function confirmLibraryBlacklistModal() {
+  const s = window.__libraryBlacklistState;
+  if (!s) return;
+
+  const textarea = document.getElementById('libraryBlacklistTextarea');
+  const rawEntries = parseBulkLibraryEntries(textarea?.value || '');
+  const fallback = s.currentValue ? [s.currentValue] : [];
+  const entries = rawEntries.length ? rawEntries : fallback;
+
+  if (!entries.length) {
+    closeLibraryBlacklistModal();
+    return;
+  }
+
+  try {
+    if (s.kind === 'tags') {
+      const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
+      const added = [];
+
+      for (const entry of entries.map(normalizeTagValue)) {
+        if (!entry) continue;
+        if (blacklisted.some(v => sameTag(v, entry))) continue;
+        blacklisted.push(entry);
+        added.push(entry);
+      }
+
+      if (added.length) {
+        await saveTagsLibrary(validated, blacklisted);
+      }
+
+      if (s.itemId) {
+        const el = document.getElementById(s.itemId);
+        if (el) {
+          el.classList.remove('validated');
+          el.classList.add('invalidated');
+          setTimeout(() => autoRegenTag(s.currentValue, added[0] || s.currentValue, el), 0);
+        }
+      }
+
+      showToast(
+        added.length ? `👎 ${added.length} tag(s) blacklisté(s)` : 'Déjà blacklisté',
+        added.length ? undefined : '#7eb8f7'
+      );
+    } else {
+      const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
+      const added = [];
+
+      for (const entry of entries.map(normalizeTitreValue)) {
+        if (!entry) continue;
+        if (blacklisted.some(v => sameTitre(v, entry))) continue;
+        blacklisted.push(entry);
+        added.push(entry);
+      }
+
+      if (added.length) {
+        await saveTitresLibrary(validated, blacklisted);
+      }
+
+      if (s.itemId) {
+        const el = document.getElementById(s.itemId);
+        if (el) {
+          el.classList.remove('validated');
+          el.classList.add('invalidated');
+          setTimeout(() => autoRegenTitre(s.currentValue, added[0] || s.currentValue, el, s.agentId || 'titre'), 0);
+        }
+      }
+
+      showToast(
+        added.length ? `👎 ${added.length} titre(s) blacklisté(s)` : 'Déjà blacklisté',
+        added.length ? undefined : '#7eb8f7'
+      );
+    }
+
+    closeLibraryBlacklistModal();
+  } catch (e) {
+    setLibraryModalFeedback('blacklist', 'Erreur de sauvegarde', 'error');
+  }
+}
+
+async function confirmLibraryValidatedModal() {
+  const s = window.__libraryValidatedState;
+  if (!s) return;
+
+  const textarea = document.getElementById('libraryValidatedTextarea');
+  const entries = parseBulkLibraryEntries(textarea?.value || '');
+
+  if (!entries.length) {
+    closeLibraryValidatedModal();
+    return;
+  }
+
+  try {
+    if (s.kind === 'tags') {
+      const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
+      const accepted = [];
+
+      for (const raw of entries) {
+        const value = normalizeTagValue(raw);
+        if (!value) continue;
+        if (validated.some(v => sameTag(v, value)) || accepted.some(v => sameTag(v, value))) continue;
+        accepted.push(value);
+      }
+
+      if (accepted.length) {
+        await saveTagsLibrary([...validated, ...accepted], blacklisted);
+      }
+
+      showToast(`✅ ${accepted.length} tag(s) validé(s) ajouté(s)`);
+    } else {
+      const { validated, blacklisted } = parseBiblioTitres(getBiblio('titres'));
+      const accepted = [];
+
+      for (const raw of entries) {
+        const value = normalizeTitreValue(raw);
+        if (!value) continue;
+        if (validated.some(v => sameTitre(v, value)) || accepted.some(v => sameTitre(v, value))) continue;
+        accepted.push(value);
+      }
+
+      if (accepted.length) {
+        await saveTitresLibrary([...validated, ...accepted], blacklisted);
+      }
+
+      showToast(`✅ ${accepted.length} titre(s) validé(s) ajouté(s)`);
+    }
+
+    closeLibraryValidatedModal();
+  } catch (e) {
+    setLibraryModalFeedback('validated', 'Erreur de sauvegarde', 'error');
+  }
+}
+
+function ensureZoneLibraryActionButton(zoneEl, buttonId, label, onClick) {
+  if (!zoneEl) return;
+
+  let bar = zoneEl.querySelector('.library-actions-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'library-actions-bar';
+    zoneEl.prepend(bar);
+  }
+
+  let btn = document.getElementById(buttonId);
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = buttonId;
+    btn.className = 'library-action-btn';
+    bar.appendChild(btn);
+  }
+
+  btn.textContent = label;
+  btn.onclick = onClick;
+}
+
+function ensureTagsManualAddButton() {
+  const zone = document.getElementById(`${pfx()}-sel-tags`);
+  ensureZoneLibraryActionButton(
+    zone,
+    `${pfx()}-manual-valid-tags`,
+    '➕ Ajouter des tags validés',
+    () => openLibraryValidatedModal({ kind: 'tags', source: 'main' })
+  );
+}
+
+function ensureTitresManualAddButton(agentId) {
+  const zone = document.getElementById(`${pfx()}-sel-${agentId}`);
+  ensureZoneLibraryActionButton(
+    zone,
+    `${pfx()}-manual-valid-${agentId}`,
+    '➕ Ajouter des titres validés',
+    () => openLibraryValidatedModal({ kind: 'titres', source: 'main', agentId })
+  );
+}
+
+function ensureExplorerManualAddButton(kind, agentId = 'titre') {
+  const label = document.getElementById('explorerListLabel');
+  if (!label) return;
+
+  let bar = document.getElementById('explorerLibraryActions');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'explorerLibraryActions';
+    bar.className = 'explorer-library-actions';
+    label.insertAdjacentElement('afterend', bar);
+  }
+
+  let btn = document.getElementById('explorerManualValidBtn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'explorerManualValidBtn';
+    btn.className = 'library-action-btn';
+    bar.appendChild(btn);
+  }
+
+  btn.textContent = kind === 'tags'
+    ? '➕ Ajouter des tags validés'
+    : '➕ Ajouter des titres validés';
+
+  btn.onclick = () => openLibraryValidatedModal({
+    kind,
+    source: 'explorer',
+    agentId
+  });
+}
+
+function getBlacklistedTerm(text, blacklist) {
+  const lc = text.toLowerCase();
+  return blacklist.find(term => term && lc.includes(term.toLowerCase())) || null;
+}
+async function autoRegenTag(tag, matchedTerm, itemEl) {
+  if (itemEl.classList.contains('regen-pending')) return;
+  itemEl.classList.add('regen-pending');
+  const textSpan = itemEl.querySelector('.titre-text');
+  const lenSpan  = itemEl.querySelector('.titre-char');
+  const origText = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
+  try {
+    const ctx = buildCtx('tags');
+    const prompt = buildPrompt('tags_select', ctx);
+    const regenPrompt = {
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe tag "${tag}" contient le terme blacklisté "${matchedTerm}". Génère UN SEUL tag de remplacement. Max 30 caractères, français, naturel, ancré au produit.\nFormat: juste le tag, sans numérotation, sans ponctuation finale.`,
+      fixedContent: prompt.fixedContent
+    };
+    const { text: result } = await callClaude('tags', regenPrompt, false, 2);
+    const newTag = result.trim().replace(/^\d+\.\s*/, '').replace(/^[-+•]\s*/, '').split('\n')[0].trim();
+    const { blacklisted } = parseBiblioTags(getBiblio('tags'));
+    const stillBad = getBlacklistedTerm(newTag, blacklisted);
+    textSpan.textContent = newTag;
+    if (lenSpan) { lenSpan.textContent = newTag.length; lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)'; }
+    const safe = newTag.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
+    if (btns[2]) btns[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
+    itemEl.classList.remove('regen-pending');
+    syncTagsOutputFromUI();
+    if (stillBad) { autoRegenTag(newTag, stillBad, itemEl); }
+    else { showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7'); }
+  } catch(e) {
+    itemEl.classList.remove('regen-pending');
+    textSpan.textContent = origText;
+    showToast('Erreur remplacement tag', '#ff4757');
+  }
+}
+function rerollTag(tag, itemId) {
+  const el = document.getElementById(itemId);
+  if (!el) return;
+  autoRegenTag(tag, 'remplacement manuel', el);
+}
+async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
+  if (itemEl.classList.contains('regen-pending')) return;
+  itemEl.classList.add('regen-pending');
+  const textSpan  = itemEl.querySelector('.titre-text');
+  const charSpan  = itemEl.querySelector('.titre-char');
+  const origText  = textSpan.textContent;
+  textSpan.textContent = '⟳ remplacement…';
+  try {
+    const ctx = buildCtx('titre');
+    const prompt = buildPrompt('titre', ctx);
+    const regenPrompt = {
+      filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe titre "${text}" contient un terme blacklisté ("${matchedTerm}"). Génère UN SEUL titre de remplacement. Idéalement 128-140 caractères, naturel, SEO Etsy.\nFormat: juste le titre, sans numérotation, sans compteur de caractères.`,
+      fixedContent: prompt.fixedContent
+    };
+    const { text: result } = await callClaude('titre', regenPrompt, false, 2);
+    const newTitre = result.trim().replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').split('\n')[0].trim();
+    const { blacklisted } = parseBiblioTitres(getBiblio('titres'));
+    const stillBad = getBlacklistedTerm(newTitre, blacklisted);
+    textSpan.textContent = newTitre;
+    const chars = newTitre.length;
+    const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
+    if (charSpan) { charSpan.textContent = chars; charSpan.style.color = charColor; }
+    const safe = newTitre.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const itemId = itemEl.id;
+    const btns = itemEl.querySelectorAll('.titre-thumb');
+    if (btns[0]) btns[0].setAttribute('onclick', `event.stopPropagation();validateTitreSegment('${safe}','valid')`);
+    if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTitreSegment('${safe}','${itemId}','${agentId}')`);
+    itemEl.classList.remove('regen-pending');
+    if (stillBad) { autoRegenTitre(newTitre, stillBad, itemEl, agentId); }
+    else { showToast(`♻️ Titre remplacé`, '#7eb8f7'); }
+  } catch(e) {
+    itemEl.classList.remove('regen-pending');
+    textSpan.textContent = origText;
+    showToast('Erreur remplacement titre', '#ff4757');
+  }
+}
 function getBiblioTagsFormatted() {
   const { validated, blacklisted } = parseBiblioTags(getBiblio('tags'));
   if (!validated.length && !blacklisted.length) return '';
@@ -880,7 +1363,28 @@ async function runTagExplorer() {
 
 function closeExplorer() { document.getElementById('explorerLightbox').classList.remove('visible'); }
 
-// Extracted to src/js/ui/render_ui.js
+function syncTagsOutputFromUI() {
+  const p = pfx();
+  const list = document.getElementById(`${p}-sel-list-tags`);
+  if (!list) return;
+
+  const tags = [...list.querySelectorAll('.titre-item .titre-text')]
+    .map(el => el.textContent.trim())
+    .filter(Boolean);
+  if (!tags.length) return;
+
+  const normalized = formatTagsNumbered(tags);
+  state.outputs.tags = normalized;
+
+  const outEl = document.getElementById(`${p}-out-tags`);
+  if (outEl) outEl.textContent = normalized;
+
+  const finalTagsEl = document.getElementById(`fc-tags-${p}`);
+  if (finalTagsEl) finalTagsEl.textContent = normalized;
+
+  if (typeof assembleFinal === 'function') assembleFinal();
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // TITRE SÉLECTION
