@@ -239,10 +239,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json(200, {'ok': True, 'deleted': rel})
 
 
-class ThreadingLocalServer(http.server.ThreadingHTTPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
 def main():
     # Créer les dossiers s'ils n'existent pas
     for d in ALLOWED_DIRS:
@@ -250,7 +246,7 @@ def main():
         for sub in ALLOWED_SUBDIRS:
             (ROOT / d / sub).mkdir(exist_ok=True)
 
-    server = ThreadingLocalServer(('localhost', PORT), Handler)
+    server = http.server.HTTPServer(('localhost', PORT), Handler)
     url = f'http://localhost:{PORT}'
 
     print(f'\n  Etsy Pipeline DnD — Serveur local')
