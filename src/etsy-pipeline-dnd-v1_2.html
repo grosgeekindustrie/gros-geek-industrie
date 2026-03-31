@@ -143,11 +143,26 @@
       <div class="form-section">
         <h2>Identité</h2>
         <div class="form-grid">
-          <div class="fg"><label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label><input type="text" id="tt-fNomCourt" placeholder="ex: Jingwey"/></div>
-          <div class="fg"><label>Intitulé complet <span class="fg-hint">→ description</span></label><input type="text" id="tt-fNom" placeholder="ex: Jingwey the Monk"/></div>
-          <div class="fg"><label>Univers</label><input type="text" id="tt-fUnivers" placeholder="ex: Fantasy"/></div>
-          <div class="fg"><label>Sculpteur</label><input type="text" id="tt-fSculpteur" placeholder="ex: Nerikson"/></div>
-          <div class="fg"><label>Nb pièces</label><input type="text" id="tt-fPieces" placeholder="ex: 10 pcs 140mm / 2 autres"/></div>
+          <div class="fg">
+            <label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label>
+            <input type="text" id="tt-fNomCourt" placeholder="ex: Jingwey"/>
+          </div>
+          <div class="fg">
+            <label>Intitulé complet <span class="fg-hint">→ description</span></label>
+            <input type="text" id="tt-fNom" placeholder="ex: Jingwey the Monk"/>
+          </div>
+          <div class="fg">
+            <label>Univers</label>
+            <input type="text" id="tt-fUnivers" placeholder="ex: Fantasy"/>
+          </div>
+          <div class="fg">
+            <label>Sculpteur</label>
+            <input type="text" id="tt-fSculpteur" placeholder="ex: Nerikson"/>
+          </div>
+          <div class="fg">
+            <label>Nb pièces</label>
+            <input type="text" id="tt-fPieces" placeholder="ex: 10 pcs 140mm / 2 autres"/>
+          </div>
         </div>
       </div>
 
@@ -212,13 +227,23 @@
       <div class="form-section">
         <h2>Paramètres</h2>
         <div class="form-grid">
-          <div class="fg"><label>Pose</label>
-            <select id="tt-fPose"><option value="MUSEUM">Museum</option><option value="DYNAMIQUE">Dynamique</option></select>
+          <div class="fg">
+            <label>Pose</label>
+            <select id="tt-fPose">
+              <option value="MUSEUM">Museum</option>
+              <option value="DYNAMIQUE">Dynamique</option>
+            </select>
           </div>
-          <div class="fg"><label>Type produit</label>
-            <select id="tt-fType"><option value="SOLO">Solo</option><option value="SET">Set / Armée</option><option value="BOSS">Boss / Créature</option></select>
+          <div class="fg">
+            <label>Type produit</label>
+            <select id="tt-fType">
+              <option value="SOLO">Solo</option>
+              <option value="SET">Set / Armée</option>
+              <option value="BOSS">Boss / Créature</option>
+            </select>
           </div>
-          <div class="fg full"><label>Version</label>
+          <div class="fg full">
+            <label>Version</label>
             <select id="tt-fVersion">
               <option value="FIGURINE">Figurine</option>
               <option value="MINIATURES">Miniatures</option>
@@ -239,11 +264,20 @@
         <div class="advanced-options-stack">
           <div class="fg">
             <label>Buzz actuel</label>
-            <div class="buzz-row"><input type="checkbox" id="tt-fBuzz" onchange="toggleBuzz('tt')"/><span>Ce sculpteur/personnage buzz en ce moment</span></div>
+            <div class="buzz-row">
+              <input type="checkbox" id="tt-fBuzz" onchange="toggleBuzz('tt')"/>
+              <span>Ce sculpteur/personnage buzz en ce moment</span>
+            </div>
             <textarea id="tt-fBuzzNote" class="buzz-note" placeholder="Précise le contexte buzz..."></textarea>
           </div>
-          <div class="fg"><label>URL boutique Etsy</label><input type="text" id="tt-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/></div>
-          <div class="fg"><label>Notes libres</label><textarea id="tt-fNotes" placeholder="Infos supplémentaires..."></textarea></div>
+          <div class="fg">
+            <label>URL boutique Etsy</label>
+            <input type="text" id="tt-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
+          </div>
+          <div class="fg">
+            <label>Notes libres</label>
+            <textarea id="tt-fNotes" placeholder="Infos supplémentaires..."></textarea>
+          </div>
         </div>
       </details>
     </div>
@@ -265,19 +299,31 @@
       </div>
     </div>
     <div class="final-section is-hidden" id="fs-titre-tt">
-      <div class="fs-header"><span>🏷️ Titre validé</span><button onclick="copySection('titre_valide')">📋</button></div>
+      <div class="fs-header">
+        <span>🏷️ Titre validé</span>
+        <button onclick="copySection('titre_valide')">📋</button>
+      </div>
       <pre class="fs-content" id="fc-titre-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-tags-tt">
-      <div class="fs-header"><span>🔖 Tags</span><button onclick="copySection('tags')">📋</button></div>
+      <div class="fs-header">
+        <span>🔖 Tags</span>
+        <button onclick="copySection('tags')">📋</button>
+      </div>
       <pre class="fs-content" id="fc-tags-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-description-tt">
-      <div class="fs-header"><span>📝 Description</span><button onclick="copySection('description_assembled')">📋</button></div>
+      <div class="fs-header">
+        <span>📝 Description</span>
+        <button onclick="copySection('description_assembled')">📋</button>
+      </div>
       <pre class="fs-content" id="fc-description-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-alt-tt">
-      <div class="fs-header"><span>🖼️ Balise ALT</span><button onclick="copySection('alt')">📋</button></div>
+      <div class="fs-header">
+        <span>🖼️ Balise ALT</span>
+        <button onclick="copySection('alt')">📋</button>
+      </div>
       <pre class="fs-content" id="fc-alt-tt"></pre>
     </div>
   </div>
@@ -299,12 +345,24 @@
         </div>
         <div class="agent-body" id="body-social-tt">
           <div class="social-platform-row">
-            <label class="social-check"><input type="checkbox" id="soc-insta-tt" checked/> 📸 Instagram / TikTok</label>
-            <label class="social-check"><input type="checkbox" id="soc-fb-tt" checked/> 👥 Facebook</label>
-            <label class="social-check"><input type="checkbox" id="soc-marketplace-tt"/> 🛍️ FB Marketplace</label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-insta-tt" checked/>
+              📸 Instagram / TikTok
+            </label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-fb-tt" checked/>
+              👥 Facebook
+            </label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-marketplace-tt"/>
+              🛍️ FB Marketplace
+            </label>
           </div>
           <div class="output-box empty" id="out-social-tt">— pas encore généré —</div>
-          <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..."></textarea></div>
+          <div class="correction-area">
+            <label>💬 Correction ponctuelle</label>
+            <textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..."></textarea>
+          </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runLeoBtn-tt" onclick="runLeoAgent('tt')">▶ Générer</button>
             <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" onclick="stopAgent('social','tt')">⏹</button>
@@ -324,10 +382,16 @@
         </div>
         <div class="agent-body" id="body-camille-tt">
           <div class="social-platform-row">
-            <label class="social-check"><input type="checkbox" id="soc-pinterest-tt" checked/> 📌 Pinterest</label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-pinterest-tt" checked/>
+              📌 Pinterest
+            </label>
           </div>
           <div class="output-box empty" id="out-camille-tt">— pas encore généré —</div>
-          <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..."></textarea></div>
+          <div class="correction-area">
+            <label>💬 Correction ponctuelle</label>
+            <textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..."></textarea>
+          </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runCamilleBtn-tt" onclick="runCamilleAgent('tt')">▶ Générer</button>
             <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" onclick="stopAgent('camille','tt')">⏹</button>
@@ -343,13 +407,34 @@
   <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-tt">
     <h2>📱 Réseaux only — Fiche déjà publiée</h2>
     <div class="form-grid">
-      <div class="fg full"><label>Accroche validée</label><textarea id="ro-accroche-tt" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea></div>
-      <div class="fg full"><label>CTA validé</label><textarea id="ro-cta-tt" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea></div>
-      <div class="fg full"><label>Titre validé</label><input type="text" id="ro-titre-tt" placeholder="Colle le titre Etsy ici..."/></div>
-      <div class="fg"><label>Échelles</label><input type="text" id="ro-echelles-tt" placeholder="ex: 32mm, 75mm, 140mm"/></div>
-      <div class="fg"><label>URL boutique</label><input type="text" id="ro-url-tt" value="https://grosgeekindustrie.etsy.com"/></div>
-      <div class="fg"><label>Personnage</label><input type="text" id="ro-nom-tt" placeholder="ex: Jingwei The Monk"/></div>
-      <div class="fg"><label>Sculpteur</label><input type="text" id="ro-sculpteur-tt" placeholder="ex: Nerikson"/></div>
+      <div class="fg full">
+        <label>Accroche validée</label>
+        <textarea id="ro-accroche-tt" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea>
+      </div>
+      <div class="fg full">
+        <label>CTA validé</label>
+        <textarea id="ro-cta-tt" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea>
+      </div>
+      <div class="fg full">
+        <label>Titre validé</label>
+        <input type="text" id="ro-titre-tt" placeholder="Colle le titre Etsy ici..."/>
+      </div>
+      <div class="fg">
+        <label>Échelles</label>
+        <input type="text" id="ro-echelles-tt" placeholder="ex: 32mm, 75mm, 140mm"/>
+      </div>
+      <div class="fg">
+        <label>URL boutique</label>
+        <input type="text" id="ro-url-tt" value="https://grosgeekindustrie.etsy.com"/>
+      </div>
+      <div class="fg">
+        <label>Personnage</label>
+        <input type="text" id="ro-nom-tt" placeholder="ex: Jingwei The Monk"/>
+      </div>
+      <div class="fg">
+        <label>Sculpteur</label>
+        <input type="text" id="ro-sculpteur-tt" placeholder="ex: Nerikson"/>
+      </div>
     </div>
     <div class="reseaux-only-actions">
       <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" onclick="runReseauxOnly('leo','tt')">📸 Léo</button>
@@ -363,14 +448,53 @@
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
       <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" onclick="copySocial()">📋 Tout copier</button>
     </div>
-    <div class="final-section is-hidden" id="ss-insta-tt"><div class="fs-header"><span>📸 Instagram / TikTok</span><button onclick="copySocialSection('insta')">📋</button></div><pre class="fs-content" id="sc-insta-tt"></pre></div>
-    <div class="final-section is-hidden" id="ss-fb-tt"><div class="fs-header"><span>👥 Facebook</span><button onclick="copySocialSection('fb')">📋</button></div><pre class="fs-content" id="sc-fb-tt"></pre></div>
-    <div class="final-section is-hidden" id="ss-marketplace-tt"><div class="fs-header"><span>🛍️ Facebook Marketplace</span><button onclick="copySocialSection('marketplace')">📋</button></div><pre class="fs-content" id="sc-marketplace-tt"></pre></div>
+    <div class="final-section is-hidden" id="ss-insta-tt">
+      <div class="fs-header">
+        <span>📸 Instagram / TikTok</span>
+        <button onclick="copySocialSection('insta')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-insta-tt"></pre>
+    </div>
+    <div class="final-section is-hidden" id="ss-fb-tt">
+      <div class="fs-header">
+        <span>👥 Facebook</span>
+        <button onclick="copySocialSection('fb')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-fb-tt"></pre>
+    </div>
+    <div class="final-section is-hidden" id="ss-marketplace-tt">
+      <div class="fs-header">
+        <span>🛍️ Facebook Marketplace</span>
+        <button onclick="copySocialSection('marketplace')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-marketplace-tt"></pre>
+    </div>
     <div class="final-section is-hidden" id="ss-pinterest-tt">
-      <div class="fs-header"><span>📌 Pinterest</span><button onclick="copySocialSection('pinterest')">📋 Tout</button></div>
-      <div id="sc-pinterest-titre-tt" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-tt"><span class="pinterest-subtitle">Titre Pinterest</span><button onclick="copySocialSection('pinterestTitre')">📋</button></div><pre class="fs-content" id="sc-pinterest-t-tt"></pre></div>
-      <div id="sc-pinterest-desc-wrap-tt" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-tt"><span class="pinterest-subtitle">Description Pinterest</span><button onclick="copySocialSection('pinterestDesc')">📋</button></div><pre class="fs-content" id="sc-pinterest-d-tt"></pre></div>
-      <div id="sc-pinterest-alt-wrap-tt" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-tt"><span class="pinterest-subtitle">Balise ALT Pinterest</span><button onclick="copySocialSection('pinterestAlt')">📋</button></div><pre class="fs-content" id="sc-pinterest-a-tt"></pre></div>
+      <div class="fs-header">
+        <span>📌 Pinterest</span>
+        <button onclick="copySocialSection('pinterest')">📋 Tout</button>
+      </div>
+      <div id="sc-pinterest-titre-tt" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-tt">
+          <span class="pinterest-subtitle">Titre Pinterest</span>
+          <button onclick="copySocialSection('pinterestTitre')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-t-tt"></pre>
+      </div>
+      <div id="sc-pinterest-desc-wrap-tt" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-tt">
+          <span class="pinterest-subtitle">Description Pinterest</span>
+          <button onclick="copySocialSection('pinterestDesc')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-d-tt"></pre>
+      </div>
+      <div id="sc-pinterest-alt-wrap-tt" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-tt">
+          <span class="pinterest-subtitle">Balise ALT Pinterest</span>
+          <button onclick="copySocialSection('pinterestAlt')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-a-tt"></pre>
+      </div>
     </div>
   </div>
 
@@ -397,13 +521,32 @@
       <div class="form-section">
         <h2>Identité</h2>
         <div class="form-grid">
-          <div class="fg"><label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label><input type="text" id="col-fNomCourt" placeholder="ex: Leon Kennedy"/></div>
-          <div class="fg"><label>Intitulé complet <span class="fg-hint">→ description</span></label><input type="text" id="col-fNom" placeholder="ex: Leon Kennedy – Resident Evil Requiem"/></div>
-          <div class="fg"><label>Univers</label><input type="text" id="col-fUnivers" placeholder="ex: Resident Evil"/></div>
-          <div class="fg"><label>Sculpteur</label><input type="text" id="col-fSculpteur" placeholder="ex: Neko Figurines"/></div>
-          <div class="fg"><label>Nb pièces</label><input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/></div>
-          <div class="fg"><label>Pose</label>
-            <select id="col-fPose"><option value="MUSEUM">Museum</option><option value="DYNAMIQUE">Dynamique</option></select>
+          <div class="fg">
+            <label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label>
+            <input type="text" id="col-fNomCourt" placeholder="ex: Leon Kennedy"/>
+          </div>
+          <div class="fg">
+            <label>Intitulé complet <span class="fg-hint">→ description</span></label>
+            <input type="text" id="col-fNom" placeholder="ex: Leon Kennedy – Resident Evil Requiem"/>
+          </div>
+          <div class="fg">
+            <label>Univers</label>
+            <input type="text" id="col-fUnivers" placeholder="ex: Resident Evil"/>
+          </div>
+          <div class="fg">
+            <label>Sculpteur</label>
+            <input type="text" id="col-fSculpteur" placeholder="ex: Neko Figurines"/>
+          </div>
+          <div class="fg">
+            <label>Nb pièces</label>
+            <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
+          </div>
+          <div class="fg">
+            <label>Pose</label>
+            <select id="col-fPose">
+              <option value="MUSEUM">Museum</option>
+              <option value="DYNAMIQUE">Dynamique</option>
+            </select>
           </div>
           <div class="fg full">
             <label>License protégée <span class="fg-hint">→ droits d'auteur</span></label>
@@ -458,7 +601,10 @@
         <div class="form-grid">
           <div class="fg full">
             <label>Licence / Univers en buzz <span class="fg-hint">→ signal analyse marché</span></label>
-            <div class="buzz-row"><input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/><span>Licence ou univers récent, potentiel sous-évalué</span></div>
+            <div class="buzz-row">
+              <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
+              <span>Licence ou univers récent, potentiel sous-évalué</span>
+            </div>
             <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
           </div>
         </div>
@@ -472,8 +618,14 @@
       <details class="form-section form-optional">
         <summary class="form-optional-toggle">Options avancées <span class="fg-hint">URL · notes</span></summary>
         <div class="advanced-options-stack">
-          <div class="fg"><label>URL boutique Etsy</label><input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/></div>
-          <div class="fg"><label>Notes libres</label><textarea id="col-fNotes" placeholder="Infos supplémentaires..."></textarea></div>
+          <div class="fg">
+            <label>URL boutique Etsy</label>
+            <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
+          </div>
+          <div class="fg">
+            <label>Notes libres</label>
+            <textarea id="col-fNotes" placeholder="Infos supplémentaires..."></textarea>
+          </div>
         </div>
       </details>
     </div>
@@ -494,10 +646,34 @@
         <button class="copy-all-btn copy-all-btn-compact" onclick="copyAll()">📋 Tout copier</button>
       </div>
     </div>
-    <div class="final-section is-hidden" id="fs-titre-col"><div class="fs-header"><span>🏷️ Titre validé</span><button onclick="copySection('titre_valide')">📋</button></div><pre class="fs-content" id="fc-titre-col"></pre></div>
-    <div class="final-section is-hidden" id="fs-tags-col"><div class="fs-header"><span>🔖 Tags</span><button onclick="copySection('tags')">📋</button></div><pre class="fs-content" id="fc-tags-col"></pre></div>
-    <div class="final-section is-hidden" id="fs-description-col"><div class="fs-header"><span>📝 Description</span><button onclick="copySection('description_assembled')">📋</button></div><pre class="fs-content" id="fc-description-col"></pre></div>
-    <div class="final-section is-hidden" id="fs-alt-col"><div class="fs-header"><span>🖼️ Balise ALT</span><button onclick="copySection('alt')">📋</button></div><pre class="fs-content" id="fc-alt-col"></pre></div>
+    <div class="final-section is-hidden" id="fs-titre-col">
+      <div class="fs-header">
+        <span>🏷️ Titre validé</span>
+        <button onclick="copySection('titre_valide')">📋</button>
+      </div>
+      <pre class="fs-content" id="fc-titre-col"></pre>
+    </div>
+    <div class="final-section is-hidden" id="fs-tags-col">
+      <div class="fs-header">
+        <span>🔖 Tags</span>
+        <button onclick="copySection('tags')">📋</button>
+      </div>
+      <pre class="fs-content" id="fc-tags-col"></pre>
+    </div>
+    <div class="final-section is-hidden" id="fs-description-col">
+      <div class="fs-header">
+        <span>📝 Description</span>
+        <button onclick="copySection('description_assembled')">📋</button>
+      </div>
+      <pre class="fs-content" id="fc-description-col"></pre>
+    </div>
+    <div class="final-section is-hidden" id="fs-alt-col">
+      <div class="fs-header">
+        <span>🖼️ Balise ALT</span>
+        <button onclick="copySection('alt')">📋</button>
+      </div>
+      <pre class="fs-content" id="fc-alt-col"></pre>
+    </div>
   </div>
 
   <!-- RÉSEAUX SOCIAUX COLLECTION -->
@@ -517,12 +693,24 @@
         </div>
         <div class="agent-body" id="body-social-col">
           <div class="social-platform-row">
-            <label class="social-check"><input type="checkbox" id="soc-insta-col" checked/> 📸 Instagram / TikTok</label>
-            <label class="social-check"><input type="checkbox" id="soc-fb-col" checked/> 👥 Facebook</label>
-            <label class="social-check"><input type="checkbox" id="soc-marketplace-col"/> 🛍️ FB Marketplace</label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-insta-col" checked/>
+              📸 Instagram / TikTok
+            </label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-fb-col" checked/>
+              👥 Facebook
+            </label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-marketplace-col"/>
+              🛍️ FB Marketplace
+            </label>
           </div>
           <div class="output-box empty" id="out-social-col">— pas encore généré —</div>
-          <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..."></textarea></div>
+          <div class="correction-area">
+            <label>💬 Correction ponctuelle</label>
+            <textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..."></textarea>
+          </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runLeoBtn-col" onclick="runLeoAgent('col')">▶ Générer</button>
             <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" onclick="stopAgent('social','col')">⏹</button>
@@ -542,10 +730,16 @@
         </div>
         <div class="agent-body" id="body-camille-col">
           <div class="social-platform-row">
-            <label class="social-check"><input type="checkbox" id="soc-pinterest-col" checked/> 📌 Pinterest</label>
+            <label class="social-check">
+              <input type="checkbox" id="soc-pinterest-col" checked/>
+              📌 Pinterest
+            </label>
           </div>
           <div class="output-box empty" id="out-camille-col">— pas encore généré —</div>
-          <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..."></textarea></div>
+          <div class="correction-area">
+            <label>💬 Correction ponctuelle</label>
+            <textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..."></textarea>
+          </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runCamilleBtn-col" onclick="runCamilleAgent('col')">▶ Générer</button>
             <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" onclick="stopAgent('camille','col')">⏹</button>
@@ -561,13 +755,34 @@
   <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-col">
     <h2>📱 Réseaux only — Fiche déjà publiée</h2>
     <div class="form-grid">
-      <div class="fg full"><label>Accroche validée</label><textarea id="ro-accroche-col" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea></div>
-      <div class="fg full"><label>CTA validé</label><textarea id="ro-cta-col" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea></div>
-      <div class="fg full"><label>Titre validé</label><input type="text" id="ro-titre-col" placeholder="Colle le titre Etsy ici..."/></div>
-      <div class="fg"><label>Échelles</label><input type="text" id="ro-echelles-col" placeholder="ex: 1/8, 1/10"/></div>
-      <div class="fg"><label>URL boutique</label><input type="text" id="ro-url-col" value="https://grosgeekindustrie.etsy.com"/></div>
-      <div class="fg"><label>Personnage</label><input type="text" id="ro-nom-col" placeholder="ex: Leon Kennedy"/></div>
-      <div class="fg"><label>Sculpteur</label><input type="text" id="ro-sculpteur-col" placeholder="ex: Neko Figurines"/></div>
+      <div class="fg full">
+        <label>Accroche validée</label>
+        <textarea id="ro-accroche-col" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea>
+      </div>
+      <div class="fg full">
+        <label>CTA validé</label>
+        <textarea id="ro-cta-col" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea>
+      </div>
+      <div class="fg full">
+        <label>Titre validé</label>
+        <input type="text" id="ro-titre-col" placeholder="Colle le titre Etsy ici..."/>
+      </div>
+      <div class="fg">
+        <label>Échelles</label>
+        <input type="text" id="ro-echelles-col" placeholder="ex: 1/8, 1/10"/>
+      </div>
+      <div class="fg">
+        <label>URL boutique</label>
+        <input type="text" id="ro-url-col" value="https://grosgeekindustrie.etsy.com"/>
+      </div>
+      <div class="fg">
+        <label>Personnage</label>
+        <input type="text" id="ro-nom-col" placeholder="ex: Leon Kennedy"/>
+      </div>
+      <div class="fg">
+        <label>Sculpteur</label>
+        <input type="text" id="ro-sculpteur-col" placeholder="ex: Neko Figurines"/>
+      </div>
     </div>
     <div class="reseaux-only-actions">
       <button class="run-btn reseaux-only-btn reseaux-only-btn-col" onclick="runReseauxOnly('leo','col')">📸 Theo</button>
@@ -581,14 +796,53 @@
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
       <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" onclick="copySocial()">📋 Tout copier</button>
     </div>
-    <div class="final-section is-hidden" id="ss-insta-col"><div class="fs-header"><span>📸 Instagram / TikTok</span><button onclick="copySocialSection('insta')">📋</button></div><pre class="fs-content" id="sc-insta-col"></pre></div>
-    <div class="final-section is-hidden" id="ss-fb-col"><div class="fs-header"><span>👥 Facebook</span><button onclick="copySocialSection('fb')">📋</button></div><pre class="fs-content" id="sc-fb-col"></pre></div>
-    <div class="final-section is-hidden" id="ss-marketplace-col"><div class="fs-header"><span>🛍️ Facebook Marketplace</span><button onclick="copySocialSection('marketplace')">📋</button></div><pre class="fs-content" id="sc-marketplace-col"></pre></div>
+    <div class="final-section is-hidden" id="ss-insta-col">
+      <div class="fs-header">
+        <span>📸 Instagram / TikTok</span>
+        <button onclick="copySocialSection('insta')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-insta-col"></pre>
+    </div>
+    <div class="final-section is-hidden" id="ss-fb-col">
+      <div class="fs-header">
+        <span>👥 Facebook</span>
+        <button onclick="copySocialSection('fb')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-fb-col"></pre>
+    </div>
+    <div class="final-section is-hidden" id="ss-marketplace-col">
+      <div class="fs-header">
+        <span>🛍️ Facebook Marketplace</span>
+        <button onclick="copySocialSection('marketplace')">📋</button>
+      </div>
+      <pre class="fs-content" id="sc-marketplace-col"></pre>
+    </div>
     <div class="final-section is-hidden" id="ss-pinterest-col">
-      <div class="fs-header"><span>📌 Pinterest</span><button onclick="copySocialSection('pinterest')">📋 Tout</button></div>
-      <div id="sc-pinterest-titre-col" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-col"><span class="pinterest-subtitle">Titre Pinterest</span><button onclick="copySocialSection('pinterestTitre')">📋</button></div><pre class="fs-content" id="sc-pinterest-t-col"></pre></div>
-      <div id="sc-pinterest-desc-wrap-col" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-col"><span class="pinterest-subtitle">Description Pinterest</span><button onclick="copySocialSection('pinterestDesc')">📋</button></div><pre class="fs-content" id="sc-pinterest-d-col"></pre></div>
-      <div id="sc-pinterest-alt-wrap-col" class="is-hidden"><div class="fs-header pinterest-subheader pinterest-subheader-col"><span class="pinterest-subtitle">Balise ALT Pinterest</span><button onclick="copySocialSection('pinterestAlt')">📋</button></div><pre class="fs-content" id="sc-pinterest-a-col"></pre></div>
+      <div class="fs-header">
+        <span>📌 Pinterest</span>
+        <button onclick="copySocialSection('pinterest')">📋 Tout</button>
+      </div>
+      <div id="sc-pinterest-titre-col" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-col">
+          <span class="pinterest-subtitle">Titre Pinterest</span>
+          <button onclick="copySocialSection('pinterestTitre')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-t-col"></pre>
+      </div>
+      <div id="sc-pinterest-desc-wrap-col" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-col">
+          <span class="pinterest-subtitle">Description Pinterest</span>
+          <button onclick="copySocialSection('pinterestDesc')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-d-col"></pre>
+      </div>
+      <div id="sc-pinterest-alt-wrap-col" class="is-hidden">
+        <div class="fs-header pinterest-subheader pinterest-subheader-col">
+          <span class="pinterest-subtitle">Balise ALT Pinterest</span>
+          <button onclick="copySocialSection('pinterestAlt')">📋</button>
+        </div>
+        <pre class="fs-content" id="sc-pinterest-a-col"></pre>
+      </div>
     </div>
   </div>
 
@@ -616,7 +870,10 @@
 <!-- BIBLIO LIGHTBOX -->
 <div class="lb-overlay" id="biblioLightbox" onclick="if(event.target.id==='biblioLightbox')closeBiblioLightbox()">
   <div class="lb-box lb-box-wide">
-    <div class="lb-header"><h3>📚 BIBLIOTHÈQUES SÉMANTIQUES</h3><button class="lb-close" onclick="closeBiblioLightbox()">✕</button></div>
+    <div class="lb-header">
+      <h3>📚 BIBLIOTHÈQUES SÉMANTIQUES</h3>
+      <button class="lb-close" onclick="closeBiblioLightbox()">✕</button>
+    </div>
     <div class="lb-body lb-body-flush">
       <div class="lb-tabs-row">
         <button class="biblio-tab active" id="btab-tags" onclick="switchBiblioTab('tags')">🔖 Tags</button>
@@ -626,7 +883,9 @@
         <button class="biblio-tab" id="btab-titres" onclick="switchBiblioTab('titres')">🏷️ Titres validés</button>
         <button class="biblio-tab" id="btab-bibliotheque-semantique" onclick="switchBiblioTab('bibliotheque-semantique')">📚 Sémantique</button>
       </div>
-      <div class="lb-body-block"><textarea id="biblio-textarea" spellcheck="false"></textarea></div>
+      <div class="lb-body-block">
+        <textarea id="biblio-textarea" spellcheck="false"></textarea>
+      </div>
     </div>
     <div class="lb-footer">
       <button class="btn btn-success" onclick="saveBiblio()">💾 Sauvegarder</button>
@@ -638,7 +897,10 @@
 <!-- PROMPT LIGHTBOX -->
 <div class="lb-overlay" id="promptLightbox" onclick="if(event.target.id==='promptLightbox')closePromptLightbox()">
   <div class="lb-box">
-    <div class="lb-header"><h3 id="lbTitle">⚙️ PROMPT AGENT</h3><button class="lb-close" onclick="closePromptLightbox()">✕</button></div>
+    <div class="lb-header">
+      <h3 id="lbTitle">⚙️ PROMPT AGENT</h3>
+      <button class="lb-close" onclick="closePromptLightbox()">✕</button>
+    </div>
     <div class="lb-body">
       <textarea id="lbTextarea" spellcheck="false"></textarea>
       <p class="lb-info">💡 Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[CONTEXTE_PERSO]], [[BUZZ_COLLECTION]]</p>
@@ -661,7 +923,9 @@
         <button class="lb-close" onclick="closeRawInput()">✕</button>
       </div>
     </div>
-    <div class="lb-body"><textarea id="rawInputTextarea" class="readonly-textarea" spellcheck="false" readonly></textarea></div>
+    <div class="lb-body">
+      <textarea id="rawInputTextarea" class="readonly-textarea" spellcheck="false" readonly></textarea>
+    </div>
   </div>
 </div>
 
@@ -688,6 +952,8 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════ SCRIPTS CHARGÉS ═══════════════════════════════════════ -->
+
 <script src="js/ui/helper_ui.js"></script>
 <script src="js/ui/render_ui.js"></script>
 <script src="js/ui/modals_ui.js"></script>
@@ -707,6 +973,7 @@
 <script src="js/pipeline-ui.js"></script>
 <script src="js/pipeline-api.js"></script>
 
+<!-- ═══════════════════════════════════════ BATCH ═══════════════════════════════════════ -->
 
 <!-- BATCH MODAL -->
 <div class="batch-modal-overlay" id="batchModal" onclick="if(event.target.id==='batchModal')closeBatchModal()">
@@ -728,7 +995,9 @@
 <div class="batch-wrapper" id="batchWrapper">
   <div class="batch-progress" id="batchProgress">
     <div class="batch-progress-label" id="batchProgressLabel">Initialisation...</div>
-    <div class="batch-progress-bar-wrap"><div class="batch-progress-bar" id="batchProgressBar"></div></div>
+    <div class="batch-progress-bar-wrap">
+      <div class="batch-progress-bar" id="batchProgressBar"></div>
+    </div>
     <button class="batch-stop-btn" onclick="stopBatch()">⏹ Stopper le batch</button>
   </div>
   <div id="batchFiches"></div>
