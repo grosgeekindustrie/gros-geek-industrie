@@ -1,5 +1,4 @@
 (function initPipelineUITitle(global) {
-  global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
 
   async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {

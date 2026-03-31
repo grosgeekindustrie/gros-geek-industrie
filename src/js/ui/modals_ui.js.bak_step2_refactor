@@ -1,5 +1,4 @@
 (function initPipelineUIModals(global) {
-  global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
 
   function ensureLibraryModals() {

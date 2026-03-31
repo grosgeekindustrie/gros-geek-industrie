@@ -1,5 +1,4 @@
 (function initPipelineUITags(global) {
-  global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};
 

@@ -1,5 +1,4 @@
 (function initPipelineUIRender(global) {
-  global.PipelineUI = global.PipelineUI || {};
   function setNodeText(node, text) {
     if (!node) return;
     if ('value' in node) node.value = text;
@@ -98,9 +97,8 @@
       ? helpers.formatTagsNumbered(deduped)
       : deduped.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
 
-    const runtimeState = global.state || (typeof state !== 'undefined' ? state : null);
-    if (runtimeState?.outputs) {
-      runtimeState.outputs.tags = normalized;
+    if (global.state?.outputs) {
+      global.state.outputs.tags = normalized;
     }
 
     syncSelectionField('tags', normalized, p);

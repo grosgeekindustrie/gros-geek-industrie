@@ -689,14 +689,7 @@
 <script src="js/ui/modals_ui.js"></script>
 <script src="js/ui/tags_ui.js"></script>
 <script src="js/ui/title_ui.js"></script>
-<script src="js/ui/helper_ui.js"></script>
-<script src="js/ui/render_ui.js"></script>
-<script src="js/ui/modals_ui.js"></script>
-<script src="js/ui/tags_ui.js"></script>
-<script src="js/ui/title_ui.js"></script>
-<script src="js/ui/library_ui.js"></script>
-<script src="js/ui/batch_ui.js"></script>
-<script src="js/pipeline-ui.js"></script>
+<script src="pipeline-ui.js"></script>
 <script src="pipeline-api.js"></script>
 
 

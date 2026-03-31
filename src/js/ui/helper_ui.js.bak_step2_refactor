@@ -1,5 +1,4 @@
 (function initPipelineUIHelpers(global) {
-  global.PipelineUI = global.PipelineUI || {};
   function normalizeTagValue(tag) {
     return String(tag || '').replace(/\s+/g, ' ').trim();
   }
