@@ -131,4 +131,5 @@
 
   global.PipelineUI.promptBiblio = global.PipelineUI.promptBiblio || {};
   Object.assign(global.PipelineUI.promptBiblio, global.PipelineUIPromptBiblio);
+  Object.assign(global, global.PipelineUIPromptBiblio);
 })(window);

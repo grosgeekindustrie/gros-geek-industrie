@@ -185,7 +185,14 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            setTimeout(() => global.autoRegenTag(state.currentValue, added[0] || state.currentValue, item), 0);
+         const autoRegenTagFn =
+  global.PipelineUITags?.autoRegenTag || global.autoRegenTag;
+
+if (typeof autoRegenTagFn === 'function') {
+  setTimeout(() => autoRegenTagFn(tag, reason, itemEl), 0);
+} else {
+  console.error('autoRegenTag introuvable');
+}
           }
         }
 
