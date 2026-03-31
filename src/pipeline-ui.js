@@ -92,7 +92,7 @@ const PROMPT_FILE_MAP_COLLECTION = {
   marche:'luna',
 
   // tags visible dans l’UI + sélection finale = même prompt
-  tags:'axel-select',
+  tags:'axel-explore-tags',
 
   // prompts internes du trio tags
   tags_explore:'axel-explore-tags',
@@ -701,7 +701,7 @@ async function autoRegenTag(tag, matchedTerm, itemEl) {
   textSpan.textContent = '⟳ remplacement…';
   try {
     const ctx = buildCtx('tags');
-    const prompt = buildPrompt('tags', ctx);
+    const prompt = buildPrompt('tags_select', ctx);
     const regenPrompt = {
       filled: prompt.filled + `\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe tag "${tag}" contient le terme blacklisté "${matchedTerm}". Génère UN SEUL tag de remplacement. Max 30 caractères, français, naturel, ancré au produit.\nFormat: juste le tag, sans numérotation, sans ponctuation finale.`,
       fixedContent: prompt.fixedContent
@@ -719,6 +719,7 @@ async function autoRegenTag(tag, matchedTerm, itemEl) {
     if (btns[1]) btns[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
     if (btns[2]) btns[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
     itemEl.classList.remove('regen-pending');
+    syncTagsOutputFromUI();
     if (stillBad) { autoRegenTag(newTag, stillBad, itemEl); }
     else { showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7'); }
   } catch(e) {
@@ -1156,10 +1157,11 @@ function buildPipeline() {
           <button class="btn btn-accent" id="${p}-br-${a.id}" onclick="rerunAgent('${a.id}')" disabled>🔄 Relancer</button>
           <button class="btn btn-success" id="${p}-bs-${a.id}" onclick="rerunSuite('${a.id}')" disabled>⏩ Suite</button>
           <button class="btn btn-orange" id="${p}-bp-${a.id}" onclick="persistRule('${a.id}')" disabled>📌 Toujours</button>
-          <button class="btn btn-muted" onclick="openPromptLightbox('${a.id}')">⚙️</button>
-          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('tags')">⚙️E</button>` : ''}
-          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('tags_filter')">⚙️F</button>` : ''}
-          ${a.id === 'tags' ? `<button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('tags_select')">⚙️S</button>` : ''}
+          ${a.id === 'tags'
+            ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('tags')">⚙️E</button>
+               <button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('tags_filter')">⚙️F</button>
+               <button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('tags_select')">⚙️S</button>`
+            : `<button class="btn btn-muted" onclick="openPromptLightbox('${a.id}')">⚙️</button>`}
           <button class="btn" id="${p}-bstop-${a.id}" onclick="stopAgent('${a.id}')" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);">⏹</button>
           <button class="btn btn-muted" onclick="copyOut('${a.id}')">📋</button>
           <button class="btn btn-muted" onclick="showRawInput('${a.id}')">&lt;/&gt;</button>
@@ -1225,10 +1227,7 @@ function openCard(id) {
 // ═══════════════════════════════════════════════════════════
 function buildTagsUI(output) {
   const p = pfx();
-  let tags = [];
-  const numbered = output.match(/^\d+\.\s+(.+)$/mg);
-  if (numbered) tags = numbered.map(l => l.replace(/^\d+\.\s+/, '').trim());
-  else tags = output.split(',').map(t => t.trim()).filter(Boolean);
+  const tags = parseTagOutput(output);
   if (!tags.length) return;
   const zone = document.getElementById(`${p}-sel-tags`);
   const list = document.getElementById(`${p}-sel-list-tags`);
@@ -1336,6 +1335,24 @@ async function runTagExplorer() {
 }
 
 function closeExplorer() { document.getElementById('explorerLightbox').classList.remove('visible'); }
+
+function syncTagsOutputFromUI() {
+  const p = pfx();
+  const list = document.getElementById(`${p}-sel-list-tags`);
+  if (!list) return;
+  const tags = [...list.querySelectorAll('.titre-item .titre-text')]
+    .map(el => el.textContent.trim())
+    .filter(Boolean);
+  if (!tags.length) return;
+
+  const normalized = tags.map((t, i) => `${i + 1}. ${t}`).join('
+');
+  state.outputs.tags = normalized;
+
+  const outEl = document.getElementById(`${p}-out-tags`);
+  if (outEl) outEl.textContent = normalized;
+}
+
 
 // ═══════════════════════════════════════════════════════════
 // TITRE SÉLECTION
