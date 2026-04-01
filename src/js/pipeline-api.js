@@ -252,7 +252,7 @@ async function startPipeline(p) {
   if (timeline) timeline.style.display = '';
 
   const newFicheBtn = document.getElementById('btnNewFiche');
-  if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+  if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
 
   // Update header context for pipeline view
   const ctx = document.getElementById('headerContext');
@@ -286,8 +286,6 @@ async function startPipeline(p) {
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   document.getElementById('btnStopGlobal').classList.remove('visible');
   document.getElementById('btnNewFiche').classList.add('visible');
-  // Update timeline — all done
-  getPipelineAgents().forEach(a => updatePipelineTimeline(a.id, 'done'));
 }
 
 

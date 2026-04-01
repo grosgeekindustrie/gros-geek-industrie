@@ -10,6 +10,7 @@
     current: -1,
     stopped: false,
     running: false,
+    stoppedByUser: false,
     lastError: "",
   };
   let batchImages = {};
@@ -83,6 +84,7 @@
       current: -1,
       stopped: false,
       running: false,
+      stoppedByUser: false,
       lastError: "",
     };
     batchImages = {};
@@ -418,9 +420,21 @@
       });
     });
   }
-  function stopBatch() {
+  function isBatchRunning() {
+    return !!batchState.running;
+  }
+
+  function stopBatch(options = {}) {
+    const { silent = false } = options;
     batchState.stopped = true;
-    showToast("⏹ Batch stoppé", "#ff4757");
+    batchState.stoppedByUser = true;
+    batchState.lastError = "";
+
+    Object.values(global.abortControllers || {}).forEach((controller) => {
+      if (controller) controller.abort();
+    });
+
+    if (!silent && batchState.running) showToast("⏹ Batch stoppé", "#ff4757");
   }
   async function startBatch() {
     const apiKey = document.getElementById("apiKey").value.trim();
@@ -443,20 +457,17 @@
     }
 
     const timeline = document.getElementById("pipelineTimeline");
-    if (timeline) {
-      timeline.innerHTML = "";
-      timeline.style.display = "none";
-    }
+    if (timeline) timeline.style.display = "";
 
     const title = document.getElementById("pipelineViewTitle");
     if (title)
       title.textContent =
         currentMode === "tabletop"
-          ? "⚡ Batch Tabletop"
-          : "⚡ Batch Collection";
+          ? "⚡ Pipeline Tabletop"
+          : "⚡ Pipeline Collection";
 
     const newFicheBtn = document.getElementById("btnNewFiche");
-    if (newFicheBtn) newFicheBtn.textContent = "↩ Retour batch";
+    if (newFicheBtn) newFicheBtn.textContent = "↩ Retour formulaire";
 
     global.moveBatchWrapperToPipeline?.();
     document.getElementById("btnStopGlobal")?.classList.add("visible");
@@ -465,22 +476,32 @@
 
     batchState.running = true;
     batchState.stopped = false;
+    batchState.stoppedByUser = false;
     batchState.lastError = "";
     const runBtn = document.getElementById("batchRunBtn");
     if (runBtn) runBtn.disabled = true;
     document.getElementById("batchProgress").classList.add("visible");
     const total = batchState.fiches.length;
+    const agents = getPipelineAgents();
     for (let i = 0; i < total; i++) {
       if (batchState.stopped) break;
       batchState.current = i;
+      global.buildPipelineTimeline?.(`Fiche ${i + 1}/${total}`);
+      agents.forEach((agent) => global.updatePipelineTimeline?.(agent.id, "wait"));
+
       const ficheEl = document.getElementById("batch-fiche-" + i);
       ficheEl.classList.add("running");
       document.getElementById("batch-status-" + i).textContent =
         "⟳ en cours...";
-      updateBatchProgress(i + 1, total, 0, 6);
-      const ok = await runBatchFiche(i);
+      updateBatchProgress(i + 1, total, 0, agents.length);
+      const ok = await runBatchFiche(i, agents);
       ficheEl.classList.remove("running");
       if (!ok) {
+        if (batchState.stoppedByUser) {
+          document.getElementById("batch-status-" + i).textContent = "⏹ stoppée";
+          break;
+        }
+
         ficheEl.classList.add("error");
         const detail = batchState.lastError || "erreur inconnue";
         document.getElementById("batch-status-" + i).textContent = "❌ erreur";
@@ -623,13 +644,12 @@
       imageCount: (batchImages[i] || []).length,
     };
   }
-  async function runBatchFiche(i) {
+  async function runBatchFiche(i, agents = getPipelineAgents()) {
     const savedOutputs = { ...state.outputs };
     const savedImages = { ...state.images };
     state.outputs = {};
     state.images[pfx()] = batchImages[i] || [];
 
-    const agents = getPipelineAgents();
     for (let a = 0; a < agents.length; a++) {
       if (batchState.stopped) {
         state.outputs = savedOutputs;
@@ -643,15 +663,19 @@
         agents.length,
       );
       const ctx = getBatchCtx(i);
+      const agent = agents[a];
       ctx.outputs = { ...state.outputs };
-      const ok = await runBatchAgent(agents[a], ctx);
+      global.updatePipelineTimeline?.(agent.id, "active");
+      const ok = await runBatchAgent(agent, ctx);
       if (!ok) {
+        global.updatePipelineTimeline?.(agent.id, batchState.stoppedByUser ? "wait" : "error");
         state.outputs = savedOutputs;
         state.images = savedImages;
         return false;
       }
+      global.updatePipelineTimeline?.(agent.id, "done");
 
-      if (agents[a].id === "titre") {
+      if (agent.id === "titre") {
         const titreOut = state.outputs["titre"] || "";
         const line = titreOut.split("\n").find((l) => /^\d+\.\s+/.test(l));
         state.outputs["titre_valide"] = line
@@ -661,7 +685,7 @@
               .trim()
           : "";
       }
-      if (agents[a].id === "description") {
+      if (agent.id === "description") {
         const out = state.outputs["description"] || "";
         const accroches = parseChoices(out, "A");
         const ctas = parseChoices(out, "C");
@@ -934,6 +958,7 @@
     buildBatchFiche,
     batchToggleEch,
     batchAddImages,
+    isBatchRunning,
     stopBatch,
     startBatch,
     updateBatchProgress,

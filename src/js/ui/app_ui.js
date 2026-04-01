@@ -21,6 +21,16 @@
     return document.querySelector('.app-shell') || document.body;
   }
 
+  function hasActiveAgentControllers() {
+    return Object.values(global.abortControllers || {}).some((controller) => !!controller);
+  }
+
+  function setBatchInlineStopVisibility(visible) {
+    const batchStopBtn = getBatchWrapper()?.querySelector('.batch-stop-btn');
+    if (!batchStopBtn) return;
+    batchStopBtn.style.display = visible ? '' : 'none';
+  }
+
   function isBatchFlowInForm() {
     const batchWrapper = getBatchWrapper();
     return !!(batchWrapper && batchWrapper.classList.contains('visible') && batchWrapper.parentNode?.id === 'formViewBody');
@@ -38,6 +48,7 @@
     document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     formBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
+    setBatchInlineStopVisibility(true);
   }
 
   function moveBatchWrapperToPipeline() {
@@ -47,6 +58,7 @@
     pipelineBody.classList.add('pipeline-view-body-batch');
     pipelineBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
+    setBatchInlineStopVisibility(false);
   }
 
   function restoreBatchWrapperToShell() {
@@ -55,6 +67,7 @@
     document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     getBatchHomeHost().appendChild(batchWrapper);
     batchWrapper.classList.remove('visible');
+    setBatchInlineStopVisibility(true);
   }
 
   function showToast(msg, color = '#4caf7d', duration = 2500) {
@@ -209,17 +222,25 @@
   }
 
   function cancelToHome() {
+    const batchRunning = !!global.isBatchRunning?.();
+    const pipelineRunning = hasActiveAgentControllers();
+
+    if (batchRunning || pipelineRunning) stopAllAgents({ silent: true });
     if (isBatchFlowInForm() || isBatchFlowInPipeline()) restoreBatchWrapperToShell();
 
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
     const newFicheBtn = document.getElementById('btnNewFiche');
-    if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+    if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
 
     document.getElementById('btnNewFiche')?.classList.remove('visible');
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
     showView('home');
+
+    if (batchRunning || pipelineRunning) {
+      showToast('⏹ Exécution annulée — retour accueil', '#ff4757');
+    }
   }
 
   function backToForm() {
@@ -245,16 +266,18 @@
     if (timeline) timeline.style.display = '';
 
     const newFicheBtn = document.getElementById('btnNewFiche');
-    if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+    if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
 
     document.getElementById('btnNewFiche').classList.remove('visible');
     document.getElementById('btnStopGlobal').classList.remove('visible');
     showView('form');
   }
 
-  function stopAllAgents() {
+  function stopAllAgents(options = {}) {
+    const { silent = false } = options;
+
     if (isBatchFlowInPipeline()) {
-      global.stopBatch?.();
+      global.stopBatch?.({ silent });
       document.getElementById('btnStopGlobal')?.classList.remove('visible');
       document.getElementById('btnNewFiche')?.classList.add('visible');
       return;
@@ -266,17 +289,21 @@
       const controller = controllers[agent.id];
       if (controller) controller.abort();
     });
-    showToast('⏹ Pipeline stoppé', '#ff4757');
+    if (!silent) showToast('⏹ Pipeline stoppé', '#ff4757');
     document.getElementById('btnStopGlobal').classList.remove('visible');
     document.getElementById('btnNewFiche').classList.add('visible');
   }
 
-  function buildPipelineTimeline() {
+  function buildPipelineTimeline(metaLabel = '') {
     const timeline = document.getElementById('pipelineTimeline');
     if (!timeline) return;
 
     const agents = getAgents();
-    timeline.innerHTML = agents.map((agent, i) =>
+    const meta = metaLabel
+      ? `<span class="pipeline-step active"><span class="pipeline-step-label">${metaLabel}</span></span><span class="pipeline-step-sep">•</span>`
+      : '';
+
+    timeline.innerHTML = meta + agents.map((agent, i) =>
       (i > 0 ? '<span class="pipeline-step-sep">›</span>' : '') +
       `<span class="pipeline-step" id="tl-step-${agent.id}">` +
       `<span class="pipeline-step-dot" id="tl-dot-${agent.id}"></span>` +
