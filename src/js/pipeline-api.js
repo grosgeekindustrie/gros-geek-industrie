@@ -247,6 +247,13 @@ async function startPipeline(p) {
   }
   const titleEl = document.getElementById('pipelineViewTitle');
   if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
+
+  const timeline = document.getElementById('pipelineTimeline');
+  if (timeline) timeline.style.display = '';
+
+  const newFicheBtn = document.getElementById('btnNewFiche');
+  if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+
   // Update header context for pipeline view
   const ctx = document.getElementById('headerContext');
   if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }

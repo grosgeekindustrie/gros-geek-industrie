@@ -13,6 +13,47 @@
   let currentView = 'home';
   let pendingBatchMode = null;
 
+  function getBatchWrapper() {
+    return document.getElementById('batchWrapper');
+  }
+
+  function getBatchHomeHost() {
+    return document.querySelector('.app-shell') || document.body;
+  }
+
+  function isBatchFlowInForm() {
+    const batchWrapper = getBatchWrapper();
+    return !!(batchWrapper && batchWrapper.classList.contains('visible') && batchWrapper.parentNode?.id === 'formViewBody');
+  }
+
+  function isBatchFlowInPipeline() {
+    const batchWrapper = getBatchWrapper();
+    return !!(batchWrapper && batchWrapper.classList.contains('visible') && batchWrapper.parentNode?.id === 'pipelineViewBody');
+  }
+
+  function moveBatchWrapperToForm() {
+    const batchWrapper = getBatchWrapper();
+    const formBody = document.getElementById('formViewBody');
+    if (!batchWrapper || !formBody) return;
+    formBody.appendChild(batchWrapper);
+    batchWrapper.classList.add('visible');
+  }
+
+  function moveBatchWrapperToPipeline() {
+    const batchWrapper = getBatchWrapper();
+    const pipelineBody = document.getElementById('pipelineViewBody');
+    if (!batchWrapper || !pipelineBody) return;
+    pipelineBody.appendChild(batchWrapper);
+    batchWrapper.classList.add('visible');
+  }
+
+  function restoreBatchWrapperToShell() {
+    const batchWrapper = getBatchWrapper();
+    if (!batchWrapper) return;
+    getBatchHomeHost().appendChild(batchWrapper);
+    batchWrapper.classList.remove('visible');
+  }
+
   function showToast(msg, color = '#4caf7d', duration = 2500) {
     const existing = document.querySelectorAll('.toast-item');
     const offset = 20 + existing.length * 56;
@@ -165,15 +206,28 @@
   }
 
   function cancelToHome() {
-    const batchWrapper = document.getElementById('batchWrapper');
-    if (batchWrapper && batchWrapper.parentNode && batchWrapper.parentNode.id === 'formViewBody') {
-      document.body.appendChild(batchWrapper);
-      batchWrapper.classList.remove('visible');
-    }
+    if (isBatchFlowInForm() || isBatchFlowInPipeline()) restoreBatchWrapperToShell();
+
+    const timeline = document.getElementById('pipelineTimeline');
+    if (timeline) timeline.style.display = '';
+
+    const newFicheBtn = document.getElementById('btnNewFiche');
+    if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+
+    document.getElementById('btnNewFiche')?.classList.remove('visible');
+    document.getElementById('btnStopGlobal')?.classList.remove('visible');
     showView('home');
   }
 
   function backToForm() {
+    if (isBatchFlowInPipeline()) {
+      moveBatchWrapperToForm();
+      document.getElementById('btnNewFiche')?.classList.remove('visible');
+      document.getElementById('btnStopGlobal')?.classList.remove('visible');
+      showView('form');
+      return;
+    }
+
     const p = getPfx();
     document.getElementById(`pipeline-${p}`).style.display = 'none';
     document.getElementById(`finalOutput-${p}`).style.display = 'none';
@@ -184,12 +238,25 @@
       btn.innerHTML = '▶ Lancer le pipeline';
     }
 
+    const timeline = document.getElementById('pipelineTimeline');
+    if (timeline) timeline.style.display = '';
+
+    const newFicheBtn = document.getElementById('btnNewFiche');
+    if (newFicheBtn) newFicheBtn.textContent = '✚ Nouvelle fiche';
+
     document.getElementById('btnNewFiche').classList.remove('visible');
     document.getElementById('btnStopGlobal').classList.remove('visible');
     showView('form');
   }
 
   function stopAllAgents() {
+    if (isBatchFlowInPipeline()) {
+      global.stopBatch?.();
+      document.getElementById('btnStopGlobal')?.classList.remove('visible');
+      document.getElementById('btnNewFiche')?.classList.add('visible');
+      return;
+    }
+
     const agents = getAgents();
     const controllers = global.abortControllers || {};
     agents.forEach((agent) => {
@@ -253,6 +320,11 @@
     updateHeaderContext,
     selectMode,
     selectModeBatch,
+    moveBatchWrapperToForm,
+    moveBatchWrapperToPipeline,
+    restoreBatchWrapperToShell,
+    isBatchFlowInForm,
+    isBatchFlowInPipeline,
     cancelToHome,
     backToForm,
     stopAllAgents,

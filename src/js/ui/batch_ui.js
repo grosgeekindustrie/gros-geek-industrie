@@ -62,13 +62,7 @@ function initBatch() {
   container.innerHTML = '';
   document.getElementById('batchExportBtn').classList.remove('visible');
   document.getElementById('batchProgress').classList.remove('visible');
-  // Place batchWrapper in formViewBody
-  const bw = document.getElementById('batchWrapper');
-  const formBody = document.getElementById('formViewBody');
-  if (formBody && bw) {
-    formBody.appendChild(bw);
-    bw.classList.add('visible');
-  }
+  global.moveBatchWrapperToForm?.();
   // Update form header label
   const label = document.getElementById('formModeLabel');
   if (label) label.textContent = currentMode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection';
@@ -326,6 +320,24 @@ async function startBatch() {
     if (!nom) { showToast('Fiche ' + (i+1) + ' : nom manquant', '#ff4757'); return; }
     if (!batchImages[i] || batchImages[i].length === 0) { showToast('Fiche ' + (i+1) + ' : images manquantes', '#ff4757'); return; }
   }
+
+  const timeline = document.getElementById('pipelineTimeline');
+  if (timeline) {
+    timeline.innerHTML = '';
+    timeline.style.display = 'none';
+  }
+
+  const title = document.getElementById('pipelineViewTitle');
+  if (title) title.textContent = currentMode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection';
+
+  const newFicheBtn = document.getElementById('btnNewFiche');
+  if (newFicheBtn) newFicheBtn.textContent = '↩ Retour batch';
+
+  global.moveBatchWrapperToPipeline?.();
+  document.getElementById('btnStopGlobal')?.classList.add('visible');
+  document.getElementById('btnNewFiche')?.classList.remove('visible');
+  showView('pipeline');
+
   batchState.running = true; batchState.stopped = false;
   const runBtn = document.getElementById('batchRunBtn');
   if (runBtn) runBtn.disabled = true;
@@ -353,6 +365,8 @@ async function startBatch() {
   batchState.running = false;
   document.getElementById('batchProgress').classList.remove('visible');
   if (runBtn) { runBtn.disabled = false; }
+  document.getElementById('btnStopGlobal')?.classList.remove('visible');
+  document.getElementById('btnNewFiche')?.classList.add('visible');
   if (!batchState.stopped) {
     const exportBtn = document.getElementById('batchExportBtn');
     exportBtn.classList.add('visible');
