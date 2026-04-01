@@ -35,6 +35,7 @@
     const batchWrapper = getBatchWrapper();
     const formBody = document.getElementById('formViewBody');
     if (!batchWrapper || !formBody) return;
+    document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     formBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
   }
@@ -43,6 +44,7 @@
     const batchWrapper = getBatchWrapper();
     const pipelineBody = document.getElementById('pipelineViewBody');
     if (!batchWrapper || !pipelineBody) return;
+    pipelineBody.classList.add('pipeline-view-body-batch');
     pipelineBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
   }
@@ -50,6 +52,7 @@
   function restoreBatchWrapperToShell() {
     const batchWrapper = getBatchWrapper();
     if (!batchWrapper) return;
+    document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     getBatchHomeHost().appendChild(batchWrapper);
     batchWrapper.classList.remove('visible');
   }

@@ -329,6 +329,11 @@ Pour tous les **nouveaux développements**, la règle cible devient :
 - **autres `data-*` sémantiques** → rôle métier ou intention de bloc si utile ;
 - **`id`** → unicité réelle, accessibilité, ou compatibilité legacy déjà existante.
 
+- **`addEventListener()`** → nouveau binding d’événements ;
+- **méthodes DOM modernes** → à privilégier quand elles clarifient l’intention (`append()`, `prepend()`, `before()`, `after()`, `replaceChildren()`, `insertAdjacentElement()`) ;
+- **state structuré** → regroupé par domaine ou flux quand un nouvel état durable est introduit ;
+- **erreurs UI exploitables** → un nouveau flow asynchrone doit remonter un message utile, pas seulement un booléen d’échec.
+
 Exemple cible :
 
 ```html
@@ -348,6 +353,9 @@ Règle de transition :
 - **ne pas migrer toute la base d’un coup** ;
 - appliquer cette convention aux **nouvelles features** ;
 - migrer progressivement les zones legacy lorsqu’elles sont retravaillées. fileciteturn7file0turn7file7turn7file8
+
+- si une règle récente de modernisation entre en conflit avec une habitude plus ancienne du projet, la règle récente prévaut pour le nouveau code ;
+- le legacy stable reste toléré tant qu’il n’est pas dans le périmètre direct du changement. fileciteturn7file0turn7file7turn7file8
 
 ---
 
@@ -376,6 +384,8 @@ Règle de transition :
 - les exports UI passent par `window.PipelineUI*` tant que cette architecture est en place ;
 - toute nouvelle logique conséquente doit être placée dans un module dédié, pas dans un fichier central par facilité ;
 - toute dépendance DOM doit être explicitée dans les commentaires.
+- pour le nouveau code, éviter de recréer des chemins parallèles quand un contrat partagé existe déjà ;
+- pour le nouveau code, préférer des objets multi-lignes lisibles aux états compactés difficiles à relire.
 
 ### Patches
 

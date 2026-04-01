@@ -146,6 +146,7 @@ Si une zone legacy reste en place, le commentaire doit dire :
 - qu’elle est conservée pour compatibilité
 - qu’elle ne constitue pas la norme cible
 - qu’elle ne doit pas être recopiée dans les nouvelles features
+- si une convention plus moderne est désormais la norme pour le nouveau code
 
 ### 7.2 Migration partielle
 Si une migration est en cours, le commentaire doit dire :

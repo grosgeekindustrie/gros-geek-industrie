@@ -138,6 +138,13 @@ git diff --stat
 git diff
 ```
 
+
+### 6.1 Vérification réelle avant livraison
+Avant de transmettre un patch :
+- vérifier qu’il s’applique bien sur l’état exact des fichiers réellement fournis ;
+- ne pas livrer un patch “probablement bon” sans check préalable ;
+- si l’état courant n’est plus certain, repartir du fichier local exact avant de régénérer.
+
 ---
 
 ## 7. Si `git apply --check` échoue
@@ -176,6 +183,15 @@ Solution :
 - réduire le patch
 - faire une version minimale
 - viser un patch plus ciblé
+
+
+### 7.5 Trop d’échecs successifs sur le même ticket
+Si plusieurs patchs échouent de suite sur le même fichier ou le même ticket, il faut sortir de la boucle.
+
+Solution :
+- arrêter d’insister avec de nouveaux patchs théoriques ;
+- redemander le fichier local exact courant si nécessaire ;
+- ou basculer vers des instructions manuelles ciblées / fichiers complets de remplacement si c’est plus sûr.
 
 ---
 
@@ -245,6 +261,13 @@ Ordre conseillé :
 8. `git apply --check`
 9. `git apply`
 10. check visuel ou technique selon le type de patch
+
+
+### 11.1 Sortie de secours
+Si le patch devient la source principale de friction :
+- ne pas sacrifier la fluidité du fil à tout prix pour “forcer le patch” ;
+- préférer une sortie sûre et ciblée ;
+- documenter clairement pourquoi le patch a été abandonné au profit d’une autre méthode.
 
 ---
 

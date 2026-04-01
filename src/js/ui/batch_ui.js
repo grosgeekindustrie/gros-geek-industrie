@@ -6,7 +6,7 @@
 // incrémental une fois les flows batch stabilisés.
   global.PipelineUI = global.PipelineUI || {};
 
-let batchState = { fiches:[], current:-1, stopped:false, running:false };
+let batchState = { fiches:[], current:-1, stopped:false, running:false, lastError:'' };
 let batchImages = {};
 function showBatchCountPicker() {
   const container = document.getElementById('batchFiches');
@@ -56,7 +56,7 @@ function initBatch() {
   // Switch mode si batch déclenché depuis home
   if (_pendingBatchMode && _pendingBatchMode !== currentMode) switchMode(_pendingBatchMode);
   _pendingBatchMode = null;
-  batchState = { fiches:[], current:-1, stopped:false, running:false };
+  batchState = { fiches:[], current:-1, stopped:false, running:false, lastError:'' };
   batchImages = {};
   const container = document.getElementById('batchFiches');
   container.innerHTML = '';
@@ -338,7 +338,9 @@ async function startBatch() {
   document.getElementById('btnNewFiche')?.classList.remove('visible');
   showView('pipeline');
 
-  batchState.running = true; batchState.stopped = false;
+  batchState.running = true;
+batchState.stopped = false;
+batchState.lastError = '';
   const runBtn = document.getElementById('batchRunBtn');
   if (runBtn) runBtn.disabled = true;
   document.getElementById('batchProgress').classList.add('visible');
@@ -353,12 +355,13 @@ async function startBatch() {
     const ok = await runBatchFiche(i);
     ficheEl.classList.remove('running');
     if (!ok) {
-      ficheEl.classList.add('error');
-      document.getElementById('batch-status-' + i).textContent = '❌ erreur';
-      batchState.stopped = true;
-      showToast('❌ Erreur fiche ' + (i+1) + ' — batch stoppé', '#ff4757');
-      break;
-    }
+  ficheEl.classList.add('error');
+  const detail = batchState.lastError || 'erreur inconnue';
+  document.getElementById('batch-status-' + i).textContent = '❌ erreur';
+  batchState.stopped = true;
+  showToast('❌ Fiche ' + (i+1) + ' — ' + detail, '#ff4757', 5000);
+  break;
+}
     ficheEl.classList.add('done');
     document.getElementById('batch-status-' + i).textContent = '✅ terminée';
   }
@@ -548,7 +551,14 @@ async function runBatchAgent(agent, ctx) {
       .replace(/\[\[CTA\]\]/g, ctx.selectedCTAText||'')
       .replace(/\[\[PROFIL_DOMINANT\]\]/g, ctx.profil_dominant||'');
 
-    const fixedContent = CACHE_FIXED[agent.id] ? CACHE_FIXED[agent.id]() : null;
+    const fixedBuilder =
+  (typeof CACHE_FIXED !== 'undefined' &&
+   CACHE_FIXED &&
+   typeof CACHE_FIXED[agent.id] === 'function')
+    ? CACHE_FIXED[agent.id]
+    : null;
+
+const fixedContent = fixedBuilder ? fixedBuilder() : null;
 
     state.inputs[agent.id] = filled;
 
@@ -566,9 +576,10 @@ async function runBatchAgent(agent, ctx) {
 
     return true;
   } catch(e) {
-    console.error('Batch agent error', agent.id, e.message);
-    return false;
-  }
+  batchState.lastError = agent.id + ' — ' + e.message;
+  console.error('Batch agent error', agent.id, e.message);
+  return false;
+}
 }
 async function exportBatch() {
   const now = new Date();

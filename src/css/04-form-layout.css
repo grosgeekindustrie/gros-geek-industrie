@@ -319,3 +319,13 @@
   font-size: 11px;
   color: var(--muted);
 }
+
+.pipeline-view-body.pipeline-view-body-batch {
+  max-width: 1200px;
+  width: 100%;
+}
+
+.pipeline-view-body.pipeline-view-body-batch .batch-wrapper {
+  width: 100%;
+  margin-top: 0;
+}

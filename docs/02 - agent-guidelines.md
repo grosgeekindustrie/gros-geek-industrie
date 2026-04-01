@@ -14,6 +14,20 @@ Toujours privilégier :
 
 Ne jamais lancer de refactor large non demandé.
 
+
+### 1.1 Règle de priorité
+Quand une règle ancienne du projet entre en tension avec une règle plus récente explicitement ajoutée dans les docs :
+- la **règle la plus récente** prévaut ;
+- elle s’applique surtout aux **nouveaux développements** ;
+- le legacy existant n’est pas réécrit globalement pour “rattraper” cette nouvelle norme.
+
+### 1.2 Modern first / legacy by exception
+À partir de maintenant :
+- toute **nouvelle feature** doit tirer le projet vers une écriture plus moderne et plus lisible ;
+- le legacy n’est modifié que **localement**, dans la zone réellement touchée ;
+- on ne réécrit pas un bloc legacy stable uniquement pour le moderniser ;
+- on n’ajoute plus de nouvelle dette “old school” par habitude.
+
 ## 2. Principes d’architecture
 - `pipeline-ui.js` reste un orchestrateur.
 - La logique doit rester distribuée dans `src/js/ui/`.
@@ -60,9 +74,6 @@ Ne jamais lancer de refactor large non demandé.
 - Ne pas recentraliser de logique métier dans `pipeline-ui.js`.
 - Une nouvelle feature JS doit avoir un module dominant clair.
 - Ne pas ajouter une logique “un peu partout” jusqu’à ce que ça marche.
-- Pour tout nouvel état durable, éviter les clés globales plates si plusieurs clés décrivent en réalité le même domaine.
-- Préférer un state regroupé par responsabilité (`state.ui`, `state.batch`, `state.flow`, etc.) plutôt qu’une collection de flags dispersés.
-- Un état temporaire purement local peut rester local tant qu’il ne devient pas une convention durable du projet.
 
 ## 7. Convention cible pour les nouveaux développements
 Exemple de structure :
@@ -96,10 +107,6 @@ Règle :
 - Un patch = un objectif dominant.
 - Ne jamais supposer qu’un patch précédent est déjà appliqué.
 - Toujours travailler à partir des fichiers réellement fournis ou d’un état confirmé.
-- Si des ressources probables manquent, lire le repo sur la branche de travail si elle est push, sinon sur la branche source / de création, pour identifier les fichiers réellement nécessaires.
-- Cette lecture repo sert à repérer les ressources utiles, pas à remplacer les fichiers locaux.
-- Demander ensuite à l’utilisateur le lot minimal utile de fichiers, en tenant compte de la limite pratique de 20 fichiers transmis.
-- Si le besoin n’est pas encore entièrement cadré, débriefer le périmètre et les fichiers probablement touchés avant de générer un patch.
 - Si l’UI est touchée : check visuel obligatoire.
 - Si le DOM est touché : vérifier les hooks JS.
 - Si le CSS est touché : vérifier les thèmes Tabletop / Collection.
@@ -111,7 +118,6 @@ Règle :
 - Garder la logique métier/UI répartie dans `src/js/ui/`.
 - Utiliser `data-js` pour tout nouveau hook JS.
 - Garder les classes pour le style et le layout.
-- Structurer tout nouvel état durable par domaine plutôt que d’ajouter des clés plates opportunistes.
 - Écrire le HTML et le CSS en multi-lignes lisibles.
 - Commenter les contrats de blocs, zones sensibles et conventions temporaires.
 - Faire un patch avec un objectif dominant clair.
@@ -154,3 +160,5 @@ Règle :
 - aucun hook cassé
 - aucun renommage non documenté
 - commentaires ajoutés si nouvelle zone sensible
+- nouvelle feature alignée sur les conventions modernes si la zone n’est pas purement legacy
+- erreur exploitable remontée si un nouveau flow async est touché

@@ -70,13 +70,15 @@ Les éléments suivants doivent être surveillés jusqu’à disparition ou stab
 - éviter les effets de bord implicites
 - réduire les couplages fragiles
 - garder des responsabilités de fichiers nettes
-- garder un state compréhensible, regroupé par domaine quand un nouvel état durable est introduit
 
 ### 5.2 DOM et hooks
 - utiliser `data-js` pour tout nouveau hook JS
 - réserver les classes au style
 - limiter les nouveaux usages d’`id` côté JS
 - documenter les hooks legacy tant qu’ils existent
+- préférer `addEventListener()` pour tout nouveau binding
+- préférer les méthodes DOM modernes quand elles clarifient l’intention
+- réserver `appendChild()` et équivalents plus anciens au legacy ou aux cas simples déjà cohérents avec la zone touchée
 
 ### 5.3 UI
 - vérifier le rendu Tabletop
@@ -91,6 +93,7 @@ Les éléments suivants doivent être surveillés jusqu’à disparition ou stab
 - gérer proprement les arrêts manuels
 - éviter les états UI incohérents
 - limiter les hypothèses cachées sur le DOM ou l’ordre de chargement
+- faire remonter des erreurs UI exploitables dans tout nouveau flow asynchrone
 
 ### 5.5 Documentation
 Le projet doit au minimum conserver à jour :
@@ -99,11 +102,6 @@ Le projet doit au minimum conserver à jour :
 - `commenting-standard.md`
 
 Les docs doivent rester courtes, vraies et utiles.
-
-Le workflow documenté doit aussi rester réaliste :
-- l’utilisateur peut avoir une vision fonctionnelle juste mais un périmètre technique partiel ;
-- l’utilisateur peut être limité dans le nombre de fichiers transmis ;
-- l’agent doit donc savoir demander le minimum utile après repérage, pas supposer ni sur-demander.
 
 ## 6. Quand documenter une feature
 Règle projet :
@@ -139,8 +137,6 @@ Avant de considérer le projet “prod-ready”, vérifier :
 - les checks visuels sont faits
 - les changements structurels sont documentés
 - les règles de contribution sont suivies
-- les ressources probables manquantes sont identifiées avant patch
-- les fichiers demandés à l’utilisateur restent limités au minimum utile
 
 ## 8. Ce qui ne doit pas bloquer la prod
 Ne pas retarder indéfiniment la mise en prod pour :
@@ -172,11 +168,9 @@ Doit bloquer une mise en prod :
 - [ ] architecture encore compréhensible
 - [ ] split CSS maintenu proprement
 - [ ] orchestrateur non rechargé en logique métier
-- [ ] nouvel état durable structuré proprement
 
 ### UI
 - [ ] home OK
-- [ ] form OK
 - [ ] Tabletop OK
 - [ ] Collection OK
 - [ ] pipeline view OK
