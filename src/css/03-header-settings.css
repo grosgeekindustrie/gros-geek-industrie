@@ -111,6 +111,18 @@
   font-size:11px;
 }
 
+.app-back-btn.is-cancel {
+  background:rgba(245,66,74,.1);
+  border-color:rgba(245,66,74,.3);
+  color:var(--error);
+}
+
+.app-back-btn.is-cancel:hover {
+  background:rgba(245,66,74,.16);
+  border-color:rgba(245,66,74,.45);
+  color:var(--error);
+}
+
 /* ═══ SETTINGS PANEL ═══ */
 
 .settings-overlay {

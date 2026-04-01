@@ -259,7 +259,6 @@ async function startPipeline(p) {
   if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
   buildPipelineTimeline();
   document.getElementById('btnStopGlobal').classList.add('visible');
-  document.getElementById('btnNewFiche').classList.remove('visible');
   showView('pipeline');
   state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);

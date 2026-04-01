@@ -33,15 +33,6 @@
       global.isBatchRunning?.()
     );
   }
-
-  function lockLegacyPipelineBackButton() {
-    const legacyBackBtn = document.getElementById('btnNewFiche');
-    if (!legacyBackBtn) return;
-    legacyBackBtn.hidden = true;
-    legacyBackBtn.setAttribute('aria-hidden', 'true');
-    legacyBackBtn.classList.remove('visible');
-  }
-
   function syncHeaderBackAction() {
     const backBtn = document.getElementById('appBackBtn');
     if (!backBtn) return;
@@ -49,9 +40,13 @@
     const isHome = currentView === 'home';
     backBtn.style.display = isHome ? 'none' : '';
     backBtn.classList.toggle('is-hidden', isHome);
-    if (isHome) return;
+    if (isHome) {
+      backBtn.classList.remove('is-cancel');
+      return;
+    }
 
     const isExecuting = isPipelineExecutionActive();
+    backBtn.classList.toggle('is-cancel', isExecuting);
     backBtn.textContent = isExecuting ? '✕ Annuler' : '↩️ Retour';
     backBtn.title = isExecuting
       ? 'Annuler l’exécution et revenir à l’accueil'
@@ -164,7 +159,6 @@
     const view = document.getElementById(`view-${name}`);
     if (view) view.classList.add('active');
 
-    lockLegacyPipelineBackButton();
     updateHeaderContext(name);
     syncHeaderBackAction();
 
@@ -206,7 +200,6 @@
     });
 
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
-    lockLegacyPipelineBackButton();
     syncHeaderBackAction();
   }
 
@@ -250,39 +243,11 @@
     if (timeline) timeline.style.display = '';
 
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
-    lockLegacyPipelineBackButton();
     showView('home');
 
     if (executionRunning) {
       showToast('⏹ Exécution annulée — retour accueil', '#ff4757');
     }
-  }
-
-  function backToForm() {
-    if (isBatchFlowInPipeline()) {
-      moveBatchWrapperToForm();
-      document.getElementById('btnStopGlobal')?.classList.remove('visible');
-      lockLegacyPipelineBackButton();
-      showView('form');
-      return;
-    }
-
-    const p = getPfx();
-    document.getElementById(`pipeline-${p}`).style.display = 'none';
-    document.getElementById(`finalOutput-${p}`).style.display = 'none';
-
-    const btn = document.getElementById(`runBtn-${p}`);
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '▶ Lancer le pipeline';
-    }
-
-    const timeline = document.getElementById('pipelineTimeline');
-    if (timeline) timeline.style.display = '';
-
-    document.getElementById('btnStopGlobal')?.classList.remove('visible');
-    lockLegacyPipelineBackButton();
-    showView('form');
   }
 
   function stopAllAgents(options = {}) {
@@ -291,7 +256,6 @@
     if (isBatchFlowInPipeline()) {
       global.stopBatch?.({ silent });
       document.getElementById('btnStopGlobal')?.classList.remove('visible');
-      lockLegacyPipelineBackButton();
       syncHeaderBackAction();
       return;
     }
@@ -301,10 +265,10 @@
     agents.forEach((agent) => {
       const controller = controllers[agent.id];
       if (controller) controller.abort();
+      delete controllers[agent.id];
     });
     if (!silent) showToast('⏹ Pipeline stoppé', '#ff4757');
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
-    lockLegacyPipelineBackButton();
     syncHeaderBackAction();
   }
 
@@ -371,7 +335,6 @@
     isBatchFlowInForm,
     isBatchFlowInPipeline,
     cancelToHome,
-    backToForm,
     stopAllAgents,
     syncHeaderBackAction,
     buildPipelineTimeline,

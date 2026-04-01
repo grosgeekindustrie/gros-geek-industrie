@@ -1698,21 +1698,3 @@ body.mode-collection .home-card::before {
   width:100%;
 }
 
-.btn-new-fiche {
-  display:none;
-  background:var(--accent);
-  color:#0f0f0f;
-  border:none;
-  border-radius:8px;
-  padding:10px 20px;
-  font-family:'Syne',sans-serif;
-  font-size:13px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-.btn-new-fiche.visible {
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-}

@@ -430,8 +430,11 @@
     batchState.stoppedByUser = true;
     batchState.lastError = "";
 
-    Object.values(global.abortControllers || {}).forEach((controller) => {
+    const controllers = global.abortControllers || {};
+    Object.keys(controllers).forEach((agentId) => {
+      const controller = controllers[agentId];
       if (controller) controller.abort();
+      delete controllers[agentId];
     });
 
     if (!silent && batchState.running) showToast("⏹ Batch stoppé", "#ff4757");
