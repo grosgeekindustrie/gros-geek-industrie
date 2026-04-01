@@ -1,4 +1,8 @@
 (function initPipelineUIHelpers(global) {
+
+// Helpers purs et réutilisables.
+// Fonctions de normalisation, parsing léger et comparaison sans dépendance DOM.
+// Cible : conserver ce module stateless et sans effet de bord.
   global.PipelineUI = global.PipelineUI || {};
   function normalizeTagValue(tag) {
     return String(tag || '').replace(/\s+/g, ' ').trim();

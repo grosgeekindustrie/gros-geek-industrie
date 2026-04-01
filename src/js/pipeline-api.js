@@ -1,5 +1,18 @@
 // ═══ PIPELINE API ═══
 
+// Appel HTTP Anthropic.
+// Fonction sensible : gère aussi les retries, le prompt caching, les images et les
+// AbortController. Toute extraction future doit préserver exactement ce contrat réseau.
+
+
+// Runtime réseau + orchestration pipeline.
+// État actuel : ce fichier ne contient pas seulement les appels API. Il regroupe encore
+// l'appel Anthropic, l'orchestrateur QA, l'exécution des agents, une partie du runtime
+// pipeline, les agents sociaux, les helpers de copie et le monitoring des coûts.
+// Découpage visé : extraire progressivement les blocs les moins risqués (social / copy /
+// reporting) vers des modules UI dédiés, puis traiter le coeur pipeline en dernier.
+// Important : ne pas lancer de refactor brutal ici sans campagne de retest complète.
+
 async function callClaude(agentId, promptData, useImages, retries = 3) {
   const apiKey = document.getElementById('apiKey').value.trim();
   if (!apiKey) throw new Error('Clé API manquante');
@@ -56,6 +69,9 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
 
 // ═══════════════════════════════════════════════════════════
+// QA secondaire optionnelle.
+// Ce bloc reste ici car il est directement branché au runtime d'exécution des agents.
+
 // ORCHESTRATEUR
 // ═══════════════════════════════════════════════════════════
 function toggleOrchestrator() {
@@ -108,6 +124,10 @@ function showOrchestratorBadge(agentId, result) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Cœur d'exécution agent par agent.
+// Zone à haut risque : couplage fort entre état, prompts, DOM, orchestrateur et cartes UI.
+// C'est l'une des dernières parties à découper, pas une cible de nettoyage opportuniste.
+
 // RUN AGENT
 // ═══════════════════════════════════════════════════════════
 async function runAgent(agent, correction = '', isRetry = false) {
@@ -186,6 +206,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Contrôle global du pipeline unitaire.
+// Ce bloc orchestre aussi les transitions de vues et les déplacements DOM vers la vue
+// pipeline. Toute extraction future devra être testée visuellement sur TT et Collection.
+
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
 async function startPipeline(p) {
@@ -265,6 +289,10 @@ async function startPipeline(p) {
 // ═══════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════
+// Runtime social encore hébergé ici.
+// Découpage visé à terme : déplacer progressivement ces flows vers un module social dédié,
+// après stabilisation et retest des sorties Instagram / Facebook / Marketplace / Pinterest.
+
 // RÉSEAUX SOCIAUX
 // ═══════════════════════════════════════════════════════════
 async function runLeoAgent(p) {
@@ -497,6 +525,10 @@ function copyAll() {
 // ═══════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════
+// Monitoring session.
+// Affichage UI + cumul de coût runtime. Bloc isolable plus tard, mais déplacé seulement
+// quand le coeur pipeline et le reporting auront des contrats plus stables.
+
 // MONITORING COÛTS
 // ═══════════════════════════════════════════════════════════
 function showAgentCost(agentId, usage) {

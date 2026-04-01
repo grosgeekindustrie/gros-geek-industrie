@@ -1,4 +1,9 @@
 (function initPipelineUIBatch(global) {
+
+// Runtime batch.
+// État actuel : module encore dense, avec beaucoup de génération DOM inline et de glue
+// batch spécifique. Il est fonctionnel mais reste un bon candidat à un futur nettoyage
+// incrémental une fois les flows batch stabilisés.
   global.PipelineUI = global.PipelineUI || {};
 
 let batchState = { fiches:[], current:-1, stopped:false, running:false };

@@ -1,4 +1,9 @@
 /* ═══════════════════════════════════════ LEGACY BASE LAYER ═══════════════════════════════════════ */
+/*
+  Couche de base chargée en premier.
+  Contient encore des sélecteurs historiques et plusieurs composants partagés du runtime actuel.
+  Pour une nouvelle feature, préférer les couches spécialisées suivantes plutôt que d'ajouter ici par réflexe.
+*/
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
 

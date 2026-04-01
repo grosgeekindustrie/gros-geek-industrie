@@ -1,4 +1,7 @@
 (function initPipelineUITitle(global) {
+
+// Remplacement automatique des titres invalides.
+// Même rôle que tags_ui.js mais pour les titres, avec contraintes longueur / blacklist.
   global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
 

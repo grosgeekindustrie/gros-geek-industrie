@@ -1,4 +1,8 @@
 (function initPipelineUIForms(global) {
+
+// Formulaires, persistance locale et context builder.
+// Ce module centralise la lecture/écriture des champs et construit le contexte injecté
+// dans les prompts. Toute évolution ici peut impacter plusieurs agents à la fois.
   global.PipelineUI = global.PipelineUI || {};
 
   const FORM_FIELDS_TT = [

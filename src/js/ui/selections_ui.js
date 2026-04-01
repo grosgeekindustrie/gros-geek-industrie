@@ -1,4 +1,8 @@
 (function initPipelineUISelections(global) {
+
+// Sélections tags / titres / accroches / CTA.
+// Regroupe les flows de validation utilisateur, explorers et assemblage des sorties.
+// Zone sensible car fortement couplée au DOM des cartes pipeline.
   global.PipelineUI = global.PipelineUI || {};
 
   const helpers = () => global.PipelineUIHelpers || {};

@@ -10,10 +10,12 @@
 <link rel="stylesheet" href="css/04-form-layout.css">
 <link rel="stylesheet" href="css/05-library-gpt.css">
 <link rel="stylesheet" href="css/06-inline-merged.css">
+<!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
 
 <!-- ═══════════════════════════════════════ COMMUN ═══════════════════════════════════════ -->
+<!-- Shell principal : contient les vues, les lightboxes communes et le runtime batch. -->
 
 <div class="app-shell">
 
@@ -118,12 +120,14 @@
 </div>
 
 <!-- VIEW FORM -->
+<!-- Vue de saisie : les blocs Tabletop et Collection restent volontairement séparés tant qu’aucune abstraction stable n’est validée. -->
 <div class="view" id="view-form">
 
   <span id="formModeLabel" class="is-hidden">🎲 Tabletop DnD</span>
   <div class="form-view-body" id="formViewBody">
 
 <!-- ═══════════════════════════════════════ BLOC TABLETOP ═══════════════════════════════════════ -->
+<!-- Contrat DOM : ids et onclick legacy encore utilisés par le runtime actuel ; ne pas renommer sans audit JS complet. -->
 <div id="ui-tt">
 
   <div class="form-full-row">
@@ -501,6 +505,7 @@
 </div><!-- /ui-tt -->
 
 <!-- ═══════════════════════════════════════ BLOC COLLECTION ═══════════════════════════════════════ -->
+<!-- Structure jumelle du mode Tabletop, conservée séparée pour limiter les effets de bord pendant les évolutions. -->
 <div id="ui-col" class="is-hidden">
 
   <!-- Images pleine largeur -->
@@ -852,6 +857,7 @@
 </div><!-- /view-form -->
 
 <!-- VIEW PIPELINE -->
+<!-- Vue d’exécution : certains blocs de formulaire sont déplacés ici dynamiquement par JS pendant le pipeline. -->
 <div class="view" id="view-pipeline">
   <div class="pipeline-view-header" id="pipelineViewHeader">
     <span id="pipelineViewTitle" class="pipeline-view-title">🎲 Pipeline en cours...</span>
@@ -866,6 +872,7 @@
 
 
 <!-- ═══════════════════════════════════════ LIGHTBOXES COMMUNES ═══════════════════════════════════════ -->
+<!-- Lightboxes globales partagées entre les deux modes ; leur structure DOM est consommée par plusieurs helpers JS. -->
 
 <!-- BIBLIO LIGHTBOX -->
 <div class="lb-overlay" id="biblioLightbox" onclick="if(event.target.id==='biblioLightbox')closeBiblioLightbox()">
@@ -953,6 +960,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════ SCRIPTS CHARGÉS ═══════════════════════════════════════ -->
+<!-- Ordre important : modules UI d’abord, puis bridge pipeline-ui.js, puis runtime pipeline-api.js. -->
 
 <script src="js/ui/helper_ui.js"></script>
 <script src="js/ui/render_ui.js"></script>
@@ -974,6 +982,7 @@
 <script src="js/pipeline-api.js"></script>
 
 <!-- ═══════════════════════════════════════ BATCH ═══════════════════════════════════════ -->
+<!-- Runtime batch séparé visuellement mais hébergé dans le même shell pour mutualiser les helpers et l’état courant. -->
 
 <!-- BATCH MODAL -->
 <div class="batch-modal-overlay" id="batchModal" onclick="if(event.target.id==='batchModal')closeBatchModal()">

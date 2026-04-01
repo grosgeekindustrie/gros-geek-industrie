@@ -1,5 +1,9 @@
 'use strict';
 
+// Gestion des échelles et dimensions.
+// Responsable de la construction DOM des cases d'échelles et de la lecture des valeurs.
+// Contrainte actuelle : génère encore une partie du markup avec hooks inline legacy.
+
 (function (global) {
   global.PipelineUI = global.PipelineUI || {};
   global.PipelineUIEchelles = global.PipelineUIEchelles || {};

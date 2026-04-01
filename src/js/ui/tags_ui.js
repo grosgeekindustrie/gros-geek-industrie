@@ -1,4 +1,7 @@
 (function initPipelineUITags(global) {
+
+// Remplacement automatique des tags invalides.
+// Module spécialisé dans le reroll / regen de tags après blacklist ou action manuelle.
   global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};

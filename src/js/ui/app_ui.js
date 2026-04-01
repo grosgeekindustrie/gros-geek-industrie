@@ -1,4 +1,8 @@
 (function initPipelineUIApp(global) {
+
+// Couche application transverse.
+// Navigation des vues, toasts, header context, settings panel et actions globales.
+// À garder orienté shell / UX, sans réembarquer le coeur pipeline.
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;

@@ -1,5 +1,9 @@
 'use strict';
 
+// Configuration statique du pipeline.
+// Source de vérité pour les agents par mode et pour la résolution des prompts disque.
+// À garder déclaratif : pas de logique UI métier ici.
+
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIConfig = window.PipelineUIConfig || {};
 

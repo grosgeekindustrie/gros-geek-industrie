@@ -1,5 +1,13 @@
 'use strict';
 
+// Orchestrateur / bridge UI.
+// Ce fichier consomme les modules window.PipelineUI* et sert de point d'assemblage.
+// État actuel : la majorité du découpage UI est faite, mais quelques helpers runtime
+// temporaires provenant de l'ancien coeur restent encore ici pour éviter une migration
+// trop risquée en une seule passe.
+// Objectif : garder pipeline-ui.js léger, lisible, et pousser le reliquat vers des
+// modules dédiés quand la zone concernée est vraiment retestée.
+
 window.PipelineUI = window.PipelineUI || {};
 
 const {
@@ -100,6 +108,10 @@ const {
 // Extracted to src/js/ui/prompt_biblio_ui.js
 
 // Extracted to src/js/ui/helper_ui.js
+
+// Flow tags 3 agents.
+// Ce helper reste ici car il consomme à la fois le prompt builder et callClaude.
+// Si on l'extrait plus tard, il devra garder la même séquence explore → filter → select.
 
 async function runTagsThreeAgents(ctx) {
   // 1) EXPLORE
@@ -246,6 +258,11 @@ async function runTagsThreeAgents(ctx) {
 // CHARGEMENT FICHIERS MD
 // ═══════════════════════════════════════════════════════════
 // Extracted to src/js/ui/forms_ui.js
+
+// Reliquat runtime déplacé depuis pipeline-api.
+// État actuel : ces helpers ont été ramenés ici pour alléger pipeline-api sans casser le
+// runtime. Objectif à terme : les redistribuer dans des modules dédiés quand la zone sera
+// suffisamment stabilisée et retestée.
 
 // ═══ MOVED FROM API ═══
 // ═══ MOVED FROM API ═══
