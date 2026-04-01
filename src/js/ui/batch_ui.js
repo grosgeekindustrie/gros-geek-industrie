@@ -5,14 +5,25 @@
   // incrémental une fois les flows batch stabilisés.
   global.PipelineUI = global.PipelineUI || {};
 
-  let batchState = {
+  const createInitialBatchState = () => ({
     fiches: [],
     current: -1,
     stopped: false,
     running: false,
     stoppedByUser: false,
     lastError: "",
+  });
+
+  // Le wrapper batch traverse les vues Form → Pipeline.
+  // Ce helper borne uniquement sa phase visuelle, sans changer la logique métier du POC.
+  const setBatchWrapperPhase = (phase) => {
+    const batchWrapper = document.getElementById("batchWrapper");
+    if (!batchWrapper) return;
+
+    batchWrapper.classList.toggle("is-running", phase === "running");
   };
+
+  let batchState = createInitialBatchState();
   let batchImages = {};
   function showBatchCountPicker() {
     const container = document.getElementById("batchFiches");
@@ -27,6 +38,10 @@
     container.parentNode.insertBefore(picker, container);
   }
   function initBatchInline() {
+    batchState = createInitialBatchState();
+    batchImages = {};
+    setBatchWrapperPhase("setup");
+
     const count = parseInt(document.getElementById("batchCountInline").value);
     if (isNaN(count) || count < 2) {
       showToast("Minimum 2 fiches", "#ff4757");
@@ -79,15 +94,9 @@
     if (_pendingBatchMode && _pendingBatchMode !== currentMode)
       switchMode(_pendingBatchMode);
     _pendingBatchMode = null;
-    batchState = {
-      fiches: [],
-      current: -1,
-      stopped: false,
-      running: false,
-      stoppedByUser: false,
-      lastError: "",
-    };
+    batchState = createInitialBatchState();
     batchImages = {};
+    setBatchWrapperPhase("setup");
     const container = document.getElementById("batchFiches");
     container.innerHTML = "";
     document.getElementById("batchExportBtn").classList.remove("visible");
@@ -469,15 +478,15 @@
           ? "⚡ Batch Tabletop"
           : "⚡ Batch Collection";
 
-    global.moveBatchWrapperToPipeline?.();
-    document.getElementById("btnStopGlobal")?.classList.add("visible");
-    showView("pipeline");
-    global.syncHeaderBackAction?.();
-
     batchState.running = true;
     batchState.stopped = false;
     batchState.stoppedByUser = false;
     batchState.lastError = "";
+
+    setBatchWrapperPhase("running");
+    global.moveBatchWrapperToPipeline?.();
+    showView("pipeline");
+    global.syncHeaderBackAction?.();
     const runBtn = document.getElementById("batchRunBtn");
     if (runBtn) runBtn.disabled = true;
     document.getElementById("batchProgress").classList.add("visible");
@@ -517,7 +526,6 @@
     if (runBtn) {
       runBtn.disabled = false;
     }
-    document.getElementById("btnStopGlobal")?.classList.remove("visible");
     global.syncHeaderBackAction?.();
     if (!batchState.stopped) {
       const exportBtn = document.getElementById("batchExportBtn");

@@ -1335,6 +1335,45 @@ header h1 {
   display:block;
 }
 
+/* Batch running state : pendant l'exécution on compacte les fiches pour quitter la logique
+   de formulaire sans encore introduire le pipeline détaillé de la fiche courante. */
+.batch-wrapper.is-running #batchRunBtn {
+  display:none;
+}
+
+.batch-wrapper.is-running .batch-fiche {
+  padding:16px 20px;
+  gap:0;
+}
+
+.batch-wrapper.is-running .batch-fiche > :not(.batch-fiche-header) {
+  display:none;
+}
+
+.batch-fiche.running {
+  border-color:var(--accent);
+}
+
+.batch-fiche.done {
+  border-color:var(--success);
+}
+
+.batch-fiche.error {
+  border-color:var(--error);
+}
+
+.batch-fiche.running .batch-fiche-status {
+  color:var(--accent);
+}
+
+.batch-fiche.done .batch-fiche-status {
+  color:var(--success);
+}
+
+.batch-fiche.error .batch-fiche-status {
+  color:var(--error);
+}
+
 .batch-ech-grid {
   display:flex;
   flex-wrap:wrap;
