@@ -12,6 +12,7 @@
 
   let currentView = 'home';
   let pendingBatchMode = null;
+  let pipelineExecutionActive = false;
 
   function getBatchWrapper() {
     return document.getElementById('batchWrapper');
@@ -26,16 +27,23 @@
   }
 
   function isPipelineExecutionActive() {
-    const stopBtn = document.getElementById('btnStopGlobal');
     return !!(
-      stopBtn?.classList.contains('visible') ||
+      pipelineExecutionActive ||
       hasActiveAgentControllers() ||
       global.isBatchRunning?.()
     );
   }
+
+  function setPipelineExecutionActive(isActive) {
+    pipelineExecutionActive = !!isActive;
+    syncHeaderBackAction();
+  }
   function syncHeaderBackAction() {
     const backBtn = document.getElementById('appBackBtn');
     if (!backBtn) return;
+
+    const stopBtn = document.getElementById('btnStopGlobal');
+    if (stopBtn) stopBtn.classList.remove('visible');
 
     const isHome = currentView === 'home';
     backBtn.style.display = isHome ? 'none' : '';
@@ -199,7 +207,7 @@
       if (element) element.style.display = 'none';
     });
 
-    document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    setPipelineExecutionActive(false);
     syncHeaderBackAction();
   }
 
@@ -236,18 +244,17 @@
 
   function cancelToHome() {
     const executionRunning = isPipelineExecutionActive();
-    if (executionRunning) stopAllAgents({ silent: true });
+    if (executionRunning) {
+      stopAllAgents({ silent: true });
+      showToast('⏹ Exécution annulée', '#ff4757');
+      return;
+    }
     if (isBatchFlowInForm() || isBatchFlowInPipeline()) restoreBatchWrapperToShell();
 
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
-    document.getElementById('btnStopGlobal')?.classList.remove('visible');
     showView('home');
-
-    if (executionRunning) {
-      showToast('⏹ Exécution annulée — retour accueil', '#ff4757');
-    }
   }
 
   function stopAllAgents(options = {}) {
@@ -255,7 +262,7 @@
 
     if (isBatchFlowInPipeline()) {
       global.stopBatch?.({ silent });
-      document.getElementById('btnStopGlobal')?.classList.remove('visible');
+      setPipelineExecutionActive(false);
       syncHeaderBackAction();
       return;
     }
@@ -268,7 +275,7 @@
       delete controllers[agent.id];
     });
     if (!silent) showToast('⏹ Pipeline stoppé', '#ff4757');
-    document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    setPipelineExecutionActive(false);
     syncHeaderBackAction();
   }
 
@@ -336,6 +343,7 @@
     isBatchFlowInPipeline,
     cancelToHome,
     stopAllAgents,
+    setPipelineExecutionActive,
     syncHeaderBackAction,
     buildPipelineTimeline,
     updatePipelineTimeline,

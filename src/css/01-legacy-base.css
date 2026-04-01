@@ -1672,24 +1672,6 @@ body.mode-collection .home-card::before {
   font-size:10px;
 }
 
-.btn-stop-global {
-  background:rgba(255,71,87,.1);
-  border:1px solid rgba(255,71,87,.3);
-  color:var(--error);
-  border-radius:6px;
-  padding:7px 14px;
-  font-family:'Syne',sans-serif;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-  display:none;
-}
-
-.btn-stop-global.visible {
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-}
 
 .pipeline-view-body {
   padding:24px 28px;

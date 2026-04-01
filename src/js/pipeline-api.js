@@ -251,14 +251,11 @@ async function startPipeline(p) {
   const timeline = document.getElementById('pipelineTimeline');
   if (timeline) timeline.style.display = '';
 
-  const newFicheBtn = document.getElementById('btnNewFiche');
-  if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
-
   // Update header context for pipeline view
   const ctx = document.getElementById('headerContext');
   if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
   buildPipelineTimeline();
-  document.getElementById('btnStopGlobal').classList.add('visible');
+  window.setPipelineExecutionActive?.(true);
   showView('pipeline');
   state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
@@ -283,8 +280,7 @@ async function startPipeline(p) {
     if (currentMode === 'collection' && agent.id === 'description') break;
   }
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
-  document.getElementById('btnStopGlobal').classList.remove('visible');
-  document.getElementById('btnNewFiche').classList.add('visible');
+  window.setPipelineExecutionActive?.(false);
 }
 
 
