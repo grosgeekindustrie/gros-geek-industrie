@@ -1,4 +1,8 @@
 (function initPipelineUIPromptBiblio(global) {
+
+// Construction des prompts et lecture des bibliothèques.
+// Responsable du template filling, des blocs fixes cachables et du parsing des fichiers
+// VALIDÉS / BLACKLISTÉS. À garder cohérent avec la structure des prompts disque.
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;

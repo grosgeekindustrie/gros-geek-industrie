@@ -1,4 +1,8 @@
 (function initPipelineUIModals(global) {
+
+// Modals métier de bibliothèque.
+// Gère les modals de validation / blacklist et la persistance liée aux bibliothèques.
+// Module DOM-heavy : toute modification doit rester ciblée et retestée visuellement.
   global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
 

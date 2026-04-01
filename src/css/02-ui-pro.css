@@ -1,6 +1,11 @@
 /* ═══════════════════════════════════════════════════════════
      UI PRO — OVERRIDES & ENHANCEMENTS
   ═══════════════════════════════════════════════════════════ */
+/*
+  Couche de modernisation visuelle chargée après la base legacy.
+  Elle affine le thème global, les composants communs et les états UI transverses.
+  Éviter d'y déposer du layout très local ou du code temporaire de feature.
+*/
 
 /* ── Fonts ── */
 

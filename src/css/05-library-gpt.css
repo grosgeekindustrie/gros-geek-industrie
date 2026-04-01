@@ -1,4 +1,8 @@
 /* gpt CSS */
+/*
+  Couche dédiée aux modales de bibliothèque, helpers de lightbox et explorer.
+  Elle reste ciblée sur les surfaces de travail secondaires plutôt que sur le layout global.
+*/
 
 .titre-item.invalid-auto {
   border-color: rgba(255, 71, 87, 0.35);

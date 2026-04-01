@@ -1,4 +1,8 @@
 (function initPipelineUILibrary(global) {
+
+// Bibliothèques sémantiques et prompts.
+// Ouvre les lightboxes d'édition et synchronise les contenus avec le backend fichier.
+// Ne pas y ajouter de logique pipeline : ce module reste centré sur l'édition.
   global.PipelineUI = global.PipelineUI || {};
 
   const BIBLIO_MAP = {

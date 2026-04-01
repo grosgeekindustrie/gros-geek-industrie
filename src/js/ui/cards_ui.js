@@ -1,4 +1,8 @@
 (function initPipelineUICards(global) {
+
+// Construction des cartes agents.
+// Génère le markup pipeline par agent et expose les helpers d'ouverture / fermeture.
+// Dépend de la structure HTML/CSS actuelle : éviter les changements diffus non cadrés.
   global.PipelineUI = global.PipelineUI || {};
 
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt'));

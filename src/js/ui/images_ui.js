@@ -1,4 +1,8 @@
 (function initPipelineUIImages(global) {
+
+// Gestion locale des images.
+// Upload, drop, resize navigateur et rendu des miniatures pour les vues unitaires.
+// Périmètre volontairement limité au cycle de vie des images côté UI.
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;

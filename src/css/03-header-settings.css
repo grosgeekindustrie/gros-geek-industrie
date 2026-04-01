@@ -1,4 +1,8 @@
 /* ═══ HEADER PRO ═══ */
+/*
+  Couche dédiée au header sticky, au contexte courant et au panneau de paramètres.
+  Les hooks JS historiques vivent encore majoritairement dans le HTML via id/onclick legacy.
+*/
 
 .app-header {
   justify-content:space-between;

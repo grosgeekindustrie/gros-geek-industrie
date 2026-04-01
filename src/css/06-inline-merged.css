@@ -4,6 +4,7 @@
    Résidu temporaire après le step 3.
    Les blocs stables ont été redistribués dans les fichiers dédiés.
    Ce fichier conserve encore les helpers transverses les plus sensibles.
+   Ne pas l'utiliser comme destination par défaut pour une nouvelle feature.
    ═══════════════════════════════════════════════════════════ */
 
 /* ═══ Helpers transverses conservés ici ═══ */

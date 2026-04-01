@@ -1,4 +1,8 @@
 (function initPipelineUIRender(global) {
+
+// Helpers de synchronisation UI.
+// Ce module recopie les valeurs sélectionnées vers les sorties visibles sans porter la
+// logique métier complète. Il sert de colle légère entre état runtime et DOM final.
   global.PipelineUI = global.PipelineUI || {};
   function setNodeText(node, text) {
     if (!node) return;
