@@ -463,16 +463,13 @@
     if (title)
       title.textContent =
         currentMode === "tabletop"
-          ? "⚡ Pipeline Tabletop"
-          : "⚡ Pipeline Collection";
-
-    const newFicheBtn = document.getElementById("btnNewFiche");
-    if (newFicheBtn) newFicheBtn.textContent = "↩ Retour formulaire";
+          ? "⚡ Batch Tabletop"
+          : "⚡ Batch Collection";
 
     global.moveBatchWrapperToPipeline?.();
     document.getElementById("btnStopGlobal")?.classList.add("visible");
-    document.getElementById("btnNewFiche")?.classList.remove("visible");
     showView("pipeline");
+    global.syncHeaderBackAction?.();
 
     batchState.running = true;
     batchState.stopped = false;
@@ -518,7 +515,7 @@
       runBtn.disabled = false;
     }
     document.getElementById("btnStopGlobal")?.classList.remove("visible");
-    document.getElementById("btnNewFiche")?.classList.add("visible");
+    global.syncHeaderBackAction?.();
     if (!batchState.stopped) {
       const exportBtn = document.getElementById("batchExportBtn");
       exportBtn.classList.add("visible");
@@ -685,7 +682,7 @@
               .trim()
           : "";
       }
-      if (agent.id === "description") {
+      if (agents[a].id === "description") {
         const out = state.outputs["description"] || "";
         const accroches = parseChoices(out, "A");
         const ctas = parseChoices(out, "C");

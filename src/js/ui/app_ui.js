@@ -25,10 +25,37 @@
     return Object.values(global.abortControllers || {}).some((controller) => !!controller);
   }
 
-  function setBatchInlineStopVisibility(visible) {
-    const batchStopBtn = getBatchWrapper()?.querySelector('.batch-stop-btn');
-    if (!batchStopBtn) return;
-    batchStopBtn.style.display = visible ? '' : 'none';
+  function isPipelineExecutionActive() {
+    const stopBtn = document.getElementById('btnStopGlobal');
+    return !!(
+      stopBtn?.classList.contains('visible') ||
+      hasActiveAgentControllers() ||
+      global.isBatchRunning?.()
+    );
+  }
+
+  function lockLegacyPipelineBackButton() {
+    const legacyBackBtn = document.getElementById('btnNewFiche');
+    if (!legacyBackBtn) return;
+    legacyBackBtn.hidden = true;
+    legacyBackBtn.setAttribute('aria-hidden', 'true');
+    legacyBackBtn.classList.remove('visible');
+  }
+
+  function syncHeaderBackAction() {
+    const backBtn = document.getElementById('appBackBtn');
+    if (!backBtn) return;
+
+    const isHome = currentView === 'home';
+    backBtn.style.display = isHome ? 'none' : '';
+    backBtn.classList.toggle('is-hidden', isHome);
+    if (isHome) return;
+
+    const isExecuting = isPipelineExecutionActive();
+    backBtn.textContent = isExecuting ? '✕ Annuler' : '↩️ Retour';
+    backBtn.title = isExecuting
+      ? 'Annuler l’exécution et revenir à l’accueil'
+      : 'Revenir à l’accueil';
   }
 
   function isBatchFlowInForm() {
@@ -48,7 +75,6 @@
     document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     formBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
-    setBatchInlineStopVisibility(true);
   }
 
   function moveBatchWrapperToPipeline() {
@@ -58,7 +84,6 @@
     pipelineBody.classList.add('pipeline-view-body-batch');
     pipelineBody.appendChild(batchWrapper);
     batchWrapper.classList.add('visible');
-    setBatchInlineStopVisibility(false);
   }
 
   function restoreBatchWrapperToShell() {
@@ -67,7 +92,6 @@
     document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
     getBatchHomeHost().appendChild(batchWrapper);
     batchWrapper.classList.remove('visible');
-    setBatchInlineStopVisibility(true);
   }
 
   function showToast(msg, color = '#4caf7d', duration = 2500) {
@@ -140,14 +164,9 @@
     const view = document.getElementById(`view-${name}`);
     if (view) view.classList.add('active');
 
-    const backBtn = document.getElementById('appBackBtn');
-    if (backBtn) {
-      const isHome = name === 'home';
-      backBtn.style.display = isHome ? 'none' : '';
-      backBtn.classList.toggle('is-hidden', isHome);
-    }
-
+    lockLegacyPipelineBackButton();
     updateHeaderContext(name);
+    syncHeaderBackAction();
 
     if (name !== 'pipeline') {
       try {
@@ -187,7 +206,8 @@
     });
 
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
-    document.getElementById('btnNewFiche')?.classList.remove('visible');
+    lockLegacyPipelineBackButton();
+    syncHeaderBackAction();
   }
 
   function selectMode(mode) {
@@ -222,23 +242,18 @@
   }
 
   function cancelToHome() {
-    const batchRunning = !!global.isBatchRunning?.();
-    const pipelineRunning = hasActiveAgentControllers();
-
-    if (batchRunning || pipelineRunning) stopAllAgents({ silent: true });
+    const executionRunning = isPipelineExecutionActive();
+    if (executionRunning) stopAllAgents({ silent: true });
     if (isBatchFlowInForm() || isBatchFlowInPipeline()) restoreBatchWrapperToShell();
 
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
-    const newFicheBtn = document.getElementById('btnNewFiche');
-    if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
-
-    document.getElementById('btnNewFiche')?.classList.remove('visible');
     document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    lockLegacyPipelineBackButton();
     showView('home');
 
-    if (batchRunning || pipelineRunning) {
+    if (executionRunning) {
       showToast('⏹ Exécution annulée — retour accueil', '#ff4757');
     }
   }
@@ -246,8 +261,8 @@
   function backToForm() {
     if (isBatchFlowInPipeline()) {
       moveBatchWrapperToForm();
-      document.getElementById('btnNewFiche')?.classList.remove('visible');
       document.getElementById('btnStopGlobal')?.classList.remove('visible');
+      lockLegacyPipelineBackButton();
       showView('form');
       return;
     }
@@ -265,11 +280,8 @@
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
-    const newFicheBtn = document.getElementById('btnNewFiche');
-    if (newFicheBtn) newFicheBtn.textContent = '↩ Retour formulaire';
-
-    document.getElementById('btnNewFiche').classList.remove('visible');
-    document.getElementById('btnStopGlobal').classList.remove('visible');
+    document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    lockLegacyPipelineBackButton();
     showView('form');
   }
 
@@ -279,7 +291,8 @@
     if (isBatchFlowInPipeline()) {
       global.stopBatch?.({ silent });
       document.getElementById('btnStopGlobal')?.classList.remove('visible');
-      document.getElementById('btnNewFiche')?.classList.add('visible');
+      lockLegacyPipelineBackButton();
+      syncHeaderBackAction();
       return;
     }
 
@@ -290,8 +303,9 @@
       if (controller) controller.abort();
     });
     if (!silent) showToast('⏹ Pipeline stoppé', '#ff4757');
-    document.getElementById('btnStopGlobal').classList.remove('visible');
-    document.getElementById('btnNewFiche').classList.add('visible');
+    document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    lockLegacyPipelineBackButton();
+    syncHeaderBackAction();
   }
 
   function buildPipelineTimeline(metaLabel = '') {
@@ -340,6 +354,7 @@
     } catch (error) {}
   }
 
+
   global.PipelineUIApp = {
     showToast,
     clearAllStorage,
@@ -358,6 +373,7 @@
     cancelToHome,
     backToForm,
     stopAllAgents,
+    syncHeaderBackAction,
     buildPipelineTimeline,
     updatePipelineTimeline,
     openSettings,
