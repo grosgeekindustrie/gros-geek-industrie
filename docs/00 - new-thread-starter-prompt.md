@@ -23,15 +23,19 @@ Important :
 Repo de référence :
 `https://github.com/grosgeekindustrie/gros-geek-industrie`
 
+Branche repo à lire par défaut si rien d’autre n’est précisé :
+- `dev` = branche de travail / merge
+- `master` = branche de mise en prod
+
 ---
 
-### 2. Docs à lire en priorité
-Avant de proposer un patch, prendre en compte en priorité :
-- `docs/architecture.md`
-- `docs/agent-guidelines.md`
-- `docs/commenting-standard.md`
-- `docs/prod-readiness.md`
-- `docs/patch-workflow.md`
+### 2. Ordre de lecture recommandé des docs
+Avant de proposer un patch, lire les docs dans cet ordre :
+- `docs/01 - architecture.md`
+- `docs/02 - agent-guidelines.md`
+- `docs/03 - patch-workflow.md`
+- `docs/04 - commenting-standard.md`
+- `docs/05 - prod-readiness.md`
 
 Ces docs cadrent :
 - l’architecture générale
@@ -120,6 +124,12 @@ Pour les nouveaux développements :
 - ne migrer que la zone réellement touchée
 - pas de “grand nettoyage opportuniste”
 
+#### State / structure d’état
+- éviter d’ajouter des states plats opportunistes si plusieurs clés décrivent en réalité le même domaine
+- pour tout nouvel état durable, préférer un regroupement par responsabilité (`state.ui`, `state.batch`, `state.flow`, etc.)
+- un état temporaire purement local peut rester local tant qu’il ne devient pas une convention de projet
+- ne pas lancer de refactor global du state legacy si la zone n’est pas réellement touchée
+
 ---
 
 ### 5. État particulier de `pipeline-api.js`
@@ -165,12 +175,16 @@ Avant de créer un nouveau fichier, vérifier :
 Quand tu travailles sur ce projet :
 
 1. lire les fichiers réellement fournis
-2. comparer si besoin avec l’architecture du repo
-3. proposer une approche ciblée
-4. éviter les hypothèses d’état
-5. générer un patch propre
-6. donner les commandes de check après apply
-7. rappeler les points de test visuel si l’UI est touchée
+2. si des ressources probables manquent, lire le repo sur la branche de travail si elle est push, sinon sur la branche source / de création
+3. utiliser cette lecture repo pour lister les fichiers probablement nécessaires, pas pour remplacer les fichiers locaux
+4. demander ensuite à l’utilisateur le lot minimal utile de fichiers en tenant compte de la limite pratique de 20 fichiers transmis
+5. comparer si besoin avec l’architecture du repo
+6. proposer une approche ciblée
+7. éviter les hypothèses d’état
+8. débriefer le besoin et les fichiers probablement touchés avant patch si le périmètre n’est pas encore verrouillé
+9. générer un patch propre
+10. donner les commandes de check après apply
+11. rappeler les points de test visuel si l’UI est touchée
 
 ---
 
@@ -197,7 +211,7 @@ git diff
 
 Si UI touchée :
 - demander ou recommander un check visuel
-- rappeler de vérifier home / tabletop / collection / pipeline / batch / lightboxes selon la zone touchée
+- rappeler de vérifier home / form / tabletop / collection / pipeline / batch / lightboxes selon la zone touchée
 
 ---
 
@@ -243,6 +257,8 @@ Quand je t’envoie des fichiers ou une demande, je veux en priorité :
 
 - un diagnostic basé sur **les fichiers réels fournis**
 - une proposition de travail ciblée
+- un débrief du périmètre technique si le besoin n’est pas encore entièrement cadré
+- une liste minimale de fichiers demandés si le scope réel dépasse ce qui a été transmis
 - un patch propre si on avance
 - les commandes de check post-apply
 - pas de refactor large surprise
@@ -267,14 +283,15 @@ Ne repars jamais de zéro sur l’architecture si les docs du projet existent d�
 
 Projet : **Etsy Pipeline**  
 Source de vérité : **fichiers locaux > docs/ > GitHub**  
-GitHub : `https://github.com/grosgeekindustrie/gros-geek-industrie`
+GitHub : `https://github.com/grosgeekindustrie/gros-geek-industrie`  
+Branche repo à lire par défaut : `dev`
 
 Docs à respecter :
-- `docs/architecture.md`
-- `docs/agent-guidelines.md`
-- `docs/commenting-standard.md`
-- `docs/prod-readiness.md`
-- `docs/patch-workflow.md`
+- `docs/01 - architecture.md`
+- `docs/02 - agent-guidelines.md`
+- `docs/03 - patch-workflow.md`
+- `docs/04 - commenting-standard.md`
+- `docs/05 - prod-readiness.md`
 
 Règles :
 - `pipeline-ui.js` = orchestrateur
@@ -290,3 +307,6 @@ Règles :
 Important :
 - préférer modifier les fichiers existants
 - ne créer un nouveau fichier que si c’est justifié et cohérent avec l’architecture actuelle
+- si des ressources probables manquent, lire le repo pour identifier le minimum utile puis demander ce lot à l’utilisateur
+- tenir compte de la limite pratique de 20 fichiers transmis
+- éviter d’ajouter de nouveaux states plats si un état structuré par domaine est plus cohérent

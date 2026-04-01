@@ -23,7 +23,7 @@
 <header class="app-header" id="appHeader">
   <!-- LEFT -->
   <div class="app-header-left">
-    <span class="app-logo">🎲</span>
+    <span class="app-logo" title="Annuler et revenir à l'accueil" onclick="cancelToHome()">🎲</span>
     <span class="hbadge">v1.2</span>
     <span id="session-cost" class="app-cost" title="Coût estimé de la session">💰 0.00¢</span>
   </div>
@@ -33,7 +33,7 @@
   </div>
   <!-- RIGHT -->
   <div class="app-header-right">
-    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" onclick="cancelToHome()">← Retour</button>
+    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" onclick="cancelToHome()">✕ Annuler</button>
     <button class="app-settings-btn" onclick="openSettings()" title="Paramètres">⚙</button>
   </div>
 </header>

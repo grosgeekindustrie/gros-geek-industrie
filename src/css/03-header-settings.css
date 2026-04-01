@@ -35,6 +35,17 @@
 .app-logo {
   font-size:20px;
   line-height:1;
+  cursor:pointer;
+  transition:transform .15s, color .15s, opacity .15s;
+}
+
+.app-logo:hover {
+  color:var(--accent);
+  transform:translateY(-1px) scale(1.04);
+}
+
+.app-logo:active {
+  transform:translateY(0) scale(.98);
 }
 
 .app-cost {

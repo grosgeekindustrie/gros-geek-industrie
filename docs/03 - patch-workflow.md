@@ -42,6 +42,20 @@ Objectif :
 - savoir si le fichier local a changé
 - savoir si le patch doit être recalé sur un nouvel état
 
+### 2.1 Si des ressources probables manquent
+Avant de demander des fichiers “au hasard”, l’agent doit :
+
+1. lire le repo sur la **branche de travail** si elle est push ;
+2. sinon lire la **branche source / de création** ;
+3. utiliser cette lecture pour repérer les fichiers probablement nécessaires ;
+4. demander ensuite à l’utilisateur le **lot minimal utile**.
+
+Important :
+- cette lecture repo sert à **repérer** les ressources utiles ;
+- elle ne remplace jamais les **fichiers locaux réellement fournis** ;
+- tenir compte de la limite pratique de **20 fichiers transmis** côté utilisateur ;
+- si le besoin n’est pas encore cadré, faire d’abord un **débrief du périmètre technique** avant de générer le patch.
+
 ---
 
 ## 3. Règle de périmètre
@@ -69,6 +83,9 @@ Méthode recommandée :
 1. modifier localement les fichiers
 2. vérifier le diff
 3. générer le patch depuis Git
+
+Chemin projet recommandé :
+- `patch/git/`
 
 Exemple :
 
@@ -220,12 +237,14 @@ Ordre conseillé :
 
 1. confirmer la branche
 2. confirmer les fichiers réels
-3. modifier localement
-4. relire le diff
-5. générer le patch
-6. `git apply --check`
-7. `git apply`
-8. check visuel ou technique selon le type de patch
+3. si besoin, repérer les ressources manquantes probables via le repo
+4. débriefer le périmètre si le besoin n’est pas encore verrouillé
+5. modifier localement
+6. relire le diff
+7. générer le patch dans `patch/git/`
+8. `git apply --check`
+9. `git apply`
+10. check visuel ou technique selon le type de patch
 
 ---
 

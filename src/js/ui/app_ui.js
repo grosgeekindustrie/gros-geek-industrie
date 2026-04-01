@@ -84,7 +84,11 @@
     if (view) view.classList.add('active');
 
     const backBtn = document.getElementById('appBackBtn');
-    if (backBtn) backBtn.style.display = name === 'form' ? '' : 'none';
+    if (backBtn) {
+      const isHome = name === 'home';
+      backBtn.style.display = isHome ? 'none' : '';
+      backBtn.classList.toggle('is-hidden', isHome);
+    }
 
     updateHeaderContext(name);
 
@@ -114,6 +118,21 @@
     }
   }
 
+  // Entrée depuis la home vers un flow unitaire.
+  // Objectif stepper : afficher uniquement le formulaire tant que le pipeline
+  // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
+  function resetSingleFlowPanels(mode) {
+    const suffix = mode === 'collection' ? 'col' : 'tt';
+
+    ['pipeline', 'finalOutput', 'socialSection', 'socialOutput', 'reseauxOnlySection'].forEach((prefix) => {
+      const element = document.getElementById(`${prefix}-${suffix}`);
+      if (element) element.style.display = 'none';
+    });
+
+    document.getElementById('btnStopGlobal')?.classList.remove('visible');
+    document.getElementById('btnNewFiche')?.classList.remove('visible');
+  }
+
   function selectMode(mode) {
     if (mode === 'batch') {
       global.openBatchModal?.();
@@ -133,6 +152,7 @@
       if (label) label.textContent = '🖼️ Collection';
     }
 
+    resetSingleFlowPanels(mode);
     showView('form');
   }
 
