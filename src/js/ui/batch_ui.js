@@ -23,6 +23,96 @@
     batchWrapper.classList.toggle("is-running", phase === "running");
   };
 
+  const getBatchCurrentPipelineElements = () => ({
+    host: document.querySelector('[data-js="batch-current-pipeline"]'),
+    meta: document.querySelector('[data-js="batch-current-meta"]'),
+    list: document.querySelector('[data-js="batch-current-list"]'),
+  });
+
+  const getBatchFicheLabel = (index) => {
+    const shortName = document.getElementById(`b${index}-fNomCourt`)?.value?.trim();
+
+    return shortName || `Fiche ${index + 1}`;
+  };
+
+  const getBatchAgentLabel = (agent) =>
+    agent.title
+      .replace(/^[^—]+— /, "")
+      .split(" · ")[0]
+      .replace(/[🔍🖼️📊🔖🏷️📝]/u, "")
+      .trim();
+
+  const resetBatchCurrentPipeline = () => {
+    const { host, meta, list } = getBatchCurrentPipelineElements();
+    if (!host || !meta || !list) return;
+
+    host.classList.add("is-hidden");
+    meta.textContent = "";
+    list.innerHTML = "";
+  };
+
+  const renderBatchCurrentPipeline = (ficheIndex, ficheTotal, agents) => {
+    const { host, meta, list } = getBatchCurrentPipelineElements();
+    if (!host || !meta || !list) return;
+
+    meta.textContent = `Fiche ${ficheIndex + 1}/${ficheTotal} — ${getBatchFicheLabel(ficheIndex)}`;
+    list.innerHTML = agents
+      .map(
+        (agent, index) => `
+          <div class="agent-card batch-current-agent-card" data-batch-agent="${agent.id}">
+            <div class="agent-header">
+              <span class="agent-num">${String(index + 1).padStart(2, "0")}</span>
+              <span class="agent-title">${getBatchAgentLabel(agent)}</span>
+              <span class="agent-status s-wait" data-batch-agent-status="${agent.id}">en attente</span>
+            </div>
+          </div>`,
+      )
+      .join("");
+
+    host.classList.remove("is-hidden");
+  };
+
+  const setBatchCurrentAgentState = (agentId, stateName) => {
+    const card = document.querySelector(`[data-batch-agent="${agentId}"]`);
+    const status = document.querySelector(`[data-batch-agent-status="${agentId}"]`);
+    if (!card || !status) return;
+
+    card.classList.remove("active", "done", "error");
+
+    const stateByName = {
+      wait: {
+        cardClass: "",
+        statusClass: "agent-status s-wait",
+        text: "en attente",
+      },
+      active: {
+        cardClass: "active",
+        statusClass: "agent-status s-run",
+        text: "⟳ génération...",
+      },
+      done: {
+        cardClass: "done",
+        statusClass: "agent-status s-done",
+        text: "✓ done",
+      },
+      error: {
+        cardClass: "error",
+        statusClass: "agent-status s-err",
+        text: "✗ erreur",
+      },
+      stopped: {
+        cardClass: "error",
+        statusClass: "agent-status s-err",
+        text: "⏹ stoppé",
+      },
+    };
+
+    const nextState = stateByName[stateName] || stateByName.wait;
+    if (nextState.cardClass) card.classList.add(nextState.cardClass);
+    status.className = nextState.statusClass;
+    status.textContent = nextState.text;
+  };
+
   let batchState = createInitialBatchState();
   let batchImages = {};
   function showBatchCountPicker() {
@@ -41,6 +131,7 @@
     batchState = createInitialBatchState();
     batchImages = {};
     setBatchWrapperPhase("setup");
+    resetBatchCurrentPipeline();
 
     const count = parseInt(document.getElementById("batchCountInline").value);
     if (isNaN(count) || count < 2) {
@@ -97,6 +188,7 @@
     batchState = createInitialBatchState();
     batchImages = {};
     setBatchWrapperPhase("setup");
+    resetBatchCurrentPipeline();
     const container = document.getElementById("batchFiches");
     container.innerHTML = "";
     document.getElementById("batchExportBtn").classList.remove("visible");
@@ -497,12 +589,13 @@
       batchState.current = i;
       global.buildPipelineTimeline?.(`Fiche ${i + 1}/${total}`);
       agents.forEach((agent) => global.updatePipelineTimeline?.(agent.id, "wait"));
+      renderBatchCurrentPipeline(i, total, agents);
 
       const ficheEl = document.getElementById("batch-fiche-" + i);
       ficheEl.classList.add("running");
       document.getElementById("batch-status-" + i).textContent =
         "⟳ en cours...";
-      updateBatchProgress(i + 1, total, 0, agents.length);
+      updateBatchProgress(i + 1, total, 0, agents.length, 1);
       const ok = await runBatchFiche(i, agents);
       ficheEl.classList.remove("running");
       if (!ok) {
@@ -534,16 +627,23 @@
       showToast("✅ Batch terminé !", "#4caf7d");
     }
   }
-  function updateBatchProgress(ficheNum, ficheTotal, agentNum, agentTotal) {
+  function updateBatchProgress(
+    ficheNum,
+    ficheTotal,
+    completedAgents,
+    agentTotal,
+    currentAgentNum = completedAgents,
+  ) {
     const pct =
-      ((ficheNum - 1) / ficheTotal + agentNum / agentTotal / ficheTotal) * 100;
+      ((ficheNum - 1) / ficheTotal + completedAgents / agentTotal / ficheTotal) *
+      100;
     document.getElementById("batchProgressLabel").textContent =
       "Fiche " +
       ficheNum +
       "/" +
       ficheTotal +
       " — Agent " +
-      agentNum +
+      currentAgentNum +
       "/" +
       agentTotal;
     document.getElementById("batchProgressBar").style.width = pct + "%";
@@ -667,21 +767,38 @@
       updateBatchProgress(
         batchState.current + 1,
         batchState.fiches.length,
-        a + 1,
+        a,
         agents.length,
+        a + 1,
       );
       const ctx = getBatchCtx(i);
       const agent = agents[a];
       ctx.outputs = { ...state.outputs };
       global.updatePipelineTimeline?.(agent.id, "active");
+      setBatchCurrentAgentState(agent.id, "active");
       const ok = await runBatchAgent(agent, ctx);
       if (!ok) {
-        global.updatePipelineTimeline?.(agent.id, batchState.stoppedByUser ? "wait" : "error");
+        global.updatePipelineTimeline?.(
+          agent.id,
+          batchState.stoppedByUser ? "wait" : "error",
+        );
+        setBatchCurrentAgentState(
+          agent.id,
+          batchState.stoppedByUser ? "stopped" : "error",
+        );
         state.outputs = savedOutputs;
         state.images = savedImages;
         return false;
       }
       global.updatePipelineTimeline?.(agent.id, "done");
+      setBatchCurrentAgentState(agent.id, "done");
+      updateBatchProgress(
+        batchState.current + 1,
+        batchState.fiches.length,
+        a + 1,
+        agents.length,
+        a + 1,
+      );
 
       if (agent.id === "titre") {
         const titreOut = state.outputs["titre"] || "";

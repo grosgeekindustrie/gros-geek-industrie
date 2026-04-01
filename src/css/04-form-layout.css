@@ -329,3 +329,49 @@
   width: 100%;
   margin-top: 0;
 }
+
+/* ═══ BATCH CURRENT PIPELINE ═══ */
+
+.batch-current-pipeline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.batch-current-pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.batch-current-pipeline-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.batch-current-pipeline-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.batch-current-pipeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batch-current-agent-card .agent-header {
+  cursor: default;
+}
+
+.batch-current-agent-card .agent-header:hover {
+  background: transparent;
+}

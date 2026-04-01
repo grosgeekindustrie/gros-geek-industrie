@@ -1005,7 +1005,13 @@
     <div class="batch-progress-bar-wrap">
       <div class="batch-progress-bar" id="batchProgressBar"></div>
     </div>
-    <button class="batch-stop-btn" onclick="stopBatch()">⏹ Stopper le batch</button>
+  </div>
+  <div class="batch-current-pipeline is-hidden" data-js="batch-current-pipeline">
+    <div class="batch-current-pipeline-header">
+      <span class="batch-current-pipeline-title">🧭 Pipeline de la fiche en cours</span>
+      <span class="batch-current-pipeline-meta" data-js="batch-current-meta"></span>
+    </div>
+    <div class="batch-current-pipeline-list" data-js="batch-current-list"></div>
   </div>
   <div id="batchFiches"></div>
   <button class="batch-export-btn" id="batchExportBtn" onclick="exportBatch()">💾 Exporter le batch</button>
