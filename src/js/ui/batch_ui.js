@@ -12,6 +12,8 @@
     running: false,
     stoppedByUser: false,
     lastError: "",
+    pendingSelection: null,
+    selectionResolver: null,
   });
 
   // Le wrapper batch traverse les vues Form → Pipeline.
@@ -27,6 +29,13 @@
     host: document.querySelector('[data-js="batch-current-pipeline"]'),
     meta: document.querySelector('[data-js="batch-current-meta"]'),
     list: document.querySelector('[data-js="batch-current-list"]'),
+  });
+
+  const getBatchSelectionElements = () => ({
+    host: document.querySelector('[data-js="batch-selection"]'),
+    title: document.querySelector('[data-js="batch-selection-title"]'),
+    body: document.querySelector('[data-js="batch-selection-body"]'),
+    actions: document.querySelector('[data-js="batch-selection-actions"]'),
   });
 
   const getBatchFicheLabel = (index) => {
@@ -50,6 +59,220 @@
     meta.textContent = "";
     list.innerHTML = "";
   };
+
+  const resetBatchSelection = () => {
+    const { host, title, body, actions } = getBatchSelectionElements();
+    if (!host || !title || !body || !actions) return;
+
+    host.classList.add("is-hidden");
+    title.textContent = "";
+    body.innerHTML = "";
+    actions.innerHTML = "";
+
+    batchState.pendingSelection = null;
+    batchState.selectionResolver = null;
+  };
+
+  const parseBatchTitreOptions = (output) => {
+    const lines = output.split("\n").filter((line) => /^\d+\.\s+/.test(line));
+    const options = lines
+      .map((line, index) => {
+        const text = line
+          .replace(/^\d+\.\s*/, "")
+          .replace(/\s*\(\d+\s*car[^)]*\)\s*$/i, "")
+          .trim();
+        const charMatch = line.match(/\((\d+)\s*car/i);
+        const chars = charMatch ? parseInt(charMatch[1], 10) : text.length;
+
+        return {
+          id: `titre-${index}`,
+          text,
+          meta: `${chars} car.`,
+        };
+      })
+      .filter((option) => option.text);
+
+    if (options.length) return options;
+
+    const fallback = output.trim();
+    return fallback ? [{ id: "titre-0", text: fallback, meta: "" }] : [];
+  };
+
+  const parseBatchDescriptionOptions = (output, prefix) =>
+    parseChoices(output, prefix)
+      .map((choice, index) => ({
+        id: `${prefix}-${index}`,
+        text: choice.text || "",
+        meta: `${prefix}${index + 1}`,
+      }))
+      .filter((option) => option.text);
+
+  const buildBatchDescriptionAssembled = (
+    output,
+    selectedAccrocheText,
+    selectedCTAText,
+  ) =>
+    output
+      .split("\n")
+      .map((line) => {
+        if (/^A\d+→/.test(line) && selectedAccrocheText) return selectedAccrocheText;
+        if (/^C\d+→/.test(line) && selectedCTAText) return selectedCTAText;
+        return line;
+      })
+      .join("\n");
+
+  const renderBatchSelectionOption = (option, groupName, selectedId) => `
+    <button
+      type="button"
+      class="batch-selection-option${selectedId === option.id ? " is-selected" : ""}"
+      data-batch-selection-group="${groupName}"
+      data-batch-selection-id="${option.id}"
+    >
+      <span class="batch-selection-option-text">${option.text}</span>
+      ${option.meta ? `<span class="batch-selection-option-meta">${option.meta}</span>` : ""}
+    </button>`;
+
+  const renderBatchSelectionGroup = (
+    title,
+    groupName,
+    options,
+    selectedId,
+    emptyMessage,
+  ) => `
+    <div class="batch-selection-group">
+      <span class="batch-selection-group-label">${title}</span>
+      <div class="batch-selection-options">
+        ${
+          options.length
+            ? options
+                .map((option) =>
+                  renderBatchSelectionOption(option, groupName, selectedId),
+                )
+                .join("")
+            : `<span class="batch-selection-empty">${emptyMessage}</span>`
+        }
+      </div>
+    </div>`;
+
+  const applyBatchSelection = () => {
+    const pendingSelection = batchState.pendingSelection;
+    const selectionResolver = batchState.selectionResolver;
+    if (!pendingSelection || !selectionResolver) return;
+
+    let payload = null;
+
+    if (pendingSelection.kind === "titre") {
+      const selectedTitre = pendingSelection.options.find(
+        (option) => option.id === pendingSelection.selectedTitleId,
+      );
+      if (!selectedTitre) return;
+
+      state.outputs["titre_valide"] = selectedTitre.text;
+      payload = { titreValide: selectedTitre.text };
+    } else if (pendingSelection.kind === "description") {
+      const selectedAccroche = pendingSelection.accroches.find(
+        (option) => option.id === pendingSelection.selectedAccrocheId,
+      );
+      const selectedCTA = pendingSelection.ctas.find(
+        (option) => option.id === pendingSelection.selectedCTAId,
+      );
+      if (!selectedAccroche || !selectedCTA) return;
+
+      state.selectedAccroche = { text: selectedAccroche.text };
+      state.selectedCTA = { text: selectedCTA.text };
+      state.outputs["description_assembled"] = buildBatchDescriptionAssembled(
+        state.outputs["description"] || "",
+        selectedAccroche.text,
+        selectedCTA.text,
+      );
+      payload = {
+        selectedAccrocheText: selectedAccroche.text,
+        selectedCTAText: selectedCTA.text,
+      };
+    }
+
+    resetBatchSelection();
+    selectionResolver(payload);
+  };
+
+  const renderBatchSelection = () => {
+    const pendingSelection = batchState.pendingSelection;
+    const { host, title, body, actions } = getBatchSelectionElements();
+    if (!host || !title || !body || !actions || !pendingSelection) return;
+
+    if (pendingSelection.kind === "titre") {
+      title.textContent = "🏷️ Choisis le titre validé";
+      body.innerHTML = renderBatchSelectionGroup(
+        "Titres proposés",
+        "titre",
+        pendingSelection.options,
+        pendingSelection.selectedTitleId,
+        "Aucun titre sélectionnable",
+      );
+    } else {
+      title.textContent = "📝 Choisis l’accroche et le CTA";
+      body.innerHTML = `
+        <div class="batch-selection-groups">
+          ${renderBatchSelectionGroup(
+            "Accroches",
+            "accroche",
+            pendingSelection.accroches,
+            pendingSelection.selectedAccrocheId,
+            "Aucune accroche détectée",
+          )}
+          ${renderBatchSelectionGroup(
+            "CTA",
+            "cta",
+            pendingSelection.ctas,
+            pendingSelection.selectedCTAId,
+            "Aucun CTA détecté",
+          )}
+        </div>`;
+    }
+
+    body.querySelectorAll(".batch-selection-option").forEach((button) => {
+      button.onclick = () => {
+        const { batchSelectionGroup, batchSelectionId } = button.dataset;
+        if (pendingSelection.kind === "titre") {
+          pendingSelection.selectedTitleId = batchSelectionId;
+        } else if (batchSelectionGroup === "accroche") {
+          pendingSelection.selectedAccrocheId = batchSelectionId;
+        } else if (batchSelectionGroup === "cta") {
+          pendingSelection.selectedCTAId = batchSelectionId;
+        }
+        renderBatchSelection();
+      };
+    });
+
+    const isReady =
+      pendingSelection.kind === "titre"
+        ? !!pendingSelection.selectedTitleId
+        : !!pendingSelection.selectedAccrocheId &&
+          !!pendingSelection.selectedCTAId;
+
+    actions.innerHTML = `
+      <button
+        type="button"
+        class="btn btn-accent"
+        id="batchSelectionContinueBtn"
+        ${isReady ? "" : "disabled=\"disabled\""}
+      >
+        ▶ Continuer la fiche
+      </button>`;
+
+    document
+      .getElementById("batchSelectionContinueBtn")
+      ?.addEventListener("click", applyBatchSelection);
+
+    host.classList.remove("is-hidden");
+  };
+
+  const waitForBatchSelection = (config) =>
+    new Promise((resolve) => {
+      batchState.pendingSelection = config;
+      batchState.selectionResolver = resolve;
+      renderBatchSelection();
+    });
 
   const renderBatchCurrentPipeline = (ficheIndex, ficheTotal, agents) => {
     const { host, meta, list } = getBatchCurrentPipelineElements();
@@ -89,6 +312,11 @@
         cardClass: "active",
         statusClass: "agent-status s-run",
         text: "⟳ génération...",
+      },
+      paused: {
+        cardClass: "active",
+        statusClass: "agent-status s-run",
+        text: "⏸ sélection",
       },
       done: {
         cardClass: "done",
@@ -132,6 +360,7 @@
     batchImages = {};
     setBatchWrapperPhase("setup");
     resetBatchCurrentPipeline();
+    resetBatchSelection();
 
     const count = parseInt(document.getElementById("batchCountInline").value);
     if (isNaN(count) || count < 2) {
@@ -189,6 +418,7 @@
     batchImages = {};
     setBatchWrapperPhase("setup");
     resetBatchCurrentPipeline();
+    resetBatchSelection();
     const container = document.getElementById("batchFiches");
     container.innerHTML = "";
     document.getElementById("batchExportBtn").classList.remove("visible");
@@ -527,9 +757,17 @@
 
   function stopBatch(options = {}) {
     const { silent = false } = options;
+    const wasRunning = batchState.running;
+
     batchState.stopped = true;
     batchState.stoppedByUser = true;
     batchState.lastError = "";
+
+    const selectionResolver = batchState.selectionResolver;
+    if (selectionResolver) {
+      resetBatchSelection();
+      selectionResolver(null);
+    }
 
     const controllers = global.abortControllers || {};
     Object.keys(controllers).forEach((agentId) => {
@@ -538,7 +776,7 @@
       delete controllers[agentId];
     });
 
-    if (!silent && batchState.running) showToast("⏹ Batch stoppé", "#ff4757");
+    if (!silent && wasRunning) showToast("⏹ Batch stoppé", "#ff4757");
   }
   async function startBatch() {
     const apiKey = document.getElementById("apiKey").value.trim();
@@ -574,6 +812,7 @@
     batchState.stopped = false;
     batchState.stoppedByUser = false;
     batchState.lastError = "";
+    resetBatchSelection();
 
     setBatchWrapperPhase("running");
     global.moveBatchWrapperToPipeline?.();
@@ -615,6 +854,7 @@
       document.getElementById("batch-status-" + i).textContent = "✅ terminée";
     }
     batchState.running = false;
+    resetBatchSelection();
     document.getElementById("batchProgress").classList.remove("visible");
     if (runBtn) {
       runBtn.disabled = false;
@@ -790,6 +1030,68 @@
         state.images = savedImages;
         return false;
       }
+      if (agent.id === "titre") {
+        const titreOptions = parseBatchTitreOptions(state.outputs["titre"] || "");
+        if (!titreOptions.length) {
+          batchState.lastError = "titre — aucune proposition sélectionnable";
+          global.updatePipelineTimeline?.(agent.id, "error");
+          setBatchCurrentAgentState(agent.id, "error");
+          state.outputs = savedOutputs;
+          state.images = savedImages;
+          return false;
+        }
+
+        setBatchCurrentAgentState(agent.id, "paused");
+        const titreSelection = await waitForBatchSelection({
+          kind: "titre",
+          ficheIndex: i,
+          options: titreOptions,
+          selectedTitleId: null,
+        });
+        if (!titreSelection) {
+          global.updatePipelineTimeline?.(agent.id, "wait");
+          setBatchCurrentAgentState(agent.id, "stopped");
+          state.outputs = savedOutputs;
+          state.images = savedImages;
+          return false;
+        }
+      }
+
+      if (agent.id === "description") {
+        const descriptionOutput = state.outputs["description"] || "";
+        const accrocheOptions = parseBatchDescriptionOptions(
+          descriptionOutput,
+          "A",
+        );
+        const ctaOptions = parseBatchDescriptionOptions(descriptionOutput, "C");
+
+        if (!accrocheOptions.length || !ctaOptions.length) {
+          batchState.lastError = "description — accroche ou CTA introuvable";
+          global.updatePipelineTimeline?.(agent.id, "error");
+          setBatchCurrentAgentState(agent.id, "error");
+          state.outputs = savedOutputs;
+          state.images = savedImages;
+          return false;
+        }
+
+        setBatchCurrentAgentState(agent.id, "paused");
+        const descriptionSelection = await waitForBatchSelection({
+          kind: "description",
+          ficheIndex: i,
+          accroches: accrocheOptions,
+          ctas: ctaOptions,
+          selectedAccrocheId: null,
+          selectedCTAId: null,
+        });
+        if (!descriptionSelection) {
+          global.updatePipelineTimeline?.(agent.id, "wait");
+          setBatchCurrentAgentState(agent.id, "stopped");
+          state.outputs = savedOutputs;
+          state.images = savedImages;
+          return false;
+        }
+      }
+
       global.updatePipelineTimeline?.(agent.id, "done");
       setBatchCurrentAgentState(agent.id, "done");
       updateBatchProgress(
@@ -799,28 +1101,6 @@
         agents.length,
         a + 1,
       );
-
-      if (agent.id === "titre") {
-        const titreOut = state.outputs["titre"] || "";
-        const line = titreOut.split("\n").find((l) => /^\d+\.\s+/.test(l));
-        state.outputs["titre_valide"] = line
-          ? line
-              .replace(/^\d+\.\s*/, "")
-              .replace(/\s*\(\d+\s*car[^)]*\)/i, "")
-              .trim()
-          : "";
-      }
-      if (agents[a].id === "description") {
-        const out = state.outputs["description"] || "";
-        const accroches = parseChoices(out, "A");
-        const ctas = parseChoices(out, "C");
-        const newLines = out.split("\n").map((l) => {
-          if (/^A\d+→/.test(l) && accroches[0]) return accroches[0].text;
-          if (/^C\d+→/.test(l) && ctas[0]) return ctas[0].text;
-          return l;
-        });
-        state.outputs["description_assembled"] = newLines.join("\n");
-      }
     }
 
     batchState.fiches[i].nom =

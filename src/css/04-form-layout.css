@@ -375,3 +375,119 @@
 .batch-current-agent-card .agent-header:hover {
   background: transparent;
 }
+
+
+/* ═══ BATCH MANUAL SELECTION ═══ */
+
+.batch-selection {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.batch-selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.batch-selection-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent2);
+}
+
+.batch-selection-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.batch-selection-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.batch-selection-groups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.batch-selection-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batch-selection-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.batch-selection-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.batch-selection-option {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  text-align: left;
+}
+
+.batch-selection-option:hover {
+  border-color: var(--accent);
+  background: rgba(232, 197, 71, 0.04);
+}
+
+.batch-selection-option.is-selected {
+  border-color: var(--accent);
+  background: rgba(232, 197, 71, 0.08);
+}
+
+.batch-selection-option-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.batch-selection-option-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.batch-selection-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.batch-selection-actions {
+  display: flex;
+  justify-content: flex-end;
+}
