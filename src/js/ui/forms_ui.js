@@ -435,7 +435,7 @@
       }
     } else if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '▶ Lancer le pipeline';
+      btn.innerHTML = '▶';
     }
   }
 

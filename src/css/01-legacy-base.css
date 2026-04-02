@@ -73,7 +73,7 @@ body.mode-collection .form-section {
 }
 
 body.mode-collection .run-btn {
-  background:var(--accent);
+  background:var(--stepper-current);
   color:#0d1117;
 }
 

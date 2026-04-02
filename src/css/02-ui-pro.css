@@ -1305,7 +1305,7 @@ body.mode-collection .form-section {
   }
 
   .collection-stepper-header-run-btn {
-    width: 42px;
-    height: 42px;
-  }
+  width: 2.625rem;
+  height: 2.625rem;
+}
 }
