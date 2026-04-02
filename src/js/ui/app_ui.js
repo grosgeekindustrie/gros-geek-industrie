@@ -232,6 +232,7 @@
 
     resetSingleFlowPanels(mode);
     showView('form');
+    global.refreshCollectionStepper?.();
   }
 
   function selectModeBatch(mode) {

@@ -102,6 +102,11 @@ const {
   getBiblioTagsFormatted,
 } = window.PipelineUIPromptBiblio;
 
+const {
+  initCollectionStepper,
+  refreshCollectionStepper,
+} = window.PipelineUICollectionStepper || {};
+
 // ═══════════════════════════════════════════════════════════
 // PROMPT BUILDER
 // ═══════════════════════════════════════════════════════════
@@ -417,6 +422,8 @@ buildPipeline();
 buildEchellesUI();
 loadFormState();
 attachFormPersistence();
+initCollectionStepper?.();
+refreshCollectionStepper?.();
 loadAllFiles();
 // Restore view after init — immediate, no flash
 if (window._restoreView === 'form' && window._restoreMode) {

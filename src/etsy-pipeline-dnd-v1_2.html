@@ -508,137 +508,183 @@
 <!-- Structure jumelle du mode Tabletop, conservée séparée pour limiter les effets de bord pendant les évolutions. -->
 <div id="ui-col" class="is-hidden">
 
-  <!-- Images pleine largeur -->
-  <div class="form-full-row">
-    <div class="drop-zone" id="dropZone-col" onclick="document.getElementById('imgInput-col').click()">
-      <div class="dz-placeholder" id="dzPlaceholder-col">
-        <div class="di">🖼️</div>
-        <p>Glisse tes images ici ou clique pour choisir</p>
+  <!-- Stepper Collection : surcouche UX qui réorganise les blocs existants sans renommer les champs déjà branchés au pipeline. -->
+  <div class="collection-stepper" data-js="collection-stepper">
+    <div class="collection-stepper-shell">
+      <div class="collection-stepper-header">
+        <div class="collection-stepper-heading">
+          <span class="collection-stepper-kicker">Collection · Formulaire guidé</span>
+          <h2 class="collection-stepper-title" data-js="collection-stepper-title">Images</h2>
+          <p class="collection-stepper-subtitle" data-js="collection-stepper-subtitle">Ajoute les visuels qui serviront à l'analyse du pipeline.</p>
+        </div>
+        <div class="collection-stepper-progress" data-js="collection-stepper-progress" aria-label="Progression du formulaire Collection">
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="0">
+            <span class="collection-stepper-pill-index">01</span>
+            <span class="collection-stepper-pill-label">Images</span>
+          </button>
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="1">
+            <span class="collection-stepper-pill-index">02</span>
+            <span class="collection-stepper-pill-label">Identité</span>
+          </button>
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="2">
+            <span class="collection-stepper-pill-index">03</span>
+            <span class="collection-stepper-pill-label">Échelles</span>
+          </button>
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="3">
+            <span class="collection-stepper-pill-index">04</span>
+            <span class="collection-stepper-pill-label">Détails &amp; contexte</span>
+          </button>
+        </div>
       </div>
-      <div class="thumb-strip" id="thumbStrip-col"></div>
-      <input type="file" id="imgInput-col" class="input-file-hidden" multiple accept="image/*"/>
-    </div>
-  </div>
 
-  <div class="form-2col">
-    <!-- COL GAUCHE : Identité + Medium -->
-    <div class="form-col-left">
-      <div class="form-section">
-        <h2>Identité</h2>
-        <div class="form-grid">
-          <div class="fg">
-            <label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label>
-            <input type="text" id="col-fNomCourt" placeholder="ex: Leon Kennedy"/>
-          </div>
-          <div class="fg">
-            <label>Intitulé complet <span class="fg-hint">→ description</span></label>
-            <input type="text" id="col-fNom" placeholder="ex: Leon Kennedy – Resident Evil Requiem"/>
-          </div>
-          <div class="fg">
-            <label>Univers</label>
-            <input type="text" id="col-fUnivers" placeholder="ex: Resident Evil"/>
-          </div>
-          <div class="fg">
-            <label>Sculpteur</label>
-            <input type="text" id="col-fSculpteur" placeholder="ex: Neko Figurines"/>
-          </div>
-          <div class="fg">
-            <label>Nb pièces</label>
-            <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
-          </div>
-          <div class="fg">
-            <label>Pose</label>
-            <select id="col-fPose">
-              <option value="MUSEUM">Museum</option>
-              <option value="DYNAMIQUE">Dynamique</option>
-            </select>
-          </div>
-          <div class="fg full">
-            <label>License protégée <span class="fg-hint">→ droits d'auteur</span></label>
-            <label class="social-check social-check-offset">
-              <input type="checkbox" id="col-fLicense" onchange="toggleLicense()"/>
-              <span id="col-licenseLabel">Non — nommer librement le personnage et l'univers</span>
-            </label>
-          </div>
-          <div class="fg full">
-            <label>Medium <span class="fg-hint">→ tags &amp; SEO</span></label>
-            <div id="col-fMediumGroup" class="option-chip-group">
-              <label class="social-check"><input type="checkbox" value="anime"/> 📺 Anime</label>
-              <label class="social-check"><input type="checkbox" value="manga"/> 📖 Manga</label>
-              <label class="social-check"><input type="checkbox" value="jeux vidéo"/> 🎮 Jeux vidéo</label>
-              <label class="social-check"><input type="checkbox" value="comics / super-héros"/> 🦸 Comics</label>
-              <label class="social-check"><input type="checkbox" value="cinéma / série"/> 🎬 Cinéma / Série</label>
-              <label class="social-check"><input type="checkbox" value="animation occidentale"/> 🎨 Animation</label>
-              <label class="social-check"><input type="checkbox" value="donjons & dragons / fantasy"/> 🐉 Fantasy</label>
-              <label class="social-check"><input type="checkbox" value="création originale"/> ✨ Original</label>
+      <div class="collection-stepper-body">
+        <!-- Step 1 : la zone images reste isolée pour pouvoir accueillir plus tard des réglages de resize ou d'import sans revoir le parcours. -->
+        <section class="collection-step is-active" data-js="collection-step" data-step-index="0">
+          <div class="form-full-row">
+            <div class="drop-zone collection-stepper-drop-zone" id="dropZone-col" onclick="document.getElementById('imgInput-col').click()">
+              <div class="dz-placeholder" id="dzPlaceholder-col">
+                <div class="di">🖼️</div>
+                <p>Glisse tes images ici ou clique pour choisir</p>
+              </div>
+              <div class="thumb-strip" id="thumbStrip-col"></div>
+              <input type="file" id="imgInput-col" class="input-file-hidden" multiple accept="image/*"/>
             </div>
           </div>
-        </div>
+        </section>
+
+        <section class="collection-step" data-js="collection-step" data-step-index="1">
+          <div class="form-section">
+            <h2>Identité</h2>
+            <div class="form-grid">
+              <div class="fg">
+                <label>Nom court <span class="fg-hint">→ titres &amp; tags</span></label>
+                <input type="text" id="col-fNomCourt" placeholder="ex: Leon Kennedy"/>
+              </div>
+              <div class="fg">
+                <label>Intitulé complet <span class="fg-hint">→ description</span></label>
+                <input type="text" id="col-fNom" placeholder="ex: Leon Kennedy – Resident Evil Requiem"/>
+              </div>
+              <div class="fg">
+                <label>Univers</label>
+                <input type="text" id="col-fUnivers" placeholder="ex: Resident Evil"/>
+              </div>
+              <div class="fg">
+                <label>Sculpteur</label>
+                <input type="text" id="col-fSculpteur" placeholder="ex: Neko Figurines"/>
+              </div>
+              <div class="fg">
+                <label>Nb pièces</label>
+                <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
+              </div>
+              <div class="fg">
+                <label>Pose</label>
+                <select id="col-fPose">
+                  <option value="MUSEUM">Museum</option>
+                  <option value="DYNAMIQUE">Dynamique</option>
+                </select>
+              </div>
+              <div class="fg full">
+                <label>License protégée <span class="fg-hint">→ droits d'auteur</span></label>
+                <label class="social-check social-check-offset">
+                  <input type="checkbox" id="col-fLicense" onchange="toggleLicense()"/>
+                  <span id="col-licenseLabel">Non — nommer librement le personnage et l'univers</span>
+                </label>
+              </div>
+              <div class="fg full">
+                <label>Medium <span class="fg-hint">→ tags &amp; SEO</span></label>
+                <div id="col-fMediumGroup" class="option-chip-group">
+                  <label class="social-check"><input type="checkbox" value="anime"/> 📺 Anime</label>
+                  <label class="social-check"><input type="checkbox" value="manga"/> 📖 Manga</label>
+                  <label class="social-check"><input type="checkbox" value="jeux vidéo"/> 🎮 Jeux vidéo</label>
+                  <label class="social-check"><input type="checkbox" value="comics / super-héros"/> 🦸 Comics</label>
+                  <label class="social-check"><input type="checkbox" value="cinéma / série"/> 🎬 Cinéma / Série</label>
+                  <label class="social-check"><input type="checkbox" value="animation occidentale"/> 🎨 Animation</label>
+                  <label class="social-check"><input type="checkbox" value="donjons & dragons / fantasy"/> 🐉 Fantasy</label>
+                  <label class="social-check"><input type="checkbox" value="création originale"/> ✨ Original</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="collection-step" data-js="collection-step" data-step-index="2">
+          <div class="form-section">
+            <h2>Échelles + dimensions</h2>
+            <div class="echelles-grid" id="echellesGrid-col"></div>
+          </div>
+        </section>
+
+        <section class="collection-step" data-js="collection-step" data-step-index="3">
+          <div class="form-2col collection-step-grid">
+            <div class="form-col-left">
+              <div class="form-section">
+                <h2>Personnage</h2>
+                <div class="form-grid">
+                  <div class="fg full">
+                    <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
+                    <textarea id="col-fParticularites" class="textarea-md" placeholder="ex: 2 designs cheveux long ou court, FX résine translucide rouge en option"></textarea>
+                  </div>
+                  <div class="fg full">
+                    <label>Contexte personnage <span class="fg-hint">→ injecté dans l'analyse Jules</span></label>
+                    <textarea id="col-fContextePerso" class="textarea-lg" placeholder="Résumé du personnage, univers, histoire..."></textarea>
+                  </div>
+                  <div class="fg full">
+                    <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
+                    <div class="field-action-row">
+                      <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
+                      <button class="btn btn-accent" id="fetchBtn-col" onclick="fetchPersonnage()">🔍 Fetch</button>
+                    </div>
+                    <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-col-right">
+              <div class="form-section">
+                <h2>Contexte marché</h2>
+                <div class="form-grid">
+                  <div class="fg full">
+                    <label>Licence / Univers en buzz <span class="fg-hint">→ signal analyse marché</span></label>
+                    <div class="buzz-row">
+                      <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
+                      <span>Licence ou univers récent, potentiel sous-évalué</span>
+                    </div>
+                    <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <details class="form-section form-optional">
+                <summary class="form-optional-toggle">Options avancées <span class="fg-hint">URL · notes</span></summary>
+                <div class="advanced-options-stack">
+                  <div class="fg">
+                    <label>URL boutique Etsy</label>
+                    <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
+                  </div>
+                  <div class="fg">
+                    <label>Notes libres</label>
+                    <textarea id="col-fNotes" placeholder="Infos supplémentaires..."></textarea>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div class="form-section">
-        <h2>Personnage</h2>
-        <div class="form-grid">
-          <div class="fg full">
-            <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
-            <textarea id="col-fParticularites" class="textarea-md" placeholder="ex: 2 designs cheveux long ou court, FX résine translucide rouge en option"></textarea>
-          </div>
-          <div class="fg full">
-            <label>Contexte personnage <span class="fg-hint">→ injecté dans l'analyse Jules</span></label>
-            <textarea id="col-fContextePerso" class="textarea-lg" placeholder="Résumé du personnage, univers, histoire..."></textarea>
-          </div>
-          <div class="fg full">
-            <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
-            <div class="field-action-row">
-              <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
-              <button class="btn btn-accent" id="fetchBtn-col" onclick="fetchPersonnage()">🔍 Fetch</button>
-            </div>
-            <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
-          </div>
+      <div class="collection-stepper-footer">
+        <div class="collection-stepper-footer-meta">
+          <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 4</span>
+          <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
+        </div>
+        <div class="collection-stepper-footer-actions">
+          <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
+          <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>
+          <button class="run-btn collection-stepper-run-btn is-hidden" id="runBtn-col" onclick="startPipeline('col')">▶ Lancer le pipeline</button>
         </div>
       </div>
     </div>
-
-    <!-- COL DROITE : Paramètres + Échelles + Optionnel -->
-    <div class="form-col-right">
-      <div class="form-section">
-        <h2>Buzz marché</h2>
-        <div class="form-grid">
-          <div class="fg full">
-            <label>Licence / Univers en buzz <span class="fg-hint">→ signal analyse marché</span></label>
-            <div class="buzz-row">
-              <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
-              <span>Licence ou univers récent, potentiel sous-évalué</span>
-            </div>
-            <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h2>Échelles + dimensions</h2>
-        <div class="echelles-grid" id="echellesGrid-col"></div>
-      </div>
-
-      <details class="form-section form-optional">
-        <summary class="form-optional-toggle">Options avancées <span class="fg-hint">URL · notes</span></summary>
-        <div class="advanced-options-stack">
-          <div class="fg">
-            <label>URL boutique Etsy</label>
-            <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
-          </div>
-          <div class="fg">
-            <label>Notes libres</label>
-            <textarea id="col-fNotes" placeholder="Infos supplémentaires..."></textarea>
-          </div>
-        </div>
-      </details>
-    </div>
-  </div>
-
-  <div class="form-full-row">
-    <div class="warning-box" id="imgWarning-col">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
-    <button class="run-btn" id="runBtn-col" onclick="startPipeline('col')">▶ Lancer le pipeline</button>
   </div>
 
   <div class="pipeline" id="pipeline-col"></div>
@@ -973,6 +1019,7 @@
 <script src="js/ui/echelles_ui.js"></script>
 <script src="js/ui/images_ui.js"></script>
 <script src="js/ui/forms_ui.js"></script>
+<script src="js/ui/collection_stepper_ui.js"></script>
 <script src="js/ui/cards_ui.js"></script>
 <script src="js/ui/selections_ui.js"></script>
 <script src="js/ui/app_ui.js"></script>
