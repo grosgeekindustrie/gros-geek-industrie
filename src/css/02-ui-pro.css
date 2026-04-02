@@ -1195,3 +1195,23 @@ body.mode-collection .form-section {
     padding: 22px 20px;
   }
 }
+
+.collection-stepper .collection-inline-toggle {
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.collection-stepper .collection-inline-toggle input {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.collection-stepper .collection-inline-toggle span {
+  display: block;
+  line-height: 1.5;
+}
+
+.collection-stepper .collection-stepper-notes-section .collection-notes-textarea {
+  min-height: 120px;
+}

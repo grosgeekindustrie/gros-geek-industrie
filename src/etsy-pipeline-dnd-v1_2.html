@@ -611,70 +611,72 @@
         </section>
 
         <section class="collection-step" data-js="collection-step" data-step-index="3">
-          <div class="form-2col collection-step-grid">
-            <div class="form-col-left">
-              <div class="form-section">
-                <h2>Caractéristiques &amp; signaux</h2>
-                <div class="form-grid">
-                  <div class="fg">
-                    <label>Nb pièces</label>
-                    <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
+          <div class="collection-step-stack">
+            <div class="form-2col collection-step-grid">
+              <div class="form-col-left">
+                <div class="form-section">
+                  <h2>Caractéristiques &amp; signaux</h2>
+                  <div class="form-grid">
+                    <div class="fg">
+                      <label>Nb pièces</label>
+                      <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
+                    </div>
+                    <div class="fg">
+                      <label>Pose</label>
+                      <select id="col-fPose">
+                        <option value="MUSEUM">Museum</option>
+                        <option value="DYNAMIQUE">Dynamique</option>
+                      </select>
+                    </div>
+                    <div class="fg full">
+                      <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
+                      <label class="social-check social-check-offset collection-inline-toggle">
+                        <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
+                        <span>Licence ou univers récent, potentiel sous-évalué</span>
+                      </label>
+                      <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
+                    </div>
+                    <div class="fg full">
+                      <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
+                      <textarea id="col-fParticularites" class="textarea-md" placeholder="ex: 2 designs cheveux long ou court, FX résine translucide rouge en option"></textarea>
+                    </div>
                   </div>
-                  <div class="fg">
-                    <label>Pose</label>
-                    <select id="col-fPose">
-                      <option value="MUSEUM">Museum</option>
-                      <option value="DYNAMIQUE">Dynamique</option>
-                    </select>
-                  </div>
-                  <div class="fg full">
-                    <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
-                    <label class="social-check social-check-offset collection-inline-toggle">
-                      <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
-                      <span>Licence ou univers récent, potentiel sous-évalué</span>
-                    </label>
-                    <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
-                  </div>
-                  <div class="fg full">
-                    <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
-                    <textarea id="col-fParticularites" class="textarea-md" placeholder="ex: 2 designs cheveux long ou court, FX résine translucide rouge en option"></textarea>
+                </div>
+              </div>
+
+              <div class="form-col-right">
+                <div class="form-section">
+                  <h2>Contexte personnage</h2>
+                  <div class="form-grid">
+                    <div class="fg full">
+                      <label>Contexte personnage <span class="fg-hint">→ injecté dans l'analyse Jules</span></label>
+                      <textarea id="col-fContextePerso" class="textarea-lg" placeholder="Résumé du personnage, univers, histoire..."></textarea>
+                    </div>
+                    <div class="fg full">
+                      <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
+                      <div class="field-action-row">
+                        <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
+                        <button class="btn btn-accent" id="fetchBtn-col" onclick="fetchPersonnage()">🔍 Fetch</button>
+                      </div>
+                      <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="form-col-right">
-              <div class="form-section">
-                <h2>Contexte personnage</h2>
-                <div class="form-grid">
-                  <div class="fg full">
-                    <label>Contexte personnage <span class="fg-hint">→ injecté dans l'analyse Jules</span></label>
-                    <textarea id="col-fContextePerso" class="textarea-lg" placeholder="Résumé du personnage, univers, histoire..."></textarea>
-                  </div>
-                  <div class="fg full">
-                    <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
-                    <div class="field-action-row">
-                      <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
-                      <button class="btn btn-accent" id="fetchBtn-col" onclick="fetchPersonnage()">🔍 Fetch</button>
-                    </div>
-                    <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
-                  </div>
+            <div class="form-section collection-stepper-notes-section">
+              <h2>Notes &amp; boutique</h2>
+              <div class="form-grid">
+                <div class="fg full">
+                  <label>URL boutique Etsy</label>
+                  <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
+                </div>
+                <div class="fg full">
+                  <label>Notes libres</label>
+                  <textarea id="col-fNotes" class="textarea-lg collection-notes-textarea" placeholder="Infos supplémentaires..."></textarea>
                 </div>
               </div>
-
-              <details class="form-section form-optional">
-                <summary class="form-optional-toggle">Options avancées <span class="fg-hint">URL · notes</span></summary>
-                <div class="advanced-options-stack">
-                  <div class="fg">
-                    <label>URL boutique Etsy</label>
-                    <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
-                  </div>
-                  <div class="fg">
-                    <label>Notes libres</label>
-                    <textarea id="col-fNotes" placeholder="Infos supplémentaires..."></textarea>
-                  </div>
-                </div>
-              </details>
             </div>
           </div>
         </section>
