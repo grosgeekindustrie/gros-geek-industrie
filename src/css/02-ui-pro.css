@@ -10,29 +10,6 @@
 /* ── Fonts ── */
 
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Clash+Display:wght@500;600;700&display=swap');
-
-:root {
-  --bg: #0a0a0b;
-  --surface: #111114;
-  --surface2: #18181d;
-  --border: #222228;
-  --border2: #2e2e38;
-  --accent: #e8c547;
-  --accent2: #ff6b35;
-  --text: #ededf0;
-  --text2: #8888a0;
-  --muted: #55556a;
-  --success: #3ecf8e;
-  --error: #f5424a;
-  --radius: 10px;
-  --radius-lg: 16px;
-}
-
-body.mode-collection {
-  --accent: #7eb8f7;
-  --accent2: #5a9fd4;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -989,11 +966,6 @@ body.mode-collection .form-section {
   }
 }
 /* ── Collection stepper ── */
-
-:root {
-  --stepper-current: #ff9a57;
-}
-
 .collection-stepper-header {
   background: var(--surface);
   border: 1px solid var(--border);

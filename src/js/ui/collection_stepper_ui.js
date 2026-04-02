@@ -69,11 +69,11 @@
       const stepIndex = Number(button.dataset.stepIndex || 0);
       const isCurrent = stepIndex === uiState.activeStepIndex;
       const isComplete = stepIndex < uiState.activeStepIndex;
-      const isAccessible = stepIndex <= uiState.maxVisitedStepIndex;
+      const isAccessible = true;
 
       button.classList.toggle('is-current', isCurrent);
       button.classList.toggle('is-complete', isComplete);
-      button.disabled = !isAccessible && !isCurrent;
+      button.disabled = !isAccessible;
       button.setAttribute('aria-current', isCurrent ? 'step' : 'false');
     });
   }
@@ -121,8 +121,7 @@
   function goToCollectionStep(stepIndex) {
     const nextStepIndex = clampStepIndex(stepIndex);
 
-    if (nextStepIndex > uiState.maxVisitedStepIndex) return;
-
+    uiState.maxVisitedStepIndex = Math.max(uiState.maxVisitedStepIndex, nextStepIndex);
     uiState.activeStepIndex = nextStepIndex;
     renderCollectionStepper();
   }

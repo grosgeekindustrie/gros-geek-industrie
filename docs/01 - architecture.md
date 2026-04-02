@@ -29,7 +29,7 @@ Le HTML contient également :
 - plusieurs **lightboxes / modales** ;
 - un **mode batch** distinct du flux standard.
 
-Le chargement CSS est désormais découpé en **6 fichiers actifs**. Le chargement JS est également découpé : les modules `src/js/ui/*` sont chargés avant `pipeline-ui.js`, puis `pipeline-api.js` est chargé ensuite. Cette structure confirme que `pipeline-ui.js` doit rester un point d’orchestration et non redevenir un monolithe. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file7turn7file8
+Le chargement CSS est désormais découpé en **7 fichiers actifs**, avec un fichier dédié aux variables globales chargé en premier. Le chargement JS est également découpé : les modules `src/js/ui/*` sont chargés avant `pipeline-ui.js`, puis `pipeline-api.js` est chargé ensuite. Cette structure confirme que `pipeline-ui.js` doit rester un point d’orchestration et non redevenir un monolithe. Les variables CSS globales doivent être centralisées dans **`00-var.css` uniquement** ; elles ne doivent pas être redéclarées dans les autres couches. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file7turn7file8
 
 ---
 
@@ -55,16 +55,17 @@ Le HTML repose encore fortement sur des `id` et des `onclick` inline comme contr
 
 ### 3.2 CSS
 
-Le CSS actif est découpé en 6 couches chargées dans un ordre fixe :
+Le CSS actif est découpé en 7 couches chargées dans un ordre fixe :
 
-1. `01-legacy-base.css`
-2. `02-ui-pro.css`
-3. `03-header-settings.css`
-4. `04-form-layout.css`
-5. `05-library-gpt.css`
-6. `06-inline-merged.css`
+1. `00-var.css`
+2. `01-legacy-base.css`
+3. `02-ui-pro.css`
+4. `03-header-settings.css`
+5. `04-form-layout.css`
+6. `05-library-gpt.css`
+7. `06-inline-merged.css`
 
-Chaque fichier correspond à une couche ou une famille de responsabilités, mais l’ordre de cascade reste important. `06-inline-merged.css` ne doit plus être vu comme une cible finale : c’est un résidu temporaire qui conserve les helpers transverses les plus sensibles après redistribution progressive. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file6
+Chaque fichier correspond à une couche ou une famille de responsabilités, mais l’ordre de cascade reste important. `00-var.css` est le **point d’entrée unique** des variables CSS globales. `06-inline-merged.css` ne doit plus être vu comme une cible finale : c’est un résidu temporaire qui conserve les helpers transverses les plus sensibles après redistribution progressive. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file6
 
 ### 3.3 JS
 
@@ -84,14 +85,15 @@ Le JS est organisé en trois niveaux :
 
 Le HTML charge explicitement les feuilles CSS dans cet ordre :
 
-1. legacy base
-2. UI pro
-3. header / settings
-4. form layout
-5. library / gpt / lightbox helpers
-6. inline merged résiduel
+1. variables globales (`00-var.css`)
+2. legacy base
+3. UI pro
+4. header / settings
+5. form layout
+6. library / gpt / lightbox helpers
+7. inline merged résiduel
 
-Cet ordre est contractuel. Une règle peut sembler redondante d’un fichier à l’autre mais être nécessaire à la cascade finale. Aucun refactor CSS ne doit changer cet ordre sans validation visuelle complète. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file6
+Cet ordre est contractuel. Une règle peut sembler redondante d’un fichier à l’autre mais être nécessaire à la cascade finale. **Les variables CSS globales doivent être déclarées uniquement dans `00-var.css`, chargé en premier**. Aucun autre fichier ne doit contenir un nouveau bloc `:root` global ou une redéclaration opportuniste de tokens déjà centralisés. Aucun refactor CSS ne doit changer cet ordre sans validation visuelle complète. fileciteturn7file0turn7file1turn7file2turn7file3turn7file4turn7file5turn7file6
 
 ### 4.2 Ordre de chargement JS
 
@@ -107,9 +109,30 @@ Cet ordre ne doit pas être modifié sans audit global. fileciteturn7file0
 
 ## 5. Cartographie CSS
 
+### `00-var.css`
+
+Rôle : **source unique des variables CSS globales**.
+
+Contient notamment :
+
+- les custom properties globales de thème ;
+- les couleurs, surfaces, bordures, textes et états globaux ;
+- les rayons, espacements et tokens réutilisables ;
+- les variables spécifiques au stepper ou à une couche transverse si elles doivent être partagées.
+
+Règles impératives :
+
+- **toute nouvelle variable CSS globale doit être déclarée ici, et uniquement ici** ;
+- les autres fichiers CSS consomment les variables, mais ne doivent pas créer de nouveau bloc `:root` global concurrent ;
+- pas de duplication de tokens entre `01-legacy-base.css`, `02-ui-pro.css` et les autres couches ;
+- si une variable devient globale, elle doit être déplacée vers `00-var.css` avant d’être réutilisée ailleurs ;
+- l’ordre de chargement doit toujours laisser `00-var.css` en première position.
+
 ### `01-legacy-base.css`
 
 Rôle : couche historique large.
+
+**Ne doit plus héberger de variables globales** maintenant que `00-var.css` est la source unique des tokens.
 
 Contient notamment :
 
@@ -122,6 +145,8 @@ Règle : ne pas supprimer ou fusionner agressivement cette couche sans vérifier
 ### `02-ui-pro.css`
 
 Rôle : couche visuelle moderne / overrides principaux.
+
+**Ne doit plus redéclarer les variables globales** : il consomme `00-var.css` et se concentre sur les composants / overrides.
 
 Contient notamment :
 
@@ -359,6 +384,36 @@ Règle de transition :
 
 ---
 
+### 9.3 Pratiques modernes impératives pour le nouveau code
+
+À partir de maintenant, les nouvelles contributions doivent suivre une écriture **moderne, lisible et actuelle**, sans réintroduire de patterns old school par habitude.
+
+#### CSS
+
+- variables globales dans `00-var.css` uniquement ;
+- unités en `rem` par défaut pour les dimensions ;
+- sélecteurs ciblés, sans duplication opportuniste de tokens ;
+- pas de bloc `:root` concurrent dans les autres couches ;
+- pas de styles “vite fait” laissés dans une mauvaise couche.
+
+#### JS
+
+- `const` / `let`, jamais `var` ;
+- fonctions fléchées quand approprié ;
+- objets, tableaux et constantes locales déclarés proprement en tête de fonction ;
+- responsabilités courtes et lisibles ;
+- priorité à la clarté sur les astuces compactes ;
+- pas de logique cachée dans des handlers inline pour du nouveau code.
+
+#### HTML
+
+- hooks `data-js` pour le JS nouveau ;
+- classes pour le style ;
+- `id` conservés pour le legacy ou les vrais besoins d’unicité ;
+- structure lisible, stable et commentée quand la zone est sensible.
+
+Règle de fond : **le nouveau code doit tirer la base vers le haut**. On tolère le legacy stable hors périmètre, mais on n’introduit plus volontairement de style ancien dans les nouvelles modifications.
+
 ## 10. Bonnes pratiques de contribution
 
 ### HTML
@@ -367,11 +422,16 @@ Règle de transition :
 - ne pas déplacer une section entière sans vérifier les déplacements DOM opérés par le JS ;
 - conserver une structure lisible par sections commentées ;
 - éviter les blocs compactés sur une seule ligne ;
-- pour les nouvelles features, préparer des hooks `data-js` plutôt que de nouveaux `onclick` inline.
+- pour les nouvelles features, préparer des hooks `data-js` plutôt que de nouveaux `onclick` inline ;
+- pour le nouveau code, privilégier un HTML sémantique, lisible et stable plutôt qu’un assemblage opportuniste centré sur le visuel ;
+- pour les icônes, préférer des SVG intégrés propres plutôt qu’un caractère texte ambigu quand cela améliore la robustesse.
 
 ### CSS
 
-- respecter l’ordre des 6 fichiers actifs ;
+- respecter l’ordre des 7 fichiers actifs ;
+- déclarer les variables CSS globales **uniquement** dans `00-var.css` ;
+- privilégier les **unités `rem`** pour les dimensions, espacements, rayons et tailles de police ;
+- réserver `px` aux cas vraiment justifiés et localisés (hairlines, contraintes externes ou valeurs techniques incompressibles) ;
 - ne pas réintroduire de monolignes ;
 - ne pas utiliser `06-inline-merged.css` comme zone fourre-tout ;
 - ranger une règle dans le fichier correspondant à sa responsabilité dominante ;
@@ -383,9 +443,15 @@ Règle de transition :
 - un module = une responsabilité dominante ;
 - les exports UI passent par `window.PipelineUI*` tant que cette architecture est en place ;
 - toute nouvelle logique conséquente doit être placée dans un module dédié, pas dans un fichier central par facilité ;
-- toute dépendance DOM doit être explicitée dans les commentaires.
+- toute dépendance DOM doit être explicitée dans les commentaires ;
 - pour le nouveau code, éviter de recréer des chemins parallèles quand un contrat partagé existe déjà ;
-- pour le nouveau code, préférer des objets multi-lignes lisibles aux états compactés difficiles à relire.
+- pour le nouveau code, préférer des objets multi-lignes lisibles aux états compactés difficiles à relire ;
+- utiliser `const` par défaut et `let` uniquement en cas de réassignation réelle ; `var` est interdit pour le nouveau code ;
+- préférer les **fonctions fléchées** quand elles clarifient le code, en particulier pour les helpers, callbacks et petits adaptateurs ;
+- déclarer en début de fonction les constantes, objets, tableaux et dépendances locales nécessaires au bloc courant ;
+- privilégier les **early returns** plutôt que des imbrications profondes ;
+- utiliser des noms explicites et un état regroupé proprement, pas des variables jetables ambiguës ;
+- privilégier les API DOM modernes (`closest`, `append`, `prepend`, `replaceChildren`, `insertAdjacentElement`) quand elles améliorent la lisibilité.
 
 ### Patches
 
@@ -414,11 +480,12 @@ Ce ne sont pas des urgences à casser maintenant. Ce sont des points à suivre e
 
 1. Ne pas retransformer `pipeline-ui.js` en monolithe.
 2. Respecter l’ordre de cascade CSS existant.
-3. Pour les nouvelles features : **JS via `data-js`, CSS via classes**.
+3. Pour les nouvelles features : **JS via `data-js`, CSS via classes, variables globales via `00-var.css`**.
 4. Ne pas casser les hooks legacy sans audit.
 5. Tout changement structurel doit rester compréhensible par un autre agent.
 6. Préférer les petits patches traçables aux gros refactors “ambitieux”.
 7. Toujours laisser le code plus lisible qu’avant.
+8. Pour le nouveau code, utiliser des pratiques modernes actuelles ; ne pas réintroduire du old school par défaut.
 
 ---
 

@@ -8,27 +8,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
-
-:root {
-  --bg:#0f0f0f;
-  --surface:#1a1a1a;
-  --border:#2a2a2a;
-  --accent:#e8c547;
-  --accent2:#ff6b35;
-  --text:#e8e8e8;
-  --muted:#666;
-  --success:#4caf7d;
-  --error:#ff4757;
-}
-
-body.mode-collection {
-  --bg:#0d1117;
-  --surface:#161b22;
-  --border:#21262d;
-  --accent:#7eb8f7;
-  --accent2:#5a9fd4;
-}
-
 .mode-switcher {
   display:flex;
   gap:8px;
