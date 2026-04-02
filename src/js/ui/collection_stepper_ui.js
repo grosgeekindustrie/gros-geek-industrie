@@ -90,6 +90,7 @@
     const nextButton = getNextButton();
     const runButton = getRunButton();
     const warningBox = getWarningBox();
+    const lastStep = isLastStep();
 
     if (prevButton) {
       prevButton.disabled = uiState.activeStepIndex === 0;
@@ -97,9 +98,17 @@
       prevButton.setAttribute('aria-disabled', prevButton.disabled ? 'true' : 'false');
     }
 
-    if (nextButton) nextButton.classList.toggle('is-hidden', isLastStep());
-    if (runButton) runButton.classList.toggle('is-hidden', !isLastStep());
-    if (warningBox) warningBox.classList.toggle('is-hidden', !isLastStep());
+    if (nextButton) {
+      nextButton.classList.toggle('is-hidden', lastStep);
+      nextButton.setAttribute('aria-hidden', lastStep ? 'true' : 'false');
+    }
+
+    if (runButton) {
+      runButton.classList.toggle('is-hidden', !lastStep);
+      runButton.setAttribute('aria-hidden', lastStep ? 'false' : 'true');
+    }
+
+    if (warningBox) warningBox.classList.toggle('is-hidden', !lastStep);
   }
 
   function renderCollectionStepper() {

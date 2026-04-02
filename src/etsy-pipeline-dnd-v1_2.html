@@ -512,10 +512,19 @@
   <div class="collection-stepper" data-js="collection-stepper">
     <div class="collection-stepper-shell">
       <div class="collection-stepper-header">
-        <div class="collection-stepper-heading">
-          <span class="collection-stepper-kicker">Collection · Formulaire guidé</span>
-          <h2 class="collection-stepper-title" data-js="collection-stepper-title">Images</h2>
-          <p class="collection-stepper-subtitle" data-js="collection-stepper-subtitle">Ajoute les visuels qui serviront à l'analyse du pipeline.</p>
+        <div class="collection-stepper-header-top">
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Collection · Formulaire guidé</span>
+            <h2 class="collection-stepper-title" data-js="collection-stepper-title">Images</h2>
+            <p class="collection-stepper-subtitle" data-js="collection-stepper-subtitle">Ajoute les visuels qui serviront à l'analyse du pipeline.</p>
+          </div>
+          <div class="collection-stepper-header-actions">
+            <button class="run-btn collection-stepper-run-btn collection-stepper-header-run-btn" type="button" id="runBtn-col" onclick="startPipeline('col')" title="Lancer le pipeline" aria-label="Lancer le pipeline" aria-hidden="false">
+  <svg class="collection-stepper-header-run-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M8 5.14v13.72L19 12 8 5.14Z"></path>
+  </svg>
+</button>
+          </div>
         </div>
         <div class="collection-stepper-progress" data-js="collection-stepper-progress" aria-label="Progression du formulaire Collection">
           <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="0">
@@ -554,14 +563,16 @@
         <section class="collection-step" data-js="collection-step" data-step-index="1">
           <div class="form-section">
             <h2>Identité</h2>
-            <div class="form-grid">
-              <div class="fg full">
-                <label>Licence sensible <span class="fg-hint">→ ne pas transmettre nom &amp; univers</span></label>
+            <div class="collection-stepper-inline-fields">
+              <div class="collection-stepper-inline-field">
+                <span class="collection-stepper-inline-label">Licence sensible <span class="fg-hint">→ ne pas transmettre nom &amp; univers</span></span>
                 <label class="social-check social-check-offset collection-inline-toggle">
                   <input type="checkbox" id="col-fLicense" onchange="toggleLicense()"/>
                   <span id="col-licenseLabel">Non — les agents peuvent citer le personnage et l'univers</span>
                 </label>
               </div>
+            </div>
+            <div class="form-grid">
               <div class="fg">
                 <label>Type de pièce</label>
                 <select id="col-fType">
@@ -617,6 +628,14 @@
                 <div class="form-section">
                   <h2>Caractéristiques &amp; signaux</h2>
                   <div class="form-grid">
+                    <div class="fg full">
+                      <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
+                      <label class="social-check social-check-offset collection-inline-toggle">
+                        <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
+                        <span>Licence ou univers récent, potentiel sous-évalué</span>
+                      </label>
+                      <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
+                    </div>
                     <div class="fg">
                       <label>Nb pièces</label>
                       <input type="text" id="col-fPieces" placeholder="ex: 22 pcs"/>
@@ -627,14 +646,6 @@
                         <option value="MUSEUM">Museum</option>
                         <option value="DYNAMIQUE">Dynamique</option>
                       </select>
-                    </div>
-                    <div class="fg full">
-                      <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
-                      <label class="social-check social-check-offset collection-inline-toggle">
-                        <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
-                        <span>Licence ou univers récent, potentiel sous-évalué</span>
-                      </label>
-                      <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
                     </div>
                     <div class="fg full">
                       <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
@@ -683,15 +694,12 @@
       </div>
 
       <div class="collection-stepper-footer">
+        <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
           <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 4</span>
           <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
         </div>
-        <div class="collection-stepper-footer-actions">
-          <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
-          <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>
-          <button class="run-btn collection-stepper-run-btn is-hidden" id="runBtn-col" onclick="startPipeline('col')">▶ Lancer le pipeline</button>
-        </div>
+        <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>
       </div>
     </div>
   </div>

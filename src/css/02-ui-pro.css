@@ -1196,7 +1196,85 @@ body.mode-collection .form-section {
   }
 }
 
+.collection-stepper-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.collection-stepper-header-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.collection-stepper-header-run-btn {
+  min-width: 0;
+  width: 2.875rem;
+  height: 2.875rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--stepper-current);
+  color: var(--text);
+  line-height: 0;
+  box-shadow: 0 0 0 0.0625rem rgba(255, 154, 87, 0.2);
+}
+
+.collection-stepper-header-run-btn:hover {
+  filter: brightness(1.06);
+  transform: scale(1.1);
+}
+
+.collection-stepper-header-run-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+  fill: currentColor;
+}
+
+.collection-stepper-header-run-btn .collection-stepper-run-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.collection-stepper-header-run-btn.is-hidden {
+  display: none;
+}
+
+.collection-stepper-inline-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.collection-stepper-inline-field {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.collection-stepper-inline-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+}
+
 .collection-stepper .collection-inline-toggle {
+  display: inline-flex;
+  width: auto;
+  max-width: min(100%, 520px);
   align-items: flex-start;
   gap: 8px;
   padding: 6px 10px;
@@ -1214,4 +1292,20 @@ body.mode-collection .form-section {
 
 .collection-stepper .collection-stepper-notes-section .collection-notes-textarea {
   min-height: 120px;
+}
+
+@media (max-width: 720px) {
+  .collection-stepper-header-top {
+    flex-direction: column;
+  }
+
+  .collection-stepper-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .collection-stepper-header-run-btn {
+    width: 42px;
+    height: 42px;
+  }
 }
