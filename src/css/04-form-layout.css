@@ -678,6 +678,70 @@
   color: var(--text);
 }
 
+.collection-solo-status {
+  display: flex;
+  align-items: center;
+  min-height: 2.8rem;
+  padding: 0.75rem 1rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.collection-solo-status-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+
+.collection-solo-status.is-state-running {
+  border-color: rgba(126, 184, 247, 0.35);
+  background: rgba(126, 184, 247, 0.06);
+}
+
+.collection-solo-status.is-state-running .collection-solo-status-text,
+.collection-solo-tab.is-state-running .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-running,
+.collection-solo-tab.is-state-available .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-available,
+.collection-solo-tab.is-state-generated .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-generated,
+.collection-solo-tab.is-state-paused .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-paused {
+  color: var(--accent);
+}
+
+.collection-solo-status.is-state-paused {
+  border-color: rgba(232, 197, 71, 0.35);
+  background: rgba(232, 197, 71, 0.06);
+}
+
+.collection-solo-status.is-state-error,
+.collection-solo-status.is-state-stopped {
+  border-color: rgba(245, 66, 74, 0.35);
+  background: rgba(245, 66, 74, 0.06);
+}
+
+.collection-solo-status.is-state-error .collection-solo-status-text,
+.collection-solo-status.is-state-stopped .collection-solo-status-text,
+.collection-solo-tab.is-state-error .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-error,
+.collection-solo-tab.is-state-stopped .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-stopped {
+  color: var(--error);
+}
+
+.collection-solo-status.is-state-done {
+  border-color: rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.06);
+}
+
+.collection-solo-status.is-state-done .collection-solo-status-text,
+.collection-solo-tab.is-state-done .collection-solo-tab-state,
+.collection-solo-tab-state.is-state-done {
+  color: var(--success);
+}
+
 .collection-solo-tab-panel[hidden] {
   display: none;
 }

@@ -41,6 +41,7 @@
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
+    refreshCollectionTabs();
   }
   function syncHeaderBackAction() {
     const backBtn = document.getElementById('appBackBtn');
@@ -291,6 +292,8 @@
   }
 
   function buildPipelineTimeline(metaLabel = '') {
+    if (getCurrentMode() === 'collection' && currentView !== 'pipeline') return;
+
     const timeline = document.getElementById('pipelineTimeline');
     if (!timeline) return;
 
@@ -309,6 +312,8 @@
   }
 
   function updatePipelineTimeline(agentId, status) {
+    if (getCurrentMode() === 'collection' && currentView !== 'pipeline') return;
+
     const dot = document.getElementById(`tl-dot-${agentId}`);
     const step = document.getElementById(`tl-step-${agentId}`);
     if (!dot || !step) return;
