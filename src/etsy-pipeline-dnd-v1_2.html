@@ -131,6 +131,21 @@
 <!-- Contrat DOM : ids et onclick legacy encore utilisés par le runtime actuel ; ne pas renommer sans audit JS complet. -->
 <div id="ui-tt">
 
+  <!-- Step 1 solo V2 : structure solo réordonnée sans réinventer la logique métier existante. -->
+  <!-- Clean futur : si le solo est validé, view-pipeline pourra être limité au batch / legacy. -->
+  <div class="solo-flow" data-solo-flow="tt" data-solo-status="editing" data-solo-open-block="form">
+    <section class="solo-block solo-block-form" data-solo-block="form">
+      <button class="solo-block-header" type="button" data-solo-toggle="form">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Formulaire</span>
+          <span class="solo-block-meta" data-solo-meta="form">Édition disponible</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="form">Ouvert</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="form">
+
+
   <div class="form-full-row">
     <div class="drop-zone" id="dropZone-tt" onclick="document.getElementById('imgInput-tt').click()">
       <div class="dz-placeholder" id="dzPlaceholder-tt">
@@ -292,9 +307,34 @@
     <div class="warning-box" id="imgWarning-tt">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
     <button class="run-btn" id="runBtn-tt" onclick="startPipeline('tt')">▶ Lancer le pipeline</button>
   </div>
+      </div>
+    </section>
 
-  <div class="pipeline" id="pipeline-tt"></div>
+    <section class="solo-block solo-block-pipeline" data-solo-block="pipeline">
+      <button class="solo-block-header" type="button" data-solo-toggle="pipeline">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Pipeline</span>
+          <span class="solo-block-meta" data-solo-meta="pipeline">En attente</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="pipeline">Inactif</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="pipeline">
+        <div class="pipeline" id="pipeline-tt"></div>
 
+      </div>
+    </section>
+
+    <section class="solo-block solo-block-result" data-solo-block="result">
+      <button class="solo-block-header" type="button" data-solo-toggle="result">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Résultat</span>
+          <span class="solo-block-meta" data-solo-meta="result">Non généré</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="result">Indisponible</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="result">
   <div id="finalOutput-tt" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Etsy — Output final</span>
@@ -332,7 +372,19 @@
       <pre class="fs-content" id="fc-alt-tt"></pre>
     </div>
   </div>
+      </div>
+    </section>
 
+    <section class="solo-block solo-block-social" data-solo-block="social">
+      <button class="solo-block-header" type="button" data-solo-toggle="social">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Réseaux sociaux</span>
+          <span class="solo-block-meta" data-solo-meta="social">Non générés</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="social">Indisponible</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="social">
   <!-- RÉSEAUX SOCIAUX TABLETOP -->
   <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt">
     <div class="section-header-inline">
@@ -503,11 +555,31 @@
     </div>
   </div>
 
+
+      </div>
+    </section>
+  </div>
+
 </div><!-- /ui-tt -->
 
 <!-- ═══════════════════════════════════════ BLOC COLLECTION ═══════════════════════════════════════ -->
 <!-- Structure jumelle du mode Tabletop, conservée séparée pour limiter les effets de bord pendant les évolutions. -->
 <div id="ui-col" class="is-hidden">
+
+  <!-- Step 1 solo V2 : la fiche Collection reste dans view-form et réutilise les blocs existants. -->
+  <!-- Clean futur : si le solo est validé, la bascule view-form / view-pipeline pourra être réduite côté legacy. -->
+  <div class="solo-flow" data-solo-flow="col" data-solo-status="editing" data-solo-open-block="form">
+    <section class="solo-block solo-block-form" data-solo-block="form">
+      <button class="solo-block-header" type="button" data-solo-toggle="form">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Formulaire</span>
+          <span class="solo-block-meta" data-solo-meta="form">Step 1 · Images · Édition disponible</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="form">Ouvert</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="form">
+
 
   <!-- Stepper Collection : surcouche UX qui réorganise les blocs existants sans renommer les champs déjà branchés au pipeline. -->
   <div class="collection-stepper" data-js="collection-stepper">
@@ -704,9 +776,34 @@
       </div>
     </div>
   </div>
+      </div>
+    </section>
 
-  <div class="pipeline" id="pipeline-col"></div>
+    <section class="solo-block solo-block-pipeline" data-solo-block="pipeline">
+      <button class="solo-block-header" type="button" data-solo-toggle="pipeline">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Pipeline</span>
+          <span class="solo-block-meta" data-solo-meta="pipeline">En attente</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="pipeline">Inactif</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="pipeline">
+        <div class="pipeline" id="pipeline-col"></div>
 
+      </div>
+    </section>
+
+    <section class="solo-block solo-block-result" data-solo-block="result">
+      <button class="solo-block-header" type="button" data-solo-toggle="result">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Résultat</span>
+          <span class="solo-block-meta" data-solo-meta="result">Non généré</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="result">Indisponible</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="result">
   <div id="finalOutput-col" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Collection — Output final</span>
@@ -744,7 +841,19 @@
       <pre class="fs-content" id="fc-alt-col"></pre>
     </div>
   </div>
+      </div>
+    </section>
 
+    <section class="solo-block solo-block-social" data-solo-block="social">
+      <button class="solo-block-header" type="button" data-solo-toggle="social">
+        <span class="solo-block-heading">
+          <span class="solo-block-title">Réseaux sociaux</span>
+          <span class="solo-block-meta" data-solo-meta="social">Non générés</span>
+        </span>
+        <span class="solo-block-state" data-solo-state="social">Indisponible</span>
+        <span class="solo-block-chevron" aria-hidden="true">▾</span>
+      </button>
+      <div class="solo-block-body" data-solo-body="social">
   <!-- RÉSEAUX SOCIAUX COLLECTION -->
   <div class="form-section social-section social-section-col is-hidden" id="socialSection-col">
     <div class="section-header-inline">
@@ -913,6 +1022,11 @@
         <pre class="fs-content" id="sc-pinterest-a-col"></pre>
       </div>
     </div>
+  </div>
+
+
+      </div>
+    </section>
   </div>
 
 </div><!-- /ui-col -->

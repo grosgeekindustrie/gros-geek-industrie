@@ -143,6 +143,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
   if (ctxEl) ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u,'').trim();
   out.className = 'output-box'; out.textContent = '';
   if (stopBtn) stopBtn.style.display = 'inline-flex';
+  window.refreshSoloFlow?.(p);
   if (!['analyse','alt','marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
   if (agent.hasSelection && !isRetry) {
     state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
@@ -186,12 +187,14 @@ async function runAgent(agent, correction = '', isRetry = false) {
     } else {
       stat.className = 'agent-status s-done'; stat.textContent = '✓ done';
     }
+    window.refreshSoloFlow?.(p);
     document.getElementById(`${p}-br-${agent.id}`).disabled = false;
     document.getElementById(`${p}-bs-${agent.id}`).disabled = false;
     document.getElementById(`${p}-bp-${agent.id}`).disabled = false;
     if (agent.id === 'tags') { const bex = document.getElementById(`${p}-bexplore-tags`); if (bex) bex.disabled = false; }
     if (agent.id === 'titre') { const bex = document.getElementById(`${p}-bexplore-titre`); if (bex) bex.disabled = false; }
     if (stopBtn) stopBtn.style.display = 'none';
+    window.refreshSoloFlow?.(p);
     return true;
   } catch (err) {
     out.textContent = `❌ ${err.message}`;
@@ -201,6 +204,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     stat.textContent = err.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
     document.getElementById(`${p}-br-${agent.id}`).disabled = false;
     if (stopBtn) stopBtn.style.display = 'none';
+    window.refreshSoloFlow?.(p);
     return false;
   }
 }
@@ -232,31 +236,13 @@ async function startPipeline(p) {
   const btn = document.getElementById(`runBtn-${p}`);
   btn.disabled = true; btn.textContent = '⟳ Pipeline en cours...';
 
-  // ── Transition vers vue pipeline ──
-  const pipelineBody = document.getElementById('pipelineViewBody');
-  if (pipelineBody) {
-    const pipelineEl = document.getElementById(`pipeline-${p}`);
-    const finalEl = document.getElementById(`finalOutput-${p}`);
-    if (pipelineEl) { pipelineEl.style.display = ''; pipelineBody.appendChild(pipelineEl); }
-    if (finalEl) { pipelineBody.appendChild(finalEl); }
-    // Réseaux sociaux aussi
-    const socialSectionEl = document.getElementById(`socialSection-${p}`);
-    if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
-    const socialOutputEl = document.getElementById(`socialOutput-${p}`);
-    if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
-  }
-  const titleEl = document.getElementById('pipelineViewTitle');
-  if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
-
-  const timeline = document.getElementById('pipelineTimeline');
-  if (timeline) timeline.style.display = '';
-
-  // Update header context for pipeline view
-  const ctx = document.getElementById('headerContext');
-  if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
+  // Step 1 solo V2 : le flow unitaire reste dans view-form.
+  // Clean futur : view-pipeline continue d'exister pour le batch / legacy tant que le
+  // remplacement global n'a pas été consolidé.
   buildPipelineTimeline();
   window.setPipelineExecutionActive?.(true);
-  showView('pipeline');
+  window.setSoloFlowState?.(p, 'running', 'pipeline');
+  showView('form');
   state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
   getPipelineAgents().forEach(a => {
@@ -272,15 +258,29 @@ async function startPipeline(p) {
     const bp = document.getElementById(`${p}-bp-${a.id}`); if (bp) bp.disabled = true;
     const ob = document.getElementById(`orch-badge-${a.id}`); if (ob) ob.remove();
   });
+  let soloFlowStatus = 'done';
+
   for (const agent of getPipelineAgents()) {
     const ok = await runAgent(agent);
-    if (!ok) break;
-    if (agent.hasSelection) break;
-      // Mode collection — pipeline limité à 3 agents pendant la phase de test
+    if (!ok) {
+      soloFlowStatus = 'error';
+      break;
+    }
+
+    const statText = document.getElementById(`${p}-stat-${agent.id}`)?.textContent?.toLowerCase() || '';
+    if (statText.includes('sélection requise')) {
+      soloFlowStatus = 'paused';
+      break;
+    }
+
+    // Mode collection — pipeline limité à 3 agents pendant la phase de test
     if (currentMode === 'collection' && agent.id === 'description') break;
   }
+
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   window.setPipelineExecutionActive?.(false);
+  window.setSoloFlowState?.(p, soloFlowStatus, soloFlowStatus === 'done' ? 'result' : 'pipeline');
+  window.refreshSoloFlow?.(p);
 }
 
 
@@ -311,6 +311,7 @@ async function runLeoAgent(p) {
   if (out)  { out.className = 'output-box'; out.textContent = ''; }
   if (btn)  btn.disabled = true;
   if (stopBtn) stopBtn.style.display = 'inline-flex';
+  window.setSoloFlowOpenBlock?.(p, 'social');
   toggleCard(`social-${p}`);
   const correction = document.getElementById(`cor-social-${p}`)?.value || '';
   const ctx = buildCtx('social');
@@ -326,6 +327,7 @@ async function runLeoAgent(p) {
     if (stat) { stat.className = 'agent-status s-done'; stat.textContent = '✓ done'; }
     showAgentCost('social', usage);
     displaySocialOutput(result, p);
+    window.refreshSoloFlow?.(p);
     showToast('Posts générés ✓');
   } catch (err) {
     if (out) out.textContent = `❌ ${err.message}`;
@@ -353,6 +355,7 @@ async function runCamilleAgent(p) {
   if (out)  { out.className = 'output-box'; out.textContent = ''; }
   if (btn)  btn.disabled = true;
   if (stopBtn) stopBtn.style.display = 'inline-flex';
+  window.setSoloFlowOpenBlock?.(p, 'social');
   toggleCard(`camille-${p}`);
   const correction = document.getElementById(`cor-camille-${p}`)?.value || '';
   const ctx = buildCtx('camille');
@@ -367,6 +370,7 @@ async function runCamilleAgent(p) {
     if (stat) { stat.className = 'agent-status s-done'; stat.textContent = '✓ done'; }
     showAgentCost('camille', usage);
     displayCamilleOutput(result, p);
+    window.refreshSoloFlow?.(p);
     showToast('Pinterest généré ✓');
   } catch (err) {
     if (out) out.textContent = `❌ ${err.message}`;
@@ -422,6 +426,7 @@ function displaySocialOutput(result, p) {
       const dc = document.getElementById(`sc-pinterest-d-${p}`); if (dc) dc.textContent = sections.pinterest;
     }
   }
+  window.refreshSoloFlow?.(p);
 }
 
 function displayCamilleOutput(result, p) { displaySocialOutput(result, p); }

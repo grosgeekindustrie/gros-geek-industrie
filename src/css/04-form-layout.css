@@ -599,3 +599,176 @@
     justify-self: stretch;
   }
 }
+
+
+/* ═══ SOLO FLOW V2 — STEP 1 ═══ */
+/*
+  Structure solo : réordonne les blocs déjà présents sans toucher à la logique image.
+  Clean futur : si la vue solo est validée, cette couche devient la base pour réduire le
+  reliquat view-form / view-pipeline encore utilisé par le batch / legacy.
+*/
+
+.solo-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.solo-block {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 0.0625rem solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.solo-block.is-open {
+  border-color: rgba(126, 184, 247, 0.28);
+}
+
+body:not(.mode-collection) .solo-block.is-open {
+  border-color: rgba(232, 197, 71, 0.28);
+}
+
+.solo-block.is-unavailable {
+  opacity: 0.82;
+}
+
+.solo-block-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.solo-block-header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.solo-block-header.is-unavailable {
+  cursor: default;
+}
+
+.solo-block-header.is-unavailable:hover {
+  background: transparent;
+}
+
+.solo-block-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.solo-block-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.12rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.solo-block-meta {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.solo-block-state {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  border: 0.0625rem solid var(--border);
+  background: var(--bg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+.solo-block.is-open .solo-block-state {
+  color: var(--accent);
+  border-color: rgba(126, 184, 247, 0.28);
+}
+
+body:not(.mode-collection) .solo-block.is-open .solo-block-state {
+  border-color: rgba(232, 197, 71, 0.28);
+}
+
+.solo-block-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.16s ease;
+}
+
+.solo-block.is-open .solo-block-chevron {
+  transform: rotate(180deg);
+}
+
+.solo-block-body {
+  padding: 0 1.125rem 1.125rem;
+  border-top: 0.0625rem solid var(--border);
+}
+
+.solo-block-body[hidden] {
+  display: none;
+}
+
+.solo-block-body > :first-child {
+  margin-top: 1rem;
+}
+
+.solo-block-body > :first-child.form-section,
+.solo-block-body > :first-child.form-full-row,
+.solo-block-body > :first-child.collection-stepper,
+.solo-block-body > :first-child.pipeline,
+.solo-block-body > :first-child.final-output-panel,
+.solo-block-body > :first-child.social-section,
+.solo-block-body > :first-child.reseaux-only-section,
+.solo-block-body > :first-child.social-output-panel {
+  margin-top: 0;
+}
+
+.solo-flow[data-solo-status="running"] [data-solo-block="form"] .solo-block-state {
+  color: var(--error);
+}
+
+.solo-flow[data-solo-status="paused"] [data-solo-block="pipeline"] .solo-block-state {
+  color: var(--accent2);
+}
+
+.solo-flow[data-solo-status="done"] [data-solo-block="result"] .solo-block-state,
+.solo-flow[data-solo-status="done"] [data-solo-block="social"] .solo-block-state {
+  color: var(--success);
+}
+
+.solo-flow[data-solo-status="error"] [data-solo-block="pipeline"] .solo-block-state {
+  color: var(--error);
+}
+
+@media (max-width: 48rem) {
+  .solo-block-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .solo-block-state {
+    margin-left: 0;
+  }
+
+  .solo-block-chevron {
+    margin-left: auto;
+  }
+}

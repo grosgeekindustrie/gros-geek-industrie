@@ -196,18 +196,235 @@
     }
   }
 
+
+  const SOLO_BLOCK_IDS = ['form', 'pipeline', 'result', 'social'];
+
+  function getSoloPrefix(mode = getCurrentMode()) {
+    return mode === 'collection' ? 'col' : 'tt';
+  }
+
+  function getSoloFlowRoot(prefix) {
+    return document.querySelector(`[data-solo-flow="${prefix}"]`);
+  }
+
+  function isSoloElementVisible(element) {
+    return !!element && window.getComputedStyle(element).display !== 'none';
+  }
+
+  function hasSoloResult(prefix) {
+    return isSoloElementVisible(document.getElementById(`finalOutput-${prefix}`));
+  }
+
+  function hasSoloSocial(prefix) {
+    return [
+      document.getElementById(`socialSection-${prefix}`),
+      document.getElementById(`socialOutput-${prefix}`),
+      document.getElementById(`reseauxOnlySection-${prefix}`),
+    ].some(isSoloElementVisible);
+  }
+
+  function getCollectionSoloFormMeta(status) {
+    const activeStep = document.querySelector('#ui-col .collection-step.is-active');
+    const stepIndex = Number(activeStep?.dataset.stepIndex || 0) + 1;
+    const stepTitle = document.querySelector('[data-js="collection-stepper-title"]')?.textContent?.trim() || 'Images';
+    const editionLabel = status === 'running' ? 'Édition verrouillée' : 'Édition disponible';
+
+    return `Step ${stepIndex} · ${stepTitle} · ${editionLabel}`;
+  }
+
+  function getSoloBlockAvailability(prefix, status) {
+    return {
+      form: true,
+      pipeline: status !== 'editing',
+      result: hasSoloResult(prefix) || status === 'done',
+      social: hasSoloSocial(prefix) || status === 'done',
+    };
+  }
+
+  function getSoloPipelineMeta(prefix, status) {
+    if (status === 'editing') return 'En attente';
+
+    const agents = getAgents();
+    const total = agents.length;
+    let doneCount = 0;
+    let selectionRequired = false;
+
+    agents.forEach((agent) => {
+      const statText = document.getElementById(`${prefix}-stat-${agent.id}`)?.textContent?.trim().toLowerCase() || '';
+      if (statText.includes('done') || statText.includes('✓')) doneCount += 1;
+      if (statText.includes('sélection requise')) selectionRequired = true;
+    });
+
+    if (status === 'running') return total ? `En cours · ${doneCount}/${total}` : 'En cours';
+    if (status === 'paused') return selectionRequired ? 'En pause · choix requis' : 'En pause';
+    if (status === 'error') return 'Erreur';
+    if (status === 'done') return 'Terminé';
+
+    return 'En attente';
+  }
+
+  function getSoloBlockMeta(prefix, blockId, status) {
+    if (blockId === 'form') {
+      return prefix === 'col'
+        ? getCollectionSoloFormMeta(status)
+        : (status === 'running' ? 'Édition verrouillée' : 'Édition disponible');
+    }
+
+    if (blockId === 'pipeline') return getSoloPipelineMeta(prefix, status);
+    if (blockId === 'result') return hasSoloResult(prefix) ? 'Titre, tags, description, Alt générés' : 'Non généré';
+
+    const socialOutput = document.getElementById(`socialOutput-${prefix}`);
+    if (isSoloElementVisible(socialOutput)) return 'Générés';
+    if (hasSoloSocial(prefix)) return 'Disponibles';
+    return 'Non générés';
+  }
+
+  function getSoloBlockStateLabel(prefix, blockId, status, isOpen, availability) {
+    if (blockId === 'form') {
+      if (status === 'running') return 'Verrouillé';
+      return isOpen ? 'Ouvert' : 'Replié';
+    }
+
+    if (!availability[blockId]) return 'Indisponible';
+
+    if (blockId === 'pipeline') {
+      if (status === 'running') return 'En cours';
+      if (status === 'paused') return 'En pause';
+      if (status === 'error') return 'Erreur';
+      return isOpen ? 'Ouvert' : 'Replié';
+    }
+
+    return isOpen ? 'Ouvert' : 'Disponible';
+  }
+
+  function getDefaultSoloOpenBlock(prefix, status, availability) {
+    if (status === 'running' || status === 'paused' || status === 'error') return 'pipeline';
+    if (status === 'done') {
+      if (availability.result) return 'result';
+      if (availability.social) return 'social';
+      if (availability.pipeline) return 'pipeline';
+    }
+
+    return 'form';
+  }
+
+  function refreshSoloFlow(prefix) {
+    const flowRoot = getSoloFlowRoot(prefix);
+    if (!flowRoot) return;
+
+    let status = flowRoot.dataset.soloStatus || 'editing';
+    if ((status === 'running' || status === 'paused') && hasSoloResult(prefix) && !isPipelineExecutionActive()) {
+      status = 'done';
+      flowRoot.dataset.soloStatus = status;
+    }
+
+    const availability = getSoloBlockAvailability(prefix, status);
+    let openBlock = flowRoot.dataset.soloOpenBlock || getDefaultSoloOpenBlock(prefix, status, availability);
+
+    if (!availability[openBlock] || (status === 'running' && openBlock === 'form')) {
+      openBlock = getDefaultSoloOpenBlock(prefix, status, availability);
+    }
+
+    flowRoot.dataset.soloOpenBlock = openBlock;
+
+    SOLO_BLOCK_IDS.forEach((blockId) => {
+      const section = flowRoot.querySelector(`[data-solo-block="${blockId}"]`);
+      const header = flowRoot.querySelector(`[data-solo-toggle="${blockId}"]`);
+      const body = flowRoot.querySelector(`[data-solo-body="${blockId}"]`);
+      const meta = flowRoot.querySelector(`[data-solo-meta="${blockId}"]`);
+      const state = flowRoot.querySelector(`[data-solo-state="${blockId}"]`);
+      const isOpen = blockId === openBlock;
+      const isAvailable = availability[blockId];
+
+      if (!section || !header || !body || !meta || !state) return;
+
+      section.classList.toggle('is-open', isOpen);
+      section.classList.toggle('is-unavailable', !isAvailable);
+      header.classList.toggle('is-unavailable', !isAvailable);
+      header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      header.setAttribute('aria-disabled', isAvailable ? 'false' : 'true');
+      body.hidden = !isOpen;
+      meta.textContent = getSoloBlockMeta(prefix, blockId, status);
+      state.textContent = getSoloBlockStateLabel(prefix, blockId, status, isOpen, availability);
+    });
+  }
+
+  function setSoloFlowState(prefix, status, openBlock = '') {
+    const flowRoot = getSoloFlowRoot(prefix);
+    if (!flowRoot) return;
+
+    flowRoot.dataset.soloStatus = status;
+    if (openBlock) flowRoot.dataset.soloOpenBlock = openBlock;
+    refreshSoloFlow(prefix);
+  }
+
+  function setSoloFlowOpenBlock(prefix, blockId) {
+    const flowRoot = getSoloFlowRoot(prefix);
+    if (!flowRoot) return;
+
+    const status = flowRoot.dataset.soloStatus || 'editing';
+    if (status === 'running' && blockId === 'form') return;
+
+    flowRoot.dataset.soloOpenBlock = blockId;
+    refreshSoloFlow(prefix);
+  }
+
+  function bindSoloFlow(prefix) {
+    const flowRoot = getSoloFlowRoot(prefix);
+    if (!flowRoot || flowRoot.dataset.soloBound === 'true') return;
+
+    flowRoot.addEventListener('click', (event) => {
+      const toggle = event.target.closest('[data-solo-toggle]');
+      if (!toggle) return;
+
+      const blockId = toggle.dataset.soloToggle;
+      const status = flowRoot.dataset.soloStatus || 'editing';
+      const availability = getSoloBlockAvailability(prefix, status);
+
+      if (!availability[blockId]) return;
+      if (status === 'running' && blockId === 'form') return;
+
+      setSoloFlowOpenBlock(prefix, blockId);
+    });
+
+    const observerTargets = [
+      document.getElementById(`finalOutput-${prefix}`),
+      document.getElementById(`socialSection-${prefix}`),
+      document.getElementById(`socialOutput-${prefix}`),
+      document.getElementById(`reseauxOnlySection-${prefix}`),
+    ].filter(Boolean);
+
+    observerTargets.forEach((target) => {
+      const observer = new MutationObserver(() => {
+        refreshSoloFlow(prefix);
+      });
+
+      observer.observe(target, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+
+    flowRoot.dataset.soloBound = 'true';
+  }
+
+  function initSoloFlows() {
+    ['tt', 'col'].forEach((prefix) => {
+      bindSoloFlow(prefix);
+      refreshSoloFlow(prefix);
+    });
+  }
+
   // Entrée depuis la home vers un flow unitaire.
   // Objectif stepper : afficher uniquement le formulaire tant que le pipeline
   // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
   function resetSingleFlowPanels(mode) {
     const suffix = mode === 'collection' ? 'col' : 'tt';
 
-    ['pipeline', 'finalOutput', 'socialSection', 'socialOutput', 'reseauxOnlySection'].forEach((prefix) => {
+    ['finalOutput', 'socialSection', 'socialOutput', 'reseauxOnlySection'].forEach((prefix) => {
       const element = document.getElementById(`${prefix}-${suffix}`);
       if (element) element.style.display = 'none';
     });
 
     setPipelineExecutionActive(false);
+    setSoloFlowState(suffix, 'editing', 'form');
     syncHeaderBackAction();
   }
 
@@ -230,9 +447,11 @@
       if (label) label.textContent = '🖼️ Collection';
     }
 
+    initSoloFlows();
     resetSingleFlowPanels(mode);
     showView('form');
     global.refreshCollectionStepper?.();
+    refreshSoloFlow(getSoloPrefix(mode));
   }
 
   function selectModeBatch(mode) {
@@ -350,9 +569,15 @@
     updatePipelineTimeline,
     openSettings,
     closeSettings,
+    initSoloFlows,
+    refreshSoloFlow,
+    setSoloFlowState,
+    setSoloFlowOpenBlock,
     getCurrentView: () => currentView,
     getPendingBatchMode: () => pendingBatchMode,
   };
+
+  initSoloFlows();
 
   global.PipelineUI.app = global.PipelineUI.app || {};
   Object.assign(global.PipelineUI.app, global.PipelineUIApp);

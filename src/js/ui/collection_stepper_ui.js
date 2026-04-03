@@ -116,6 +116,7 @@
     syncStepPanels();
     syncHeader();
     syncFooterActions();
+    global.refreshSoloFlow?.('col');
   }
 
   function goToCollectionStep(stepIndex) {
