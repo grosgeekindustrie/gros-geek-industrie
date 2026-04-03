@@ -103,6 +103,10 @@ const {
 } = window.PipelineUIPromptBiblio;
 
 const {
+  initDndStepper,
+  refreshDndStepper,
+} = window.PipelineUIDndStepper || {};
+const {
   initCollectionStepper,
   refreshCollectionStepper,
 } = window.PipelineUICollectionStepper || {};
@@ -431,6 +435,8 @@ buildPipeline();
 buildEchellesUI();
 loadFormState();
 attachFormPersistence();
+initDndStepper?.();
+refreshDndStepper?.();
 initCollectionStepper?.();
 refreshCollectionStepper?.();
 initCollectionSoloTabs?.();

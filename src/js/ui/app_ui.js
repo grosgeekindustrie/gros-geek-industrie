@@ -34,6 +34,10 @@
     );
   }
 
+  function refreshDndStepper() {
+    global.refreshDndStepper?.();
+  }
+
   function refreshCollectionTabs() {
     global.refreshCollectionSoloTabs?.();
   }
@@ -242,6 +246,7 @@
 
     resetSingleFlowPanels(mode);
     showView('form');
+    refreshDndStepper();
     global.refreshCollectionStepper?.();
     refreshCollectionTabs();
   }
