@@ -138,6 +138,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
   const stopBtn = document.getElementById(`${p}-bstop-${agent.id}`);
   card.className = 'agent-card active';
   updatePipelineTimeline(agent.id, 'active');
+  window.refreshCollectionSoloTabs?.();
   stat.className = 'agent-status s-run'; stat.textContent = '⟳ génération...';
   const ctxEl = document.getElementById('headerContext');
   if (ctxEl) ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u,'').trim();
@@ -167,13 +168,16 @@ async function runAgent(agent, correction = '', isRetry = false) {
       showOrchestratorBadge(agent.id, orchResult);
       if (orchResult.statut === 'RELANCER' && (state.orchAttempts[agent.id] || 0) < 2) {
         stat.textContent = '⟳ relance...';
-        return await runAgent(agent, orchResult.correction, true);
+        const retryResult = await runAgent(agent, orchResult.correction, true);
+        window.refreshCollectionSoloTabs?.();
+        return retryResult;
       } else if (orchResult.statut === 'ALERTE') {
         card.className = 'agent-card error';
         stat.className = 'agent-status s-err'; stat.textContent = '❌ alerte';
         document.getElementById(`${p}-br-${agent.id}`).disabled = false;
         if (stopBtn) stopBtn.style.display = 'none';
         showToast(`❌ Alerte orchestrateur: ${agent.id}`, '#ff4757');
+        window.refreshCollectionSoloTabs?.();
         return false;
       }
     }
@@ -192,6 +196,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     if (agent.id === 'tags') { const bex = document.getElementById(`${p}-bexplore-tags`); if (bex) bex.disabled = false; }
     if (agent.id === 'titre') { const bex = document.getElementById(`${p}-bexplore-titre`); if (bex) bex.disabled = false; }
     if (stopBtn) stopBtn.style.display = 'none';
+    window.refreshCollectionSoloTabs?.();
     return true;
   } catch (err) {
     out.textContent = `❌ ${err.message}`;
@@ -201,6 +206,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     stat.textContent = err.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
     document.getElementById(`${p}-br-${agent.id}`).disabled = false;
     if (stopBtn) stopBtn.style.display = 'none';
+    window.refreshCollectionSoloTabs?.();
     return false;
   }
 }
@@ -221,42 +227,53 @@ async function startPipeline(p) {
   document.getElementById(`imgWarning-${p}`).style.display = 'none';
   document.getElementById(`socialSection-${p}`).style.display = 'none';
   document.getElementById(`socialOutput-${p}`).style.display = 'none';
+  document.getElementById(`reseauxOnlySection-${p}`).style.display = 'none';
   [`ss-insta-${p}`,`ss-fb-${p}`,`ss-marketplace-${p}`,`ss-pinterest-${p}`].forEach(id => {
-    const el = document.getElementById(id); if(el) el.style.display = 'none';
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
   state.socialSections = {};
   document.getElementById(`finalOutput-${p}`).style.display = 'none';
   [`fs-titre-${p}`,`fs-tags-${p}`,`fs-description-${p}`,`fs-alt-${p}`].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display = 'none';
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
   const btn = document.getElementById(`runBtn-${p}`);
   btn.disabled = true; btn.textContent = '⟳ Pipeline en cours...';
 
-  // ── Transition vers vue pipeline ──
-  const pipelineBody = document.getElementById('pipelineViewBody');
-  if (pipelineBody) {
+  const isCollectionSolo = p === 'col';
+
+  if (isCollectionSolo) {
     const pipelineEl = document.getElementById(`pipeline-${p}`);
-    const finalEl = document.getElementById(`finalOutput-${p}`);
-    if (pipelineEl) { pipelineEl.style.display = ''; pipelineBody.appendChild(pipelineEl); }
-    if (finalEl) { pipelineBody.appendChild(finalEl); }
-    // Réseaux sociaux aussi
-    const socialSectionEl = document.getElementById(`socialSection-${p}`);
-    if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
-    const socialOutputEl = document.getElementById(`socialOutput-${p}`);
-    if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
+    if (pipelineEl) pipelineEl.style.display = '';
+    window.setPipelineExecutionActive?.(true);
+    window.activateCollectionSoloTab?.('pipeline', { force: true });
+    window.refreshCollectionSoloTabs?.();
+    showView('form');
+  } else {
+    const pipelineBody = document.getElementById('pipelineViewBody');
+    if (pipelineBody) {
+      const pipelineEl = document.getElementById(`pipeline-${p}`);
+      const finalEl = document.getElementById(`finalOutput-${p}`);
+      if (pipelineEl) { pipelineEl.style.display = ''; pipelineBody.appendChild(pipelineEl); }
+      if (finalEl) { pipelineBody.appendChild(finalEl); }
+      const socialSectionEl = document.getElementById(`socialSection-${p}`);
+      if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
+      const socialOutputEl = document.getElementById(`socialOutput-${p}`);
+      if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
+    }
+    const titleEl = document.getElementById('pipelineViewTitle');
+    if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
+
+    const timeline = document.getElementById('pipelineTimeline');
+    if (timeline) timeline.style.display = '';
+
+    const ctx = document.getElementById('headerContext');
+    if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
+    buildPipelineTimeline();
+    window.setPipelineExecutionActive?.(true);
+    showView('pipeline');
   }
-  const titleEl = document.getElementById('pipelineViewTitle');
-  if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
-
-  const timeline = document.getElementById('pipelineTimeline');
-  if (timeline) timeline.style.display = '';
-
-  // Update header context for pipeline view
-  const ctx = document.getElementById('headerContext');
-  if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
-  buildPipelineTimeline();
-  window.setPipelineExecutionActive?.(true);
-  showView('pipeline');
   state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
   getPipelineAgents().forEach(a => {
@@ -272,6 +289,7 @@ async function startPipeline(p) {
     const bp = document.getElementById(`${p}-bp-${a.id}`); if (bp) bp.disabled = true;
     const ob = document.getElementById(`orch-badge-${a.id}`); if (ob) ob.remove();
   });
+  window.refreshCollectionSoloTabs?.();
   for (const agent of getPipelineAgents()) {
     const ok = await runAgent(agent);
     if (!ok) break;
@@ -281,6 +299,15 @@ async function startPipeline(p) {
   }
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   window.setPipelineExecutionActive?.(false);
+
+  if (isCollectionSolo) {
+    window.refreshCollectionSoloTabs?.();
+    if (window.isCollectionSoloResultAvailable?.()) {
+      window.activateCollectionSoloTab?.('result', { force: true });
+    } else {
+      window.activateCollectionSoloTab?.('pipeline', { force: true });
+    }
+  }
 }
 
 
@@ -386,6 +413,10 @@ function toggleReseauxOnly(p) {
   const isVisible = section.style.display !== 'none';
   section.style.display = isVisible ? 'none' : 'block';
   if (btn) btn.textContent = isVisible ? '📋 Fiche déjà publiée' : '✕ Fermer';
+  if (p === 'col') {
+    window.refreshCollectionSoloTabs?.();
+    if (!isVisible) window.activateCollectionSoloTab?.('social', { force: true });
+  }
 }
 
 function displaySocialOutput(result, p) {
@@ -421,6 +452,10 @@ function displaySocialOutput(result, p) {
       const d = document.getElementById(`sc-pinterest-desc-wrap-${p}`); if (d) d.style.display = 'block';
       const dc = document.getElementById(`sc-pinterest-d-${p}`); if (dc) dc.textContent = sections.pinterest;
     }
+  }
+  if (p === 'col') {
+    window.refreshCollectionSoloTabs?.();
+    window.activateCollectionSoloTab?.('social', { force: true });
   }
 }
 

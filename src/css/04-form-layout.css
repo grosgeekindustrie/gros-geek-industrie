@@ -599,3 +599,109 @@
     justify-self: stretch;
   }
 }
+
+
+/* ═══ COLLECTION SOLO TABS — STEP 1 BIS ═══ */
+/*
+  Navigation solo Collection par onglets.
+  Objectif : éviter l'empilement de plusieurs zones en gardant un seul panneau courant.
+*/
+
+.collection-solo-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.collection-solo-tabs-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.collection-solo-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 4.5rem;
+  padding: 1rem 1.1rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.collection-solo-tab:hover:not(:disabled) {
+  border-color: rgba(126, 184, 247, 0.45);
+  background: rgba(126, 184, 247, 0.05);
+  transform: translateY(-0.0625rem);
+}
+
+.collection-solo-tab.is-active {
+  border-color: var(--stepper-current);
+  background: rgba(255, 154, 87, 0.10);
+  box-shadow: inset 0 0 0 0.0625rem rgba(255, 154, 87, 0.12);
+}
+
+.collection-solo-tab.is-disabled,
+.collection-solo-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.collection-solo-tab.is-locked {
+  border-style: dashed;
+}
+
+.collection-solo-tab-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06rem;
+  text-transform: uppercase;
+}
+
+.collection-solo-tab-state {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text2);
+}
+
+.collection-solo-tab.is-active .collection-solo-tab-state {
+  color: var(--text);
+}
+
+.collection-solo-tab-panel[hidden] {
+  display: none;
+}
+
+.collection-solo-tab-panel.is-locked {
+  opacity: 0.86;
+}
+
+.collection-solo-tab-panel.is-locked .collection-stepper input,
+.collection-solo-tab-panel.is-locked .collection-stepper select,
+.collection-solo-tab-panel.is-locked .collection-stepper textarea,
+.collection-solo-tab-panel.is-locked .collection-stepper button:not(.collection-stepper-header-run-btn),
+.collection-solo-tab-panel.is-locked .collection-stepper summary {
+  pointer-events: none;
+}
+
+.collection-solo-tab-panel.is-locked .collection-stepper input,
+.collection-solo-tab-panel.is-locked .collection-stepper select,
+.collection-solo-tab-panel.is-locked .collection-stepper textarea {
+  opacity: 0.72;
+}
+
+@media (max-width: 900px) {
+  .collection-solo-tabs-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

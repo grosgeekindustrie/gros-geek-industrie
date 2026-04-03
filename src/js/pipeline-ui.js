@@ -106,6 +106,11 @@ const {
   initCollectionStepper,
   refreshCollectionStepper,
 } = window.PipelineUICollectionStepper || {};
+const {
+  initCollectionSoloTabs,
+  refreshCollectionSoloTabs,
+  activateCollectionSoloTab,
+} = window.PipelineUICollectionTabs || {};
 
 // ═══════════════════════════════════════════════════════════
 // PROMPT BUILDER
@@ -356,6 +361,10 @@ function assembleFinal() {
   const fo = document.getElementById(`finalOutput-${p}`);
   fo.style.display = 'flex'; fo.style.flexDirection = 'column';
   if (alt) document.getElementById(`socialSection-${p}`).style.display = 'block';
+  if (p === 'col') {
+    refreshCollectionSoloTabs?.();
+    if (!window.isPipelineExecutionActive?.()) activateCollectionSoloTab?.('result', { force: true });
+  }
 }
 
 function copyOut(agentId) { navigator.clipboard.writeText(state.outputs[agentId] || ''); showToast('Copié ✓'); }
@@ -424,6 +433,8 @@ loadFormState();
 attachFormPersistence();
 initCollectionStepper?.();
 refreshCollectionStepper?.();
+initCollectionSoloTabs?.();
+refreshCollectionSoloTabs?.();
 loadAllFiles();
 // Restore view after init — immediate, no flash
 if (window._restoreView === 'form' && window._restoreMode) {

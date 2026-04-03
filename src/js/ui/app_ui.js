@@ -34,6 +34,10 @@
     );
   }
 
+  function refreshCollectionTabs() {
+    global.refreshCollectionSoloTabs?.();
+  }
+
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
@@ -209,6 +213,11 @@
 
     setPipelineExecutionActive(false);
     syncHeaderBackAction();
+
+    if (mode === 'collection') {
+      global.resetCollectionSoloTabs?.();
+      refreshCollectionTabs();
+    }
   }
 
   function selectMode(mode) {
@@ -233,6 +242,7 @@
     resetSingleFlowPanels(mode);
     showView('form');
     global.refreshCollectionStepper?.();
+    refreshCollectionTabs();
   }
 
   function selectModeBatch(mode) {
@@ -345,6 +355,7 @@
     cancelToHome,
     stopAllAgents,
     setPipelineExecutionActive,
+    isPipelineExecutionActive,
     syncHeaderBackAction,
     buildPipelineTimeline,
     updatePipelineTimeline,

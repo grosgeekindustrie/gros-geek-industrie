@@ -60,6 +60,7 @@
 
     const finalOutput = document.getElementById(`finalOutput-${p}`);
     if (finalOutput && text) finalOutput.style.display = '';
+    if (p === 'col' && text) global.refreshCollectionSoloTabs?.();
   }
 
   function collectTagsFromSelection(modePrefix) {

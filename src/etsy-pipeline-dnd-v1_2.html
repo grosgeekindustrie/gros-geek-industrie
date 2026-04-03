@@ -509,6 +509,31 @@
 <!-- Structure jumelle du mode Tabletop, conservée séparée pour limiter les effets de bord pendant les évolutions. -->
 <div id="ui-col" class="is-hidden">
 
+  <!-- Step 1 bis solo : navigation par onglets pour éviter l'empilement visuel de 4 zones simultanées. -->
+  <!-- Clean futur : si cette UX est validée, elle deviendra la base de consolidation du solo Collection. -->
+  <div class="collection-solo-tabs" data-js="collection-solo-tabs">
+    <div class="collection-solo-tabs-nav" role="tablist" aria-label="Navigation fiche Collection">
+      <button class="collection-solo-tab is-active" type="button" role="tab" aria-selected="true" data-collection-tab="form">
+        <span class="collection-solo-tab-label">Formulaire</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="form">Prêt</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="pipeline">
+        <span class="collection-solo-tab-label">Agent IA</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="pipeline">À lancer</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="result">
+        <span class="collection-solo-tab-label">Résultat</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="result">Indispo</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="social">
+        <span class="collection-solo-tab-label">Réseaux sociaux</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="social">Indispo</span>
+      </button>
+    </div>
+
+    <div class="collection-solo-tab-panels">
+      <section class="collection-solo-tab-panel is-active" role="tabpanel" data-collection-tab-panel="form">
+
   <!-- Stepper Collection : surcouche UX qui réorganise les blocs existants sans renommer les champs déjà branchés au pipeline. -->
   <div class="collection-stepper" data-js="collection-stepper">
     <div class="collection-stepper-shell">
@@ -704,8 +729,13 @@
       </div>
     </div>
   </div>
+      </section>
 
-  <div class="pipeline" id="pipeline-col"></div>
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="pipeline" hidden>
+        <div class="pipeline" id="pipeline-col"></div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="result" hidden>
 
   <div id="finalOutput-col" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
@@ -744,6 +774,9 @@
       <pre class="fs-content" id="fc-alt-col"></pre>
     </div>
   </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="social" hidden>
 
   <!-- RÉSEAUX SOCIAUX COLLECTION -->
   <div class="form-section social-section social-section-col is-hidden" id="socialSection-col">
@@ -914,6 +947,9 @@
       </div>
     </div>
   </div>
+      </section>
+    </div>
+  </div>
 
 </div><!-- /ui-col -->
 
@@ -1038,6 +1074,7 @@
 <script src="js/ui/images_ui.js"></script>
 <script src="js/ui/forms_ui.js"></script>
 <script src="js/ui/collection_stepper_ui.js"></script>
+<script src="js/ui/collection_tabs_ui.js"></script>
 <script src="js/ui/cards_ui.js"></script>
 <script src="js/ui/selections_ui.js"></script>
 <script src="js/ui/app_ui.js"></script>
