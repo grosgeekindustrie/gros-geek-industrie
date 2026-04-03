@@ -123,6 +123,16 @@ function showOrchestratorBadge(agentId, result) {
   if (body) body.insertBefore(badge, body.firstChild);
 }
 
+function refreshSoloTabs(prefix) {
+  if (prefix === 'tt') window.refreshDndSoloTabs?.();
+  if (prefix === 'col') window.refreshCollectionSoloTabs?.();
+}
+
+function activateSoloTab(prefix, tabId, options = {}) {
+  if (prefix === 'tt') window.activateDndSoloTab?.(tabId, options);
+  if (prefix === 'col') window.activateCollectionSoloTab?.(tabId, options);
+}
+
 // ═══════════════════════════════════════════════════════════
 // Cœur d'exécution agent par agent.
 // Zone à haut risque : couplage fort entre état, prompts, DOM, orchestrateur et cartes UI.
@@ -138,7 +148,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
   const stopBtn = document.getElementById(`${p}-bstop-${agent.id}`);
   card.className = 'agent-card active';
   updatePipelineTimeline(agent.id, 'active');
-  window.refreshCollectionSoloTabs?.();
+  refreshSoloTabs(p);
   stat.className = 'agent-status s-run'; stat.textContent = '⟳ génération...';
   const ctxEl = document.getElementById('headerContext');
   if (ctxEl) ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u,'').trim();
@@ -169,7 +179,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
       if (orchResult.statut === 'RELANCER' && (state.orchAttempts[agent.id] || 0) < 2) {
         stat.textContent = '⟳ relance...';
         const retryResult = await runAgent(agent, orchResult.correction, true);
-        window.refreshCollectionSoloTabs?.();
+        refreshSoloTabs(p);
         return retryResult;
       } else if (orchResult.statut === 'ALERTE') {
         card.className = 'agent-card error';
@@ -177,7 +187,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
         document.getElementById(`${p}-br-${agent.id}`).disabled = false;
         if (stopBtn) stopBtn.style.display = 'none';
         showToast(`❌ Alerte orchestrateur: ${agent.id}`, '#ff4757');
-        window.refreshCollectionSoloTabs?.();
+        refreshSoloTabs(p);
         return false;
       }
     }
@@ -196,7 +206,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     if (agent.id === 'tags') { const bex = document.getElementById(`${p}-bexplore-tags`); if (bex) bex.disabled = false; }
     if (agent.id === 'titre') { const bex = document.getElementById(`${p}-bexplore-titre`); if (bex) bex.disabled = false; }
     if (stopBtn) stopBtn.style.display = 'none';
-    window.refreshCollectionSoloTabs?.();
+    refreshSoloTabs(p);
     return true;
   } catch (err) {
     out.textContent = `❌ ${err.message}`;
@@ -206,7 +216,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     stat.textContent = err.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
     document.getElementById(`${p}-br-${agent.id}`).disabled = false;
     if (stopBtn) stopBtn.style.display = 'none';
-    window.refreshCollectionSoloTabs?.();
+    refreshSoloTabs(p);
     return false;
   }
 }
@@ -241,14 +251,14 @@ async function startPipeline(p) {
   const btn = document.getElementById(`runBtn-${p}`);
   btn.disabled = true; btn.textContent = '⟳ Pipeline en cours...';
 
-  const isCollectionSolo = p === 'col';
+  const isSoloTabsFlow = p === 'tt' || p === 'col';
 
-  if (isCollectionSolo) {
+  if (isSoloTabsFlow) {
     const pipelineEl = document.getElementById(`pipeline-${p}`);
     if (pipelineEl) pipelineEl.style.display = '';
     window.setPipelineExecutionActive?.(true);
-    window.activateCollectionSoloTab?.('pipeline', { force: true });
-    window.refreshCollectionSoloTabs?.();
+    activateSoloTab(p, 'pipeline', { force: true });
+    refreshSoloTabs(p);
     showView('form');
   } else {
     const pipelineBody = document.getElementById('pipelineViewBody');
@@ -289,7 +299,7 @@ async function startPipeline(p) {
     const bp = document.getElementById(`${p}-bp-${a.id}`); if (bp) bp.disabled = true;
     const ob = document.getElementById(`orch-badge-${a.id}`); if (ob) ob.remove();
   });
-  window.refreshCollectionSoloTabs?.();
+  refreshSoloTabs(p);
   for (const agent of getPipelineAgents()) {
     const ok = await runAgent(agent);
     if (!ok) break;
@@ -300,12 +310,15 @@ async function startPipeline(p) {
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   window.setPipelineExecutionActive?.(false);
 
-  if (isCollectionSolo) {
-    window.refreshCollectionSoloTabs?.();
-    if (window.isCollectionSoloResultAvailable?.()) {
-      window.activateCollectionSoloTab?.('result', { force: true });
+  if (isSoloTabsFlow) {
+    refreshSoloTabs(p);
+    const hasResult = p === 'tt'
+      ? window.isDndSoloResultAvailable?.()
+      : window.isCollectionSoloResultAvailable?.();
+    if (hasResult) {
+      activateSoloTab(p, 'result', { force: true });
     } else {
-      window.activateCollectionSoloTab?.('pipeline', { force: true });
+      activateSoloTab(p, 'pipeline', { force: true });
     }
   }
 }
@@ -413,9 +426,9 @@ function toggleReseauxOnly(p) {
   const isVisible = section.style.display !== 'none';
   section.style.display = isVisible ? 'none' : 'block';
   if (btn) btn.textContent = isVisible ? '📋 Fiche déjà publiée' : '✕ Fermer';
-  if (p === 'col') {
-    window.refreshCollectionSoloTabs?.();
-    if (!isVisible) window.activateCollectionSoloTab?.('social', { force: true });
+  if (p === 'tt' || p === 'col') {
+    refreshSoloTabs(p);
+    if (!isVisible) activateSoloTab(p, 'social', { force: true });
   }
 }
 
@@ -453,9 +466,9 @@ function displaySocialOutput(result, p) {
       const dc = document.getElementById(`sc-pinterest-d-${p}`); if (dc) dc.textContent = sections.pinterest;
     }
   }
-  if (p === 'col') {
-    window.refreshCollectionSoloTabs?.();
-    window.activateCollectionSoloTab?.('social', { force: true });
+  if (p === 'tt' || p === 'col') {
+    refreshSoloTabs(p);
+    activateSoloTab(p, 'social', { force: true });
   }
 }
 

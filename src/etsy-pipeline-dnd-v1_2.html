@@ -131,6 +131,34 @@
 <!-- Contrat DOM : ids et onclick legacy encore utilisés par le runtime actuel ; ne pas renommer sans audit JS complet. -->
 <div id="ui-tt">
 
+  <!-- Step 2 solo : navigation DnD par onglets pour garder un seul panneau courant. -->
+  <div class="collection-solo-tabs" data-js="dnd-solo-tabs">
+    <div class="collection-solo-tabs-nav" role="tablist" aria-label="Navigation fiche Tabletop DnD">
+      <button class="collection-solo-tab is-active" type="button" role="tab" aria-selected="true" data-dnd-tab="form">
+        <span class="collection-solo-tab-label">Formulaire</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="form">Prêt</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="pipeline">
+        <span class="collection-solo-tab-label">Agent IA</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="pipeline">À lancer</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="result">
+        <span class="collection-solo-tab-label">Résultat</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="result">Indispo</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="social">
+        <span class="collection-solo-tab-label">Réseaux sociaux</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="social">Indispo</span>
+      </button>
+    </div>
+
+    <div class="collection-solo-status" data-js="dnd-solo-status" aria-live="polite">
+      <span class="collection-solo-status-text" data-js="dnd-solo-status-text">Nouvelle fiche · Formulaire prêt</span>
+    </div>
+
+    <div class="collection-solo-tab-panels">
+      <section class="collection-solo-tab-panel is-active" role="tabpanel" data-dnd-tab-panel="form">
+
   <!-- Stepper Tabletop / DnD : réorganisation du formulaire en étapes lisibles sans renommer les champs legacy. -->
   <div class="collection-stepper" data-js="dnd-stepper">
     <div class="collection-stepper-shell">
@@ -345,8 +373,13 @@
       </div>
     </div>
   </div>
+      </section>
 
-  <div class="pipeline" id="pipeline-tt"></div>
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="pipeline" hidden>
+        <div class="pipeline" id="pipeline-tt"></div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="result" hidden>
 
   <div id="finalOutput-tt" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
@@ -385,6 +418,9 @@
       <pre class="fs-content" id="fc-alt-tt"></pre>
     </div>
   </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="social" hidden>
 
   <!-- RÉSEAUX SOCIAUX TABLETOP -->
   <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt">
@@ -555,7 +591,9 @@
       </div>
     </div>
   </div>
-
+      </section>
+    </div>
+  </div>
 </div><!-- /ui-tt -->
 
 <!-- ═══════════════════════════════════════ BLOC COLLECTION ═══════════════════════════════════════ -->
@@ -1131,6 +1169,7 @@
 <script src="js/ui/images_ui.js"></script>
 <script src="js/ui/forms_ui.js"></script>
 <script src="js/ui/dnd_stepper_ui.js"></script>
+<script src="js/ui/dnd_tabs_ui.js"></script>
 <script src="js/ui/collection_stepper_ui.js"></script>
 <script src="js/ui/collection_tabs_ui.js"></script>
 <script src="js/ui/cards_ui.js"></script>

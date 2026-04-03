@@ -111,6 +111,11 @@ const {
   refreshCollectionStepper,
 } = window.PipelineUICollectionStepper || {};
 const {
+  initDndSoloTabs,
+  refreshDndSoloTabs,
+  activateDndSoloTab,
+} = window.PipelineUIDndTabs || {};
+const {
   initCollectionSoloTabs,
   refreshCollectionSoloTabs,
   activateCollectionSoloTab,
@@ -365,6 +370,10 @@ function assembleFinal() {
   const fo = document.getElementById(`finalOutput-${p}`);
   fo.style.display = 'flex'; fo.style.flexDirection = 'column';
   if (alt) document.getElementById(`socialSection-${p}`).style.display = 'block';
+  if (p === 'tt') {
+    refreshDndSoloTabs?.();
+    if (!window.isPipelineExecutionActive?.()) activateDndSoloTab?.('result', { force: true });
+  }
   if (p === 'col') {
     refreshCollectionSoloTabs?.();
     if (!window.isPipelineExecutionActive?.()) activateCollectionSoloTab?.('result', { force: true });
@@ -439,6 +448,8 @@ initDndStepper?.();
 refreshDndStepper?.();
 initCollectionStepper?.();
 refreshCollectionStepper?.();
+initDndSoloTabs?.();
+refreshDndSoloTabs?.();
 initCollectionSoloTabs?.();
 refreshCollectionSoloTabs?.();
 loadAllFiles();

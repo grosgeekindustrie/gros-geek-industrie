@@ -38,6 +38,10 @@
     global.refreshDndStepper?.();
   }
 
+  function refreshDndTabs() {
+    global.refreshDndSoloTabs?.();
+  }
+
   function refreshCollectionTabs() {
     global.refreshCollectionSoloTabs?.();
   }
@@ -45,6 +49,7 @@
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
+    refreshDndTabs();
     refreshCollectionTabs();
   }
   function syncHeaderBackAction() {
@@ -219,6 +224,11 @@
     setPipelineExecutionActive(false);
     syncHeaderBackAction();
 
+    if (mode === 'tabletop') {
+      global.resetDndSoloTabs?.();
+      refreshDndTabs();
+    }
+
     if (mode === 'collection') {
       global.resetCollectionSoloTabs?.();
       refreshCollectionTabs();
@@ -247,6 +257,7 @@
     resetSingleFlowPanels(mode);
     showView('form');
     refreshDndStepper();
+    refreshDndTabs();
     global.refreshCollectionStepper?.();
     refreshCollectionTabs();
   }
