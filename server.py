@@ -46,6 +46,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"  {self.command} {self.path} → {args[0]}")
 
+    def save_export_files(self, files):
+        """Écrire une liste de fichiers exportés en sanitizant chaque segment du chemin."""
+        saved = []
+
+        for export_file in files:
+            filename = export_file.get('filename', 'export.md')
+            parts = filename.replace('\\', '/').split('/')
+            parts = [''.join(c for c in part if c.isalnum() or c in '._- ') for part in parts]
+            parts = [part for part in parts if part]
+            filepath = ROOT.joinpath(*parts)
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            filepath.write_text(export_file.get('content', ''), encoding='utf-8')
+            saved.append(str(filepath.relative_to(ROOT)))
+
+        return saved
+
     def send_json(self, code: int, data):
         body = json.dumps(data, ensure_ascii=False).encode()
         self.send_response(code)
@@ -174,23 +190,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         path = self.path.split('?')[0]
 
-        if path == '/batch/export':
+        if path in ('/batch/export', '/solo/export'):
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
             try:
                 data = json.loads(body)
                 files = data.get('files', [])
-                saved = []
-                for f in files:
-                    filename = f.get('filename', 'export.md')
-                    # Allow subfolders (batch/collection/ etc) but sanitize each segment
-                    parts = filename.replace('\\', '/').split('/')
-                    parts = [''.join(c for c in p if c.isalnum() or c in '._- ') for p in parts]
-                    parts = [p for p in parts if p]
-                    filepath = ROOT.joinpath(*parts)
-                    filepath.parent.mkdir(parents=True, exist_ok=True)
-                    filepath.write_text(f.get('content', ''), encoding='utf-8')
-                    saved.append(str(filepath.relative_to(ROOT)))
+                saved = self.save_export_files(files)
                 self.send_json(200, {'ok': True, 'saved': saved, 'count': len(saved)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})

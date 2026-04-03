@@ -559,7 +559,6 @@ function copySocial() { navigator.clipboard.writeText(state.outputs['social'] ||
 function copySection(key) { navigator.clipboard.writeText(state.outputs[key] || ''); showToast('Copié ✓'); }
 
 function buildFinalOutputExport(prefixOverride) {
-  const prefix = prefixOverride || pfx();
   const titre = state.outputs.titre_valide || '';
   const tags = state.outputs.tags || '';
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
@@ -572,45 +571,134 @@ function buildFinalOutputExport(prefixOverride) {
   if (alt) parts.push(`── BALISE ALT ──\n${alt}`);
 
   return {
-    prefix,
+    prefix: prefixOverride || pfx(),
     content: parts.join('\n\n'),
   };
 }
 
-function buildFinalOutputFilename(prefixOverride) {
+function getSoloExportMeta(prefixOverride) {
   const prefix = prefixOverride || pfx();
   const nomCourt = document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || '';
   const nomComplet = document.getElementById(`${prefix}-fNom`)?.value?.trim() || '';
-  const titre = state.outputs.titre_valide || '';
-  const rawBase = nomCourt || nomComplet || titre || (prefix === 'tt' ? 'tabletop-dnd' : 'collection');
-  const safeBase = rawBase
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase()
-    .slice(0, 80) || (prefix === 'tt' ? 'tabletop-dnd' : 'collection');
+  const sculpteur = document.getElementById(`${prefix}-fSculpteur`)?.value?.trim() || '';
+  const fallbackNom = prefix === 'tt' ? 'tabletop_dnd' : 'collection';
+  const rawNom = nomCourt || nomComplet || state.outputs.titre_valide || fallbackNom;
+  const rawSculpteur = sculpteur || 'sculpteur';
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, '0');
+  const dateFR = `${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}`;
+  const heureFR = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const sanitizeSegment = (value, fallback) => {
+    const sanitized = (value || fallback).replace(/[^\w-]/g, '_');
 
-  return `etsy-pipeline-${safeBase}.txt`;
+    return sanitized || fallback;
+  };
+  const nom = sanitizeSegment(rawNom, fallbackNom);
+  const auteur = sanitizeSegment(rawSculpteur, 'sculpteur');
+  const folder = prefix === 'tt' ? 'export/solo/dnd/' : 'export/solo/collection/';
+
+  return {
+    prefix,
+    folder,
+    base: `${nom}_${auteur}_${dateFR}_${heureFR}`,
+  };
 }
 
-function exportFinalOutputs(prefixOverride) {
-  const { prefix, content } = buildFinalOutputExport(prefixOverride);
-  if (!content) {
+function getSoloFinalOutputAgentLabels(prefixOverride) {
+  const prefix = prefixOverride || pfx();
+
+  if (prefix === 'tt') {
+    return {
+      analyse: '01 Marcus — Analyse visuelle',
+      alt: '02 Nadia — Balise ALT',
+      marche: '03 Sophie — Analyse marché',
+      tags: '04 Karim — Tags',
+      titre: '05 Maya — Titres',
+      titre_valide: '05b Titre validé',
+      description: '06 Claire — Description brute',
+      description_assembled: '06b Description assemblée',
+    };
+  }
+
+  return {
+    analyse: '01 Jules — Analyse visuelle',
+    alt: '02 Iris — Balise ALT',
+    marche: '03 Luna — Analyse marché',
+    tags: '04 Axel — Tags',
+    titre: '05 Nova — Titres',
+    titre_valide: '05b Titre validé',
+    description: '06 Eden — Description brute',
+    description_assembled: '06b Description assemblée',
+  };
+}
+
+function buildSoloFinalOutputFiles(prefixOverride) {
+  const exportMeta = getSoloExportMeta(prefixOverride);
+  const complete = [
+    '# Output final',
+    '',
+    '## 🏷️ Titre',
+    state.outputs.titre_valide || '',
+    '',
+    '## 🔖 Tags',
+    state.outputs.tags || '',
+    '',
+    '## 📝 Description',
+    state.outputs['description_assembled'] || state.outputs.description || '',
+    '',
+    '## 🖼️ Balise ALT',
+    state.outputs.alt || '',
+  ].join('\n');
+
+  const rawParts = ['# Output final — RAW', ''];
+  const agentLabels = getSoloFinalOutputAgentLabels(exportMeta.prefix);
+
+  Object.entries(agentLabels).forEach(([key, label]) => {
+    const value = state.outputs[key];
+    if (!value) return;
+    rawParts.push(`## ${label}\n${value}\n`);
+  });
+
+  return {
+    ...exportMeta,
+    files: [
+      {
+        filename: `${exportMeta.folder}${exportMeta.base}_complete.md`,
+        content: complete,
+      },
+      {
+        filename: `${exportMeta.folder}${exportMeta.base}_raw.md`,
+        content: rawParts.join('\n'),
+      },
+    ],
+  };
+}
+
+async function exportFinalOutputs(prefixOverride) {
+  const { folder, files } = buildSoloFinalOutputFiles(prefixOverride);
+  const hasContent = files.some((file) => file.content.replace(/[#\s]/g, '').trim());
+
+  if (!hasContent) {
     showToast('Aucun output final à exporter', '#ff4757');
     return;
   }
 
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = buildFinalOutputFilename(prefix);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  showToast('Export téléchargé ✓');
+  try {
+    const response = await fetch('/solo/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files }),
+    });
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    showToast(`✅ Exporté dans ${folder} — ${data.count} fichier(s)`, '#4caf7d', 5000);
+  } catch (error) {
+    showToast(`Erreur export: ${error.message}`, '#ff4757', 5000);
+  }
 }
 
 function copyAll() {
