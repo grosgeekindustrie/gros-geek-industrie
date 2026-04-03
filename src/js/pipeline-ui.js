@@ -133,12 +133,21 @@ const {
 // Si on l'extrait plus tard, il devra garder la même séquence explore → filter → select.
 
 async function runTagsThreeAgents(ctx) {
+  const mergeUsage = (...usages) => usages.reduce((acc, usage) => {
+    Object.entries(usage || {}).forEach(([key, value]) => {
+      acc[key] = (acc[key] || 0) + (Number(value) || 0);
+    });
+
+    return acc;
+  }, {});
+
   // 1) EXPLORE
   const explorePrompt = buildPrompt('tags', ctx);
-  const { text: rawExplore } = await callClaude('tags', {
+  const exploreInput = {
     filled: explorePrompt.filled,
     fixedContent: explorePrompt.fixedContent
-  }, false);
+  };
+  const { text: rawExplore, usage: exploreUsage } = await callClaude('tags', exploreInput, false);
 
   const exploreTags = parseTagOutput(rawExplore).slice(0, 60);
   if (!exploreTags.length) throw new Error('Aucun tag candidat généré');
@@ -153,7 +162,7 @@ async function runTagsThreeAgents(ctx) {
     fixedContent: filterPrompt.fixedContent
   };
 
-  const { text: rawFiltered } = await callClaude('tags', filterInput, false);
+  const { text: rawFiltered, usage: filterUsage } = await callClaude('tags', filterInput, false);
   const filteredTags = parseTagOutput(rawFiltered);
 
   const pool = filteredTags.length ? filteredTags : exploreTags;
@@ -168,7 +177,7 @@ async function runTagsThreeAgents(ctx) {
     fixedContent: selectPrompt.fixedContent
   };
 
-  const { text: rawFinal } = await callClaude('tags', selectInput, false);
+  const { text: rawFinal, usage: selectUsage } = await callClaude('tags', selectInput, false);
   const finalTagsRaw = parseTagOutput(rawFinal);
 
   // sécurisation douce : si le sélecteur renvoie moins de 13 tags,
@@ -188,9 +197,13 @@ async function runTagsThreeAgents(ctx) {
 
   return {
     output: formatTagsNumbered(merged.slice(0, 13)),
+    usage: mergeUsage(exploreUsage, filterUsage, selectUsage),
     debug: {
+      exploreInput: exploreInput.filled,
       explore: rawExplore,
+      filterInput: filterInput.filled,
       filter: rawFiltered,
+      selectInput: selectInput.filled,
       select: rawFinal
     }
   };

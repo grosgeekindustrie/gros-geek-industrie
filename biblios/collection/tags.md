@@ -145,3 +145,5 @@
 - cadeau modelisme figurine
 - figurine hobby résine
 - statue 1/7 résine
+- capcom
+- s

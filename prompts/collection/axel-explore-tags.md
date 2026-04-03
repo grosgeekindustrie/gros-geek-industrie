@@ -2,7 +2,7 @@
 
 Tu génères un large pool de tags Etsy FR pour une figurine de collection à peindre.
 
-Produit :
+## Produit
 - Personnage : [[NOM]]
 - Nom court : [[NOM_COURT]]
 - Univers : [[UNIVERS]]
@@ -12,23 +12,61 @@ Produit :
 - Licence protégée : [[LICENSE]]
 - Bibliothèque tags validés / invalidés : [[BIBLIO_TAGS]]
 
-Mission :
-- produire entre 40 et 60 tags candidats
-- un tag par ligne
-- pas de commentaire
-- pas d’explication
-- pas de set final composé
-- pas de numérotation obligatoire, mais autorisée
+## Mission
+Produire un vivier large de tags candidats, utile pour un filtrage strict ensuite.
 
-Règles :
+Tu dois générer :
+- entre 35 et 50 tags candidats
+- un tag par ligne
+- sans commentaire
+- sans explication
+- sans set final
+- sans classement
+- sans justification
+
+## Ce que tu explores
+Tu peux explorer des tags liés à :
+- personnage
+- univers
+- type de produit
+- garage kit / figurine / statue si naturel
+- résine / collection si naturel
+- intention cadeau si crédible
+- éléments d’univers vraiment connus si pertinents
+- formulations proches des tags validés si elles s’adaptent naturellement au produit courant
+
+## Ce que tu dois éviter
+N’explore pas :
+- les tags purement mécaniques
+- les tags “catalogue”
+- les tags vides ou bouche-trou
+- les tags d’échelle
+- les tags premium / artisanal / détaillé / collector / hobby si ce n’est pas une vraie recherche naturelle
+- les tags éditeur / marque / studio si leur intérêt SEO est faible ou douteux
+- les variantes paresseuses d’un même tag
+- les quasi-doublons
+- les expressions bancales
+- les mélanges français / anglais mal intégrés
+- les termes blacklistés
+
+## Licence
+Si Licence protégée = oui :
+- ne force pas les noms propres partout
+- n’empile pas personnage + univers + licence dans trop de tags
+- explore davantage via le type de produit, l’univers large, l’ambiance ou l’intention cadeau quand c’est plus naturel
+
+Si Licence protégée = non :
+- tu peux exploiter plus librement le personnage et l’univers, mais sans répétition excessive
+
+## Règles
 - français uniquement
 - naturel
-- plausible sur Etsy
-- ancré dans le personnage, l’univers, le produit, la peinture, la collection ou l’intention cadeau
+- crédible sur Etsy
+- plausible comme vraie recherche client
 - 30 caractères max par tag
-- éviter les formulations marketing
-- éviter les termes blacklistés
-- réutiliser la logique des tags validés si elle s’adapte naturellement
-- ne jamais transférer un univers ou un personnage d’un autre produit
+- pas de vocabulaire marketing
+- pas de transfert depuis un autre personnage ou univers
+- pas de numérotation obligatoire
 
-Tu explores large mais tu restes crédible.
+## Objectif
+Tu explores large, mais chaque tag doit déjà avoir une vraie chance de survivre au filtre.

@@ -2,6 +2,7 @@
 
 Tu composes le set final de tags Etsy FR pour la figurine suivante :
 
+## Produit
 - Personnage : [[NOM]]
 - Nom court : [[NOM_COURT]]
 - Univers : [[UNIVERS]]
@@ -13,40 +14,69 @@ Tu composes le set final de tags Etsy FR pour la figurine suivante :
 
 Tu reçois plus bas une liste de CANDIDATS RETENUS.
 
-Mission :
-- sélectionner les 13 meilleurs tags
-- composer un set équilibré
+## Mission
+Sélectionner les 13 meilleurs tags finaux.
+
+Le set final doit être :
 - naturel
 - crédible
 - utile SEO
-- orienté personnage / univers en priorité
+- équilibré
+- lisible
+- orienté personnage / univers / produit en priorité
 
-Règles :
+## Règles
 - répondre uniquement avec 13 tags
-- format numéroté : 1. ... / 2. ...
+- format numéroté obligatoire : 1. ... / 2. ...
 - 30 caractères max par tag
-- pas de doublons directs ou déguisés
-- éviter la monotonie des débuts de tags
-- hors "cadeau", éviter qu’un même premier mot ouvre plus de 3 tags
-- utiliser exactement 2 tags commençant par "cadeau"
-- les tags "cadeau" doivent rester naturels et orientés intention d’achat
-- au moins 6 tags doivent être clairement ancrés personnage / univers
-- si "figurine", "statue", "garage kit" ou "sculpture" est utilisé, il doit ouvrir le tag
-- ne jamais utiliser de vocabulaire marketing
 - ne jamais inventer un tag hors de la liste fournie
+- pas de doublons directs ou déguisés
+- éviter les variantes presque identiques
+- éviter la monotonie des débuts de tags
+- si “figurine”, “statue”, “garage kit” ou “sculpture” est utilisé, il doit ouvrir le tag
+- pas de vocabulaire marketing
+- conserver seulement les tags réellement forts
 
-CONSIGNES DE SORTIE STRICTES :
-- n’écris aucune phrase d’introduction
-- n’écris aucune justification
-- n’écris aucune réflexion
-- n’écris aucune auto-correction
-- n’écris jamais “attendez”, “je corrige”, “voici”, “je vais”, “sélection”
-- ne produis qu’une seule liste finale
-- ne recommence jamais une seconde liste
-- si un tag semble interdit ou faible, remplace-le mentalement avant d’écrire
-- la réponse finale doit contenir exactement 13 lignes numérotées, et rien d’autre
+## Équilibre attendu
+Le set doit couvrir au mieux :
+- personnage
+- univers
+- type de produit
+- matière / collection si utile
+- intention cadeau si elle est forte
 
-FORMAT OBLIGATOIRE :
+Tu peux utiliser :
+- 0, 1 ou 2 tags commençant par “cadeau”
+- mais seulement s’ils sont vraiment naturels et utiles
+
+Tu ne dois pas forcer 2 tags “cadeau” si le pool n’en contient pas 2 vraiment solides.
+
+## Licence
+Si Licence protégée = oui :
+- évite de sur-répéter les noms propres
+- ne multiplie pas les variantes quasi identiques du personnage
+- garde seulement les tags explicites vraiment les plus forts
+
+Si Licence protégée = non :
+- tu peux être plus généreux avec les tags personnage / univers, sans créer de redondance
+
+## Règle de sélection
+Si deux tags se battent pour la même intention :
+- garde le plus naturel
+- garde le plus simple
+- garde le plus crédible
+- garde le plus utile Etsy
+
+## Consignes de sortie strictes
+- aucune introduction
+- aucune justification
+- aucune réflexion
+- aucune auto-correction
+- une seule liste finale
+- exactement 13 lignes numérotées
+- rien d’autre
+
+## Format obligatoire
 1. tag
 2. tag
 3. tag

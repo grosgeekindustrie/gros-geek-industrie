@@ -164,10 +164,41 @@ async function runAgent(agent, correction = '', isRetry = false) {
   }
   try {
     const ctx = buildCtx(agent.id, correction);
-    const prompt = buildPrompt(agent.id, ctx);
-    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
-    state.inputs[agent.id] = rawFixed + prompt.filled;
-    const { text: result, usage } = await callClaude(agent.id, prompt, agent.usesImages);
+    let result = '';
+    let usage = null;
+
+    if (agent.id === 'tags' && currentMode === 'collection') {
+      const tagsFlow = await runTagsThreeAgents(ctx);
+      result = tagsFlow.output;
+      usage = tagsFlow.usage || null;
+      state.inputs[agent.id] = [
+        '===== TAGS EXPLORE INPUT =====',
+        tagsFlow.debug?.exploreInput || '',
+        '',
+        '===== TAGS EXPLORE OUTPUT =====',
+        tagsFlow.debug?.explore || '',
+        '',
+        '===== TAGS FILTER INPUT =====',
+        tagsFlow.debug?.filterInput || '',
+        '',
+        '===== TAGS FILTER OUTPUT =====',
+        tagsFlow.debug?.filter || '',
+        '',
+        '===== TAGS SELECT INPUT =====',
+        tagsFlow.debug?.selectInput || '',
+        '',
+        '===== TAGS SELECT OUTPUT =====',
+        tagsFlow.debug?.select || '',
+      ].join('\n');
+    } else {
+      const prompt = buildPrompt(agent.id, ctx);
+      const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
+      state.inputs[agent.id] = rawFixed + prompt.filled;
+      const response = await callClaude(agent.id, prompt, agent.usesImages);
+      result = response.text;
+      usage = response.usage || null;
+    }
+
     state.outputs[agent.id] = result;
     out.textContent = result;
     showAgentCost(agent.id, usage);
