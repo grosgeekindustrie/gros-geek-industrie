@@ -557,14 +557,69 @@ function copySocial() { navigator.clipboard.writeText(state.outputs['social'] ||
 // ═══════════════════════════════════════════════════════════
 
 function copySection(key) { navigator.clipboard.writeText(state.outputs[key] || ''); showToast('Copié ✓'); }
-function copyAll() {
+
+function buildFinalOutputExport(prefixOverride) {
+  const prefix = prefixOverride || pfx();
+  const titre = state.outputs.titre_valide || '';
+  const tags = state.outputs.tags || '';
+  const desc = state.outputs['description_assembled'] || state.outputs.description || '';
+  const alt = state.outputs.alt || '';
+
   const parts = [];
-  if (state.outputs.titre_valide) parts.push(`── TITRE ──\n${state.outputs.titre_valide}`);
-  if (state.outputs.tags) parts.push(`── TAGS ──\n${state.outputs.tags}`);
-  const desc = state.outputs['description_assembled'] || state.outputs.description;
+  if (titre) parts.push(`── TITRE ──\n${titre}`);
+  if (tags) parts.push(`── TAGS ──\n${tags}`);
   if (desc) parts.push(`── DESCRIPTION ──\n${desc}`);
-  if (state.outputs.alt) parts.push(`── BALISE ALT ──\n${state.outputs.alt}`);
-  navigator.clipboard.writeText(parts.join('\n\n'));
+  if (alt) parts.push(`── BALISE ALT ──\n${alt}`);
+
+  return {
+    prefix,
+    content: parts.join('\n\n'),
+  };
+}
+
+function buildFinalOutputFilename(prefixOverride) {
+  const prefix = prefixOverride || pfx();
+  const nomCourt = document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || '';
+  const nomComplet = document.getElementById(`${prefix}-fNom`)?.value?.trim() || '';
+  const titre = state.outputs.titre_valide || '';
+  const rawBase = nomCourt || nomComplet || titre || (prefix === 'tt' ? 'tabletop-dnd' : 'collection');
+  const safeBase = rawBase
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 80) || (prefix === 'tt' ? 'tabletop-dnd' : 'collection');
+
+  return `etsy-pipeline-${safeBase}.txt`;
+}
+
+function exportFinalOutputs(prefixOverride) {
+  const { prefix, content } = buildFinalOutputExport(prefixOverride);
+  if (!content) {
+    showToast('Aucun output final à exporter', '#ff4757');
+    return;
+  }
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = buildFinalOutputFilename(prefix);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast('Export téléchargé ✓');
+}
+
+function copyAll() {
+  const { content } = buildFinalOutputExport();
+  if (!content) {
+    showToast('Aucun output final à copier', '#ff4757');
+    return;
+  }
+  navigator.clipboard.writeText(content);
   showToast('Tout copié ✓');
 }
 
