@@ -401,7 +401,7 @@
     await Promise.all([
       ...promptFiles.map(async ([agentId, fname]) => {
         try {
-          const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+          const res = await fetch(`/files/prompts/${mode}/${fname}.md`, { cache: 'no-store' });
           if (!res.ok) {
             missing.push(`prompts/${mode}/${fname}.md`);
             return;
@@ -413,7 +413,7 @@
       }),
       ...biblioFiles.map(async (key) => {
         try {
-          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
+          const res = await fetch(`/files/biblios/${mode}/${key}.md`, { cache: 'no-store' });
           if (!res.ok) {
             missing.push(`biblios/${mode}/${key}.md`);
             return;

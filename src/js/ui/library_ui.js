@@ -76,7 +76,7 @@
     const mode = getCurrentMode();
 
     try {
-      const res = await fetch(`/files/biblios/${mode}/${key}.md`);
+      const res = await fetch(`/files/biblios/${mode}/${key}.md`, { cache: 'no-store' });
       if (!res.ok) throw new Error((await res.json()).error);
       const txt = await res.text();
       getState().bibliosByMode[mode][key] = txt;
@@ -141,7 +141,7 @@
     if (!confirm(`Recharger prompts/${mode}/${fname}.md depuis le disque ?`)) return;
 
     try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+      const res = await fetch(`/files/prompts/${mode}/${fname}.md`, { cache: 'no-store' });
       if (!res.ok) throw new Error((await res.json()).error);
       const txt = await res.text();
       getState().promptsByMode[mode][currentLbAgentId] = txt;

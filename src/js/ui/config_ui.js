@@ -45,7 +45,7 @@ var PROMPT_FILE_MAP_COLLECTION = {
   tags_select:'axel-select',
 
   titre:'title_explore',
-  titre_explore:'title_explore',
+  titre_explore:'',
   titre_filter:'title_filter',
   titre_select:'title_select',
   description:'eden',
