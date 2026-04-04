@@ -43,7 +43,6 @@ Le set doit couvrir au mieux :
 - univers
 - type de produit
 - matière / collection si utile
-- impression 3d si le pool contient un tag technique crédible
 - intention cadeau si elle est forte
 - quelques tags d’univers ou de lore si le pool en contient de vraiment bons
 
@@ -61,27 +60,6 @@ Tu peux utiliser :
 - mais seulement s’ils sont vraiment naturels et utiles
 
 Tu ne dois pas forcer 2 tags “cadeau” si le pool n’en contient pas 2 vraiment solides.
-
-## Personnage vs univers
-Tu ne dois pas équilibrer artificiellement personnage et univers.
-
-Si les meilleurs tags disponibles penchent davantage vers l’univers :
-- accepte-le
-
-Si les meilleurs tags disponibles penchent davantage vers le personnage :
-- accepte-le
-
-Garde en priorité les tags qui semblent les plus forts, les plus naturels et les plus crédibles comme recherche réelle.
-
-## Personnages secondaires / connexes
-Tu peux conserver 1 ou 2 tags liés à des personnages secondaires ou connexes de la licence si, et seulement si :
-- ils sont crédibles comme recherche transverse
-- ils restent fortement liés à l’univers du produit
-- ils apportent plus de valeur qu’un tag générique supplémentaire
-
-Tu ne dois pas forcer ce type de tags.
-Tu ne dois pas en conserver trop.
-Un personnage secondaire fort vaut mieux qu’un tag générique faible, mais il ne doit pas prendre le dessus sur le personnage principal.
 
 ## Licence
 Si Licence protégée = oui :
@@ -108,14 +86,6 @@ Un tag lore doit rester :
 - crédible
 - défendable
 - utile au produit
-
-Rejette en priorité :
-- les tags cadeau faibles, vagues ou opportunistes
-- les tags trop génériques d’univers ou de matière
-- les tags qui ressemblent à une combinaison SEO brute sans vraie recherche naturelle
-
-Ne garde un tag "cadeau" que s’il évoque une intention d’achat crédible.
-Ne garde pas un tag générique d’univers s’il existe un tag plus précis, plus vivant ou plus distinctif.
 
 ## Consignes de sortie strictes
 - aucune introduction

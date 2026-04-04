@@ -68,28 +68,6 @@ Rejeter en priorité :
 - les sigles, factions ou micro-références d’univers si leur recherche réelle est incertaine
 - les variantes quasi équivalentes d’un même nom
 - les tags cadeau faibles ou forcés
-- les tags d’ambiance trop larges
-- les tags zombie trop génériques
-- les tags qui pourraient convenir à une grande quantité d’autres figurines sans vraiment cibler ce produit
-
-## Règle spéciale — tags trop larges
-Rejette en priorité les tags qui sonnent comme :
-- une ambiance générale
-- une catégorie large
-- un thème vague
-- une matière brute
-- un mot-clé interchangeable
-
-Exemples typiques à rejeter si le tag n’est pas fortement ancré :
-- survivant zombie
-- apocalypse zombie
-- zombie résine
-- garage kit zombie
-- resident evil résine
-- figurine collection résine
-
-Si un tag peut convenir presque aussi bien à beaucoup d’autres figurines voisines :
-- il doit être rejeté
 
 ## Doublons et proximité
 Rejeter :
@@ -103,21 +81,6 @@ Si plusieurs tags expriment presque la même idée :
 - garder le plus recherchable
 - garder le plus simple
 - garder le plus fort pour Etsy
-
-## Personnage / univers / lore
-Tu dois favoriser les tags qui restent vraiment ancrés :
-- au personnage
-- à l’univers
-- à un lieu
-- à une organisation
-- à un terme emblématique crédible
-- ou à une intention d’achat naturelle
-
-Un bon tag lore est préférable à un tag vague, si ce tag lore reste :
-- compréhensible
-- naturel
-- crédible
-- défendable comme recherche réelle
 
 ## Licence
 Si Licence protégée = oui :
@@ -143,6 +106,3 @@ Le résultat doit être un pool :
 - propre
 - durci
 - prêt pour un sélecteur final
-
-Si un tag est seulement “pas trop mauvais” mais pas vraiment fort :
-- rejette-le
