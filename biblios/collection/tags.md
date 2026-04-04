@@ -142,3 +142,4 @@
 - capcom
 - culte
 - 1/7
+- s
