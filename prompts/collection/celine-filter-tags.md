@@ -14,6 +14,7 @@ Tu gardes uniquement les tags qui méritent réellement de survivre jusqu’à l
 - Medium : [[MEDIUM]]
 - Échelles : [[ECHELLES]]
 - Licence protégée : [[LICENSE]]
+- Personnage connexes : [[CONNEXES_PRIORITAIRES]]
 - Bibliothèque tags validés / invalidés : [[BIBLIO_TAGS]]
 
 Tu reçois plus bas une liste de CANDIDATS À FILTRER.

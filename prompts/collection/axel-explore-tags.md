@@ -12,6 +12,7 @@ Ton rôle est de générer un grand pool de tags candidats propres, structurés,
 - Medium : [[MEDIUM]]
 - Licence protégée : [[LICENSE]]
 - Bibliothèque tags invalidés / blacklistés : [[BIBLIO_TAGS]]
+- Personnage connexes : [[CONNEXES_PRIORITAIRES]]
 
 ## Priorité absolue
 Tu respectes toujours cet ordre :
