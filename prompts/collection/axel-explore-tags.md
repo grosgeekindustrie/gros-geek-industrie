@@ -9,9 +9,7 @@ Ton rôle est de générer un grand pool de tags candidats propres, structurés,
 - Personnage : [[NOM]]
 - Nom court : [[NOM_COURT]]
 - Univers : [[UNIVERS]]
-- Sculpteur : [[SCULPTEUR]]
 - Medium : [[MEDIUM]]
-- Échelles : [[ECHELLES]]
 - Licence protégée : [[LICENSE]]
 - Bibliothèque tags invalidés / blacklistés : [[BIBLIO_TAGS]]
 
@@ -35,7 +33,7 @@ Chaque tag doit :
 - tenir sur une seule ligne
 - faire 30 caractères maximum
 - ressembler à une vraie recherche client
-- rester centré sur une figurine physique en résine à peindre ou à assembler
+- rester centré sur une figurine physique en résine à peindre 
 - respecter strictement une structure autorisée
 
 Tout tag qui ne respecte pas ces conditions doit être rejeté.
@@ -77,7 +75,6 @@ Tu distingues strictement les classes suivantes :
 
 ### USAGE_PHRASE
 - à peindre
-- à assembler
 
 ### ANGLE_PRODUIT
 - impression 3d
@@ -170,7 +167,6 @@ Tu ne fais jamais :
 
 USAGE_PHRASE doit toujours rester une mini-phrase figée :
 - à peindre
-- à assembler
 
 Aucune autre forme d’usage n’est autorisée.
 
