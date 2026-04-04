@@ -44,12 +44,33 @@ Le set doit couvrir au mieux :
 - type de produit
 - matière / collection si utile
 - intention cadeau si elle est forte
+- quelques tags d’univers ou de lore si le pool en contient de vraiment bons
+
+Quand le pool le permet, conserve idéalement 3 à 5 tags qui apportent une vraie couleur d’univers :
+- lieu
+- organisation
+- terme emblématique
+- menace ou ambiance iconique
+
+Le set final ne doit pas être composé presque uniquement de tags "produit + nom".
+Il doit aussi refléter l’univers du personnage si cela reste naturel et crédible.
 
 Tu peux utiliser :
 - 0, 1 ou 2 tags commençant par “cadeau”
 - mais seulement s’ils sont vraiment naturels et utiles
 
 Tu ne dois pas forcer 2 tags “cadeau” si le pool n’en contient pas 2 vraiment solides.
+
+## Personnage vs univers
+Tu ne dois pas équilibrer artificiellement personnage et univers.
+
+Si les meilleurs tags disponibles penchent davantage vers l’univers :
+- accepte-le
+
+Si les meilleurs tags disponibles penchent davantage vers le personnage :
+- accepte-le
+
+Garde en priorité les tags qui semblent les plus forts, les plus naturels et les plus crédibles comme recherche réelle.
 
 ## Licence
 Si Licence protégée = oui :
@@ -66,6 +87,24 @@ Si deux tags se battent pour la même intention :
 - garde le plus simple
 - garde le plus crédible
 - garde le plus utile Etsy
+
+Si plusieurs tags "figurine ..." ou "statue ..." se ressemblent trop :
+- n’en garde pas trop
+- préfère parfois un bon tag d’univers ou de lore, s’il apporte une vraie diversité sémantique
+
+Un tag lore doit rester :
+- compréhensible
+- crédible
+- défendable
+- utile au produit
+
+Rejette en priorité :
+- les tags cadeau faibles, vagues ou opportunistes
+- les tags trop génériques d’univers ou de matière
+- les tags qui ressemblent à une combinaison SEO brute sans vraie recherche naturelle
+
+Ne garde un tag "cadeau" que s’il évoque une intention d’achat crédible.
+Ne garde pas un tag générique d’univers s’il existe un tag plus précis, plus vivant ou plus distinctif.
 
 ## Consignes de sortie strictes
 - aucune introduction

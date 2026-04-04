@@ -142,4 +142,11 @@
 - capcom
 - culte
 - 1/7
-- s
+- leon kennedy résine
+- garage kit survival
+- survival
+- policier
+- agent spécial
+- rpd
+- infection
+- re2
