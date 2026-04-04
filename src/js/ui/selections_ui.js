@@ -268,18 +268,6 @@
       </div></div>`;
     }).join('');
 
-    const parsed = global.parseBiblioTitres ? global.parseBiblioTitres(global.getBiblio?.('titres')) : { blacklisted: [] };
-    const blacklisted = parsed.blacklisted || [];
-    if (blacklisted.length) {
-      lines.forEach((line, i) => {
-        const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
-        const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(text, blacklisted) : null;
-        if (term) {
-          const el = document.getElementById(`ti-${i}`);
-          if (el) setTimeout(() => titlesApi().autoRegenTitre?.(text, term, el, agentId), i * 300);
-        }
-      });
-    }
   }
 
   function selectTitre(i, agentId, el) {
@@ -511,7 +499,7 @@
     }
 
     const ctx = global.buildCtx('titre');
-    const prompt = global.buildPrompt('titre', ctx);
+    const prompt = global.buildPrompt('titre_explore', ctx);
     const explorerPrompt = `${prompt.filled}\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.`;
 
     try {

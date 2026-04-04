@@ -228,19 +228,6 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            const autoRegenTitreFn =
-              global.PipelineUITitles?.autoRegenTitre || global.autoRegenTitre;
-
-            if (typeof autoRegenTitreFn === 'function') {
-              setTimeout(() => autoRegenTitreFn(
-                state.currentValue,
-                added[0] || state.currentValue,
-                item,
-                state.agentId || 'titre'
-              ), 0);
-            } else {
-              console.error('autoRegenTitre introuvable');
-            }
           }
         }
 

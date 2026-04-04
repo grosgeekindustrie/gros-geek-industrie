@@ -14,6 +14,8 @@ const {
   extractLastNumberedBlock,
   parseTagOutput,
   formatTagsNumbered,
+  parseTitreOutput,
+  formatTitresNumbered,
   normalizeTagValue,
   normalizeTitreValue,
   sameTag,
@@ -132,15 +134,17 @@ const {
 // Ce helper reste ici car il consomme à la fois le prompt builder et callClaude.
 // Si on l'extrait plus tard, il devra garder la même séquence explore → filter → select.
 
-async function runTagsThreeAgents(ctx) {
-  const mergeUsage = (...usages) => usages.reduce((acc, usage) => {
+function mergeUsageStats(...usages) {
+  return usages.reduce((acc, usage) => {
     Object.entries(usage || {}).forEach(([key, value]) => {
       acc[key] = (acc[key] || 0) + (Number(value) || 0);
     });
 
     return acc;
   }, {});
+}
 
+async function runTagsThreeAgents(ctx) {
   // 1) EXPLORE
   const explorePrompt = buildPrompt('tags', ctx);
   const exploreInput = {
@@ -197,7 +201,73 @@ async function runTagsThreeAgents(ctx) {
 
   return {
     output: formatTagsNumbered(merged.slice(0, 13)),
-    usage: mergeUsage(exploreUsage, filterUsage, selectUsage),
+    usage: mergeUsageStats(exploreUsage, filterUsage, selectUsage),
+    debug: {
+      exploreInput: exploreInput.filled,
+      explore: rawExplore,
+      filterInput: filterInput.filled,
+      filter: rawFiltered,
+      selectInput: selectInput.filled,
+      select: rawFinal
+    }
+  };
+}
+
+async function runTitresThreeAgents(ctx) {
+  // 1) EXPLORE
+  const explorePrompt = buildPrompt('titre_explore', ctx);
+  const exploreInput = {
+    filled: explorePrompt.filled,
+    fixedContent: explorePrompt.fixedContent
+  };
+  const { text: rawExplore, usage: exploreUsage } = await callClaude('titre', exploreInput, false);
+
+  const exploreTitres = parseTitreOutput(rawExplore).slice(0, 30);
+  if (!exploreTitres.length) throw new Error('Aucun titre candidat généré');
+
+  // 2) FILTER
+  const filterPrompt = buildPrompt('titre_filter', ctx);
+  const filterInput = {
+    filled:
+      `${filterPrompt.filled}\n\n` +
+      `CANDIDATS À FILTRER :\n` +
+      `${formatTitresNumbered(exploreTitres)}`,
+    fixedContent: filterPrompt.fixedContent
+  };
+
+  const { text: rawFiltered, usage: filterUsage } = await callClaude('titre', filterInput, false);
+  const filteredTitres = parseTitreOutput(rawFiltered);
+  const pool = filteredTitres.length ? filteredTitres : exploreTitres;
+
+  // 3) SELECT
+  const selectPrompt = buildPrompt('titre_select', ctx);
+  const selectInput = {
+    filled:
+      `${selectPrompt.filled}\n\n` +
+      `CANDIDATS RETENUS :\n` +
+      `${formatTitresNumbered(pool)}`,
+    fixedContent: selectPrompt.fixedContent
+  };
+
+  const { text: rawFinal, usage: selectUsage } = await callClaude('titre', selectInput, false);
+  const finalTitresRaw = parseTitreOutput(rawFinal);
+
+  const merged = [];
+  const seen = new Set();
+
+  for (const titre of [...finalTitresRaw, ...pool]) {
+    const key = titre.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(titre);
+    if (merged.length === 10) break;
+  }
+
+  if (!merged.length) throw new Error('Aucun titre final généré');
+
+  return {
+    output: formatTitresNumbered(merged.slice(0, 10)),
+    usage: mergeUsageStats(exploreUsage, filterUsage, selectUsage),
     debug: {
       exploreInput: exploreInput.filled,
       explore: rawExplore,
@@ -411,7 +481,7 @@ async function runTitreExplorer() {
   const btn = document.getElementById(`${p}-bexplore-titre`);
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Exploration...'; }
   const ctx = buildCtx('titre');
-  const prompt = buildPrompt('titre', ctx);
+  const prompt = buildPrompt('titre_explore', ctx);
   const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.';
   try {
     const { text: result } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);

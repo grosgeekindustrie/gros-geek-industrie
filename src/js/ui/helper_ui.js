@@ -95,6 +95,42 @@
     return tags.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
   }
 
+  function parseTitreOutput(raw) {
+    if (!raw) return [];
+
+    const lastNumberedBlock = extractLastNumberedBlock(raw);
+    const sourceLines = lastNumberedBlock || String(raw || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const cleaned = sourceLines
+      .map((line) => line.replace(/^\d+\.\s*/, ''))
+      .map((line) => line.replace(/^[-•+]\s*/, ''))
+      .map((line) => line.replace(/\s*\(\d+\s*car(?:actères?)?\)\s*$/i, ''))
+      .map((line) => normalizeTitreValue(line))
+      .filter(Boolean);
+
+    const seen = new Set();
+    const out = [];
+    for (const titre of cleaned) {
+      const key = titre.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(titre);
+    }
+    return out;
+  }
+
+  function formatTitresNumbered(titres) {
+    return titres
+      .map((titre, index) => {
+        const normalized = normalizeTitreValue(titre);
+        return `${index + 1}. ${normalized} (${normalized.length} car)`;
+      })
+      .join('\n');
+  }
+
   function normalizeSearchableValue(value) {
     return String(value || '')
       .toLowerCase()
@@ -173,6 +209,8 @@
     extractLastNumberedBlock,
     parseTagOutput,
     formatTagsNumbered,
+    parseTitreOutput,
+    formatTitresNumbered,
     normalizeSearchableValue,
     getBlacklistedTerm,
     isExactTagInList,

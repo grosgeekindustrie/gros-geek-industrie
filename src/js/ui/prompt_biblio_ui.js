@@ -18,6 +18,29 @@
     description: () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
   };
 
+  function resolvePromptTemplate(agentId, currentMode, state) {
+    const templates = state.promptsByMode[currentMode] || {};
+    const current = templates[agentId] || '';
+
+    if (current) return current;
+
+    if (currentMode === 'collection' && ['titre_explore', 'titre_filter', 'titre_select'].includes(agentId)) {
+      return templates.titre || '';
+    }
+
+    return '';
+  }
+
+  function resolveFixedContent(agentId) {
+    if (CACHE_FIXED[agentId]) return CACHE_FIXED[agentId]();
+
+    if (['titre_explore', 'titre_filter', 'titre_select'].includes(agentId)) {
+      return CACHE_FIXED.titre ? CACHE_FIXED.titre() : null;
+    }
+
+    return null;
+  }
+
   function parseBiblioTags(raw) {
     const validated = [];
     const blacklisted = [];
@@ -75,7 +98,7 @@
   function buildPrompt(agentId, ctx) {
     const state = getState();
     const currentMode = getCurrentMode();
-    const template = state.promptsByMode[currentMode][agentId] || '';
+    const template = resolvePromptTemplate(agentId, currentMode, state);
 
     const filled = template
       .replace(/\[\[NOM_COURT\]\]/g, ctx.nomCourt || ctx.nom)
@@ -120,7 +143,7 @@
       + (ctx.rules ? `\nRègles permanentes:\n${ctx.rules}` : '')
       + (ctx.correction ? `\nInstruction ponctuelle: ${ctx.correction}` : '');
 
-    const fixedContent = CACHE_FIXED[agentId] ? CACHE_FIXED[agentId]() : null;
+    const fixedContent = resolveFixedContent(agentId);
     return { filled, fixedContent };
   }
 

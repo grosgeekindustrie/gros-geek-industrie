@@ -18,6 +18,40 @@
   const getCurrentMode = () => global.currentMode;
   const getConfig = () => global.PipelineUIConfig || {};
 
+  const TITLE_PROMPT_LABELS = {
+    titre: 'Nova · Titres SEO',
+    titre_explore: 'Nova · Explore Titres',
+    titre_filter: 'Filter · Titres',
+    titre_select: 'Select · Titres',
+  };
+
+  const TITLE_PROMPT_FILE_OVERRIDES_COLLECTION = {
+    titre_explore: 'nova',
+    titre_filter: 'titre_filter',
+    titre_select: 'titre_select',
+  };
+
+  function resolvePromptTextareaValue(mode, agentId, state) {
+    const current = state.promptsByMode[mode][agentId];
+    if (current) return current;
+
+    if (mode === 'collection' && ['titre_explore', 'titre_filter', 'titre_select'].includes(agentId)) {
+      return state.promptsByMode[mode].titre || '';
+    }
+
+    return '';
+  }
+
+  function resolvePromptFileName(mode, agentId, map) {
+    if (agentId === 'orchestrateur') return mode === 'collection' ? 'rex' : 'felix';
+
+    if (mode === 'collection' && TITLE_PROMPT_FILE_OVERRIDES_COLLECTION[agentId]) {
+      return TITLE_PROMPT_FILE_OVERRIDES_COLLECTION[agentId];
+    }
+
+    return (map && map[agentId]) || agentId;
+  }
+
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
 
@@ -77,6 +111,7 @@
       tags: 'Axel · Explore Tags',
       tags_filter: 'Céline · Filter Tags',
       tags_select: 'Axel · Select Tags',
+      ...TITLE_PROMPT_LABELS,
     };
     const agents = getConfig().getPipelineAgents ? getConfig().getPipelineAgents() : [];
     const label = id === 'orchestrateur'
@@ -84,7 +119,7 @@
       : (tagLabels[id] || agents.find((a) => a.id === id)?.title || id);
 
     document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;
-    document.getElementById('lbTextarea').value = getState().promptsByMode[getCurrentMode()][id] || '';
+    document.getElementById('lbTextarea').value = resolvePromptTextareaValue(getCurrentMode(), id, getState());
     document.getElementById('promptLightbox').classList.add('visible');
   }
 
@@ -99,8 +134,7 @@
     const config = getConfig();
     const mode = getCurrentMode();
     const map = mode === 'collection' ? config.PROMPT_FILE_MAP_COLLECTION : config.PROMPT_FILE_MAP;
-    const agentKey = currentLbAgentId === 'orchestrateur' ? (mode === 'collection' ? 'rex' : 'felix') : currentLbAgentId;
-        const fname = (map && map[agentKey]) || agentKey;
+    const fname = resolvePromptFileName(mode, currentLbAgentId, map);
     if (!confirm(`Écraser prompts/${mode}/${fname}.md sur le disque ?`)) return;
 
     const val = document.getElementById('lbTextarea').value;
@@ -121,8 +155,7 @@
     const config = getConfig();
     const mode = getCurrentMode();
     const map = mode === 'collection' ? config.PROMPT_FILE_MAP_COLLECTION : config.PROMPT_FILE_MAP;
-    const agentKey = currentLbAgentId === 'orchestrateur' ? (mode === 'collection' ? 'rex' : 'felix') : currentLbAgentId;
-    const fname = (map && map[agentKey]) || agentKey;
+    const fname = resolvePromptFileName(mode, currentLbAgentId, map);
     if (!confirm(`Recharger prompts/${mode}/${fname}.md depuis le disque ?`)) return;
 
     try {

@@ -190,6 +190,29 @@ async function runAgent(agent, correction = '', isRetry = false) {
         '===== TAGS SELECT OUTPUT =====',
         tagsFlow.debug?.select || '',
       ].join('\n');
+    } else if (agent.id === 'titre' && currentMode === 'collection') {
+      const titresFlow = await runTitresThreeAgents(ctx);
+      result = titresFlow.output;
+      usage = titresFlow.usage || null;
+      state.inputs[agent.id] = [
+        '===== TITRE EXPLORE INPUT =====',
+        titresFlow.debug?.exploreInput || '',
+        '',
+        '===== TITRE EXPLORE OUTPUT =====',
+        titresFlow.debug?.explore || '',
+        '',
+        '===== TITRE FILTER INPUT =====',
+        titresFlow.debug?.filterInput || '',
+        '',
+        '===== TITRE FILTER OUTPUT =====',
+        titresFlow.debug?.filter || '',
+        '',
+        '===== TITRE SELECT INPUT =====',
+        titresFlow.debug?.selectInput || '',
+        '',
+        '===== TITRE SELECT OUTPUT =====',
+        titresFlow.debug?.select || '',
+      ].join('\n');
     } else {
       const prompt = buildPrompt(agent.id, ctx);
       const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';

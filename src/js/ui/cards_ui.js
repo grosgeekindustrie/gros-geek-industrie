@@ -46,7 +46,11 @@
             ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('tags')">⚙️E</button>
                <button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('tags_filter')">⚙️F</button>
                <button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('tags_select')">⚙️S</button>`
-            : `<button class="btn btn-muted" onclick="openPromptLightbox('${agent.id}')">⚙️</button>`}
+            : agent.id === 'titre'
+              ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('titre_explore')">⚙️E</button>
+                 <button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('titre_filter')">⚙️F</button>
+                 <button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('titre_select')">⚙️S</button>`
+              : `<button class="btn btn-muted" onclick="openPromptLightbox('${agent.id}')">⚙️</button>`}
           <button class="btn" id="${p}-bstop-${agent.id}" onclick="stopAgent('${agent.id}')" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);">⏹</button>
           <button class="btn btn-muted" onclick="copyOut('${agent.id}')">📋</button>
           <button class="btn btn-muted" onclick="showRawInput('${agent.id}')">&lt;/&gt;</button>

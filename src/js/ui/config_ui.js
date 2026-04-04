@@ -45,6 +45,7 @@ var PROMPT_FILE_MAP_COLLECTION = {
   tags_select:'axel-select',
 
   titre:'nova',
+  // trio titres côté code : prompts dédiés ajoutés plus tard, fallback temporaire sur titre/nova
   description:'eden',
   social:'theo',
   camille:'zoe',
