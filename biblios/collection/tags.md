@@ -53,8 +53,6 @@
 + cadeau gamer naruto
 + figurine resident evil
 + figurine leon kennedy
-+ test ajout
-+ test ajout 421
 
 ## BLACKLISTÉS
 - personnage
@@ -135,15 +133,12 @@
 - statue personnage culte
 - figurine personnage culte
 - sculpture personnage culte
-- test rejet
-- rejet 421
 - statue survival horror
 - horror
-- test tag 421
-- c quoi c bug
 - statue capcom résine
 - cadeau modelisme figurine
 - figurine hobby résine
 - statue 1/7 résine
 - capcom
-- s
+- culte
+- 1/7
