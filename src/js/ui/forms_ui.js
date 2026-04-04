@@ -62,6 +62,7 @@
       license: document.getElementById('col-fLicense')?.checked ? 'oui' : 'non',
       particularites: document.getElementById('col-fParticularites')?.value || '',
       contextePerso: document.getElementById('col-fContextePerso')?.value || '',
+      connexesPrioritaires: document.getElementById('col-fConnexesPrioritaires')?.value || '',
       lienPerso: document.getElementById('col-fLienPerso')?.value || '',
       buzzCollection: document.getElementById('col-fBuzzCollection')?.checked || false,
       buzzCollectionNote: document.getElementById('col-fBuzzCollectionNote')?.value || '',
@@ -200,6 +201,7 @@
       data._mediums = [...document.querySelectorAll('#col-fMediumGroup input:checked')].map((input) => input.value);
       data._particularites = document.getElementById('col-fParticularites')?.value || '';
       data._contextePerso = document.getElementById('col-fContextePerso')?.value || '';
+      data._connexesPrioritaires = document.getElementById('col-fConnexesPrioritaires')?.value || '';
       data._lienPerso = document.getElementById('col-fLienPerso')?.value || '';
       data._buzz = document.getElementById('col-fBuzzCollection')?.checked || false;
       data._buzzNote = document.getElementById('col-fBuzzCollectionNote')?.value || '';
@@ -285,6 +287,10 @@
           const el = document.getElementById('col-fContextePerso');
           if (el) el.value = data._contextePerso;
         }
+        if (data._connexesPrioritaires !== undefined) {
+  const el = document.getElementById('col-fConnexesPrioritaires');
+  if (el) el.value = data._connexesPrioritaires;
+}
         if (data._lienPerso !== undefined) {
           const el = document.getElementById('col-fLienPerso');
           if (el) el.value = data._lienPerso;
@@ -333,7 +339,7 @@
 
     document.querySelectorAll('#tt-archSecondaires input').forEach((input) => input.addEventListener('change', saveFormState));
     document.querySelectorAll('#col-fMediumGroup input').forEach((input) => input.addEventListener('change', saveFormState));
-    ['col-fParticularites', 'col-fContextePerso', 'col-fLienPerso'].forEach((id) => {
+    ['col-fParticularites', 'col-fContextePerso', 'col-fLienPerso','col-fConnexesPrioritaires'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveFormState);
     });

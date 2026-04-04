@@ -104,6 +104,7 @@
       .replace(/\[\[LICENSE\]\]/g, ctx.license || 'non')
       .replace(/\[\[PARTICULARITES\]\]/g, ctx.particularites || '')
       .replace(/\[\[CONTEXTE_PERSO\]\]/g, ctx.contextePerso || '')
+      .replace(/\[\[CONNEXES_PRIORITAIRES\]\]/g, ctx.connexesPrioritaires || '')
       .replace(/\[\[LIEN_PERSO\]\]/g, ctx.lienPerso || '')
       .replace(/\[\[BUZZ_COLLECTION\]\]/g, ctx.buzzCollection ? `OUI${ctx.buzzCollectionNote ? ' — ' + ctx.buzzCollectionNote : ''}` : 'NON')
       .replace(/\[\[ACCROCHE\]\]/g, ctx.selectedAccrocheText || '')
