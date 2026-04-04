@@ -12,6 +12,80 @@
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt'));
   const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
 
+
+  function getTagLibraryState() {
+    const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : {};
+    return {
+      validated: parsed.validated || [],
+      blacklisted: parsed.blacklisted || [],
+    };
+  }
+
+  function getTagVisualState(tag, libraryState) {
+    const validated = libraryState?.validated || [];
+    const blacklisted = libraryState?.blacklisted || [];
+    const isValidated = helpers().isExactTagInList ? helpers().isExactTagInList(tag, validated) : false;
+    const isExactBlacklisted = helpers().isExactTagInList ? helpers().isExactTagInList(tag, blacklisted) : false;
+    const matchedTerm = !isExactBlacklisted && helpers().getBlacklistedTerm
+      ? helpers().getBlacklistedTerm(tag, blacklisted, { minTermLength: 2 })
+      : null;
+
+    return {
+      isValidated,
+      isExactBlacklisted,
+      matchedTerm,
+    };
+  }
+
+  function buildTagTextHtml(tag, tagState) {
+    if (tagState.isExactBlacklisted) {
+      return helpers().escapeHtml ? helpers().escapeHtml(tag) : tag;
+    }
+    if (tagState.matchedTerm && helpers().highlightTermInText) {
+      return helpers().highlightTermInText(tag, tagState.matchedTerm, 'tag-term-highlight');
+    }
+    return helpers().escapeHtml ? helpers().escapeHtml(tag) : tag;
+  }
+
+  function buildTagStateBadge(tagState) {
+    if (tagState.isExactBlacklisted) {
+      return '<span class="tag-state-badge is-blacklisted">⚠ tag exclu</span>';
+    }
+    if (tagState.matchedTerm) {
+      return '<span class="tag-state-badge is-warning">⚠ terme exclu</span>';
+    }
+    if (tagState.isValidated) {
+      return '<span class="tag-state-badge is-validated">✓ validé</span>';
+    }
+    return '';
+  }
+
+  function buildTagItemMarkup(tag, itemId, source, libraryState) {
+    const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const len = tag.length;
+    const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
+    const tagState = getTagVisualState(tag, libraryState);
+    const itemClasses = [
+      'titre-item',
+      tagState.isValidated ? 'tag-is-validated' : '',
+      tagState.isExactBlacklisted ? 'tag-is-blacklisted' : '',
+      !tagState.isExactBlacklisted && tagState.matchedTerm ? 'tag-has-blacklisted-term' : '',
+    ].filter(Boolean).join(' ');
+
+    return `<div class="${itemClasses}" id="${itemId}">
+      <div class="titre-main">
+        <span class="titre-text">${buildTagTextHtml(tag, tagState)}</span>
+        ${buildTagStateBadge(tagState)}
+      </div>
+      <span class="titre-char" style="color:${lenColor};">${len}</span>
+      <div class="titre-actions">
+        <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','${itemId}','${source}')">👎</button>
+        <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','${itemId}')">🔄</button>
+      </div>
+    </div>`;
+  }
+
   function buildTagsUI(output) {
     const p = getPfx();
     const tags = helpers().parseTagOutput ? helpers().parseTagOutput(output) : [];

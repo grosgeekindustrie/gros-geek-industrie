@@ -118,6 +118,48 @@
     }) || null;
   }
 
+  function isExactTagInList(text, list) {
+    const normalized = normalizeTagValue(text).toLowerCase();
+    if (!normalized) return false;
+
+    return (list || []).some((entry) => normalizeTagValue(entry).toLowerCase() === normalized);
+  }
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeRegex(text) {
+    return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function highlightTermInText(text, term, className = 'tag-term-highlight') {
+    const rawText = String(text || '');
+    const rawTerm = String(term || '').trim();
+    if (!rawText) return '';
+    if (!rawTerm) return escapeHtml(rawText);
+
+    const regex = new RegExp(`(${escapeRegex(rawTerm)})`, 'gi');
+    const matches = [...rawText.matchAll(regex)];
+    if (!matches.length) return escapeHtml(rawText);
+
+    let out = '';
+    let lastIndex = 0;
+    matches.forEach((match) => {
+      const index = match.index || 0;
+      out += escapeHtml(rawText.slice(lastIndex, index));
+      out += `<mark class="${className}">${escapeHtml(match[0])}</mark>`;
+      lastIndex = index + match[0].length;
+    });
+    out += escapeHtml(rawText.slice(lastIndex));
+    return out;
+  }
+
   function escapeForInlineSingleQuote(text) {
     return String(text || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
@@ -133,6 +175,9 @@
     formatTagsNumbered,
     normalizeSearchableValue,
     getBlacklistedTerm,
+    isExactTagInList,
+    escapeHtml,
+    highlightTermInText,
     escapeForInlineSingleQuote,
   };
 

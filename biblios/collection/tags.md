@@ -53,6 +53,9 @@
 + cadeau gamer naruto
 + figurine resident evil
 + figurine leon kennedy
++ figurine jinx
++ statue jinx
++ garage kit jinx
 
 ## BLACKLISTÉS
 - personnage
@@ -150,3 +153,25 @@
 - rpd
 - infection
 - re2
+- zaun
+- powder
+- powder résine
+- série animée
+- cadeau gamer arcane
+- piltover
+- riot
+- série netflix
+- netflix résine
+- netflix
+- cadeau gamer jinx
+- league of legends résine
+- figurine league
+- lol résine
+- figurine série jinx
+- figurine détaillée jinx
+- statue détaillée jinx
+- figurine détaillée arcane
+- statue détaillée arcane
+- statue league
+- jinx résine
+- figurine série arcane

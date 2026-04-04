@@ -31,6 +31,7 @@ Tu peux explorer des tags liés à :
 - type de produit
 - garage kit / figurine / statue si naturel
 - résine / collection si naturel
+- impression 3d si cela reste naturel
 - intention cadeau si crédible
 - lieux, organisations, factions, objets, menaces ou termes emblématiques de l’univers
 - ambiance ou situation fortement associée au personnage si cela reste naturel
@@ -41,6 +42,7 @@ Quand c’est pertinent, tu dois aussi chercher quelques tags qui apportent une 
 - organisations connues
 - vocabulaire culte ou fortement associé à la licence
 - ambiance ou menace iconique
+- personnages secondaires ou connexes fortement liés au personnage principal ou à la licence
 
 Tu ne dois pas forcer ce type de tags.
 Tu ne les utilises que s’ils restent :
@@ -48,6 +50,7 @@ Tu ne les utilises que s’ils restent :
 - courts
 - crédibles comme recherche Etsy
 - compréhensibles sans explication
+- défendables pour le produit courant
 
 ## Ce que tu dois éviter
 N’explore pas :
@@ -87,3 +90,6 @@ Tu explores large, mais chaque tag doit déjà avoir une vraie chance de survivr
 
 Le pool final ne doit pas être composé presque uniquement de variantes autour du personnage et du mot "figurine".
 Il doit contenir aussi quelques candidats d’univers ou de lore crédibles, pour enrichir la couverture sémantique.
+
+Quand cela est pertinent, le pool peut aussi contenir quelques personnages secondaires ou connexes de la licence.
+Ils ne sont pas obligatoires, mais ils peuvent être utiles s’ils ouvrent des recherches transversales crédibles.

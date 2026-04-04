@@ -663,6 +663,14 @@ header h1 {
   background:var(--bg);
 }
 
+.titre-main {
+  display:flex;
+  flex:1;
+  min-width:0;
+  gap:8px;
+  align-items:flex-start;
+}
+
 .titre-item.selected {
   background:rgba(232,197,71,.08);
   border-color:rgba(232,197,71,.25);
@@ -695,10 +703,61 @@ header h1 {
 
 .titre-text {
   flex:1;
+  min-width:0;
   font-family:'Space Mono',monospace;
   font-size:12px;
   line-height:1.6;
   cursor:pointer;
+}
+
+.tag-state-badge {
+  flex-shrink:0;
+  font-family:'Space Mono',monospace;
+  font-size:10px;
+  line-height:1;
+  padding:4px 6px;
+  border-radius:999px;
+  border:1px solid transparent;
+  margin-top:1px;
+}
+
+.tag-state-badge.is-validated {
+  background:rgba(76,175,125,.16);
+  border-color:rgba(76,175,125,.35);
+  color:#d7ffe5;
+}
+
+.tag-state-badge.is-warning {
+  background:rgba(255,107,53,.14);
+  border-color:rgba(255,107,53,.35);
+  color:#ffd7c8;
+}
+
+.tag-state-badge.is-blacklisted {
+  background:rgba(255,71,87,.14);
+  border-color:rgba(255,71,87,.35);
+  color:#ffd7dd;
+}
+
+.titre-item.tag-is-validated {
+  background:rgba(76,175,125,.08);
+  border-color:rgba(76,175,125,.3);
+}
+
+.titre-item.tag-has-blacklisted-term {
+  border-color:rgba(255,107,53,.4);
+}
+
+.titre-item.tag-is-blacklisted {
+  background:rgba(255,71,87,.08);
+  border-color:rgba(255,71,87,.35);
+}
+
+.tag-term-highlight {
+  background:rgba(255,71,87,.18);
+  color:#ffd7dd;
+  padding:0 .15rem;
+  border-radius:.2rem;
 }
 
 .titre-char {
