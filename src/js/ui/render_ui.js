@@ -4,6 +4,8 @@
 // Ce module recopie les valeurs sélectionnées vers les sorties visibles sans porter la
 // logique métier complète. Il sert de colle légère entre état runtime et DOM final.
   global.PipelineUI = global.PipelineUI || {};
+  let lastTagsDuplicateSignature = '';
+
   function setNodeText(node, text) {
     if (!node) return;
     if ('value' in node) node.value = text;
@@ -91,18 +93,17 @@
 
     if (!tags.length) return '';
 
-    const deduped = [];
     const seen = new Set();
-    for (const tag of tags) {
+    const duplicateCount = tags.reduce((count, tag) => {
       const key = tag.toLowerCase();
-      if (seen.has(key)) continue;
+      if (seen.has(key)) return count + 1;
       seen.add(key);
-      deduped.push(tag);
-    }
+      return count;
+    }, 0);
 
     const normalized = helpers.formatTagsNumbered
-      ? helpers.formatTagsNumbered(deduped)
-      : deduped.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
+      ? helpers.formatTagsNumbered(tags)
+      : tags.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
 
     const runtimeState = global.state || (typeof state !== 'undefined' ? state : null);
     if (runtimeState?.outputs) {
@@ -111,6 +112,17 @@
 
     syncSelectionField('tags', normalized, p);
     syncFinalPre('tags', normalized, p);
+
+    if (duplicateCount > 0) {
+      const signature = `${p}:${normalized}`;
+      if (lastTagsDuplicateSignature !== signature) {
+        lastTagsDuplicateSignature = signature;
+        global.showToast?.(`⚠️ ${duplicateCount} doublon(s) tag détecté(s) dans la liste`, '#ff4757', 5000);
+      }
+    } else {
+      lastTagsDuplicateSignature = '';
+    }
+
     return normalized;
   }
 

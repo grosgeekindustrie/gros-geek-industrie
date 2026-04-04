@@ -95,9 +95,27 @@
     return tags.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
   }
 
-  function getBlacklistedTerm(text, blacklist) {
-    const lc = String(text || '').toLowerCase();
-    return (blacklist || []).find((term) => term && lc.includes(String(term).toLowerCase())) || null;
+  function normalizeSearchableValue(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getBlacklistedTerm(text, blacklist, options = {}) {
+    const minTermLength = Number.isInteger(options.minTermLength) ? options.minTermLength : 2;
+    const searchableText = normalizeSearchableValue(text);
+    if (!searchableText) return null;
+
+    const paddedText = ` ${searchableText} `;
+    return (blacklist || []).find((term) => {
+      const searchableTerm = normalizeSearchableValue(term);
+      if (!searchableTerm || searchableTerm.length < minTermLength) return false;
+      return paddedText.includes(` ${searchableTerm} `);
+    }) || null;
   }
 
   function escapeForInlineSingleQuote(text) {
@@ -113,6 +131,7 @@
     extractLastNumberedBlock,
     parseTagOutput,
     formatTagsNumbered,
+    normalizeSearchableValue,
     getBlacklistedTerm,
     escapeForInlineSingleQuote,
   };

@@ -5,60 +5,132 @@
   global.PipelineUI = global.PipelineUI || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};
+  const AUTO_REGEN_MAX_ATTEMPTS = 3;
+
+  function extractGeneratedTag(result) {
+    return String(result || '')
+      .trim()
+      .replace(/^\d+\.\s*/, '')
+      .replace(/^[-+•]\s*/, '')
+      .split('\n')[0]
+      .trim();
+  }
+
+  function collectSiblingTags(itemEl) {
+    const container = itemEl?.parentElement;
+    if (!container) return [];
+
+    return [...container.querySelectorAll('.titre-item')]
+      .filter((node) => node !== itemEl)
+      .map((node) => node.querySelector('.titre-text')?.textContent || '')
+      .map((value) => helpers().normalizeTagValue ? helpers().normalizeTagValue(value) : String(value || '').trim())
+      .filter(Boolean);
+  }
+
+  function isDuplicateCandidate(candidate, itemEl, originalTag) {
+    const normalizedCandidate = helpers().normalizeTagValue
+      ? helpers().normalizeTagValue(candidate)
+      : String(candidate || '').trim();
+
+    if (!normalizedCandidate) return true;
+    if (helpers().sameTag?.(normalizedCandidate, originalTag)) return true;
+
+    return collectSiblingTags(itemEl).some((existingTag) => helpers().sameTag?.(existingTag, normalizedCandidate));
+  }
+
+  function updateTagItemUI(itemEl, newTag) {
+    const textSpan = itemEl.querySelector('.titre-text');
+    const lenSpan = itemEl.querySelector('.titre-char');
+    const safe = helpers().escapeForInlineSingleQuote(newTag);
+    const itemId = itemEl.id;
+    const source = itemId.startsWith('exp-') ? 'explorer' : 'main';
+    const buttons = itemEl.querySelectorAll('.titre-thumb');
+
+    if (textSpan) textSpan.textContent = newTag;
+    if (lenSpan) {
+      lenSpan.textContent = newTag.length;
+      lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)';
+    }
+
+    if (buttons[0]) buttons[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
+    if (buttons[1]) buttons[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}','${source}')`);
+    if (buttons[2]) buttons[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
+  }
+
+  function buildReplacementPrompt(basePrompt, tag, matchedTerm, excludedTags) {
+    const exclusionBlock = excludedTags.length
+      ? `\nTags interdits pour ce remplacement :\n${excludedTags.map((value) => `- ${value}`).join('\n')}`
+      : '';
+    const reason = matchedTerm && matchedTerm !== 'remplacement manuel'
+      ? `Le tag "${tag}" contient le terme blacklisté "${matchedTerm}".`
+      : `Remplace le tag "${tag}".`;
+
+    return {
+      filled: `${basePrompt.filled}\n\n---\nMODE REMPLACEMENT UNIQUE:\n${reason}\nGénère UN SEUL tag de remplacement.\nContraintes supplémentaires :\n- le nouveau tag doit être inédit dans la liste actuelle\n- ne réutilise jamais le tag d'origine\n- max 30 caractères\n- français, naturel, ancré au produit\n- sans numérotation\n- sans ponctuation finale${exclusionBlock}`,
+      fixedContent: basePrompt.fixedContent,
+    };
+  }
 
   async function autoRegenTag(tag, matchedTerm, itemEl) {
-    if (itemEl.classList.contains('regen-pending')) return;
+    if (!itemEl || itemEl.classList.contains('regen-pending')) return;
 
     itemEl.classList.add('regen-pending');
     const textSpan = itemEl.querySelector('.titre-text');
-    const lenSpan = itemEl.querySelector('.titre-char');
-    const originalText = textSpan.textContent;
-    textSpan.textContent = '⟳ remplacement…';
+    const originalText = textSpan?.textContent || tag;
+    if (textSpan) textSpan.textContent = '⟳ remplacement…';
 
     try {
       const ctx = global.buildCtx('tags');
       const prompt = global.buildPrompt('tags_select', ctx);
-      const regenPrompt = {
-        filled: `${prompt.filled}\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe tag "${tag}" contient le terme blacklisté "${matchedTerm}". Génère UN SEUL tag de remplacement. Max 30 caractères, français, naturel, ancré au produit.\nFormat: juste le tag, sans numérotation, sans ponctuation finale.`,
-        fixedContent: prompt.fixedContent,
-      };
-
-      const { text: result } = await global.callClaude('tags', regenPrompt, false, 2);
-      const newTag = result
-        .trim()
-        .replace(/^\d+\.\s*/, '')
-        .replace(/^[-+•]\s*/, '')
-        .split('\n')[0]
-        .trim();
-
       const { blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
-      const stillBad = helpers().getBlacklistedTerm(newTag, blacklisted);
+      const rejectedTags = [originalText];
+      let replacementTag = '';
+      let replacementReason = '';
 
-      textSpan.textContent = newTag;
-      if (lenSpan) {
-        lenSpan.textContent = newTag.length;
-        lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)';
+      for (let attempt = 0; attempt < AUTO_REGEN_MAX_ATTEMPTS; attempt += 1) {
+        const regenPrompt = buildReplacementPrompt(prompt, tag, matchedTerm, rejectedTags);
+        const { text: result } = await global.callClaude('tags', regenPrompt, false, 2);
+        const candidateTag = extractGeneratedTag(result);
+
+        if (!candidateTag) {
+          replacementReason = 'Réponse vide';
+          continue;
+        }
+
+        if (candidateTag.length > 30) {
+          replacementReason = 'Tag trop long';
+          rejectedTags.push(candidateTag);
+          continue;
+        }
+
+        if (isDuplicateCandidate(candidateTag, itemEl, originalText)) {
+          replacementReason = 'Doublon détecté';
+          rejectedTags.push(candidateTag);
+          continue;
+        }
+
+        const stillBad = helpers().getBlacklistedTerm(candidateTag, blacklisted, { minTermLength: 2 });
+        if (stillBad) {
+          replacementReason = `Terme blacklisté : ${stillBad}`;
+          rejectedTags.push(candidateTag);
+          continue;
+        }
+
+        replacementTag = candidateTag;
+        break;
       }
 
-      const safe = helpers().escapeForInlineSingleQuote(newTag);
-      const itemId = itemEl.id;
-      const buttons = itemEl.querySelectorAll('.titre-thumb');
-      if (buttons[0]) buttons[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
-      if (buttons[1]) buttons[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}')`);
-      if (buttons[2]) buttons[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
+      if (!replacementTag) throw new Error(replacementReason || 'Aucun remplacement valide');
 
+      updateTagItemUI(itemEl, replacementTag);
       itemEl.classList.remove('regen-pending');
       render().syncTagsOutputFromUI?.();
-
-      if (stillBad) {
-        autoRegenTag(newTag, stillBad, itemEl);
-      } else {
-        global.showToast(`♻️ Tag remplacé : "${newTag}"`, '#7eb8f7');
-      }
+      global.showToast(`♻️ Tag remplacé : "${replacementTag}"`, '#7eb8f7');
     } catch (error) {
       itemEl.classList.remove('regen-pending');
-      textSpan.textContent = originalText;
-      global.showToast('Erreur remplacement tag', '#ff4757');
+      updateTagItemUI(itemEl, originalText);
+      render().syncTagsOutputFromUI?.();
+      global.showToast(`Erreur remplacement tag: ${error.message}`, '#ff4757');
     }
   }
 

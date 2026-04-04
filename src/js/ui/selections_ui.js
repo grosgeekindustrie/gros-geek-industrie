@@ -43,7 +43,7 @@
     const blacklisted = parsed.blacklisted || [];
     if (blacklisted.length) {
       tags.forEach((tag, i) => {
-        const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(tag, blacklisted) : null;
+        const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(tag, blacklisted, { minTermLength: 2 }) : null;
         if (term) {
           const el = document.getElementById(`tag-item-${i}`);
           if (el) setTimeout(() => tagsApi().autoRegenTag?.(tag, term, el), i * 300);
