@@ -149,7 +149,7 @@ async function runTagsThreeAgents(ctx) {
   };
   const { text: rawExplore, usage: exploreUsage } = await callClaude('tags', exploreInput, false);
 
-  const exploreTags = parseTagOutput(rawExplore).slice(0, 60);
+  const exploreTags = parseTagOutput(rawExplore).slice(0, 80);
   if (!exploreTags.length) throw new Error('Aucun tag candidat généré');
 
   // 2) FILTER
