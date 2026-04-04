@@ -86,6 +86,24 @@
     </div>`;
   }
 
+  function filterExplorerTags(tags, libraryState) {
+    const seen = new Set();
+    return tags.filter((tag) => {
+      const normalized = helpers().normalizeTagValue
+        ? helpers().normalizeTagValue(tag)
+        : String(tag || '').trim().toLowerCase();
+      if (!normalized || seen.has(normalized)) return false;
+
+      const tagState = getTagVisualState(tag, libraryState);
+      if (tagState.isValidated || tagState.isExactBlacklisted || tagState.matchedTerm) {
+        return false;
+      }
+
+      seen.add(normalized);
+      return true;
+    });
+  }
+
   function buildTagsUI(output) {
     const p = getPfx();
     const tags = helpers().parseTagOutput ? helpers().parseTagOutput(output) : [];
@@ -178,16 +196,20 @@
       }, false);
 
       const tags = helpers().parseTagOutput ? helpers().parseTagOutput(result) : [];
+      const libraryState = getTagLibraryState();
+      const filteredTags = filterExplorerTags(tags, libraryState);
+      const excludedCount = tags.length - filteredTags.length;
+
       document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TAGS';
-      document.getElementById('explorerCount').textContent = `${tags.length} tags`;
-      document.getElementById('explorerListLabel').textContent = 'Tags générés — 👍 valider · 👎 blacklister';
+      document.getElementById('explorerCount').textContent = `${filteredTags.length} tags`;
+      document.getElementById('explorerListLabel').textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
       document.getElementById('explorerConversation').value = result;
 
       modals().ensureLibraryModals?.();
       modals().ensureExplorerManualAddButton?.('tags');
 
       const list = document.getElementById('explorerList');
-      list.innerHTML = tags.map((tag, i) => {
+      list.innerHTML = filteredTags.length ? filteredTags.map((tag, i) => {
         const len = tag.length;
         const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
         const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -200,10 +222,10 @@
           <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','exp-tag-${i}')">🔄</button>
         </div>
       </div>`;
-      }).join('');
+      }).join('') : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       document.getElementById('explorerLightbox').classList.add('visible');
-      global.showToast?.('Exploration terminée ✓', '#e8c547');
+      global.showToast?.(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
     } catch (error) {
       global.showToast?.(`Erreur: ${error.message}`, '#ff4757');
     } finally {
