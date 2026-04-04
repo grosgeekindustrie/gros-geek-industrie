@@ -28,7 +28,7 @@ Tu n’imites aucun ancien tag.
 Tu appliques uniquement les règles de structure ci-dessous.
 
 ## Mission
-Produire exactement 50 tags candidats.
+Produire exactement 80 tags candidats.
 
 Chaque tag doit :
 - être en français
@@ -41,7 +41,7 @@ Chaque tag doit :
 Tout tag qui ne respecte pas ces conditions doit être rejeté.
 
 ## Format de sortie
-- exactement 50 tags
+- exactement 80 tags
 - un tag par ligne
 - sans commentaire
 - sans explication
