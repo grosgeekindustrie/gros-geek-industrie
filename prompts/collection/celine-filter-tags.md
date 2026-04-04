@@ -24,7 +24,9 @@ Conserver uniquement les tags :
 - vraiment utiles pour le produit
 - exploitables pour la sélection finale
 
-Ton objectif n’est pas de sauver un maximum de tags. Ton objectif n’est pas non plus d’écraser toute variété utile. Ton objectif est de retirer le bruit, les clones et les tags faibles, tout en gardant un pool équilibré et exploitable.
+Ton objectif n’est pas de sauver un maximum de tags.
+Ton objectif n’est pas non plus d’écraser toute variété utile.
+Ton objectif est de retirer le bruit, les clones et les tags faibles, tout en gardant un pool équilibré et exploitable.
 
 ## Règle maîtresse
 En cas de doute :
@@ -35,56 +37,35 @@ Si un tag est seulement “acceptable” :
 
 Ne compense jamais le rejet d’un tag faible par un autre tag faible de remplissage.
 
-## Ce qu’un bon tag doit être
-Un bon tag doit être :
-- immédiatement compréhensible
-- naturel à voix haute
-- spécifique sans être bancal
-- utile pour ce produit précis
-- distinct des autres tags conservés
-- défendable commercialement
+## Étape 1 — Rejet dur de conformité
+Rejeter immédiatement tout tag qui :
+- dépasse 30 caractères espaces compris
+- contient un mot ou sous-terme présent dans `[[BIBLIO_TAGS]]`
+- contient une échelle
+- contient `collectible`
+- contient `figure`
+- contient `sculpture`
+- contient `collection` à la place de `à collectionner`
+- contient `peindre` sans l’expression exacte `à peindre`
+- tronque une expression figée comme `à peindre`, `à collectionner` ou `impression 3d`
+- inverse l’ordre attendu d’une structure valide
+- ne respecte pas la grammaire produit validée
+- repose sur une variante produit non autorisée
+- contient un studio, une marque, une plateforme, un éditeur, un diffuseur ou un sculpteur
+- est artificiel, mécanique ou mal formulé
+- repose uniquement sur le physique, la coiffure, la tenue, les armes, les accessoires, l’attitude, la psychologie ou une esthétique vague
 
-Un bon tag peut aussi être conservé s’il aide Etsy à comprendre clairement ce qu’est le produit ou ce qu’il représente, à condition qu’il reste naturel, propre et crédible.
-
-## Rejeter immédiatement
-Rejeter tout tag :
-- artificiel
-- mécanique
-- trop catalogue
-- trop générique
-- construit pour remplir
-- mal formulé
-- trop SEO fabriqué
-- reposant sur un mot faible ou creux
-- reprenant une structure validée sans vraie pertinence
-- basé sur le physique
-- basé sur la coiffure
-- basé sur les armes
-- basé sur l’attitude
-- basé sur la psychologie
-- basé sur une esthétique vague
-- basé sur un accessoire isolé
-- hors grammaire produit validée
-
-## Rejeter en priorité
-Rejeter en priorité :
-- les tags éditeur / marque / studio faibles ou douteux
-- les tags d’échelle
-- les tags qualité vagues
-- les tags “résine”, “collection”, “animation”, “league” ou équivalents quand ils deviennent faibles, répétitifs ou trop nombreux
-- les sigles, factions ou micro-références d’univers si leur recherche réelle est incertaine
-- les variantes quasi équivalentes d’un même nom
-- les tags cadeau faibles ou forcés
-- les connexes trop éloignés ou trop faibles
-- les variantes qui n’apportent pas de vrai nouvel angle utile
-- les tags propres en surface mais trop abstraits, trop mous ou trop compensatoires
-
-## Doublons et proximité
-Rejeter :
+## Étape 2 — Tri qualité
+Rejeter ensuite en priorité :
 - les doublons directs
 - les quasi-doublons
 - les variantes trop proches
-- les tags qui n’apportent presque aucun mot utile nouveau
+- les tags trop génériques
+- les tags cadeau faibles ou forcés
+- les connexes trop éloignés ou trop faibles
+- les tags propres en surface mais trop abstraits, trop mous ou trop compensatoires
+- les variantes qui n’apportent pas de vrai nouvel angle utile
+- les tags “résine”, “animation”, “league”, “collection” ou équivalents quand ils deviennent faibles, répétitifs ou trop nombreux
 
 Si plusieurs tags expriment presque la même idée :
 - garder le plus naturel
@@ -97,7 +78,7 @@ Important :
 - un doublon réel = même angle, même utilité, même fonction de recherche
 - si l’angle change réellement, le tag peut être conservé
 
-Exemples d’angles distincts pouvant coexister :
+## Exemples d’angles distincts pouvant coexister
 - produit principal + `[[NOM]]` + univers
 - produit principal + `[[NOM]]` + design officiel
 - produit principal + `[[NOM]]` + usage
@@ -151,11 +132,7 @@ Les tags couvrant clairement un angle fort comme :
 - design officiel
 - cadeau
 
-méritent souvent davantage leur place qu’une énième variante plus faible ou plus générique.
-
-Important :
-- si une version spécifique et propre de l’angle existe, privilégie-la avant une version plus large
-- ne laisse pas les tags génériques absorber toute la place des tags produit réellement utiles
+méritent souvent davantage leur place qu’une variante plus faible ou plus générique.
 
 ## Éviter la saturation d’une seule famille
 Tu ne dois pas laisser une seule famille de tags occuper une part excessive du pool conservé.
@@ -237,7 +214,8 @@ Cible prioritaire :
 Zone acceptable :
 - entre 24 et 30 tags
 
-Ne descends pas trop bas si cela appauvrit inutilement la variété utile. Mais ne remplis jamais avec des tags faibles juste pour atteindre un quota.
+Ne descends pas trop bas si cela appauvrit inutilement la variété utile.
+Mais ne remplis jamais avec des tags faibles juste pour atteindre un quota.
 
 ## Objectif final
 Le résultat doit être un pool :
