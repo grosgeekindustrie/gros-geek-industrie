@@ -44,8 +44,10 @@ var PROMPT_FILE_MAP_COLLECTION = {
   tags_filter:'celine-filter-tags',
   tags_select:'axel-select',
 
-  titre:'nova',
-  // trio titres côté code : prompts dédiés ajoutés plus tard, fallback temporaire sur titre/nova
+  titre:'title_explore',
+  titre_explore:'title_explore',
+  titre_filter:'title_filter',
+  titre_select:'title_select',
   description:'eden',
   social:'theo',
   camille:'zoe',

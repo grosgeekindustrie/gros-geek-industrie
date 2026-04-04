@@ -25,30 +25,12 @@
     titre_select: 'Select · Titres',
   };
 
-  const TITLE_PROMPT_FILE_OVERRIDES_COLLECTION = {
-    titre_explore: 'nova',
-    titre_filter: 'titre_filter',
-    titre_select: 'titre_select',
-  };
-
   function resolvePromptTextareaValue(mode, agentId, state) {
-    const current = state.promptsByMode[mode][agentId];
-    if (current) return current;
-
-    if (mode === 'collection' && ['titre_explore', 'titre_filter', 'titre_select'].includes(agentId)) {
-      return state.promptsByMode[mode].titre || '';
-    }
-
-    return '';
+    return state.promptsByMode[mode][agentId] || '';
   }
 
   function resolvePromptFileName(mode, agentId, map) {
     if (agentId === 'orchestrateur') return mode === 'collection' ? 'rex' : 'felix';
-
-    if (mode === 'collection' && TITLE_PROMPT_FILE_OVERRIDES_COLLECTION[agentId]) {
-      return TITLE_PROMPT_FILE_OVERRIDES_COLLECTION[agentId];
-    }
-
     return (map && map[agentId]) || agentId;
   }
 

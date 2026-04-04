@@ -20,15 +20,7 @@
 
   function resolvePromptTemplate(agentId, currentMode, state) {
     const templates = state.promptsByMode[currentMode] || {};
-    const current = templates[agentId] || '';
-
-    if (current) return current;
-
-    if (currentMode === 'collection' && ['titre_explore', 'titre_filter', 'titre_select'].includes(agentId)) {
-      return templates.titre || '';
-    }
-
-    return '';
+    return templates[agentId] || '';
   }
 
   function resolveFixedContent(agentId) {
