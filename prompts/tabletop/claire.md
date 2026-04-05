@@ -217,3 +217,6 @@ Règles :
 → Saut de ligne après le titre
 → Une information par ligne
 → Jamais "univers fantasy" générique
+
+FORMAT
+Zéro explication de démarche. Output propre prêt à copier-coller.

@@ -18,7 +18,7 @@ Sélection encore plus resserrée pour guider le prompt avec un noyau de référ
 + Zelda - TOTK figurine résine à peindre 14k HD , garage kit pour collectionneurs, gamers et fan de jeux vidéo. FX en résine translucide
 + Shadowheart - Baldur's Gate 3, figurine en résine à peindre, garage kit pour peintres, collectionneurs et fans de JDR fantasy et de BG3
 + La Diablesse Sanglante – Animation japonaise statue de collection en résine à peindre, garage kit pour  fans de manga
-+ Barbarian Queen statue à peindre en résine et assembler, garage Kit HD 14k | Pour fans de fantasy et d’univers Donjons & Dragons
++ Barbarian Queen statue à peindre en résine et assembler, garage Kit HD 14k,pour fans de fantasy et d’univers Donjons & Dragons
 + Prince of Persia – The Forgotten Sands statue de collection en résine à peindre, garage kit pour peintres et collectionneurs
 + The Queen of Ashen Vale – Dark Fantasy, figurine résine à peindre 14K HD, garage kit pour peintres et collectionneurs de figurine fantasy
 + Hornet Silksong diorama résine à peindre et assembler imprimé en 3D, garage kit pour gamers & fans d’Hollow Knight 
