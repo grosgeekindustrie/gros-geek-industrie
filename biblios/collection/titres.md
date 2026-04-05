@@ -1,8 +1,4 @@
-# TOP 20 — Biblio titres premium
-
-Sélection encore plus resserrée pour guider le prompt avec un noyau de références fortes, variées et peu polluées.
-
-## VALIDÉS FORTS
+## VALIDÉS
 
 + Ayanami Rei – Neon Genesis Evangelion statue de collection en résine à peindre, garage kit pour collectionneurs et fans d’anime
 + Tanathos - Hades figurine en résine à peindre et assembler, pour Collectionneurs et fans de mythologie et jeux indés

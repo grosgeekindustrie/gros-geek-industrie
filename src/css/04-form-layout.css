@@ -769,3 +769,83 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ═══ ECHELLES HELPERS ═══ */
+/*
+  Améliore la lisibilité des champs dimensions Collection et rend visible l'échelle d'origine.
+  Les styles restent localisés au formulaire pour éviter de polluer les autres vues.
+*/
+
+.ech-item {
+  gap: 0.625rem;
+}
+
+.ech-item.is-origin {
+  border-color: rgba(126, 184, 247, 0.4);
+  background: rgba(126, 184, 247, 0.08);
+}
+
+.ech-custom-label,
+.ech-dim-input {
+  min-height: 2.25rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.ech-custom-label:focus,
+.ech-dim-input:focus {
+  outline: none;
+  border-color: rgba(126, 184, 247, 0.5);
+  background: rgba(126, 184, 247, 0.08);
+}
+
+.ech-custom-label {
+  flex: 0 0 5.5rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+}
+
+.ech-dim-input {
+  flex: 1 1 15rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.ech-dim-input::placeholder,
+.ech-custom-label::placeholder {
+  color: var(--muted);
+}
+
+.ech-dim-input:disabled,
+.ech-custom-label:disabled {
+  opacity: 0.65;
+}
+
+.ech-origin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.125rem;
+  color: var(--text2);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.ech-origin-radio {
+  margin: 0;
+}
+
+.ech-origin-text {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02rem;
+  text-transform: uppercase;
+}
+
+.ech-origin-radio:disabled + .ech-origin-text {
+  opacity: 0.45;
+}

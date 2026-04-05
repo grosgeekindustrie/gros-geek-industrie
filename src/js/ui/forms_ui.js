@@ -205,6 +205,10 @@
       data._lienPerso = document.getElementById('col-fLienPerso')?.value || '';
       data._buzz = document.getElementById('col-fBuzzCollection')?.checked || false;
       data._buzzNote = document.getElementById('col-fBuzzCollectionNote')?.value || '';
+      data._originEchelleIndex = (() => {
+        const checked = document.querySelector('input[name="col-origin-scale"]:checked');
+        return checked ? Number(checked.value) : null;
+      })();
       data._customEchelles = [];
       for (let c = 0; c < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); c++) {
         const idx = (echellesApi.ECHELLES_COLLECTION || []).length + c;
@@ -237,7 +241,7 @@
           const dim = document.getElementById(`tt-ed${i}`);
           if (cb && entry.checked) {
             cb.checked = true;
-            global.toggleEch?.(i);
+            global.toggleEch?.(i, { shouldSave: false });
             if (dim && entry.dim) dim.value = entry.dim;
           }
         });
@@ -265,7 +269,7 @@
           const dim = document.getElementById(`col-ed${i}`);
           if (cb && entry.checked) {
             cb.checked = true;
-            global.toggleEch?.(i);
+            global.toggleEch?.(i, { shouldSave: false });
             if (dim && entry.dim) dim.value = entry.dim;
           }
         });
@@ -288,9 +292,9 @@
           if (el) el.value = data._contextePerso;
         }
         if (data._connexesPrioritaires !== undefined) {
-  const el = document.getElementById('col-fConnexesPrioritaires');
-  if (el) el.value = data._connexesPrioritaires;
-}
+          const el = document.getElementById('col-fConnexesPrioritaires');
+          if (el) el.value = data._connexesPrioritaires;
+        }
         if (data._lienPerso !== undefined) {
           const el = document.getElementById('col-fLienPerso');
           if (el) el.value = data._lienPerso;
@@ -314,10 +318,13 @@
           if (label && entry.label) label.value = entry.label;
           if (cb && entry.checked) {
             cb.checked = true;
-            global.toggleEch?.(idx);
+            global.toggleEch?.(idx, { shouldSave: false });
           }
           if (dim && entry.dim) dim.value = entry.dim;
         });
+        if (Number.isInteger(data._originEchelleIndex)) {
+          global.setEchelleOrigin?.(data._originEchelleIndex, { shouldSave: false });
+        }
       }
     } catch (error) {}
   }
