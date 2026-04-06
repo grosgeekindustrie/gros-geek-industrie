@@ -1,129 +1,293 @@
 (function initPipelineUIImages(global) {
+  'use strict';
 
 // Gestion locale des images.
-// Upload, drop, resize navigateur et rendu des miniatures pour les vues unitaires.
-// Périmètre volontairement limité au cycle de vie des images côté UI.
+// Upload, normalisation locale, rendu des miniatures et actions de crop / debug.
+// Le payload envoyé aux agents reste contenu dans state.images[p].
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;
+  const imageTools = () => global.PipelineUIImageTools || {};
 
-  function setupImageHandlers(p) {
-    const dz = document.getElementById(`dropZone-${p}`);
-    const inp = document.getElementById(`imgInput-${p}`);
-    if (!dz || !inp) return;
+  const stopEvent = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
-    dz.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dz.classList.add('dragover');
-    });
-
-    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-
-    dz.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      dz.classList.remove('dragover');
-      await processImages(
-        Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/')),
-        p
-      );
-    });
-
-    inp.addEventListener('change', async (e) => {
-      await processImages(Array.from(e.target.files), p);
-    });
-  }
-
-  async function processImages(files, p) {
- const state = getState();
-if (!state?.images?.[p]) return;
-
-const existingNames = new Set(state.images[p].map((image) => image.name));
-
-for (const [index, file] of files.entries()) {
-  if (existingNames.has(file.name)) continue;
-
-  const targetWidth = index === 0 ? 1024 : 512;
-  const base64 = await resizeImage(file, targetWidth);
-
-  state.images[p].push({
-    name: file.name,
-    base64,
-    mediaType: 'image/jpeg',
-  });
-}
-
-renderThumbs(p);
-  }
-
-  function renderThumbs(p) {
+  const getTargetWidthForNextImage = (prefix) => {
     const state = getState();
-    if (!state?.images?.[p]) return;
+    const currentCount = state?.images?.[prefix]?.length || 0;
+    return currentCount === 0 ? 1024 : 512;
+  };
 
-    const strip = document.getElementById(`thumbStrip-${p}`);
-    const placeholder = document.getElementById(`dzPlaceholder-${p}`);
+  const ensureOriginalSource = async (file) => {
+    const originalDataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(String(event.target?.result || ''));
+      reader.onerror = () => reject(new Error('Lecture image impossible'));
+      reader.readAsDataURL(file);
+    });
+
+    const { splitDataUrl, loadImageFromDataUrl } = imageTools();
+    const split = splitDataUrl(originalDataUrl);
+    const loadedImage = await loadImageFromDataUrl(originalDataUrl);
+
+    return {
+      originalBase64: split.base64,
+      originalMediaType: split.mediaType,
+      originalWidth: loadedImage.naturalWidth || loadedImage.width,
+      originalHeight: loadedImage.naturalHeight || loadedImage.height,
+    };
+  };
+
+  const buildImageRecordFromFile = async (file, prefix) => {
+    const tools = imageTools();
+    const original = await ensureOriginalSource(file);
+    const variant = await tools.exportVariantFromSource({
+      sourceBase64: original.originalBase64,
+      sourceMediaType: original.originalMediaType,
+      sourceWidth: original.originalWidth,
+      sourceHeight: original.originalHeight,
+      targetWidth: getTargetWidthForNextImage(prefix),
+      outputMediaType: tools.getDefaultExportMediaType(),
+    });
+
+    return {
+      name: file.name,
+      base64: variant.base64,
+      mediaType: variant.mediaType,
+      width: variant.width,
+      height: variant.height,
+      originalBase64: original.originalBase64,
+      originalMediaType: original.originalMediaType,
+      originalWidth: original.originalWidth,
+      originalHeight: original.originalHeight,
+      cropRect: null,
+    };
+  };
+
+  const setupImageHandlers = (prefix) => {
+    const dropZone = document.getElementById(`dropZone-${prefix}`);
+    const input = document.getElementById(`imgInput-${prefix}`);
+    if (!dropZone || !input) return;
+
+    imageTools().ensureImageToolsModal?.();
+
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+    dropZone.addEventListener('drop', async (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+      await processImages(files, prefix);
+    });
+
+    input.addEventListener('change', async (event) => {
+      await processImages(Array.from(event.target.files || []), prefix);
+      input.value = '';
+    });
+  };
+
+  const processImages = async (files, prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+
+    const existingNames = new Set(state.images[prefix].map((image) => image.name));
+
+    for (const file of files) {
+      if (!file?.type?.startsWith('image/')) continue;
+      if (existingNames.has(file.name)) continue;
+
+      const imageRecord = await buildImageRecordFromFile(file, prefix);
+      state.images[prefix].push(imageRecord);
+      existingNames.add(file.name);
+    }
+
+    renderThumbs(prefix);
+  };
+
+  const updateImageRecordFromCrop = (prefix, imageIndex, cropVariant) => {
+    const state = getState();
+    const currentImage = state?.images?.[prefix]?.[imageIndex];
+    if (!currentImage) return;
+
+    if (!currentImage.originalBase64) currentImage.originalBase64 = currentImage.base64;
+    if (!currentImage.originalMediaType) currentImage.originalMediaType = currentImage.mediaType;
+    if (!currentImage.originalWidth) currentImage.originalWidth = currentImage.width;
+    if (!currentImage.originalHeight) currentImage.originalHeight = currentImage.height;
+
+    currentImage.base64 = cropVariant.base64;
+    currentImage.mediaType = cropVariant.mediaType;
+    currentImage.width = cropVariant.width;
+    currentImage.height = cropVariant.height;
+    currentImage.cropRect = cropVariant.crop;
+
+    renderThumbs(prefix);
+  };
+
+  const openCropForImage = (prefix, imageIndex) => {
+    const state = getState();
+    const imageRecord = state?.images?.[prefix]?.[imageIndex];
+    if (!imageRecord) return;
+
+    imageTools().openImageCropModal?.({
+      imageRecord,
+      onConfirm: (cropVariant) => updateImageRecordFromCrop(prefix, imageIndex, cropVariant),
+    });
+  };
+
+  const openPayloadDebug = (prefix) => {
+    const state = getState();
+    imageTools().openImagePayloadDebugModal?.({
+      prefix,
+      images: state?.images?.[prefix] || [],
+    });
+  };
+
+  const renderThumbCard = (imageRecord, imageIndex, prefix) => {
+    const card = document.createElement('article');
+    card.className = 'image-thumb-card';
+    card.addEventListener('click', stopEvent);
+
+    const previewWrap = document.createElement('div');
+    previewWrap.className = 'image-thumb-preview-wrap';
+
+    const preview = document.createElement('img');
+    preview.className = 'image-thumb-preview';
+    preview.src = imageTools().getImageDataUrl?.(imageRecord.base64, imageRecord.mediaType);
+    preview.alt = imageRecord.name || `Image ${imageIndex + 1}`;
+    preview.title = imageRecord.name || '';
+
+    previewWrap.appendChild(preview);
+
+    const body = document.createElement('div');
+    body.className = 'image-thumb-body';
+
+    const name = document.createElement('div');
+    name.className = 'image-thumb-name';
+    name.textContent = imageRecord.name || `Image ${imageIndex + 1}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'image-thumb-meta';
+    meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${imageRecord.mediaType || 'image/png'}`;
+
+    const actions = document.createElement('div');
+    actions.className = 'image-thumb-actions';
+
+    const cropButton = document.createElement('button');
+    cropButton.type = 'button';
+    cropButton.className = 'btn btn-muted image-thumb-action-btn';
+    cropButton.textContent = 'Cropper';
+    cropButton.addEventListener('click', (event) => {
+      stopEvent(event);
+      openCropForImage(prefix, imageIndex);
+    });
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'btn btn-error image-thumb-action-btn image-thumb-action-btn-danger';
+    removeButton.textContent = '✕';
+    removeButton.title = 'Retirer';
+    removeButton.addEventListener('click', (event) => {
+      stopEvent(event);
+      removeImageAt(imageIndex, prefix);
+    });
+
+    actions.appendChild(cropButton);
+    actions.appendChild(removeButton);
+    body.appendChild(name);
+    body.appendChild(meta);
+    body.appendChild(actions);
+    card.appendChild(previewWrap);
+    card.appendChild(body);
+
+    return card;
+  };
+
+  const renderThumbs = (prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+
+    const strip = document.getElementById(`thumbStrip-${prefix}`);
+    const placeholder = document.getElementById(`dzPlaceholder-${prefix}`);
     if (!strip) return;
 
     strip.innerHTML = '';
-    const hasImages = state.images[p].length > 0;
+    strip.classList.add('image-thumb-strip');
 
+    const hasImages = state.images[prefix].length > 0;
     if (placeholder) placeholder.style.display = hasImages ? 'none' : '';
+    if (!hasImages) return;
 
-    state.images[p].forEach((img) => {
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:relative;display:inline-block;';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'image-thumb-toolbar';
+    toolbar.addEventListener('click', stopEvent);
 
-      const el = document.createElement('img');
-      el.className = 'img-thumb';
-      el.src = `data:image/jpeg;base64,${img.base64}`;
-      el.title = img.name || '';
+    const count = document.createElement('span');
+    count.className = 'image-thumb-toolbar-count';
+    count.textContent = `${state.images[prefix].length} image(s)`;
 
-      const btn = document.createElement('button');
-      btn.textContent = '✕';
-      btn.style.cssText = 'position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--error);border:none;color:#fff;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;z-index:2;';
-      btn.title = 'Retirer';
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        removeImage(img.base64, p);
-      };
-
-      wrap.appendChild(el);
-      wrap.appendChild(btn);
-      strip.appendChild(wrap);
+    const debugButton = document.createElement('button');
+    debugButton.type = 'button';
+    debugButton.className = 'btn btn-muted btn-xs-inline image-thumb-debug-btn';
+    debugButton.textContent = 'Debug payload';
+    debugButton.addEventListener('click', (event) => {
+      stopEvent(event);
+      openPayloadDebug(prefix);
     });
-  }
 
-  function resizeImage(file, maxPx) {
-    return new Promise((res, rej) => {
-      const reader = new FileReader();
+    toolbar.appendChild(count);
+    toolbar.appendChild(debugButton);
 
-      reader.onload = (e) => {
-        const img = new Image();
+    const grid = document.createElement('div');
+    grid.className = 'image-thumb-grid';
+    grid.addEventListener('click', stopEvent);
 
-        img.onload = () => {
-          const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.width * ratio);
-          canvas.height = Math.round(img.height * ratio);
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          res(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]);
-        };
-
-        img.onerror = rej;
-        img.src = e.target.result;
-      };
-
-      reader.onerror = rej;
-      reader.readAsDataURL(file);
+    state.images[prefix].forEach((imageRecord, imageIndex) => {
+      grid.appendChild(renderThumbCard(imageRecord, imageIndex, prefix));
     });
-  }
 
-  function removeImage(b64, p) {
+    strip.appendChild(toolbar);
+    strip.appendChild(grid);
+  };
+
+  const removeImageAt = (imageIndex, prefix) => {
     const state = getState();
-    if (!state?.images?.[p]) return;
+    if (!state?.images?.[prefix]) return;
 
-    state.images[p] = state.images[p].filter((i) => i.base64 !== b64);
-    renderThumbs(p);
-  }
+    state.images[prefix].splice(imageIndex, 1);
+    renderThumbs(prefix);
+  };
+
+  const removeImage = (base64, prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+
+    state.images[prefix] = state.images[prefix].filter((image) => image.base64 !== base64);
+    renderThumbs(prefix);
+  };
+
+  const resizeImage = async (file, maxPx) => {
+    const record = await buildImageRecordFromFile(file, 'tt');
+    if (!maxPx) return record.base64;
+
+    const targetWidth = Math.min(maxPx, record.originalWidth || maxPx);
+    const variant = await imageTools().exportVariantFromSource?.({
+      sourceBase64: record.originalBase64,
+      sourceMediaType: record.originalMediaType,
+      sourceWidth: record.originalWidth,
+      sourceHeight: record.originalHeight,
+      targetWidth,
+      outputMediaType: imageTools().getDefaultExportMediaType?.(),
+    });
+
+    return variant?.base64 || record.base64;
+  };
 
   global.PipelineUIImages = {
     setupImageHandlers,
@@ -131,6 +295,9 @@ renderThumbs(p);
     renderThumbs,
     resizeImage,
     removeImage,
+    removeImageAt,
+    openCropForImage,
+    openPayloadDebug,
   };
 
   global.PipelineUI.images = global.PipelineUI.images || {};

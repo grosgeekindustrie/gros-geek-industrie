@@ -9,4 +9,5 @@
   global.PipelineUI.modals = global.PipelineUI.modals || {};
   global.PipelineUI.tags = global.PipelineUI.tags || {};
   global.PipelineUI.title = global.PipelineUI.title || {};
+  global.PipelineUI.imageTools = global.PipelineUI.imageTools || {};
 })(window);
