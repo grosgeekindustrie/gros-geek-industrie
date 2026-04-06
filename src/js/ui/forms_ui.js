@@ -123,15 +123,27 @@
   }
 
   function buildCtx(agentId, correction = '') {
-    const state = getState();
-    const currentMode = getCurrentMode();
-    const p = getPfx();
-    const echellesApi = getEchellesApi();
-    const rawNom = document.getElementById(`${p}-fNom`)?.value || 'Figurine';
-    const nom = rawNom.replace(/\b\w/g, (char) => char.toUpperCase());
-    const rawNomCourt = document.getElementById(`${p}-fNomCourt`)?.value || rawNom.split(' ')[0];
-    const nomCourt = rawNomCourt.replace(/\b\w/g, (char) => char.toUpperCase());
-    const rules = (state.persistentRules[agentId] || []).join('\n');
+  const state = getState();
+const currentMode = getCurrentMode();
+const p = getPfx();
+const echellesApi = getEchellesApi();
+
+const getFieldValue = (suffix) =>
+  document.getElementById(`${p}-${suffix}`)?.value?.trim() || '';
+
+const formatName = (value) =>
+  value.replace(/\b\w/g, (char) => char.toUpperCase());
+
+const rawNomField = getFieldValue('fNom');
+const rawNomCourtField = getFieldValue('fNomCourt');
+
+const rawNom = rawNomField || rawNomCourtField || 'Figurine';
+const rawNomCourt = rawNomCourtField || rawNom.split(' ')[0];
+
+const nom = formatName(rawNom);
+const nomCourt = formatName(rawNomCourt);
+
+const rules = (state.persistentRules[agentId] || []).join('\n');
 
     const base = {
       nom,

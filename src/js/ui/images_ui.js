@@ -34,16 +34,25 @@
   }
 
   async function processImages(files, p) {
-    const state = getState();
-    if (!state?.images?.[p]) return;
+ const state = getState();
+if (!state?.images?.[p]) return;
 
-    for (const f of files) {
-      const b64 = await resizeImage(f, 512);
-      if (state.images[p].find((i) => i.name === f.name)) continue;
-      state.images[p].push({ name: f.name, base64: b64, mediaType: 'image/jpeg' });
-    }
+const existingNames = new Set(state.images[p].map((image) => image.name));
 
-    renderThumbs(p);
+for (const [index, file] of files.entries()) {
+  if (existingNames.has(file.name)) continue;
+
+  const targetWidth = index === 0 ? 1024 : 512;
+  const base64 = await resizeImage(file, targetWidth);
+
+  state.images[p].push({
+    name: file.name,
+    base64,
+    mediaType: 'image/jpeg',
+  });
+}
+
+renderThumbs(p);
   }
 
   function renderThumbs(p) {
