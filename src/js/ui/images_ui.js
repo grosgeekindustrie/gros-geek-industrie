@@ -8,6 +8,7 @@
 
   const getState = () => global.state;
   const imageTools = () => global.PipelineUIImageTools || {};
+  const imageDb = () => global.PipelineUIIndexedDb || {};
 
   const stopEvent = (event) => {
     event.preventDefault();
@@ -18,6 +19,27 @@
     const state = getState();
     const currentCount = state?.images?.[prefix]?.length || 0;
     return currentCount === 0 ? 1024 : 512;
+  };
+
+  const persistImages = async (prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+
+    try {
+      const normalized = await imageDb().saveWorkspaceImages?.(prefix, state.images[prefix]);
+      if (Array.isArray(normalized) && normalized.length) {
+        state.images[prefix] = normalized;
+      }
+    } catch (error) {
+      console.warn(`Persist images failed for ${prefix}`, error);
+    }
+  };
+
+  const buildDuplicateName = (name) => {
+    const rawName = String(name || 'Image').trim();
+    if (!rawName) return 'Image · copie';
+    if (/· copie(?: \d+)?$/i.test(rawName)) return rawName;
+    return `${rawName} · copie`;
   };
 
   const ensureOriginalSource = async (file) => {
@@ -53,6 +75,7 @@
     });
 
     return {
+      id: imageDb().createImageId?.() || `${Date.now()}`,
       name: file.name,
       base64: variant.base64,
       mediaType: variant.mediaType,
@@ -97,21 +120,18 @@
     const state = getState();
     if (!state?.images?.[prefix]) return;
 
-    const existingNames = new Set(state.images[prefix].map((image) => image.name));
-
     for (const file of files) {
       if (!file?.type?.startsWith('image/')) continue;
-      if (existingNames.has(file.name)) continue;
 
       const imageRecord = await buildImageRecordFromFile(file, prefix);
       state.images[prefix].push(imageRecord);
-      existingNames.add(file.name);
     }
 
     renderThumbs(prefix);
+    await persistImages(prefix);
   };
 
-  const updateImageRecordFromCrop = (prefix, imageIndex, cropVariant) => {
+  const updateImageRecordFromCrop = async (prefix, imageIndex, cropVariant) => {
     const state = getState();
     const currentImage = state?.images?.[prefix]?.[imageIndex];
     if (!currentImage) return;
@@ -128,6 +148,7 @@
     currentImage.cropRect = cropVariant.crop;
 
     renderThumbs(prefix);
+    await persistImages(prefix);
   };
 
   const openCropForImage = (prefix, imageIndex) => {
@@ -147,6 +168,26 @@
       prefix,
       images: state?.images?.[prefix] || [],
     });
+  };
+
+  const duplicateImageAt = async (imageIndex, prefix) => {
+    const state = getState();
+    const imageRecord = state?.images?.[prefix]?.[imageIndex];
+    if (!imageRecord) return;
+
+    const duplicateRecord = imageDb().normalizeImageRecord?.({
+      ...imageRecord,
+      id: imageDb().createImageId?.(),
+      name: buildDuplicateName(imageRecord.name),
+    }) || {
+      ...imageRecord,
+      id: imageDb().createImageId?.() || `${Date.now()}`,
+      name: buildDuplicateName(imageRecord.name),
+    };
+
+    state.images[prefix].splice(imageIndex + 1, 0, duplicateRecord);
+    renderThumbs(prefix);
+    await persistImages(prefix);
   };
 
   const renderThumbCard = (imageRecord, imageIndex, prefix) => {
@@ -188,6 +229,15 @@
       openCropForImage(prefix, imageIndex);
     });
 
+    const duplicateButton = document.createElement('button');
+    duplicateButton.type = 'button';
+    duplicateButton.className = 'btn btn-accent image-thumb-action-btn';
+    duplicateButton.textContent = 'Dupliquer';
+    duplicateButton.addEventListener('click', (event) => {
+      stopEvent(event);
+      duplicateImageAt(imageIndex, prefix);
+    });
+
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
     removeButton.className = 'btn btn-error image-thumb-action-btn image-thumb-action-btn-danger';
@@ -199,6 +249,7 @@
     });
 
     actions.appendChild(cropButton);
+    actions.appendChild(duplicateButton);
     actions.appendChild(removeButton);
     body.appendChild(name);
     body.appendChild(meta);
@@ -256,20 +307,34 @@
     strip.appendChild(grid);
   };
 
-  const removeImageAt = (imageIndex, prefix) => {
+  const removeImageAt = async (imageIndex, prefix) => {
     const state = getState();
     if (!state?.images?.[prefix]) return;
 
     state.images[prefix].splice(imageIndex, 1);
     renderThumbs(prefix);
+
+    if (state.images[prefix].length === 0) {
+      await imageDb().clearWorkspaceImages?.(prefix);
+      return;
+    }
+
+    await persistImages(prefix);
   };
 
-  const removeImage = (base64, prefix) => {
+  const removeImage = async (base64, prefix) => {
     const state = getState();
     if (!state?.images?.[prefix]) return;
 
     state.images[prefix] = state.images[prefix].filter((image) => image.base64 !== base64);
     renderThumbs(prefix);
+
+    if (state.images[prefix].length === 0) {
+      await imageDb().clearWorkspaceImages?.(prefix);
+      return;
+    }
+
+    await persistImages(prefix);
   };
 
   const resizeImage = async (file, maxPx) => {
@@ -296,6 +361,7 @@
     resizeImage,
     removeImage,
     removeImageAt,
+    duplicateImageAt,
     openCropForImage,
     openPayloadDebug,
   };

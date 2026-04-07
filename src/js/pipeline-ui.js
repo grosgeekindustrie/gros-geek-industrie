@@ -73,6 +73,9 @@ const {
   resizeImage,
   removeImage,
 } = window.PipelineUIImages;
+const {
+  restoreWorkspaceImages,
+} = window.PipelineUIIndexedDb || {};
 
 const {
   showBatchCountPicker,
@@ -452,6 +455,8 @@ async function runTitreExplorer() {
 
 setupImageHandlers('tt');
 setupImageHandlers('col');
+restoreWorkspaceImages?.('tt');
+restoreWorkspaceImages?.('col');
 loadPersistedData();
 buildPipeline();
 buildEchellesUI();
