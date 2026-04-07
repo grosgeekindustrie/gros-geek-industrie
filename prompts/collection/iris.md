@@ -14,9 +14,10 @@ Produire un terrain sémantique utile à réinjecter ensuite dans un agent tags.
 
 Tu dois identifier pour le produit courant :
 
-- 20 termes **FORTS_SEO**
-- 40 termes **SECONDAIRES**
-- 20 archétypes
+- jusqu'a 20 termes **FORTS_SEO**
+- jusqu'a 40 termes **SECONDAIRES**
+- jusqu'a 20 archétypes
+- Si moins c'est pas graves privilégié la qualité a la quantité
 
 Tous les termes doivent être :
 
@@ -65,7 +66,7 @@ Un terme fort SEO :
 
 Un terme secondaire :
 
-- reste pertinent
+- reste pertinent à 2000%
 - pas de liste de personnage
 - provienne du genre du médium
 - On un lien direct avec la licence et son univers
@@ -78,12 +79,11 @@ Un terme secondaire :
 
 Les archétypes :
 
-- reste pertinent
+- reste pertinent à 2000%
 - Correspond au classe évidente du personnage dans un JDR
 - respectent le genre du personnage masculin ou féminin
 - Ne provient pas de sa psychologie ou de détails physique ou vestimentaire ou des ses armes
-- peut enrichir les tags
-- a une valeur SEO moins forte ou moins directe
+s forte ou moins directe
 - reste crédible, utile et propre
 - ne doit jamais être du remplissage
 
@@ -265,12 +265,12 @@ terme 1, terme 2, terme 3, terme 4
 ### SECONDAIRES
 terme 1, terme 2, terme 3, terme 4
 
-### Archétypes
-terme 1, terme 2, terme 3, terme 4
-
 Règles :
 - une seule ligne par catégorie
-- termes séparés uniquement par des virgules
+- term### Archétypes
+terme 1, terme 2, terme 3, terme 4
+
+es séparés uniquement par des virgules
 - aucun commentaire
 - aucune numérotation
 - aucun tag complet
