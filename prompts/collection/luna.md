@@ -33,8 +33,9 @@ DONNÉES REÇUES
 - Dimensions : [[DIMENSIONS]]
 - Pose : [[POSE]]
 - Particularités : [[PARTICULARITES]]
+- Description figurine : [[DESCRIPTION_FIGURINE]]
+- Résumé personnage : [[RESUME_PERSONNAGE]]
 - Buzz licence : [[BUZZ_COLLECTION]]
-- Notes : [[NOTES]]
 - Contexte boutique : [[OBJECTIF]]
 - Psychologie client : [[PSYCHO]]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

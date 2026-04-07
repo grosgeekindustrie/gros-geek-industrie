@@ -34,6 +34,8 @@ Tous les termes doivent être :
 - Nom court : [[NOM_COURT]]
 - Univers : [[UNIVERS]]
 - Medium : [[MEDIUM]]
+- Description figurine : [[DESCRIPTION_FIGURINE]]
+- Résumé personnage : [[RESUME_PERSONNAGE]]
 - Licence protégée : [[LICENSE]]
 - Connexes fournis : [[CONNEXES_PRIORITAIRES]]
 - Bibliothèque tags invalidés / blacklistés : [[BIBLIO_TAGS]]

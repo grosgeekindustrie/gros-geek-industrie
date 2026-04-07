@@ -49,6 +49,8 @@ DONNÉES DE CONTEXTE
 - Pose : [[POSE]]
 - Medium : [[MEDIUM]]
 - Particularités : [[PARTICULARITES]]
+- Description figurine : [[DESCRIPTION_FIGURINE]]
+- Résumé personnage : [[RESUME_PERSONNAGE]]
 
 Consignes pour la balise alt Etsy :
 - rédiger en français

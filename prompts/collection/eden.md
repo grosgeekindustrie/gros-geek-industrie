@@ -46,6 +46,8 @@ DONNÉES REÇUES
 - Pose : [[POSE]]
 - Medium : [[MEDIUM]]
 - Particularités : [[PARTICULARITES]]
+- Description figurine : [[DESCRIPTION_FIGURINE]]
+- Résumé personnage : [[RESUME_PERSONNAGE]]
 - License protégée : [[LICENSE]]
 - Contexte boutique : [[OBJECTIF]]
 - Psychologie client : [[PSYCHO]]

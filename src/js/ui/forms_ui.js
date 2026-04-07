@@ -27,7 +27,7 @@
     'col-fUnivers',
     'col-fSculpteur',
     'col-fPieces',
-    'col-fNotes',
+    'col-fDescriptionFigurine',
     'col-fPose',
   ];
 
@@ -87,7 +87,8 @@
       medium: getMediums(),
       license: document.getElementById('col-fLicense')?.checked ? 'oui' : 'non',
       particularites: document.getElementById('col-fParticularites')?.value || '',
-      contextePerso: document.getElementById('col-fContextePerso')?.value || '',
+      descriptionFigurine: document.getElementById('col-fDescriptionFigurine')?.value || '',
+      resumePersonnage: document.getElementById('col-fResumePersonnage')?.value || '',
       connexesPrioritaires: document.getElementById('col-fConnexesPrioritaires')?.value || '',
       lienPerso: document.getElementById('col-fLienPerso')?.value || '',
       buzzCollection: document.getElementById('col-fBuzzCollection')?.checked || false,
@@ -133,7 +134,7 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-      document.getElementById('col-fContextePerso').value = data.text;
+      document.getElementById('col-fResumePersonnage').value = data.text;
       status.style.color = 'var(--success)';
       status.textContent = `✓ ${data.chars} caractères récupérés`;
       saveFormState();
@@ -171,6 +172,9 @@ const nomCourt = formatName(rawNomCourt);
 
 const rules = (state.persistentRules[agentId] || []).join('\n');
 
+    const collectionDescription = document.getElementById('col-fDescriptionFigurine')?.value || '';
+    const collectionResume = document.getElementById('col-fResumePersonnage')?.value || '';
+
     const base = {
       nom,
       nomCourt,
@@ -179,7 +183,9 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
       echelles: echellesApi.getEchellesSelected?.() || '',
       pieces: document.getElementById(`${p}-fPieces`)?.value || '',
       dimensions: echellesApi.getDimsFromEchelles?.() || '',
-      notes: document.getElementById(`${p}-fNotes`)?.value || '',
+      notes: currentMode === 'collection' ? collectionDescription : (document.getElementById(`${p}-fNotes`)?.value || ''),
+      descriptionFigurine: collectionDescription,
+      resumePersonnage: collectionResume,
       pose: document.getElementById(`${p}-fPose`)?.value || 'MUSEUM',
       imageCount: state.images[p].length,
       outputs: { ...state.outputs },
@@ -238,7 +244,8 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
       data._license = document.getElementById('col-fLicense')?.checked || false;
       data._mediums = [...document.querySelectorAll('#col-fMediumGroup input:checked')].map((input) => input.value);
       data._particularites = document.getElementById('col-fParticularites')?.value || '';
-      data._contextePerso = document.getElementById('col-fContextePerso')?.value || '';
+      data._descriptionFigurine = document.getElementById('col-fDescriptionFigurine')?.value || '';
+      data._resumePersonnage = document.getElementById('col-fResumePersonnage')?.value || '';
       data._connexesPrioritaires = document.getElementById('col-fConnexesPrioritaires')?.value || '';
       data._lienPerso = document.getElementById('col-fLienPerso')?.value || '';
       data._buzz = document.getElementById('col-fBuzzCollection')?.checked || false;
@@ -325,9 +332,15 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
           const el = document.getElementById('col-fParticularites');
           if (el) el.value = data._particularites;
         }
-        if (data._contextePerso !== undefined) {
-          const el = document.getElementById('col-fContextePerso');
-          if (el) el.value = data._contextePerso;
+        const descriptionFigurineValue = data._descriptionFigurine ?? data['col-fNotes'];
+        if (descriptionFigurineValue !== undefined) {
+          const el = document.getElementById('col-fDescriptionFigurine');
+          if (el) el.value = descriptionFigurineValue;
+        }
+        const resumePersonnageValue = data._resumePersonnage ?? data._contextePerso;
+        if (resumePersonnageValue !== undefined) {
+          const el = document.getElementById('col-fResumePersonnage');
+          if (el) el.value = resumePersonnageValue;
         }
         if (data._connexesPrioritaires !== undefined) {
           const el = document.getElementById('col-fConnexesPrioritaires');
@@ -384,7 +397,7 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
 
     document.querySelectorAll('#tt-archSecondaires input').forEach((input) => input.addEventListener('change', saveFormState));
     document.querySelectorAll('#col-fMediumGroup input').forEach((input) => input.addEventListener('change', saveFormState));
-    ['col-fParticularites', 'col-fContextePerso', 'col-fLienPerso','col-fConnexesPrioritaires'].forEach((id) => {
+    ['col-fParticularites', 'col-fDescriptionFigurine', 'col-fResumePersonnage', 'col-fLienPerso', 'col-fConnexesPrioritaires'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveFormState);
     });
