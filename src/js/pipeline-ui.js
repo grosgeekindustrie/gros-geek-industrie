@@ -135,6 +135,35 @@ const {
 // Ce helper reste ici car il consomme à la fois le prompt builder et callClaude.
 // Si on l'extrait plus tard, il devra garder la même séquence explore → filter → select.
 
+const formatTagsCsvLine = (tags = []) => {
+  const uniqueTags = [];
+  const seen = new Set();
+
+  for (const rawTag of tags) {
+    const normalizedTag = normalizeTagValue(String(rawTag || ''));
+    if (!normalizedTag) continue;
+
+    const normalizedKey = normalizedTag.toLowerCase();
+    if (seen.has(normalizedKey)) continue;
+
+    seen.add(normalizedKey);
+    uniqueTags.push(normalizedTag);
+  }
+
+  return uniqueTags.join(', ');
+};
+
+const formatTagsDebugCsvBlock = (exploreTags = [], filteredTags = []) => {
+  const sections = [];
+  const exploreCsv = formatTagsCsvLine(exploreTags);
+  const filterCsv = formatTagsCsvLine(filteredTags);
+
+  if (exploreCsv) sections.push(`EXPLORE (${exploreTags.length})\n${exploreCsv}`);
+  if (filterCsv) sections.push(`FILTER (${filteredTags.length})\n${filterCsv}`);
+
+  return sections.join('\n\n');
+};
+
 async function runTagsThreeAgents(ctx) {
   const mergeUsage = (...usages) => usages.reduce((acc, usage) => {
     Object.entries(usage || {}).forEach(([key, value]) => {
@@ -166,7 +195,7 @@ async function runTagsThreeAgents(ctx) {
   };
 
   const { text: rawFiltered, usage: filterUsage } = await callClaude('tags', filterInput, false);
-  const filteredTags = parseTagOutput(rawFiltered);
+  const filteredTags = parseTagOutput(rawFiltered).slice(0, 28);
 
   const pool = filteredTags.length ? filteredTags : exploreTags;
 
@@ -198,8 +227,12 @@ async function runTagsThreeAgents(ctx) {
 
   if (!merged.length) throw new Error('Aucun tag final généré');
 
+  const finalTags = merged.slice(0, 13);
+
   return {
-    output: formatTagsNumbered(merged.slice(0, 13)),
+    output: formatTagsNumbered(finalTags),
+    outputFinalCsv: formatTagsCsvLine(finalTags),
+    outputDebugCsv: formatTagsDebugCsvBlock(exploreTags, filteredTags),
     usage: mergeUsage(exploreUsage, filterUsage, selectUsage),
     debug: {
       exploreInput: exploreInput.filled,
@@ -370,10 +403,11 @@ function refreshRules(agentId) {
 function assembleFinal() {
   const p = pfx();
   const titre = state.outputs.titre_valide || '';
-  const tags = state.outputs.tags || '';
+  const tags = p === 'col' ? (state.outputs.tags_final_csv || state.outputs.tags || '') : (state.outputs.tags || '');
+  const tagsDebug = p === 'col' ? (state.outputs.tags_debug_csv || '') : '';
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
   const alt = state.outputs.alt || '';
-  if (!titre && !tags && !desc && !alt) return;
+  if (!titre && !tags && !tagsDebug && !desc && !alt) return;
   const show = (sectionId, contentId, content) => {
     if (!content) return;
     document.getElementById(sectionId).style.display = 'block';
@@ -381,6 +415,7 @@ function assembleFinal() {
   };
   show(`fs-titre-${p}`, `fc-titre-${p}`, titre);
   show(`fs-tags-${p}`, `fc-tags-${p}`, tags);
+  if (p === 'col') show('fs-tags-debug-col', 'fc-tags-debug-col', tagsDebug);
   show(`fs-description-${p}`, `fc-description-${p}`, desc);
   show(`fs-alt-${p}`, `fc-alt-${p}`, alt);
   const fo = document.getElementById(`finalOutput-${p}`);

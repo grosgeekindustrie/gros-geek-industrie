@@ -215,6 +215,8 @@ async function runAgent(agent, correction = '', isRetry = false) {
       const tagsFlow = await runTagsThreeAgents(ctx);
       result = tagsFlow.output;
       usage = tagsFlow.usage || null;
+      state.outputs.tags_final_csv = tagsFlow.outputFinalCsv || '';
+      state.outputs.tags_debug_csv = tagsFlow.outputDebugCsv || '';
       state.inputs[agent.id] = [
         '===== TAGS EXPLORE INPUT =====',
         tagsFlow.debug?.exploreInput || '',
@@ -324,7 +326,7 @@ async function startPipeline(p) {
   });
   state.socialSections = {};
   document.getElementById(`finalOutput-${p}`).style.display = 'none';
-  [`fs-titre-${p}`,`fs-tags-${p}`,`fs-description-${p}`,`fs-alt-${p}`].forEach(id => {
+  [`fs-titre-${p}`,`fs-tags-${p}`,`fs-description-${p}`,`fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -655,19 +657,22 @@ function copySocial() { navigator.clipboard.writeText(state.outputs['social'] ||
 function copySection(key) { navigator.clipboard.writeText(state.outputs[key] || ''); showToast('Copié ✓'); }
 
 function buildFinalOutputExport(prefixOverride) {
+  const prefix = prefixOverride || pfx();
   const titre = state.outputs.titre_valide || '';
-  const tags = state.outputs.tags || '';
+  const tags = prefix === 'col' ? (state.outputs.tags_final_csv || state.outputs.tags || '') : (state.outputs.tags || '');
+  const tagsDebug = prefix === 'col' ? (state.outputs.tags_debug_csv || '') : '';
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
   const alt = state.outputs.alt || '';
 
   const parts = [];
   if (titre) parts.push(`── TITRE ──\n${titre}`);
   if (tags) parts.push(`── TAGS ──\n${tags}`);
+  if (tagsDebug) parts.push(`── AXEL · EXPLORE + FILTER ──\n${tagsDebug}`);
   if (desc) parts.push(`── DESCRIPTION ──\n${desc}`);
   if (alt) parts.push(`── BALISE ALT ──\n${alt}`);
 
   return {
-    prefix: prefixOverride || pfx(),
+    prefix,
     content: parts.join('\n\n'),
   };
 }
@@ -731,21 +736,34 @@ function getSoloFinalOutputAgentLabels(prefixOverride) {
 
 function buildSoloFinalOutputFiles(prefixOverride) {
   const exportMeta = getSoloExportMeta(prefixOverride);
-  const complete = [
+  const tags = exportMeta.prefix === 'col'
+    ? (state.outputs.tags_final_csv || state.outputs.tags || '')
+    : (state.outputs.tags || '');
+  const tagsDebug = exportMeta.prefix === 'col' ? (state.outputs.tags_debug_csv || '') : '';
+  const completeParts = [
     '# Output final',
     '',
     '## 🏷️ Titre',
     state.outputs.titre_valide || '',
     '',
     '## 🔖 Tags',
-    state.outputs.tags || '',
+    tags,
+  ];
+
+  if (tagsDebug) {
+    completeParts.push('', '## 🧭 Axel · Explore + Filter', tagsDebug);
+  }
+
+  completeParts.push(
     '',
     '## 📝 Description',
     state.outputs['description_assembled'] || state.outputs.description || '',
     '',
     '## 🖼️ Balise ALT',
     state.outputs.alt || '',
-  ].join('\n');
+  );
+
+  const complete = completeParts.join('\n');
 
   const rawParts = ['# Output final — RAW', ''];
   const agentLabels = getSoloFinalOutputAgentLabels(exportMeta.prefix);
