@@ -133,6 +133,50 @@ function activateSoloTab(prefix, tabId, options = {}) {
   if (prefix === 'col') window.activateCollectionSoloTab?.(tabId, options);
 }
 
+function extractMarkdownSectionValue(rawText, sectionTitle) {
+  const escapedTitle = String(sectionTitle || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sectionPattern = new RegExp(`^##\\s+${escapedTitle}\\s*$([\\s\\S]*?)(?=^##\\s+|$)`, 'im');
+  const match = String(rawText || '').match(sectionPattern);
+
+  return match ? match[1].trim() : '';
+}
+
+async function runCollectionIrisSemanticSearch() {
+  const button = document.getElementById('runIrisBtn-col');
+  const output = document.getElementById('out-iris-col');
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = '⟳ Recherche...';
+  }
+
+  if (output) {
+    output.classList.remove('empty');
+    output.textContent = '';
+  }
+
+  try {
+    const ctx = buildCtx('iris');
+    const prompt = buildPrompt('iris', ctx);
+    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
+    state.inputs.iris = rawFixed + prompt.filled;
+
+    const response = await callClaude('iris', prompt, false);
+    state.outputs.iris = response.text;
+
+    if (output) output.textContent = response.text;
+    showToast('Recherche sémantique Iris générée ✓');
+  } catch (error) {
+    if (output) output.textContent = `❌ ${error.message}`;
+    showToast(`❌ ${error.message}`, '#ff4757');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = '▶ Lancer Iris';
+    }
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // Cœur d'exécution agent par agent.
 // Zone à haut risque : couplage fort entre état, prompts, DOM, orchestrateur et cartes UI.
@@ -200,6 +244,11 @@ async function runAgent(agent, correction = '', isRetry = false) {
     }
 
     state.outputs[agent.id] = result;
+
+    if (currentMode === 'collection' && agent.id === 'analyse') {
+      state.outputs.alt = extractMarkdownSectionValue(result, 'BALISE_ALT');
+    }
+
     out.textContent = result;
     showAgentCost(agent.id, usage);
     if (agent.id === 'tags') buildTagsUI(result);
@@ -317,6 +366,8 @@ async function startPipeline(p) {
   }
   state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
+  state.outputs.alt = '';
+  state.outputs.iris = '';
   getPipelineAgents().forEach(a => {
     state.outputs[a.id] = '';
     const card = document.getElementById(`${p}-card-${a.id}`);
@@ -520,10 +571,10 @@ async function runReseauxOnly(type, p) {
   const prevTitre      = state.outputs.titre_valide;
   const nomEl          = document.getElementById(`${p}-fNom`);
   const sculpteurEl    = document.getElementById(`${p}-fSculpteur`);
-  const urlEl          = document.getElementById(`${p}-fUrlBoutique`);
+  const shopUrlEl      = document.getElementById('shopUrl');
   const prevNom        = nomEl?.value || '';
   const prevSculpteur  = sculpteurEl?.value || '';
-  const prevUrl        = urlEl?.value || '';
+  const prevUrl        = shopUrlEl?.value || '';
 
   // Appliquer les overrides
   if (accroche) state.selectedAccroche = { text: accroche };
@@ -531,7 +582,14 @@ async function runReseauxOnly(type, p) {
   if (titre)    state.outputs.titre_valide = titre;
   if (nom       && nomEl)      nomEl.value      = nom;
   if (sculpteur && sculpteurEl) sculpteurEl.value = sculpteur;
-  if (url       && urlEl)      urlEl.value      = url;
+  if (url && shopUrlEl) {
+    shopUrlEl.value = url;
+    try {
+      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      settings.shopUrl = url;
+      localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+    } catch (error) {}
+  }
   // echelles : injecter via un champ texte libre lu par buildCtx si dispo
   const nomCourtEl = document.getElementById(`${p}-fNomCourt`);
   const prevNomCourt = nomCourtEl?.value || '';
@@ -548,7 +606,14 @@ async function runReseauxOnly(type, p) {
     if (nomEl)       nomEl.value       = prevNom;
     if (nomCourtEl)  nomCourtEl.value  = prevNomCourt;
     if (sculpteurEl) sculpteurEl.value = prevSculpteur;
-    if (urlEl)       urlEl.value       = prevUrl;
+    if (shopUrlEl) {
+      shopUrlEl.value = prevUrl;
+      try {
+        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+        settings.shopUrl = prevUrl || 'https://grosgeekindustrie.etsy.com';
+        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+      } catch (error) {}
+    }
   }
 }
 
@@ -653,13 +718,14 @@ function getSoloFinalOutputAgentLabels(prefixOverride) {
 
   return {
     analyse: '01 Jules — Analyse visuelle',
-    alt: '02 Iris — Balise ALT',
-    marche: '03 Luna — Analyse marché',
-    tags: '04 Axel — Tags',
-    titre: '05 Nova — Titres',
-    titre_valide: '05b Titre validé',
-    description: '06 Eden — Description brute',
-    description_assembled: '06b Description assemblée',
+    alt: '01b Jules — Balise ALT extraite',
+    marche: '02 Luna — Analyse marché',
+    tags: '03 Axel — Tags',
+    titre: '04 Nova — Titres',
+    titre_valide: '04b Titre validé',
+    description: '05 Eden — Description brute',
+    description_assembled: '05b Description assemblée',
+    iris: 'Hors pipeline — Iris sémantique',
   };
 }
 
@@ -791,7 +857,7 @@ function copyTokenReport() {
   const isTT = currentMode === 'tabletop';
   const AGENT_LABELS = isTT
     ? { analyse:'01 Analyse', alt:'02 Alt', marche:'03 Marché', tags:'04 Tags', titre:'05 Titres', description:'06 Description', social:'07 Léo', camille:'08 Camille', orchestrateur:'QA Felix' }
-    : { analyse:'01 Jules', alt:'02 Iris', marche:'03 Luna', tags:'04 Axel', titre:'05 Nova', description:'06 Eden', social:'07 Theo', camille:'08 Zoe', orchestrateur:'QA Rex' };
+    : { analyse:'01 Jules', marche:'02 Luna', tags:'03 Axel', titre:'04 Nova', description:'05 Eden', social:'06 Theo', camille:'07 Zoe', iris:'Iris', orchestrateur:'QA Rex' };
   const lines = ['═══ RAPPORT SESSION ═══'];
   let totalIn = 0, totalOut = 0, totalCache = 0, totalCost = 0;
   for (const [id, label] of Object.entries(AGENT_LABELS)) {

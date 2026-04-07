@@ -308,7 +308,7 @@ const AGENT_MODELS = {
   marche:'claude-sonnet-4-20250514', tags:'claude-sonnet-4-20250514',
   titre:'claude-sonnet-4-20250514', description:'claude-sonnet-4-20250514',
   social:'claude-sonnet-4-20250514', camille:'claude-sonnet-4-20250514',
-  orchestrateur:'claude-sonnet-4-20250514',
+  iris:'claude-sonnet-4-20250514', orchestrateur:'claude-sonnet-4-20250514',
 };
 
 function stopAgent(agentId, _p) {

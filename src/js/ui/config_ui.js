@@ -16,12 +16,11 @@ var PIPELINE_AGENTS = [
   { id:'description', title:'📝 06 — Claire · Description',         usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
 ];
 const PIPELINE_AGENTS_COLLECTION = [
-  { id:'analyse',     title:'🔍 01 — Jules · Analyse visuelle',     usesImages:true,  hasSelection:false },
-  { id:'alt',         title:'🖼️ 02 — Iris · Balise ALT',            usesImages:false, hasSelection:false },
-  { id:'marche',      title:'📊 03 — Luna · Analyse de marché',     usesImages:false, hasSelection:false },
-  { id:'tags',        title:'🔖 04 — Axel · Tags (×13)',             usesImages:false, hasSelection:false },
-  { id:'titre',       title:'🏷️ 05 — Nova · Titres SEO (×10)',      usesImages:false, hasSelection:true,  selectionType:'titre' },
-  { id:'description', title:'📝 06 — Eden · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'analyse',     title:'🔍 01 — Jules · Analyse visuelle + ALT', usesImages:true,  hasSelection:false },
+  { id:'marche',      title:'📊 02 — Luna · Analyse de marché',       usesImages:false, hasSelection:false },
+  { id:'tags',        title:'🔖 03 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 04 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'description', title:'📝 05 — Eden · Description',            usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
 ];
 function getPipelineAgents() {
   return currentMode === 'collection' ? PIPELINE_AGENTS_COLLECTION : PIPELINE_AGENTS;
@@ -33,7 +32,7 @@ var PROMPT_FILE_MAP = {
 };
 var PROMPT_FILE_MAP_COLLECTION = {
   analyse:'jules',
-  alt:'iris',
+  iris:'iris',
   marche:'luna',
 
   // tags visible dans l’UI + sélection finale = même prompt

@@ -952,3 +952,15 @@
 .image-thumb-debug-btn {
   white-space: nowrap;
 }
+
+
+.iris-action-row {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.iris-output-box {
+  margin-top: 0.5rem;
+  min-height: 10rem;
+  white-space: pre-wrap;
+}

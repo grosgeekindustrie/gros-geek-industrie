@@ -5,6 +5,8 @@
 // dans les prompts. Toute évolution ici peut impacter plusieurs agents à la fois.
   global.PipelineUI = global.PipelineUI || {};
 
+  const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
+
   const FORM_FIELDS_TT = [
     'tt-fNom',
     'tt-fNomCourt',
@@ -15,7 +17,6 @@
     'tt-fPose',
     'tt-fType',
     'tt-fVersion',
-    'tt-fUrlBoutique',
     'tt-fArchPrincipal',
     'tt-fArchSeo',
   ];
@@ -28,7 +29,6 @@
     'col-fPieces',
     'col-fNotes',
     'col-fPose',
-    'col-fUrlBoutique',
   ];
 
   const getState = () => global.state;
@@ -36,6 +36,32 @@
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (getCurrentMode() === 'collection' ? 'col' : 'tt'));
   const getEchellesApi = () => global.PipelineUIEchelles || {};
   const getConfig = () => global.PipelineUIConfig || global;
+
+  const readAppSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const writeAppSettings = (nextSettings) => {
+    localStorage.setItem('pipeline.settings', JSON.stringify(nextSettings));
+  };
+
+  const getShopUrl = () => {
+    const inputValue = document.getElementById('shopUrl')?.value?.trim();
+    if (inputValue) return inputValue;
+
+    const savedValue = readAppSettings().shopUrl;
+    return savedValue || DEFAULT_SHOP_URL;
+  };
+
+  const persistShopUrl = () => {
+    const settings = readAppSettings();
+    settings.shopUrl = getShopUrl();
+    writeAppSettings(settings);
+  };
 
   function getArchetypes() {
     if (getCurrentMode() !== 'tabletop') return '';
@@ -160,7 +186,7 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
       correction,
       rules,
       archetypes: getArchetypes(),
-      url_boutique: document.getElementById(`${p}-fUrlBoutique`)?.value || 'https://grosgeekindustrie.etsy.com',
+      url_boutique: getShopUrl(),
       social_formats: state._leoFormats || '',
       selectedAccrocheText: state.selectedAccroche?.text || '',
       selectedCTAText: state.selectedCTA?.text || '',
@@ -365,12 +391,13 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
 
     const apiKeyEl = document.getElementById('apiKey');
     if (apiKeyEl) apiKeyEl.addEventListener('input', () => {
-      try {
-        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-        settings.apiKey = apiKeyEl.value;
-        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-      } catch (error) {}
+      const settings = readAppSettings();
+      settings.apiKey = apiKeyEl.value;
+      writeAppSettings(settings);
     });
+
+    const shopUrlEl = document.getElementById('shopUrl');
+    if (shopUrlEl) shopUrlEl.addEventListener('input', persistShopUrl);
   }
 
   function loadPersistedData() {
@@ -384,12 +411,12 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
     } catch (error) {}
 
     try {
-      const rawSettings = localStorage.getItem('pipeline.settings');
-      if (!rawSettings) return;
-
-      const settings = JSON.parse(rawSettings);
+      const settings = readAppSettings();
       const apiKeyEl = document.getElementById('apiKey');
       if (apiKeyEl && settings.apiKey) apiKeyEl.value = settings.apiKey;
+
+      const shopUrlEl = document.getElementById('shopUrl');
+      if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
 
       if (settings.mode && settings.mode !== getCurrentMode()) {
         global.currentMode = settings.mode;

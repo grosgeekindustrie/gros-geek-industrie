@@ -51,6 +51,10 @@
       <label class="settings-label">Clé API Anthropic</label>
       <input type="password" id="apiKey" class="settings-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
     </div>
+    <div class="settings-section">
+      <label class="settings-label">URL boutique Etsy</label>
+      <input type="text" id="shopUrl" class="settings-input" value="https://grosgeekindustrie.etsy.com" autocomplete="off"/>
+    </div>
     <div class="settings-sep"></div>
     <div class="settings-section">
       <label class="settings-label">Orchestrateur qualité</label>
@@ -348,10 +352,6 @@
                     <span>Ce sculpteur/personnage buzz en ce moment</span>
                   </div>
                   <textarea id="tt-fBuzzNote" class="buzz-note" placeholder="Précise le contexte buzz..."></textarea>
-                </div>
-                <div class="fg">
-                  <label>URL boutique Etsy</label>
-                  <input type="text" id="tt-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
                 </div>
                 <div class="fg">
                   <label>Notes libres</label>
@@ -809,11 +809,16 @@
             </div>
 
             <div class="form-section collection-stepper-notes-section">
-              <h2>Notes &amp; boutique</h2>
+              <h2>Notes &amp; recherche sémantique</h2>
               <div class="form-grid">
                 <div class="fg full">
-                  <label>URL boutique Etsy</label>
-                  <input type="text" id="col-fUrlBoutique" value="https://grosgeekindustrie.etsy.com"/>
+                  <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
+                  <div class="field-action-row iris-action-row">
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-col" onclick="runCollectionIrisSemanticSearch()">▶ Lancer Iris</button>
+                    <button class="btn btn-muted" type="button" onclick="openPromptLightbox('iris')">⚙️ Prompt</button>
+                    <button class="btn btn-muted" type="button" onclick="copySection('iris')">📋 Copier</button>
+                  </div>
+                  <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
                 </div>
                 <div class="fg full">
                   <label>Notes libres</label>

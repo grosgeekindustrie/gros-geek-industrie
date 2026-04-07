@@ -16,6 +16,7 @@ Tu dois identifier pour le produit courant :
 
 - 20 termes **FORTS_SEO**
 - 40 termes **SECONDAIRES**
+- 20 archétypes
 
 Tous les termes doivent être :
 
@@ -65,6 +66,22 @@ Un terme fort SEO :
 Un terme secondaire :
 
 - reste pertinent
+- pas de liste de personnage
+- provienne du genre du médium
+- On un lien direct avec la licence et son univers
+- peut enrichir les tags
+- a une valeur SEO moins forte ou moins directe
+- reste crédible, utile et propre
+- ne doit jamais être du remplissage
+
+### Archétype
+
+Les archétypes :
+
+- reste pertinent
+- Correspond au classe évidente du personnage dans un JDR
+- respectent le genre du personnage masculin ou féminin
+- Ne provient pas de sa psychologie ou de détails physique ou vestimentaire ou des ses armes
 - peut enrichir les tags
 - a une valeur SEO moins forte ou moins directe
 - reste crédible, utile et propre
@@ -246,6 +263,9 @@ Retourne exactement :
 terme 1, terme 2, terme 3, terme 4
 
 ### SECONDAIRES
+terme 1, terme 2, terme 3, terme 4
+
+### Archétypes
 terme 1, terme 2, terme 3, terme 4
 
 Règles :
