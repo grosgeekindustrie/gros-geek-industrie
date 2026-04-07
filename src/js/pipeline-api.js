@@ -141,6 +141,20 @@ function extractMarkdownSectionValue(rawText, sectionTitle) {
   return match ? match[1].trim() : '';
 }
 
+function extractAltFromAnalyseOutput(rawText) {
+  const source = String(rawText || '');
+  const sectionTitles = ['BALISE_ALT', 'BALISE ALT', 'ALT'];
+
+  for (const title of sectionTitles) {
+    const sectionValue = extractMarkdownSectionValue(source, title);
+    if (sectionValue) return sectionValue;
+  }
+
+  const inlinePattern = /^(?:[-*]\s*)?(?:balise\s*alt|alt)\s*[:：-]\s*(.+)$/im;
+  const inlineMatch = source.match(inlinePattern);
+  return inlineMatch ? inlineMatch[1].trim() : '';
+}
+
 async function runCollectionIrisSemanticSearch() {
   const button = document.getElementById('runIrisBtn-col');
   const output = document.getElementById('out-iris-col');
@@ -248,7 +262,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     state.outputs[agent.id] = result;
 
     if (currentMode === 'collection' && agent.id === 'analyse') {
-      state.outputs.alt = extractMarkdownSectionValue(result, 'BALISE_ALT');
+      state.outputs.alt = extractAltFromAnalyseOutput(result);
     }
 
     out.textContent = result;

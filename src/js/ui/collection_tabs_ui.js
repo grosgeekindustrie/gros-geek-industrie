@@ -71,7 +71,20 @@
       document.getElementById('socialSection-col'),
       document.getElementById('socialOutput-col'),
       document.getElementById('reseauxOnlySection-col'),
-    ].some(isVisible);
+    ].some(Boolean);
+  }
+
+  function ensureSocialTabContentVisibility(tabId) {
+    if (tabId !== 'social') return;
+
+    const socialSection = document.getElementById('socialSection-col');
+    const socialOutput = document.getElementById('socialOutput-col');
+    const reseauxOnlySection = document.getElementById('reseauxOnlySection-col');
+    const hasVisibleContent = [socialSection, socialOutput, reseauxOnlySection].some(isVisible);
+
+    if (!hasVisibleContent && socialSection) {
+      socialSection.style.display = 'block';
+    }
   }
 
   function isPipelineRunning() {
@@ -239,6 +252,10 @@
       if (panel) {
         panel.hidden = !isActive;
         panel.classList.toggle('is-active', isActive);
+      }
+
+      if (isActive) {
+        ensureSocialTabContentVisibility(tabId);
       }
     });
 
