@@ -21,6 +21,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
   const isLegacy = typeof promptData === 'string';
   const promptText = isLegacy ? promptData : promptData.filled;
   const fixedContent = isLegacy ? null : promptData.fixedContent;
+  const fixedContentBlocks = isLegacy ? [] : (Array.isArray(promptData.fixedContentBlocks) ? promptData.fixedContentBlocks : []);
   const prefix = pfx();
   const content = [];
   const getRetryDelayMs = (attempt) => {
@@ -48,7 +49,23 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
     }
   }
 
-  if (fixedContent && fixedContent.length > 4096) {
+  const normalizedFixedBlocks = fixedContentBlocks
+    .map((block) => ({
+      text: String(block?.text || '').trim(),
+      cacheable: Boolean(block?.cacheable),
+    }))
+    .filter((block) => block.text);
+
+  if (normalizedFixedBlocks.length > 0) {
+    normalizedFixedBlocks.forEach((block) => {
+      const contentBlock = { type: 'text', text: block.text };
+      if (block.cacheable && block.text.length > 4096) {
+        contentBlock.cache_control = { type: 'ephemeral' };
+      }
+      content.push(contentBlock);
+    });
+    content.push({ type: 'text', text: promptText });
+  } else if (fixedContent && fixedContent.length > 4096) {
     content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
     content.push({ type: 'text', text: promptText });
   } else {

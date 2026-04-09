@@ -12,10 +12,59 @@
     return getState().bibliosByMode[getCurrentMode()][key] || '';
   }
 
+  const buildPipelineSharedFixedContent = (ctx = {}) => {
+    const sections = [
+      `PIPELINE WARMUP:\n${ctx.pipeline_warmup_hint || 'Warmup non défini'}`,
+      `SNAPSHOT FORMULAIRE:\n${ctx.pipeline_form_snapshot || 'Aucun snapshot disponible'}`,
+      `CONTEXTE GLOBAL:\n${getBiblio('objectif')}`,
+      `PSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
+      `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
+      `BIBLIOTHÈQUE TAGS:\n${getBiblioTagsFormatted() || '_(aucun retour enregistré)_'}`,
+    ];
+
+    return sections.filter(Boolean).join('\n\n');
+  };
+
+  const buildPipelineCumulativeFixedContent = (ctx = {}) => {
+    const cumulative = String(ctx.pipeline_cumulatif || '').trim();
+    return cumulative ? `CUMULATIF APPEND-ONLY:\n${cumulative}` : '';
+  };
+
+  const buildFixedContentText = (blocks = []) => (
+    blocks
+      .map((block) => String(block?.text || '').trim())
+      .filter(Boolean)
+      .join('\n\n')
+  );
+
+  const buildSharedBlocks = (ctx = {}, includeCumulative = true) => {
+    const shared = buildPipelineSharedFixedContent(ctx);
+    const cumulative = includeCumulative ? buildPipelineCumulativeFixedContent(ctx) : '';
+    return [
+      { text: shared, cacheable: true },
+      { text: cumulative, cacheable: false },
+    ];
+  };
+
   const CACHE_FIXED = {
-    marche:      () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
-    titre:       () => `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
-    description: () => `CONTEXTE GLOBAL:\n${getBiblio('objectif')}\n\nPSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
+    marche: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, false),
+    }),
+    titre: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
+    tags: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
+    description: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
+    alt: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
+    analyse: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
   };
 
   function parseBiblioTags(raw) {
@@ -125,8 +174,11 @@
       + (ctx.rules ? `\nRègles permanentes:\n${ctx.rules}` : '')
       + (ctx.correction ? `\nInstruction ponctuelle: ${ctx.correction}` : '');
 
-    const fixedContent = CACHE_FIXED[agentId] ? CACHE_FIXED[agentId]() : null;
-    return { filled, fixedContent };
+    const fixedConfig = CACHE_FIXED[agentId] ? CACHE_FIXED[agentId](ctx) : null;
+    const fixedContentBlocks = fixedConfig?.blocks || [];
+    const fixedContent = buildFixedContentText(fixedContentBlocks) || null;
+
+    return { filled, fixedContent, fixedContentBlocks };
   }
 
   global.PipelineUIPromptBiblio = {
