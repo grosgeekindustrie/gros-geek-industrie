@@ -22,6 +22,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
   const promptText = isLegacy ? promptData : promptData.filled;
   const fixedContent = isLegacy ? null : promptData.fixedContent;
   const fixedContentBlocks = isLegacy ? [] : (Array.isArray(promptData.fixedContentBlocks) ? promptData.fixedContentBlocks : []);
+  const promptDebug = isLegacy ? null : (promptData.promptDebug || null);
   const prefix = pfx();
   const content = [];
   const getRetryDelayMs = (attempt) => {
@@ -101,8 +102,10 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
       }
 
       const data = await res.json();
+      const usage = data.usage || {};
+      recordCacheDebugEvent(prefix, agentId, usage, promptDebug);
       delete abortControllers[agentId];
-      return { text: data.content.map((block) => block.text || '').join('\n'), usage: data.usage || {} };
+      return { text: data.content.map((block) => block.text || '').join('\n'), usage };
     } catch (err) {
       if (err.name === 'AbortError') {
         delete abortControllers[agentId];
@@ -258,6 +261,141 @@ function setLastCacheStatus(status) {
   if (cacheNode) cacheNode.textContent = `🧠 cache ${status}`;
 }
 
+function getRuntimeDebugState() {
+  state.runtimeDebug = state.runtimeDebug || {};
+  state.runtimeDebug.lastCacheStatus = state.runtimeDebug.lastCacheStatus || '—';
+  state.runtimeDebug.activeCacheRuns = state.runtimeDebug.activeCacheRuns || {};
+  state.runtimeDebug.cacheRunHistory = state.runtimeDebug.cacheRunHistory || {};
+  return state.runtimeDebug;
+}
+
+function getActiveCacheDebugRun(prefix) {
+  return getRuntimeDebugState().activeCacheRuns[prefix] || null;
+}
+
+function beginCacheDebugRun(prefix, targetStepId = '', pipelineAgents = []) {
+  const runtimeDebug = getRuntimeDebugState();
+  const launchState = getPipelineLaunchState(prefix);
+  const runRecord = {
+    prefix,
+    mode: getPipelineLaunchMode(prefix),
+    targetStepId,
+    startedAt: new Date().toISOString(),
+    finishedAt: '',
+    finalStatus: 'running',
+    pipelineAgents: pipelineAgents.map((agent) => agent.id),
+    events: [],
+    lastHeaderStatus: runtimeDebug.lastCacheStatus || '—',
+    launchStatus: launchState.lastStatus || 'prêt',
+  };
+
+  runtimeDebug.activeCacheRuns[prefix] = runRecord;
+  return runRecord;
+}
+
+function finalizeCacheDebugRun(prefix, finalStatus = '') {
+  const runtimeDebug = getRuntimeDebugState();
+  const activeRun = runtimeDebug.activeCacheRuns[prefix];
+  if (!activeRun) return;
+
+  activeRun.finishedAt = new Date().toISOString();
+  activeRun.finalStatus = finalStatus || activeRun.finalStatus || 'done';
+  activeRun.lastHeaderStatus = runtimeDebug.lastCacheStatus || '—';
+  activeRun.launchStatus = getPipelineLaunchState(prefix).lastStatus || activeRun.launchStatus || 'prêt';
+  runtimeDebug.cacheRunHistory[prefix] = activeRun;
+}
+
+function getLatestCacheDebugRun(prefix = pfx()) {
+  const runtimeDebug = getRuntimeDebugState();
+  return runtimeDebug.activeCacheRuns[prefix] || runtimeDebug.cacheRunHistory[prefix] || null;
+}
+
+function getCacheStatusFromUsage(usage = {}) {
+  const cacheRead = usage.cache_read_input_tokens || 0;
+  const cacheWrite = usage.cache_creation_input_tokens || 0;
+
+  if (cacheRead > 0) return 'hit';
+  if (cacheWrite > 0) return 'write';
+  return 'miss';
+}
+
+function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) {
+  const activeRun = getActiveCacheDebugRun(prefix);
+  if (!activeRun) return;
+
+  const fixedBlocks = Array.isArray(promptDebug?.fixedBlocks) ? promptDebug.fixedBlocks : [];
+  const sharedBlock = fixedBlocks.find((block) => block.key === 'shared_prefix');
+  const cumulativeBlock = fixedBlocks.find((block) => block.key === 'cumulative_append_only');
+  const launchState = getPipelineLaunchState(prefix);
+  const event = {
+    order: activeRun.events.length + 1,
+    agentId,
+    status: getCacheStatusFromUsage(usage),
+    cacheReadTokens: usage.cache_read_input_tokens || 0,
+    cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+    inputTokens: usage.input_tokens || 0,
+    outputTokens: usage.output_tokens || 0,
+    promptChars: promptDebug?.promptChars || 0,
+    fixedChars: fixedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
+    sharedPrefixChars: sharedBlock?.chars || 0,
+    cumulativeChars: cumulativeBlock?.chars || 0,
+    fixedBlocks,
+    displayStepId: launchState.currentStepId || getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId),
+    timestamp: new Date().toISOString(),
+  };
+
+  activeRun.events.push(event);
+  activeRun.lastHeaderStatus = getRuntimeDebugState().lastCacheStatus || activeRun.lastHeaderStatus || '—';
+}
+
+function buildCacheDebugReport(prefix = pfx()) {
+  const run = getLatestCacheDebugRun(prefix);
+  if (!run) return 'Aucun rapport cache disponible.';
+
+  const lines = [
+    '═══ RAPPORT CACHE PIPELINE ═══',
+    `Mode: ${run.mode}`,
+    `Préfixe: ${run.prefix}`,
+    `Étape cible: ${run.targetStepId || 'pipeline complet'}`,
+    `Ordre: ${run.pipelineAgents.join(' -> ') || '—'}`,
+    `Démarré: ${run.startedAt || '—'}`,
+    `Terminé: ${run.finishedAt || '—'}`,
+    `Statut final: ${run.finalStatus || '—'}`,
+    `Header cache: ${run.lastHeaderStatus || '—'}`,
+    '',
+  ];
+
+  if (!run.events.length) {
+    lines.push('Aucun événement cache enregistré.');
+    return lines.join('\n');
+  }
+
+  run.events.forEach((event) => {
+    lines.push(`#${event.order} ${event.agentId} (${event.displayStepId || event.agentId})`);
+    lines.push(`- cache: ${event.status}`);
+    lines.push(`- lu: ${event.cacheReadTokens.toLocaleString()} tok`);
+    lines.push(`- écrit: ${event.cacheWriteTokens.toLocaleString()} tok`);
+    lines.push(`- input: ${event.inputTokens.toLocaleString()} tok`);
+    lines.push(`- output: ${event.outputTokens.toLocaleString()} tok`);
+    lines.push(`- prompt variable: ${event.promptChars.toLocaleString()} chars`);
+    lines.push(`- bloc fixe total: ${event.fixedChars.toLocaleString()} chars`);
+    lines.push(`- bloc commun: ${event.sharedPrefixChars.toLocaleString()} chars`);
+    lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars`);
+    event.fixedBlocks.forEach((block) => {
+      lines.push(`  • ${block.key}: ${block.chars.toLocaleString()} chars${block.cacheable ? ' · cacheable' : ''}`);
+    });
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+function copyCacheDebugReport(prefix = pfx()) {
+  const report = buildCacheDebugReport(prefix);
+  navigator.clipboard.writeText(report);
+  showToast('Rapport cache copié ✓');
+}
+
 function syncCacheIndicator(usage = {}) {
   const cacheRead = usage.cache_read_input_tokens || 0;
   const cacheWrite = usage.cache_creation_input_tokens || 0;
@@ -268,6 +406,8 @@ function syncCacheIndicator(usage = {}) {
       : 'miss';
 
   setLastCacheStatus(cacheStatus);
+  const activeRun = getActiveCacheDebugRun(pfx());
+  if (activeRun) activeRun.lastHeaderStatus = cacheStatus;
   refreshPipelineLaunchPanels();
 }
 
@@ -709,6 +849,7 @@ async function startPipeline(p, options = {}) {
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
   resetPipelineRunState(p, resolvedTargetStepId);
+  beginCacheDebugRun(p, resolvedTargetStepId, pipelineAgents);
 
   knownAgentIds.forEach((agentId) => {
     state.outputs[agentId] = '';
@@ -789,6 +930,7 @@ async function startPipeline(p, options = {}) {
     isRunning: false,
     lastStatus: finalStatus,
   });
+  finalizeCacheDebugRun(p, finalStatus);
 
   if (isSoloTabsFlow) {
     refreshSoloTabs(p);

@@ -41,10 +41,21 @@
     const shared = buildPipelineSharedFixedContent(ctx);
     const cumulative = includeCumulative ? buildPipelineCumulativeFixedContent(ctx) : '';
     return [
-      { text: shared, cacheable: true },
-      { text: cumulative, cacheable: false },
+      { key: 'shared_prefix', text: shared, cacheable: true },
+      { key: 'cumulative_append_only', text: cumulative, cacheable: false },
     ];
   };
+
+  const buildPromptDebug = (agentId, filled, fixedContentBlocks = []) => ({
+    agentId,
+    promptChars: String(filled || '').length,
+    fixedBlocks: fixedContentBlocks.map((block, index) => ({
+      index,
+      key: block?.key || `block_${index + 1}`,
+      cacheable: Boolean(block?.cacheable),
+      chars: String(block?.text || '').trim().length,
+    })),
+  });
 
   const CACHE_FIXED = {
     marche: (ctx = {}) => ({
@@ -177,8 +188,9 @@
     const fixedConfig = CACHE_FIXED[agentId] ? CACHE_FIXED[agentId](ctx) : null;
     const fixedContentBlocks = fixedConfig?.blocks || [];
     const fixedContent = buildFixedContentText(fixedContentBlocks) || null;
+    const promptDebug = buildPromptDebug(agentId, filled, fixedContentBlocks);
 
-    return { filled, fixedContent, fixedContentBlocks };
+    return { filled, fixedContent, fixedContentBlocks, promptDebug };
   }
 
   global.PipelineUIPromptBiblio = {
