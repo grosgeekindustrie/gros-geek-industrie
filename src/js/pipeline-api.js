@@ -133,66 +133,6 @@ function activateSoloTab(prefix, tabId, options = {}) {
   if (prefix === 'col') window.activateCollectionSoloTab?.(tabId, options);
 }
 
-function getModeFromPrefix(prefix = pfx()) {
-  return prefix === 'col' ? 'collection' : 'tabletop';
-}
-
-function getPipelineLaunchState(prefix = pfx()) {
-  return window.getPipelineLaunchStore?.(prefix) || null;
-}
-
-function syncPipelineLaunchPanel(prefix = pfx()) {
-  window.refreshPipelineLaunchPanelState?.(prefix);
-}
-
-function getPipelineExecutionPlan(prefix = pfx(), requestedTargetStepId = '') {
-  const mode = getModeFromPrefix(prefix);
-  const fallbackTargetStepId = window.getPipelineDefaultTargetStepId?.(mode) || '';
-  const targetStepId = window.getPipelineAgentById?.(requestedTargetStepId, mode)
-    ? requestedTargetStepId
-    : fallbackTargetStepId;
-  const agents = window.getPipelineTargetAgents?.(targetStepId, mode) || getPipelineAgents(mode);
-  const targetLabel = window.getPipelineTargetLabel?.(targetStepId, mode) || targetStepId;
-
-  return {
-    mode,
-    targetStepId,
-    targetLabel,
-    agents,
-  };
-}
-
-function getCacheStatusLabel(usage = {}) {
-  const cacheRead = Number(usage.cache_read_input_tokens || 0);
-  const cacheWrite = Number(usage.cache_creation_input_tokens || 0);
-
-  if (cacheRead > 0) return 'cache hit';
-  if (cacheWrite > 0) return 'cache write';
-  return 'cache miss';
-}
-
-function updateCacheDebugBadge(prefix = pfx(), usage = null) {
-  const badge = document.getElementById('session-cache-status');
-  const launchState = getPipelineLaunchState(prefix);
-  const cacheStatus = usage ? getCacheStatusLabel(usage) : (launchState?.lastCacheStatus || '—');
-  const badgeColor = cacheStatus === 'cache hit'
-    ? 'var(--success)'
-    : cacheStatus === 'cache write'
-      ? 'var(--warning, #e8c547)'
-      : 'var(--muted)';
-
-  if (launchState && usage) {
-    launchState.lastCacheStatus = cacheStatus;
-  }
-
-  if (badge) {
-    badge.textContent = `🧠 ${cacheStatus}`;
-    badge.style.color = badgeColor;
-  }
-
-  syncPipelineLaunchPanel(prefix);
-}
-
 function extractMarkdownSectionValue(rawText, sectionTitle) {
   const escapedTitle = String(sectionTitle || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sectionPattern = new RegExp(`^##\\s+${escapedTitle}\\s*$([\\s\\S]*?)(?=^##\\s+|$)`, 'im');
@@ -260,16 +200,10 @@ async function runCollectionIrisSemanticSearch() {
 // ═══════════════════════════════════════════════════════════
 async function runAgent(agent, correction = '', isRetry = false) {
   const p = pfx();
-  const launchState = getPipelineLaunchState(p);
   const card = document.getElementById(`${p}-card-${agent.id}`);
   const stat = document.getElementById(`${p}-stat-${agent.id}`);
   const out = document.getElementById(`${p}-out-${agent.id}`);
   const stopBtn = document.getElementById(`${p}-bstop-${agent.id}`);
-
-  if (launchState?.status === 'running') {
-    launchState.currentAgentId = agent.id;
-    syncPipelineLaunchPanel(p);
-  }
   card.className = 'agent-card active';
   updatePipelineTimeline(agent.id, 'active');
   refreshSoloTabs(p);
@@ -280,17 +214,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
   if (stopBtn) stopBtn.style.display = 'inline-flex';
   if (!['analyse','alt','marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
   if (agent.hasSelection && !isRetry) {
-    state.selectedAccroche = null;
-    state.selectedCTA = null;
-    state.selectedTitre = null;
-
-    [`${p}-sel-${agent.id}`, `${p}-sel-accroche-${agent.id}`, `${p}-sel-cta-${agent.id}`].forEach((id) => {
-      const zone = document.getElementById(id);
-      const targetNode = zone?.querySelector('[id]');
-
-      if (!zone) return;
-      zone.classList.remove('visible');
-      if (targetNode) targetNode.innerHTML = '';
+    state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
+    [`${p}-sel-${agent.id}`, `${p}-sel-accroche-${agent.id}`, `${p}-sel-cta-${agent.id}`].forEach(id => {
+      const z = document.getElementById(id);
+      if (z) { z.classList.remove('visible'); const d = z.querySelector('[id]'); if (d) d.innerHTML = ''; }
     });
   }
   try {
@@ -397,70 +324,34 @@ async function runAgent(agent, correction = '', isRetry = false) {
 
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
-async function startPipeline(p, options = {}) {
-  const executionPlan = getPipelineExecutionPlan(p, options.targetStepId);
-  const launchState = getPipelineLaunchState(p);
-  const isSoloTabsFlow = p === 'tt' || p === 'col';
-  const btn = document.getElementById(`runBtn-${p}`);
-  const allAgents = getPipelineAgents(getModeFromPrefix(p));
-
+async function startPipeline(p) {
   if (state.images[p].length === 0) {
     document.getElementById(`imgWarning-${p}`).style.display = 'block';
     showToast('⚠️ Charge au moins une image !', '#ff4757');
     return;
   }
-
   document.getElementById(`imgWarning-${p}`).style.display = 'none';
   document.getElementById(`socialSection-${p}`).style.display = 'none';
   document.getElementById(`socialOutput-${p}`).style.display = 'none';
   document.getElementById(`reseauxOnlySection-${p}`).style.display = 'none';
-  [`ss-insta-${p}`, `ss-fb-${p}`, `ss-marketplace-${p}`, `ss-pinterest-${p}`].forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) element.style.display = 'none';
+  [`ss-insta-${p}`,`ss-fb-${p}`,`ss-marketplace-${p}`,`ss-pinterest-${p}`].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
-
   state.socialSections = {};
-  state.selectedAccroche = null;
-  state.selectedCTA = null;
-  state.selectedTitre = null;
-  state.outputs.alt = '';
-  state.outputs.iris = '';
-  state.outputs.tags_final_csv = '';
-  state.outputs.tags_debug_csv = '';
-  state.outputs.titre_valide = '';
-  state.outputs.description_assembled = '';
-
-  Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
-
-  if (launchState) {
-    launchState.status = 'running';
-    launchState.targetStepId = executionPlan.targetStepId;
-    launchState.lastTargetStepId = executionPlan.targetStepId;
-    launchState.currentAgentId = '';
-    launchState.currentStepIndex = 0;
-    launchState.totalSteps = executionPlan.agents.length;
-    launchState.lastCacheStatus = '—';
-    launchState.lastCostCents = 0;
-  }
-
-  updateCacheDebugBadge(p);
-
   document.getElementById(`finalOutput-${p}`).style.display = 'none';
-  [`fs-titre-${p}`, `fs-tags-${p}`, `fs-description-${p}`, `fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) element.style.display = 'none';
+  [`fs-titre-${p}`,`fs-tags-${p}`,`fs-description-${p}`,`fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
+  const btn = document.getElementById(`runBtn-${p}`);
+  btn.disabled = true; btn.textContent = '⟳ Pipeline en cours...';
 
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = executionPlan.targetLabel
-      ? `⟳ Jusqu’à ${executionPlan.targetLabel}...`
-      : '⟳ Pipeline en cours...';
-  }
+  const isSoloTabsFlow = p === 'tt' || p === 'col';
 
   if (isSoloTabsFlow) {
-    const pipelineElement = document.getElementById(`pipeline-${p}`);
-    if (pipelineElement) pipelineElement.style.display = '';
+    const pipelineEl = document.getElementById(`pipeline-${p}`);
+    if (pipelineEl) pipelineEl.style.display = '';
     window.setPipelineExecutionActive?.(true);
     activateSoloTab(p, 'pipeline', { force: true });
     refreshSoloTabs(p);
@@ -468,120 +359,63 @@ async function startPipeline(p, options = {}) {
   } else {
     const pipelineBody = document.getElementById('pipelineViewBody');
     if (pipelineBody) {
-      const pipelineElement = document.getElementById(`pipeline-${p}`);
-      const finalElement = document.getElementById(`finalOutput-${p}`);
-      const socialSectionElement = document.getElementById(`socialSection-${p}`);
-      const socialOutputElement = document.getElementById(`socialOutput-${p}`);
-
-      if (pipelineElement) {
-        pipelineElement.style.display = '';
-        pipelineBody.appendChild(pipelineElement);
-      }
-      if (finalElement) pipelineBody.appendChild(finalElement);
-      if (socialSectionElement) pipelineBody.appendChild(socialSectionElement);
-      if (socialOutputElement) pipelineBody.appendChild(socialOutputElement);
+      const pipelineEl = document.getElementById(`pipeline-${p}`);
+      const finalEl = document.getElementById(`finalOutput-${p}`);
+      if (pipelineEl) { pipelineEl.style.display = ''; pipelineBody.appendChild(pipelineEl); }
+      if (finalEl) { pipelineBody.appendChild(finalEl); }
+      const socialSectionEl = document.getElementById(`socialSection-${p}`);
+      if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
+      const socialOutputEl = document.getElementById(`socialOutput-${p}`);
+      if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
     }
-
-    const titleElement = document.getElementById('pipelineViewTitle');
-    if (titleElement) titleElement.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
+    const titleEl = document.getElementById('pipelineViewTitle');
+    if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
 
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
-    const contextElement = document.getElementById('headerContext');
-    if (contextElement) {
-      contextElement.className = 'app-context mode-pipeline';
-      contextElement.textContent = '⟳ Pipeline en cours...';
-    }
-
-    buildPipelineTimeline(executionPlan.targetLabel ? `Cible · ${executionPlan.targetLabel}` : '');
+    const ctx = document.getElementById('headerContext');
+    if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
+    buildPipelineTimeline();
     window.setPipelineExecutionActive?.(true);
     showView('pipeline');
   }
-
-  allAgents.forEach((agent) => {
-    state.outputs[agent.id] = '';
-
-    const card = document.getElementById(`${p}-card-${agent.id}`);
-    const stat = document.getElementById(`${p}-stat-${agent.id}`);
-    const out = document.getElementById(`${p}-out-${agent.id}`);
-    const retryButton = document.getElementById(`${p}-br-${agent.id}`);
-    const suiteButton = document.getElementById(`${p}-bs-${agent.id}`);
-    const persistButton = document.getElementById(`${p}-bp-${agent.id}`);
-    const badge = document.getElementById(`orch-badge-${agent.id}`);
-
+  state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
+  Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
+  state.outputs.alt = '';
+  state.outputs.iris = '';
+  getPipelineAgents().forEach(a => {
+    state.outputs[a.id] = '';
+    const card = document.getElementById(`${p}-card-${a.id}`);
+    const stat = document.getElementById(`${p}-stat-${a.id}`);
+    const out = document.getElementById(`${p}-out-${a.id}`);
     if (card) card.className = 'agent-card';
-    if (stat) {
-      stat.className = 'agent-status s-wait';
-      stat.textContent = 'en attente';
-    }
-    if (out) {
-      out.className = 'output-box empty';
-      out.textContent = '— pas encore généré —';
-    }
-    if (retryButton) retryButton.disabled = true;
-    if (suiteButton) suiteButton.disabled = true;
-    if (persistButton) persistButton.disabled = true;
-    if (badge) badge.remove();
+    if (stat) { stat.className = 'agent-status s-wait'; stat.textContent = 'en attente'; }
+    if (out) { out.className = 'output-box empty'; out.textContent = '— pas encore généré —'; }
+    const br = document.getElementById(`${p}-br-${a.id}`); if (br) br.disabled = true;
+    const bs = document.getElementById(`${p}-bs-${a.id}`); if (bs) bs.disabled = true;
+    const bp = document.getElementById(`${p}-bp-${a.id}`); if (bp) bp.disabled = true;
+    const ob = document.getElementById(`orch-badge-${a.id}`); if (ob) ob.remove();
   });
-
   refreshSoloTabs(p);
-  syncPipelineLaunchPanel(p);
-
-  let completedWithoutError = true;
-
-  for (const [index, agent] of executionPlan.agents.entries()) {
-    if (launchState) {
-      launchState.status = 'running';
-      launchState.currentAgentId = agent.id;
-      launchState.currentStepIndex = index + 1;
-      launchState.totalSteps = executionPlan.agents.length;
-      syncPipelineLaunchPanel(p);
-    }
-
+  for (const agent of getPipelineAgents()) {
     const ok = await runAgent(agent);
-    if (!ok) {
-      completedWithoutError = false;
-      const statusText = document.getElementById(`${p}-stat-${agent.id}`)?.textContent?.toLowerCase() || '';
-      if (launchState) {
-        launchState.status = statusText.includes('stoppé') ? 'stopped' : 'error';
-      }
-      break;
-    }
-
-    if (agent.hasSelection) {
-      completedWithoutError = false;
-      if (launchState) launchState.status = 'paused';
-      break;
-    }
+    if (!ok) break;
+    if (agent.hasSelection) break;
+      // Mode collection — pipeline limité à 3 agents pendant la phase de test
+      // description mènne au bout du pipeline
+    if (currentMode === 'collection' && agent.id === 'description') break;
   }
 
   assembleFinal();
-
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = executionPlan.targetLabel
-      ? `▶ Relancer jusqu’à ${executionPlan.targetLabel}`
-      : '▶ Relancer tout';
-  }
-
+  btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   window.setPipelineExecutionActive?.(false);
-
-  if (launchState) {
-    if (completedWithoutError) launchState.status = 'done';
-    launchState.currentAgentId = '';
-    launchState.currentStepIndex = completedWithoutError ? executionPlan.agents.length : launchState.currentStepIndex;
-    launchState.totalSteps = executionPlan.agents.length;
-  }
-
-  syncPipelineLaunchPanel(p);
 
   if (isSoloTabsFlow) {
     refreshSoloTabs(p);
     const hasResult = p === 'tt'
       ? window.isDndSoloResultAvailable?.()
       : window.isCollectionSoloResultAvailable?.();
-
     if (hasResult) {
       activateSoloTab(p, 'result', { force: true });
     } else {
@@ -589,7 +423,6 @@ async function startPipeline(p, options = {}) {
     }
   }
 }
-
 
 
 // ═══════════════════════════════════════════════════════════
@@ -1023,55 +856,36 @@ function copyAll() {
 // ═══════════════════════════════════════════════════════════
 function showAgentCost(agentId, usage) {
   if (!usage) return;
-
-  const prefix = pfx();
-  const launchState = getPipelineLaunchState(prefix);
   const isHaiku = (AGENT_MODELS[agentId] || '').includes('haiku');
-  const priceMatrix = isHaiku
-    ? { input: 0.80 / 1_000_000, cacheWrite: 1.00 / 1_000_000, cacheRead: 0.08 / 1_000_000, output: 4.00 / 1_000_000 }
-    : { input: 3.00 / 1_000_000, cacheWrite: 3.75 / 1_000_000, cacheRead: 0.30 / 1_000_000, output: 15.00 / 1_000_000 };
-  const inputTok = usage.input_tokens || 0;
-  const outputTok = usage.output_tokens || 0;
-  const cacheRead = usage.cache_read_input_tokens || 0;
+  const PRICE = isHaiku ? { input:0.80/1_000_000, cacheWrite:1.00/1_000_000, cacheRead:0.08/1_000_000, output:4.00/1_000_000 }
+                        : { input:3.00/1_000_000, cacheWrite:3.75/1_000_000, cacheRead:0.30/1_000_000, output:15.00/1_000_000 };
+  const inputTok   = usage.input_tokens || 0;
+  const outputTok  = usage.output_tokens || 0;
+  const cacheRead  = usage.cache_read_input_tokens || 0;
   const cacheWrite = usage.cache_creation_input_tokens || 0;
-  const normalIn = inputTok - cacheRead - cacheWrite;
-  const cost = (normalIn * priceMatrix.input)
-    + (cacheWrite * priceMatrix.cacheWrite)
-    + (cacheRead * priceMatrix.cacheRead)
-    + (outputTok * priceMatrix.output);
+  const normalIn   = inputTok - cacheRead - cacheWrite;
+  const cost = (normalIn * PRICE.input) + (cacheWrite * PRICE.cacheWrite) + (cacheRead * PRICE.cacheRead) + (outputTok * PRICE.output);
   const costCents = cost * 100;
-
   state.sessionCost += costCents;
   state.agentUsage[agentId] = { inputTok, outputTok, cacheRead, cacheWrite, normalIn, costCents };
-
-  if (launchState) {
-    launchState.lastCostCents = costCents;
-    launchState.lastCacheStatus = getCacheStatusLabel(usage);
-  }
-
   const existing = document.getElementById(`cost-badge-${agentId}`);
   if (existing) existing.remove();
-
   const badge = document.createElement('div');
-  const badgeParts = [`📥 in: ${inputTok.toLocaleString()} tok`, `📤 out: ${outputTok.toLocaleString()} tok`];
-  const body = document.getElementById(`${prefix}-body-${agentId}`);
-  const sessionElement = document.getElementById('session-cost');
-
   badge.id = `cost-badge-${agentId}`;
   badge.style.cssText = 'margin:4px 0 6px;padding:4px 10px;border-radius:4px;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;';
-  if (cacheWrite > 0) badgeParts.push(`✍️ écrit: ${cacheWrite.toLocaleString()} tok`);
-  if (cacheRead > 0) badgeParts.push(`⚡ lu: ${cacheRead.toLocaleString()} tok`);
-  badgeParts.push(`💰 ${costCents.toFixed(3)}¢`);
-  badge.innerHTML = badgeParts.join('<span style="opacity:.3;">|</span>');
-
+  const parts = [`📥 in: ${inputTok.toLocaleString()} tok`, `📤 out: ${outputTok.toLocaleString()} tok`];
+  if (cacheWrite > 0) parts.push(`✍️ écrit: ${cacheWrite.toLocaleString()} tok`);
+  if (cacheRead > 0) parts.push(`⚡ lu: ${cacheRead.toLocaleString()} tok`);
+  parts.push(`💰 ${costCents.toFixed(3)}¢`);
+  badge.innerHTML = parts.join('<span style="opacity:.3;">|</span>');
+  const body = document.getElementById(`${pfx()}-body-${agentId}`);
   if (body) body.insertBefore(badge, body.firstChild);
-  if (sessionElement) {
-    sessionElement.textContent = `💰 ${state.sessionCost.toFixed(2)}¢`;
-    if (state.sessionCost > 10) sessionElement.style.color = 'var(--accent)';
-    if (state.sessionCost > 20) sessionElement.style.color = 'var(--error)';
+  const sessionEl = document.getElementById('session-cost');
+  if (sessionEl) {
+    sessionEl.textContent = `💰 ${state.sessionCost.toFixed(2)}¢`;
+    if (state.sessionCost > 10) sessionEl.style.color = 'var(--accent)';
+    if (state.sessionCost > 20) sessionEl.style.color = 'var(--error)';
   }
-
-  updateCacheDebugBadge(prefix, usage);
 }
 
 function copyTokenReport() {

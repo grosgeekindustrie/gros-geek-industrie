@@ -9,9 +9,6 @@
   const getCurrentMode = () => global.currentMode || 'tabletop';
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (getCurrentMode() === 'collection' ? 'col' : 'tt'));
   const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
-  const getPipelineLaunchTargets = (mode) => (typeof global.getPipelineLaunchTargets === 'function' ? global.getPipelineLaunchTargets(mode) : []);
-  const getPipelineDefaultTargetStepId = (mode) => (typeof global.getPipelineDefaultTargetStepId === 'function' ? global.getPipelineDefaultTargetStepId(mode) : '');
-  const getPipelineTargetLabel = (targetStepId, mode) => (typeof global.getPipelineTargetLabel === 'function' ? global.getPipelineTargetLabel(targetStepId, mode) : '');
 
   let currentView = 'home';
   let pendingBatchMode = null;
@@ -49,144 +46,11 @@
     global.refreshCollectionSoloTabs?.();
   }
 
-  function getModeFromPrefix(prefix = getPfx()) {
-    return prefix === 'col' ? 'collection' : 'tabletop';
-  }
-
-  function getPipelineLaunchNodes(prefix = getPfx()) {
-    const root = document.querySelector(`[data-js="pipeline-launch-panel"][data-prefix="${prefix}"]`);
-
-    return {
-      root,
-      controls: root?.querySelector('[data-js="pipeline-launch-controls"]') || null,
-      status: root?.querySelector('[data-js="pipeline-launch-status"]') || null,
-      meta: root?.querySelector('[data-js="pipeline-launch-meta"]') || null,
-    };
-  }
-
-  function getPipelineLaunchStore(prefix = getPfx()) {
-    const state = getState();
-    const fallbackState = {
-      status: 'idle',
-      targetStepId: '',
-      lastTargetStepId: '',
-      currentAgentId: '',
-      currentStepIndex: 0,
-      totalSteps: 0,
-      lastCacheStatus: '—',
-      lastCostCents: 0,
-    };
-
-    if (!state) return fallbackState;
-
-    state.pipelineLaunch = state.pipelineLaunch || {};
-    state.pipelineLaunch[prefix] = state.pipelineLaunch[prefix] || { ...fallbackState };
-
-    return state.pipelineLaunch[prefix];
-  }
-
-  function buildLaunchStatusText(prefix = getPfx()) {
-    const mode = getModeFromPrefix(prefix);
-    const launchState = getPipelineLaunchStore(prefix);
-    const fallbackTargetId = getPipelineDefaultTargetStepId(mode);
-    const targetStepId = launchState.targetStepId || launchState.lastTargetStepId || fallbackTargetId;
-    const targetLabel = getPipelineTargetLabel(targetStepId, mode) || 'Pipeline complet';
-    const currentLabel = getPipelineTargetLabel(launchState.currentAgentId, mode);
-
-    if (launchState.status === 'running') {
-      const progressLabel = launchState.totalSteps
-        ? ` · ${launchState.currentStepIndex}/${launchState.totalSteps}`
-        : '';
-      const currentStepLabel = currentLabel ? ` · en cours : ${currentLabel}` : '';
-
-      return `Cible : ${targetLabel}${progressLabel}${currentStepLabel}`;
-    }
-
-    if (launchState.status === 'paused') return `Pipeline en pause · sélection requise sur ${currentLabel || targetLabel}`;
-    if (launchState.status === 'error') return `Dernière exécution en erreur · ${currentLabel || targetLabel}`;
-    if (launchState.status === 'stopped') return `Exécution interrompue · ${currentLabel || targetLabel}`;
-    if (launchState.status === 'done') return `Dernière cible atteinte : ${targetLabel}`;
-
-    return 'Choisis une étape cible. Le pipeline rejouera l’amont utile puis s’arrêtera à cette étape.';
-  }
-
-  function buildLaunchMetaText(prefix = getPfx()) {
-    const launchState = getPipelineLaunchStore(prefix);
-    const sessionCost = Number(getState()?.sessionCost || 0).toFixed(2);
-
-    return `Cache : ${launchState.lastCacheStatus || '—'} · Coût session : ${sessionCost}¢`;
-  }
-
-  function refreshPipelineLaunchPanelState(prefix = getPfx()) {
-    const { root, status, meta, controls } = getPipelineLaunchNodes(prefix);
-    if (!root) return;
-
-    const launchState = getPipelineLaunchStore(prefix);
-    const isRunning = isPipelineExecutionActive();
-    const mode = getModeFromPrefix(prefix);
-
-    if (status) status.textContent = buildLaunchStatusText(prefix);
-    if (meta) meta.textContent = buildLaunchMetaText(prefix);
-
-    controls?.querySelectorAll('[data-js="pipeline-launch-button"]').forEach((button) => {
-      const targetStepId = button.dataset.targetStepId || '';
-      const isLastTarget = targetStepId && targetStepId === (launchState.targetStepId || launchState.lastTargetStepId);
-      const isDefaultTarget = targetStepId === getPipelineDefaultTargetStepId(mode);
-
-      button.disabled = isRunning;
-      button.classList.toggle('btn-accent', isLastTarget || isDefaultTarget);
-      button.classList.toggle('btn-muted', !(isLastTarget || isDefaultTarget));
-    });
-  }
-
-  function createLaunchButton(prefix, label, targetStepId, isFullPipeline = false) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `btn ${isFullPipeline ? 'btn-accent' : 'btn-muted'}`;
-    button.dataset.js = 'pipeline-launch-button';
-    button.dataset.targetStepId = targetStepId;
-    button.textContent = label;
-    button.addEventListener('click', () => {
-      global.startPipeline?.(prefix, { targetStepId });
-    });
-
-    return button;
-  }
-
-  function renderPipelineLaunchPanel(prefix = getPfx()) {
-    const { controls } = getPipelineLaunchNodes(prefix);
-    if (!controls) return;
-
-    const mode = getModeFromPrefix(prefix);
-    const launchTargets = getPipelineLaunchTargets(mode);
-    const defaultTargetStepId = getPipelineDefaultTargetStepId(mode);
-    const defaultTargetLabel = getPipelineTargetLabel(defaultTargetStepId, mode);
-    const fullPipelineLabel = defaultTargetLabel
-      ? `▶ Pipeline complet · ${defaultTargetLabel}`
-      : '▶ Pipeline complet';
-
-    controls.innerHTML = '';
-    controls.appendChild(createLaunchButton(prefix, fullPipelineLabel, defaultTargetStepId, true));
-
-    launchTargets.forEach((target) => {
-      if (target.id === defaultTargetStepId) return;
-      controls.appendChild(createLaunchButton(prefix, `▶ Jusqu’à ${target.launchLabel}`, target.id));
-    });
-
-    refreshPipelineLaunchPanelState(prefix);
-  }
-
-  function refreshPipelineLaunchPanels() {
-    renderPipelineLaunchPanel('tt');
-    renderPipelineLaunchPanel('col');
-  }
-
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
     refreshDndTabs();
     refreshCollectionTabs();
-    refreshPipelineLaunchPanels();
   }
   function syncHeaderBackAction() {
     const backBtn = document.getElementById('appBackBtn');
@@ -392,7 +256,6 @@
 
     resetSingleFlowPanels(mode);
     showView('form');
-    refreshPipelineLaunchPanel(mode === 'collection' ? 'col' : 'tt');
     refreshDndStepper();
     refreshDndTabs();
     global.refreshCollectionStepper?.();
@@ -495,8 +358,6 @@
   }
 
 
-  refreshPipelineLaunchPanels();
-
   global.PipelineUIApp = {
     showToast,
     clearAllStorage,
@@ -519,10 +380,6 @@
     syncHeaderBackAction,
     buildPipelineTimeline,
     updatePipelineTimeline,
-    getPipelineLaunchStore,
-    renderPipelineLaunchPanel,
-    refreshPipelineLaunchPanelState,
-    refreshPipelineLaunchPanels,
     openSettings,
     closeSettings,
     getCurrentView: () => currentView,

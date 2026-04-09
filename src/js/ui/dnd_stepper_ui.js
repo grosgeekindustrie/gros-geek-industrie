@@ -27,12 +27,7 @@
     {
       title: 'Paramètres & options',
       subtitle: 'Finalise la pose, le type produit, la version et les options avancées.',
-      footerLabel: 'Étape 4 sur 5 · Paramètres validés',
-    },
-    {
-      title: 'Lancement',
-      subtitle: 'Choisis le pipeline complet ou une étape cible. Le pipeline rejoue l’amont utile puis s’arrête.',
-      footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
+      footerLabel: 'Étape 4 sur 4 · Prêt pour le pipeline',
     },
   ];
 
