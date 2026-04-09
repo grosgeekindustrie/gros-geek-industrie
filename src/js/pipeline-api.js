@@ -403,8 +403,11 @@ async function startPipeline(p) {
     if (!ok) break;
     if (agent.hasSelection) break;
       // Mode collection — pipeline limité à 3 agents pendant la phase de test
+      // description mènne au bout du pipeline
     if (currentMode === 'collection' && agent.id === 'description') break;
   }
+
+  assembleFinal();
   btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
   window.setPipelineExecutionActive?.(false);
 
