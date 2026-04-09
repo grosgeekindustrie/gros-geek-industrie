@@ -258,7 +258,10 @@ function setLastCacheStatus(status) {
   state.runtimeDebug.lastCacheStatus = status;
 
   const cacheNode = document.getElementById('session-cache');
-  if (cacheNode) cacheNode.textContent = `🧠 cache ${status}`;
+  if (cacheNode) {
+    cacheNode.textContent = `🧠 cache ${status}`;
+    cacheNode.title = `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`;
+  }
 }
 
 function getRuntimeDebugState() {
@@ -276,6 +279,7 @@ function getActiveCacheDebugRun(prefix) {
 function beginCacheDebugRun(prefix, targetStepId = '', pipelineAgents = []) {
   const runtimeDebug = getRuntimeDebugState();
   const launchState = getPipelineLaunchState(prefix);
+  const pipelineRunState = getPipelineRunState(prefix);
   const runRecord = {
     prefix,
     mode: getPipelineLaunchMode(prefix),
@@ -287,6 +291,8 @@ function beginCacheDebugRun(prefix, targetStepId = '', pipelineAgents = []) {
     events: [],
     lastHeaderStatus: runtimeDebug.lastCacheStatus || '—',
     launchStatus: launchState.lastStatus || 'prêt',
+    warmupEnabled: false,
+    warmupHint: pipelineRunState.warmupHint || 'Warmup non défini',
   };
 
   runtimeDebug.activeCacheRuns[prefix] = runRecord;
@@ -298,10 +304,12 @@ function finalizeCacheDebugRun(prefix, finalStatus = '') {
   const activeRun = runtimeDebug.activeCacheRuns[prefix];
   if (!activeRun) return;
 
+  const pipelineRunState = getPipelineRunState(prefix);
   activeRun.finishedAt = new Date().toISOString();
   activeRun.finalStatus = finalStatus || activeRun.finalStatus || 'done';
   activeRun.lastHeaderStatus = runtimeDebug.lastCacheStatus || '—';
   activeRun.launchStatus = getPipelineLaunchState(prefix).lastStatus || activeRun.launchStatus || 'prêt';
+  activeRun.warmupHint = pipelineRunState.warmupHint || activeRun.warmupHint || 'Warmup non défini';
   runtimeDebug.cacheRunHistory[prefix] = activeRun;
 }
 
@@ -352,6 +360,7 @@ function buildCacheDebugReport(prefix = pfx()) {
   const run = getLatestCacheDebugRun(prefix);
   if (!run) return 'Aucun rapport cache disponible.';
 
+  const warmupStatus = run.warmupEnabled ? 'ON' : 'OFF';
   const lines = [
     '═══ RAPPORT CACHE PIPELINE ═══',
     `Mode: ${run.mode}`,
@@ -362,6 +371,8 @@ function buildCacheDebugReport(prefix = pfx()) {
     `Terminé: ${run.finishedAt || '—'}`,
     `Statut final: ${run.finalStatus || '—'}`,
     `Header cache: ${run.lastHeaderStatus || '—'}`,
+    `Warmup réel: ${warmupStatus}`,
+    `Warmup hint: ${run.warmupHint || '—'}`,
     '',
   ];
 
