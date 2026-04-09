@@ -119,6 +119,9 @@
       .replace(/\[\[AGENT_ID\]\]/g, ctx.agent_id || agentId)
       .replace(/\[\[TENTATIVE\]\]/g, String(ctx.tentative || 1))
       .replace(/\[\[OUTPUT\]\]/g, (ctx.output_to_validate || '').substring(0, 3000))
+      .replace(/\[\[PIPELINE_FORM_SNAPSHOT\]\]/g, ctx.pipeline_form_snapshot || '')
+      .replace(/\[\[PIPELINE_CUMULATIF\]\]/g, ctx.pipeline_cumulatif || '')
+      .replace(/\[\[PIPELINE_WARMUP_HINT\]\]/g, ctx.pipeline_warmup_hint || '')
       + (ctx.rules ? `\nRègles permanentes:\n${ctx.rules}` : '')
       + (ctx.correction ? `\nInstruction ponctuelle: ${ctx.correction}` : '');
 

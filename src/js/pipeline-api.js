@@ -310,6 +310,89 @@ function setPipelineLaunchState(prefix, nextState = {}) {
   refreshPipelineLaunchPanelState(prefix);
 }
 
+function buildPipelineFormSnapshot(prefix) {
+  const mode = getPipelineLaunchMode(prefix);
+  const echelles = typeof window.PipelineUIEchelles?.getEchellesSelected === 'function'
+    ? window.PipelineUIEchelles.getEchellesSelected()
+    : '';
+  const dimensions = typeof window.PipelineUIEchelles?.getDimsFromEchelles === 'function'
+    ? window.PipelineUIEchelles.getDimsFromEchelles()
+    : '';
+  const lines = [
+    `Mode: ${mode}`,
+    `Nom: ${document.getElementById(`${prefix}-fNom`)?.value?.trim() || ''}`,
+    `Nom court: ${document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || ''}`,
+    `Univers: ${document.getElementById(`${prefix}-fUnivers`)?.value?.trim() || ''}`,
+    `Sculpteur: ${document.getElementById(`${prefix}-fSculpteur`)?.value?.trim() || ''}`,
+    `Échelles: ${echelles}`,
+    `Dimensions: ${dimensions}`,
+    `Pièces: ${document.getElementById(`${prefix}-fPieces`)?.value?.trim() || ''}`,
+    `Pose: ${document.getElementById(`${prefix}-fPose`)?.value?.trim() || ''}`,
+    `Images: ${state.images[prefix]?.length || 0}`,
+    `URL boutique: ${typeof getShopUrl === 'function' ? getShopUrl() : ''}`,
+  ];
+
+  if (mode === 'tabletop') {
+    lines.push(`Type: ${document.getElementById('tt-fType')?.value?.trim() || ''}`);
+    lines.push(`Version: ${document.getElementById('tt-fVersion')?.value?.trim() || ''}`);
+    lines.push(`Archétypes: ${typeof getArchetypes === 'function' ? getArchetypes() : ''}`);
+    lines.push(`Notes: ${document.getElementById('tt-fNotes')?.value?.trim() || ''}`);
+  } else {
+    lines.push(`Medium: ${typeof getMediums === 'function' ? getMediums() : ''}`);
+    lines.push(`License sensible: ${document.getElementById('col-fLicense')?.checked ? 'oui' : 'non'}`);
+    lines.push(`Particularités: ${document.getElementById('col-fParticularites')?.value?.trim() || ''}`);
+    lines.push(`Description figurine: ${document.getElementById('col-fDescriptionFigurine')?.value?.trim() || ''}`);
+    lines.push(`Résumé personnage: ${document.getElementById('col-fResumePersonnage')?.value?.trim() || ''}`);
+    lines.push(`Connexes prioritaires: ${document.getElementById('col-fConnexesPrioritaires')?.value?.trim() || ''}`);
+    lines.push(`Lien perso: ${document.getElementById('col-fLienPerso')?.value?.trim() || ''}`);
+  }
+
+  return lines.filter((line) => !line.endsWith(': ')).join('\n');
+}
+
+function getPipelineRunState(prefix) {
+  state.pipelineRun = state.pipelineRun || {};
+  state.pipelineRun[prefix] = state.pipelineRun[prefix] || {
+    targetStepId: '',
+    formSnapshot: '',
+    warmupHint: '',
+    cumulativeEntries: [],
+    cumulativeText: '',
+  };
+  return state.pipelineRun[prefix];
+}
+
+function resetPipelineRunState(prefix, targetStepId = '') {
+  const runState = getPipelineRunState(prefix);
+  const warmupStepId = window.getPipelineWarmupStepId?.(getPipelineLaunchMode(prefix)) || 'marche';
+  const formSnapshot = buildPipelineFormSnapshot(prefix);
+
+  runState.targetStepId = targetStepId;
+  runState.formSnapshot = formSnapshot;
+  runState.warmupHint = `Warmup compatible: préfixe stable avant ${warmupStepId}`;
+  runState.cumulativeEntries = [];
+  runState.cumulativeText = '';
+
+  return runState;
+}
+
+function appendPipelineRunEntry(prefix, agentId, content) {
+  const trimmed = String(content || '').trim();
+  if (!trimmed) return;
+
+  const runState = getPipelineRunState(prefix);
+  runState.cumulativeEntries.push({
+    agentId,
+    content: trimmed,
+  });
+  runState.cumulativeText = runState.cumulativeEntries
+    .map((entry) => `## ${entry.agentId}\n${entry.content}`)
+    .join('\n\n');
+}
+
+if (typeof state !== 'undefined') getPipelineRunState('tt');
+if (typeof state !== 'undefined') getPipelineRunState('col');
+
 function getResolvedTargetStep(prefix, targetStepId = '') {
   const targetSteps = getPipelineTargetStepsForPrefix(prefix);
   const requestedStep = targetSteps.find((step) => step.id === targetStepId);
@@ -445,9 +528,13 @@ async function runAgent(agent, correction = '', isRetry = false) {
     }
 
     state.outputs[agent.id] = result;
+    appendPipelineRunEntry(p, agent.id, result);
 
     if (currentMode === 'collection' && agent.id === 'analyse') {
       state.outputs.alt = extractAltFromAnalyseOutput(result);
+      appendPipelineRunEntry(p, 'alt', state.outputs.alt);
+    } else if (agent.id === 'alt') {
+      appendPipelineRunEntry(p, 'alt', result);
     }
 
     out.textContent = result;
@@ -604,6 +691,7 @@ async function startPipeline(p, options = {}) {
   state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
+  resetPipelineRunState(p, resolvedTargetStepId);
 
   knownAgentIds.forEach((agentId) => {
     state.outputs[agentId] = '';

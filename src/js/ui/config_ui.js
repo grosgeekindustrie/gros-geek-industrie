@@ -87,6 +87,11 @@ const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, targetStepId = 
   return stopIndex === -1 ? runtimeIds.slice() : runtimeIds.slice(0, stopIndex + 1);
 };
 
+const getPipelineWarmupStepId = (mode = currentMode) => {
+  const steps = PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || [];
+  return steps[0]?.id || '';
+};
+
 var PROMPT_FILE_MAP = {
   analyse:'marcus', alt:'nadia', marche:'sophie', tags:'karim',
   titre:'maya', description:'claire', social:'leo', camille:'camille', orchestrateur:'felix',
@@ -125,6 +130,7 @@ Object.assign(window.PipelineUIConfig, {
   getPipelineTargetSteps,
   getPipelineTargetStepMeta,
   getPipelineRuntimeAgentIdsForTarget,
+  getPipelineWarmupStepId,
   PROMPT_FILE_MAP,
   PROMPT_FILE_MAP_COLLECTION,
 });
