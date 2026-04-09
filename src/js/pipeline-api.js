@@ -16,55 +16,99 @@
 async function callClaude(agentId, promptData, useImages, retries = 3) {
   const apiKey = document.getElementById('apiKey').value.trim();
   if (!apiKey) throw new Error('Clé API manquante');
+
   const controller = new AbortController();
-  abortControllers[agentId] = controller;
   const isLegacy = typeof promptData === 'string';
   const promptText = isLegacy ? promptData : promptData.filled;
   const fixedContent = isLegacy ? null : promptData.fixedContent;
+  const prefix = pfx();
   const content = [];
-  const p = pfx();
-  if (useImages && state.images[p].length > 0) {
-    for (const img of state.images[p]) {
+  const getRetryDelayMs = (attempt) => {
+    const baseDelay = Math.min(30000, 3000 * (2 ** Math.max(attempt - 1, 0)));
+    const jitter = Math.floor(Math.random() * 1200);
+    return baseDelay + jitter;
+  };
+  const updateRetryMessage = (attempt, delayMs) => {
+    const out = document.getElementById(`${prefix}-out-${agentId}`) || document.getElementById(`out-${agentId}`);
+    if (!out) return;
+
+    const nextAttempt = Math.min(attempt + 1, retries);
+    out.textContent = `⏳ Anthropic surchargé · nouvelle tentative ${nextAttempt}/${retries} dans ${(delayMs / 1000).toFixed(1)}s...`;
+  };
+  const isRetryableOverloadError = (error) => {
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('529') || message.includes('overload') || message.includes('surcharg');
+  };
+
+  abortControllers[agentId] = controller;
+
+  if (useImages && state.images[prefix].length > 0) {
+    for (const img of state.images[prefix]) {
       content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } });
     }
   }
+
   if (fixedContent && fixedContent.length > 4096) {
     content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
     content.push({ type: 'text', text: promptText });
   } else {
     content.push({ type: 'text', text: promptText });
   }
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', signal: controller.signal,
+        method: 'POST',
+        signal: controller.signal,
         headers: {
-          'Content-Type': 'application/json', 'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01', 'anthropic-beta': 'prompt-caching-2024-07-31',
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
           'anthropic-dangerous-direct-browser-access': 'true'
         },
-        body: JSON.stringify({ model: AGENT_MODELS[agentId] || 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content }] })
+        body: JSON.stringify({
+          model: AGENT_MODELS[agentId] || 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          messages: [{ role: 'user', content }]
+        })
       });
+
       if (res.status === 529) {
-        if (attempt < retries) { const delay = attempt * 10000; const out = document.getElementById(`out-${agentId}`); if (out) out.textContent = `⏳ Retry ${attempt}/${retries} dans ${delay/1000}s...`; await new Promise(r => setTimeout(r, delay)); continue; }
-        throw new Error('Serveurs Anthropic surchargés. Réessaie dans quelques minutes.');
+        throw new Error('HTTP 529 overload');
       }
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.error?.message || `HTTP ${res.status}`);
+      }
+
       const data = await res.json();
       delete abortControllers[agentId];
-      const text = data.content.map(b => b.text || '').join('\n');
-      return { text, usage: data.usage || {} };
+      return { text: data.content.map((block) => block.text || '').join('\n'), usage: data.usage || {} };
     } catch (err) {
-      if (err.name === 'AbortError') throw new Error('Génération stoppée');
-      if (attempt === retries) throw err;
-      if (err.message.includes('529') || err.message.toLowerCase().includes('overload')) {
-        const delay = attempt * 10000;
-        const out = document.getElementById(`out-${agentId}`);
-        if (out) out.textContent = `⏳ Retry ${attempt}/${retries}...`;
-        await new Promise(r => setTimeout(r, delay));
-      } else throw err;
+      if (err.name === 'AbortError') {
+        delete abortControllers[agentId];
+        throw new Error('Génération stoppée');
+      }
+
+      const canRetry = attempt < retries && isRetryableOverloadError(err);
+      if (!canRetry) {
+        delete abortControllers[agentId];
+        if (isRetryableOverloadError(err)) {
+          throw new Error('Serveurs Anthropic surchargés après plusieurs tentatives. Réessaie dans quelques minutes.');
+        }
+        throw err;
+      }
+
+      const delayMs = getRetryDelayMs(attempt);
+      updateRetryMessage(attempt, delayMs);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
+
+  delete abortControllers[agentId];
+  throw new Error('Serveurs Anthropic surchargés après plusieurs tentatives. Réessaie dans quelques minutes.');
 }
 
 
@@ -161,6 +205,16 @@ function getPipelineRuntimeAgentsForTarget(prefix, targetStepId = '') {
   const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
 
   return runtimeAgentIds.map((agentId) => agentMap.get(agentId)).filter(Boolean);
+}
+
+function getPipelineDisplayStepIdForRuntimeAgent(prefix, runtimeAgentId = '') {
+  const targetSteps = getPipelineTargetStepsForPrefix(prefix);
+  if (targetSteps.some((step) => step.id === runtimeAgentId)) return runtimeAgentId;
+
+  const altTargetMeta = getPipelineTargetStepMetaForPrefix(prefix, 'alt');
+  if (altTargetMeta?.stopAfterAgentId === runtimeAgentId) return altTargetMeta.id;
+
+  return runtimeAgentId;
 }
 
 function getPipelineLaunchState(prefix) {
@@ -461,6 +515,8 @@ async function startPipeline(p, options = {}) {
   const targetStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedTargetStepId);
   const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedTargetStepId);
   const targetAgentId = targetStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
+  const runtimeAgentIds = new Set(pipelineAgents.map((agent) => agent.id));
+  const knownAgentIds = ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'];
   const warningBox = document.getElementById(`imgWarning-${p}`);
   const btn = document.getElementById(`runBtn-${p}`);
 
@@ -549,13 +605,14 @@ async function startPipeline(p, options = {}) {
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
 
-  getPipelineAgents().forEach((agent) => {
-    state.outputs[agent.id] = '';
-    const card = document.getElementById(`${p}-card-${agent.id}`);
-    const stat = document.getElementById(`${p}-stat-${agent.id}`);
-    const out = document.getElementById(`${p}-out-${agent.id}`);
+  knownAgentIds.forEach((agentId) => {
+    state.outputs[agentId] = '';
+    const card = document.getElementById(`${p}-card-${agentId}`);
+    const stat = document.getElementById(`${p}-stat-${agentId}`);
+    const out = document.getElementById(`${p}-out-${agentId}`);
 
     if (card) card.className = 'agent-card';
+    if (card) card.style.display = runtimeAgentIds.has(agentId) ? '' : 'none';
     if (stat) {
       stat.className = 'agent-status s-wait';
       stat.textContent = 'en attente';
@@ -565,14 +622,14 @@ async function startPipeline(p, options = {}) {
       out.textContent = '— pas encore généré —';
     }
 
-    const br = document.getElementById(`${p}-br-${agent.id}`);
+    const br = document.getElementById(`${p}-br-${agentId}`);
     if (br) br.disabled = true;
-    const bs = document.getElementById(`${p}-bs-${agent.id}`);
+    const bs = document.getElementById(`${p}-bs-${agentId}`);
     if (bs) bs.disabled = true;
-    const bp = document.getElementById(`${p}-bp-${agent.id}`);
+    const bp = document.getElementById(`${p}-bp-${agentId}`);
     if (bp) bp.disabled = true;
 
-    const ob = document.getElementById(`orch-badge-${agent.id}`);
+    const ob = document.getElementById(`orch-badge-${agentId}`);
     if (ob) ob.remove();
   });
 
@@ -584,10 +641,10 @@ async function startPipeline(p, options = {}) {
 
   for (const agent of pipelineAgents) {
     setPipelineLaunchState(p, {
-      currentStepId: agent.id,
+      currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, agent.id),
       targetStepId: resolvedTargetStepId,
       isRunning: true,
-      lastStatus: `en cours · ${agent.id}`,
+      lastStatus: `en cours · ${getPipelineDisplayStepIdForRuntimeAgent(p, agent.id)}`,
     });
 
     const ok = await runAgent(agent);
@@ -622,7 +679,7 @@ async function startPipeline(p, options = {}) {
       : 'terminé';
 
   setPipelineLaunchState(p, {
-    currentStepId: lastCompletedAgentId || targetAgentId,
+    currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || targetAgentId),
     targetStepId: resolvedTargetStepId,
     isRunning: false,
     lastStatus: finalStatus,
@@ -944,26 +1001,25 @@ function getSoloFinalOutputAgentLabels(prefixOverride) {
 
   if (prefix === 'tt') {
     return {
-      analyse: '01 Marcus — Analyse visuelle',
-      alt: '02 Nadia — Balise ALT',
-      marche: '03 Sophie — Analyse marché',
-      tags: '04 Karim — Tags',
-      titre: '05 Maya — Titres',
-      titre_valide: '05b Titre validé',
-      description: '06 Claire — Description brute',
-      description_assembled: '06b Description assemblée',
+      marche: '01 Sophie — Analyse marché',
+      titre: '02 Maya — Titres',
+      titre_valide: '02b Titre validé',
+      tags: '03 Karim — Tags',
+      description: '04 Claire — Description brute',
+      description_assembled: '04b Description assemblée',
+      alt: '05 Nadia — Balise ALT finale',
     };
   }
 
   return {
-    analyse: '01 Jules — Analyse visuelle',
-    alt: '01b Jules — Balise ALT extraite',
-    marche: '02 Luna — Analyse marché',
+    marche: '01 Luna — Analyse marché',
+    titre: '02 Nova — Titres',
+    titre_valide: '02b Titre validé',
     tags: '03 Axel — Tags',
-    titre: '04 Nova — Titres',
-    titre_valide: '04b Titre validé',
-    description: '05 Eden — Description brute',
-    description_assembled: '05b Description assemblée',
+    description: '04 Eden — Description brute',
+    description_assembled: '04b Description assemblée',
+    analyse: '05 Jules — ALT finale (source)',
+    alt: '05b Jules — Balise ALT finale',
     iris: 'Hors pipeline — Iris sémantique',
   };
 }

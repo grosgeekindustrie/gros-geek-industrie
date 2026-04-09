@@ -8,25 +8,24 @@ window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIConfig = window.PipelineUIConfig || {};
 
 const PIPELINE_AGENTS = [
-  { id:'analyse',     title:'🔍 01 — Marcus · Analyse visuelle',      usesImages:true,  hasSelection:false },
-  { id:'marche',      title:'📊 02 — Sophie · Analyse de marché',     usesImages:false, hasSelection:false },
-  { id:'titre',       title:'🏷️ 03 — Maya · Titres SEO (×10)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
-  { id:'tags',        title:'🔖 04 — Karim · Tags (×13)',             usesImages:false, hasSelection:false },
-  { id:'description', title:'📝 05 — Claire · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
-  { id:'alt',         title:'🖼️ 06 — Nadia · Balise ALT',            usesImages:false, hasSelection:false },
+  { id:'marche',      title:'📊 01 — Sophie · Analyse de marché',     usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 02 — Maya · Titres SEO (×10)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'tags',        title:'🔖 03 — Karim · Tags (×13)',             usesImages:false, hasSelection:false },
+  { id:'description', title:'📝 04 — Claire · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'alt',         title:'🖼️ 05 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
 ];
 
 const PIPELINE_AGENTS_COLLECTION = [
-  { id:'analyse',     title:'🔍 01 — Jules · Analyse visuelle + ALT', usesImages:true,  hasSelection:false },
-  { id:'marche',      title:'📊 02 — Luna · Analyse de marché',       usesImages:false, hasSelection:false },
-  { id:'titre',       title:'🏷️ 03 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
-  { id:'tags',        title:'🔖 04 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
-  { id:'description', title:'📝 05 — Eden · Description',            usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'marche',      title:'📊 01 — Luna · Analyse de marché',       usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 02 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'tags',        title:'🔖 03 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
+  { id:'description', title:'📝 04 — Eden · Description',            usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'analyse',     title:'🖼️ 05 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
 ];
 
 const PIPELINE_RUNTIME_AGENT_IDS = {
-  tabletop: ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'],
-  collection: ['analyse', 'marche', 'titre', 'tags', 'description'],
+  tabletop: ['marche', 'titre', 'tags', 'description', 'alt'],
+  collection: ['marche', 'titre', 'tags', 'description', 'analyse'],
 };
 
 const PIPELINE_TARGET_STEPS = {
@@ -35,14 +34,14 @@ const PIPELINE_TARGET_STEPS = {
     { id:'titre',       label:'Maya · Titres SEO (×10)',    stopAfterAgentId:'titre' },
     { id:'tags',        label:'Karim · Tags (×13)',         stopAfterAgentId:'tags' },
     { id:'description', label:'Claire · Description',       stopAfterAgentId:'description' },
-    { id:'alt',         label:'Nadia · Balise ALT',         stopAfterAgentId:'alt' },
+    { id:'alt',         label:'Nadia · Balise ALT finale',  stopAfterAgentId:'alt' },
   ],
   collection: [
     { id:'marche',      label:'Luna · Analyse de marché', stopAfterAgentId:'marche' },
     { id:'titre',       label:'Nova · Titres SEO (×10)',  stopAfterAgentId:'titre' },
     { id:'tags',        label:'Axel · Tags (×13)',        stopAfterAgentId:'tags' },
     { id:'description', label:'Eden · Description',       stopAfterAgentId:'description' },
-    { id:'alt',         label:'ALT finale',               stopAfterAgentId:'description' },
+    { id:'alt',         label:'Jules · Balise ALT finale', stopAfterAgentId:'analyse' },
   ],
 };
 
