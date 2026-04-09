@@ -7,22 +7,44 @@
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIConfig = window.PipelineUIConfig || {};
 
-var PIPELINE_AGENTS = [
-  { id:'analyse',     title:'🔍 01 — Marcus · Analyse visuelle',    usesImages:true,  hasSelection:false },
-  { id:'alt',         title:'🖼️ 02 — Nadia · Balise ALT',           usesImages:false, hasSelection:false },
-  { id:'marche',      title:'📊 03 — Sophie · Analyse de marché',   usesImages:false, hasSelection:false },
-  { id:'tags',        title:'🔖 04 — Karim · Tags (×13)',           usesImages:false, hasSelection:false },
-  { id:'titre',       title:'🏷️ 05 — Maya · Titres SEO (×10)',      usesImages:false, hasSelection:true,  selectionType:'titre' },
-  { id:'description', title:'📝 06 — Claire · Description',         usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+const PIPELINE_AGENTS = [
+  { id:'analyse',     title:'🔍 01 — Marcus · Analyse visuelle',      usesImages:true,  hasSelection:false },
+  { id:'marche',      title:'📊 02 — Sophie · Analyse de marché',     usesImages:false, hasSelection:false },
+  { id:'titre',       title:'🏷️ 03 — Maya · Titres SEO (×10)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'tags',        title:'🔖 04 — Karim · Tags (×13)',             usesImages:false, hasSelection:false },
+  { id:'description', title:'📝 05 — Claire · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'alt',         title:'🖼️ 06 — Nadia · Balise ALT',            usesImages:false, hasSelection:false },
 ];
 
 const PIPELINE_AGENTS_COLLECTION = [
   { id:'analyse',     title:'🔍 01 — Jules · Analyse visuelle + ALT', usesImages:true,  hasSelection:false },
   { id:'marche',      title:'📊 02 — Luna · Analyse de marché',       usesImages:false, hasSelection:false },
-  { id:'tags',        title:'🔖 03 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
-  { id:'titre',       title:'🏷️ 04 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'titre',       title:'🏷️ 03 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
+  { id:'tags',        title:'🔖 04 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
   { id:'description', title:'📝 05 — Eden · Description',            usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
 ];
+
+const PIPELINE_RUNTIME_AGENT_IDS = {
+  tabletop: ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'],
+  collection: ['analyse', 'marche', 'titre', 'tags', 'description'],
+};
+
+const PIPELINE_TARGET_STEPS = {
+  tabletop: [
+    { id:'marche',      label:'Sophie · Analyse de marché', stopAfterAgentId:'marche' },
+    { id:'titre',       label:'Maya · Titres SEO (×10)',    stopAfterAgentId:'titre' },
+    { id:'tags',        label:'Karim · Tags (×13)',         stopAfterAgentId:'tags' },
+    { id:'description', label:'Claire · Description',       stopAfterAgentId:'description' },
+    { id:'alt',         label:'Nadia · Balise ALT',         stopAfterAgentId:'alt' },
+  ],
+  collection: [
+    { id:'marche',      label:'Luna · Analyse de marché', stopAfterAgentId:'marche' },
+    { id:'titre',       label:'Nova · Titres SEO (×10)',  stopAfterAgentId:'titre' },
+    { id:'tags',        label:'Axel · Tags (×13)',        stopAfterAgentId:'tags' },
+    { id:'description', label:'Eden · Description',       stopAfterAgentId:'description' },
+    { id:'alt',         label:'ALT finale',               stopAfterAgentId:'description' },
+  ],
+};
 
 const getPipelineModeKey = (mode = currentMode) => (mode === 'collection' ? 'collection' : 'tabletop');
 
@@ -41,12 +63,30 @@ const getPipelineLaunchLabel = (agent) => {
   return title.replace(/^[^—]+—\s*/, '').trim() || String(agent?.id || '');
 };
 
+const getPipelineRuntimeAgentIds = (mode = currentMode) => (
+  PIPELINE_RUNTIME_AGENT_IDS[getPipelineModeKey(mode)] || []
+);
+
 const getPipelineTargetSteps = (mode = currentMode) => (
-  getPipelineAgentsForMode(mode).map((agent) => ({
-    id: agent.id,
-    label: getPipelineLaunchLabel(agent),
+  (PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || []).map((step) => ({
+    id: step.id,
+    label: step.label,
   }))
 );
+
+const getPipelineTargetStepMeta = (mode = currentMode, targetStepId = '') => {
+  const steps = PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || [];
+  return steps.find((step) => step.id === targetStepId) || steps[steps.length - 1] || null;
+};
+
+const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, targetStepId = '') => {
+  const runtimeIds = getPipelineRuntimeAgentIds(mode);
+  const targetStep = getPipelineTargetStepMeta(mode, targetStepId);
+  const stopAfterAgentId = targetStep?.stopAfterAgentId || runtimeIds[runtimeIds.length - 1] || '';
+  const stopIndex = runtimeIds.indexOf(stopAfterAgentId);
+
+  return stopIndex === -1 ? runtimeIds.slice() : runtimeIds.slice(0, stopIndex + 1);
+};
 
 var PROMPT_FILE_MAP = {
   analyse:'marcus', alt:'nadia', marche:'sophie', tags:'karim',
@@ -76,11 +116,16 @@ var PROMPT_FILE_MAP_COLLECTION = {
 Object.assign(window.PipelineUIConfig, {
   PIPELINE_AGENTS,
   PIPELINE_AGENTS_COLLECTION,
+  PIPELINE_RUNTIME_AGENT_IDS,
+  PIPELINE_TARGET_STEPS,
   getPipelineModeKey,
   getPipelineAgents,
   getPipelineAgentsForMode,
   getPipelineLaunchLabel,
+  getPipelineRuntimeAgentIds,
   getPipelineTargetSteps,
+  getPipelineTargetStepMeta,
+  getPipelineRuntimeAgentIdsForTarget,
   PROMPT_FILE_MAP,
   PROMPT_FILE_MAP_COLLECTION,
 });

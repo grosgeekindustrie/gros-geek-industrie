@@ -174,6 +174,11 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
 
     const collectionDescription = document.getElementById('col-fDescriptionFigurine')?.value || '';
     const collectionResume = document.getElementById('col-fResumePersonnage')?.value || '';
+    const normalizedOutputs = { ...state.outputs };
+
+    if (currentMode === 'collection') {
+      normalizedOutputs.tags = normalizedOutputs.tags_final_csv || normalizedOutputs.tags || '';
+    }
 
     const base = {
       nom,
@@ -188,7 +193,7 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
       resumePersonnage: collectionResume,
       pose: document.getElementById(`${p}-fPose`)?.value || 'MUSEUM',
       imageCount: state.images[p].length,
-      outputs: { ...state.outputs },
+      outputs: normalizedOutputs,
       correction,
       rules,
       archetypes: getArchetypes(),

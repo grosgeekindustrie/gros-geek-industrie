@@ -145,6 +145,24 @@ function getPipelineTargetStepsForPrefix(prefix) {
   }));
 }
 
+function getPipelineTargetStepMetaForPrefix(prefix, targetStepId = '') {
+  const mode = getPipelineLaunchMode(prefix);
+  return window.getPipelineTargetStepMeta?.(mode, targetStepId) || null;
+}
+
+function getPipelineRuntimeAgentIdsForPrefix(prefix, targetStepId = '') {
+  const mode = getPipelineLaunchMode(prefix);
+  return window.getPipelineRuntimeAgentIdsForTarget?.(mode, targetStepId) || getPipelineAgents().map((agent) => agent.id);
+}
+
+function getPipelineRuntimeAgentsForTarget(prefix, targetStepId = '') {
+  const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix, targetStepId);
+  const availableAgents = getPipelineAgents();
+  const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
+
+  return runtimeAgentIds.map((agentId) => agentMap.get(agentId)).filter(Boolean);
+}
+
 function getPipelineLaunchState(prefix) {
   state.pipelineLaunch = state.pipelineLaunch || {};
   state.pipelineLaunch[prefix] = state.pipelineLaunch[prefix] || {
@@ -380,6 +398,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
 
     out.textContent = result;
     showAgentCost(agent.id, usage);
+    syncCacheIndicator(usage);
     if (agent.id === 'tags') buildTagsUI(result);
     if (state.orchestrateurActif) {
       stat.className = 'agent-status s-run'; stat.textContent = '🔍 audit...';
@@ -438,11 +457,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
 async function startPipeline(p, options = {}) {
-  const targetStepId = getResolvedTargetStep(p, options.targetStepId || '');
-  const pipelineAgents = getPipelineTargetStepsForPrefix(p)
-    .map((step) => getPipelineAgents().find((agent) => agent.id === step.id))
-    .filter(Boolean);
-  const targetAgentId = targetStepId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
+  const resolvedTargetStepId = getResolvedTargetStep(p, options.targetStepId || '');
+  const targetStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedTargetStepId);
+  const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedTargetStepId);
+  const targetAgentId = targetStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
   const warningBox = document.getElementById(`imgWarning-${p}`);
   const btn = document.getElementById(`runBtn-${p}`);
 
@@ -453,6 +471,7 @@ async function startPipeline(p, options = {}) {
   }
 
   if (warningBox) warningBox.style.display = 'none';
+  setLastCacheStatus('—');
   document.getElementById(`socialSection-${p}`).style.display = 'none';
   document.getElementById(`socialOutput-${p}`).style.display = 'none';
   document.getElementById(`reseauxOnlySection-${p}`).style.display = 'none';
@@ -467,13 +486,17 @@ async function startPipeline(p, options = {}) {
     if (el) el.style.display = 'none';
   });
 
+  ['titre_valide', 'description_assembled', 'tags_final_csv', 'tags_debug_csv', 'alt'].forEach((key) => {
+    state.outputs[key] = '';
+  });
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = '⟳ Pipeline en cours...';
   }
 
   setPipelineLaunchState(p, {
-    targetStepId: targetAgentId,
+    targetStepId: resolvedTargetStepId,
     currentStepId: '',
     isRunning: true,
     lastStatus: 'en cours',
@@ -524,14 +547,14 @@ async function startPipeline(p, options = {}) {
   state.selectedCTA = null;
   state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
-  state.outputs.alt = '';
   state.outputs.iris = '';
 
-  pipelineAgents.forEach((agent) => {
+  getPipelineAgents().forEach((agent) => {
     state.outputs[agent.id] = '';
     const card = document.getElementById(`${p}-card-${agent.id}`);
     const stat = document.getElementById(`${p}-stat-${agent.id}`);
     const out = document.getElementById(`${p}-out-${agent.id}`);
+
     if (card) card.className = 'agent-card';
     if (stat) {
       stat.className = 'agent-status s-wait';
@@ -541,12 +564,14 @@ async function startPipeline(p, options = {}) {
       out.className = 'output-box empty';
       out.textContent = '— pas encore généré —';
     }
+
     const br = document.getElementById(`${p}-br-${agent.id}`);
     if (br) br.disabled = true;
     const bs = document.getElementById(`${p}-bs-${agent.id}`);
     if (bs) bs.disabled = true;
     const bp = document.getElementById(`${p}-bp-${agent.id}`);
     if (bp) bp.disabled = true;
+
     const ob = document.getElementById(`orch-badge-${agent.id}`);
     if (ob) ob.remove();
   });
@@ -560,7 +585,7 @@ async function startPipeline(p, options = {}) {
   for (const agent of pipelineAgents) {
     setPipelineLaunchState(p, {
       currentStepId: agent.id,
-      targetStepId: targetAgentId,
+      targetStepId: resolvedTargetStepId,
       isRunning: true,
       lastStatus: `en cours · ${agent.id}`,
     });
@@ -579,9 +604,6 @@ async function startPipeline(p, options = {}) {
     }
 
     if (agent.id === targetAgentId) break;
-
-    // Mode collection — pipeline limité à description pendant la phase de transition.
-    if (currentMode === 'collection' && agent.id === 'description') break;
   }
 
   assembleFinal();
@@ -601,7 +623,7 @@ async function startPipeline(p, options = {}) {
 
   setPipelineLaunchState(p, {
     currentStepId: lastCompletedAgentId || targetAgentId,
-    targetStepId: targetAgentId,
+    targetStepId: resolvedTargetStepId,
     isRunning: false,
     lastStatus: finalStatus,
   });
