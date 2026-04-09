@@ -12,22 +12,27 @@
     {
       title: 'Images',
       subtitle: 'Ajoute les visuels qui serviront à l\'analyse du pipeline.',
-      footerLabel: 'Étape 1 sur 4 · Visuels de référence',
+      footerLabel: 'Étape 1 sur 5 · Visuels de référence',
     },
     {
       title: 'Identité & archétypes',
       subtitle: 'Cadre la miniature, son univers, le sculpteur et les archétypes utiles aux agents.',
-      footerLabel: 'Étape 2 sur 4 · Identité de la fiche',
+      footerLabel: 'Étape 2 sur 5 · Identité de la fiche',
     },
     {
       title: 'Échelles',
       subtitle: 'Renseigne les formats proposés et les dimensions de vente.',
-      footerLabel: 'Étape 3 sur 4 · Offre produit',
+      footerLabel: 'Étape 3 sur 5 · Offre produit',
     },
     {
       title: 'Paramètres & options',
       subtitle: 'Finalise la pose, le type produit, la version et les options avancées.',
-      footerLabel: 'Étape 4 sur 4 · Prêt pour le pipeline',
+      footerLabel: 'Étape 4 sur 5 · Réglages produit',
+    },
+    {
+      title: 'Lancement',
+      subtitle: 'Lance tout le pipeline ou rejoue la chaîne jusqu’à l’étape cible voulue.',
+      footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
     },
   ];
 
@@ -115,6 +120,7 @@
     syncStepPanels();
     syncHeader();
     syncFooterActions();
+    global.refreshPipelineLaunchPanels?.();
   }
 
   function goToDndStep(stepIndex) {

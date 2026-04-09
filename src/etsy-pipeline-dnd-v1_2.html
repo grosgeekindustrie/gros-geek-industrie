@@ -27,6 +27,7 @@
     <span class="app-logo" title="Annuler et revenir à l'accueil" onclick="cancelToHome()">🎲</span>
     <span class="hbadge">v1.2</span>
     <span id="session-cost" class="app-cost" title="Coût estimé de la session">💰 0.00¢</span>
+    <span id="session-cache" class="app-cost" title="Statut cache du dernier appel">🧠 cache —</span>
   </div>
   <!-- CENTER -->
   <div class="app-header-center">
@@ -198,6 +199,10 @@
             <span class="collection-stepper-pill-index">04</span>
             <span class="collection-stepper-pill-label">Paramètres</span>
           </button>
+          <button class="collection-stepper-pill" type="button" data-js="dnd-stepper-jump" data-step-index="4">
+            <span class="collection-stepper-pill-index">05</span>
+            <span class="collection-stepper-pill-label">Lancement</span>
+          </button>
         </div>
       </div>
 
@@ -361,12 +366,28 @@
             </details>
           </div>
         </section>
+
+        <section class="collection-step" data-js="dnd-step" data-step-index="4">
+          <div class="collection-step-stack">
+            <div class="form-section">
+              <h2>Lancement</h2>
+              <p>Tu peux lancer tout le pipeline ou le rejouer jusqu’à une étape cible précise.</p>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" onclick="startPipeline('tt')">▶ Pipeline complet</button>
+              </div>
+              <div class="agent-actions" id="launchTargets-tt"></div>
+              <pre class="output-box" id="launchStatus-tt">Étape cible : pipeline complet
+État : prêt
+Cache : —</pre>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div class="collection-stepper-footer">
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="dnd-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
-          <span class="collection-stepper-footer-label" data-js="dnd-stepper-footer-label">Étape 1 sur 4 · Visuels de référence</span>
+          <span class="collection-stepper-footer-label" data-js="dnd-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
           <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-tt">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="dnd-stepper-next">Suivant →</button>
@@ -665,6 +686,10 @@
             <span class="collection-stepper-pill-index">04</span>
             <span class="collection-stepper-pill-label">Détails &amp; contexte</span>
           </button>
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="4">
+            <span class="collection-stepper-pill-index">05</span>
+            <span class="collection-stepper-pill-label">Lancement</span>
+          </button>
         </div>
       </div>
 
@@ -828,12 +853,28 @@
             </div>
           </div>
         </section>
+
+        <section class="collection-step" data-js="collection-step" data-step-index="4">
+          <div class="collection-step-stack">
+            <div class="form-section">
+              <h2>Lancement</h2>
+              <p>Tu peux lancer tout le pipeline ou le rejouer jusqu’à une étape cible précise.</p>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" onclick="startPipeline('col')">▶ Pipeline complet</button>
+              </div>
+              <div class="agent-actions" id="launchTargets-col"></div>
+              <pre class="output-box" id="launchStatus-col">Étape cible : pipeline complet
+État : prêt
+Cache : —</pre>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div class="collection-stepper-footer">
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
-          <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 4</span>
+          <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
           <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>

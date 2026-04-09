@@ -133,6 +133,119 @@ function activateSoloTab(prefix, tabId, options = {}) {
   if (prefix === 'col') window.activateCollectionSoloTab?.(tabId, options);
 }
 
+function getPipelineLaunchMode(prefix) {
+  return prefix === 'col' ? 'collection' : 'tabletop';
+}
+
+function getPipelineTargetStepsForPrefix(prefix) {
+  const mode = getPipelineLaunchMode(prefix);
+  return window.getPipelineTargetSteps?.(mode) || getPipelineAgents().map((agent) => ({
+    id: agent.id,
+    label: agent.title,
+  }));
+}
+
+function getPipelineLaunchState(prefix) {
+  state.pipelineLaunch = state.pipelineLaunch || {};
+  state.pipelineLaunch[prefix] = state.pipelineLaunch[prefix] || {
+    targetStepId: '',
+    currentStepId: '',
+    isRunning: false,
+    lastStatus: 'prêt',
+  };
+  return state.pipelineLaunch[prefix];
+}
+
+function getLastCacheStatus() {
+  state.runtimeDebug = state.runtimeDebug || {};
+  return state.runtimeDebug.lastCacheStatus || '—';
+}
+
+function setLastCacheStatus(status) {
+  state.runtimeDebug = state.runtimeDebug || {};
+  state.runtimeDebug.lastCacheStatus = status;
+
+  const cacheNode = document.getElementById('session-cache');
+  if (cacheNode) cacheNode.textContent = `🧠 cache ${status}`;
+}
+
+function syncCacheIndicator(usage = {}) {
+  const cacheRead = usage.cache_read_input_tokens || 0;
+  const cacheWrite = usage.cache_creation_input_tokens || 0;
+  const cacheStatus = cacheRead > 0
+    ? `hit · ${cacheRead.toLocaleString()} tok`
+    : cacheWrite > 0
+      ? `write · ${cacheWrite.toLocaleString()} tok`
+      : 'miss';
+
+  setLastCacheStatus(cacheStatus);
+  refreshPipelineLaunchPanels();
+}
+
+function getPipelineLaunchSummary(prefix) {
+  const launchState = getPipelineLaunchState(prefix);
+  const steps = getPipelineTargetStepsForPrefix(prefix);
+  const targetStep = steps.find((step) => step.id === launchState.targetStepId);
+  const currentStep = steps.find((step) => step.id === launchState.currentStepId);
+
+  return [
+    `Étape cible : ${targetStep ? targetStep.label : 'pipeline complet'}`,
+    `Étape courante : ${currentStep ? currentStep.label : '—'}`,
+    `État : ${launchState.lastStatus || 'prêt'}`,
+    `Cache : ${getLastCacheStatus()}`,
+  ].join('\n');
+}
+
+function runPipelineToTarget(prefix, targetStepId = '') {
+  startPipeline(prefix, { targetStepId });
+}
+
+function renderPipelineLaunchPanel(prefix) {
+  const actionsNode = document.getElementById(`launchTargets-${prefix}`);
+  const statusNode = document.getElementById(`launchStatus-${prefix}`);
+  if (!actionsNode || !statusNode) return;
+
+  const launchState = getPipelineLaunchState(prefix);
+  const targetSteps = getPipelineTargetStepsForPrefix(prefix);
+
+  actionsNode.innerHTML = '';
+  targetSteps.forEach((step) => {
+    const button = document.createElement('button');
+    const isCurrentTarget = launchState.targetStepId === step.id;
+
+    button.type = 'button';
+    button.className = `btn ${isCurrentTarget ? 'btn-accent' : 'btn-muted'}`;
+    button.textContent = `↳ ${step.label}`;
+    button.disabled = launchState.isRunning;
+    button.onclick = () => runPipelineToTarget(prefix, step.id);
+    actionsNode.appendChild(button);
+  });
+
+  statusNode.textContent = getPipelineLaunchSummary(prefix);
+}
+
+function refreshPipelineLaunchPanelState(prefix) {
+  renderPipelineLaunchPanel(prefix);
+}
+
+function refreshPipelineLaunchPanels() {
+  ['tt', 'col'].forEach((prefix) => renderPipelineLaunchPanel(prefix));
+}
+
+function setPipelineLaunchState(prefix, nextState = {}) {
+  const launchState = getPipelineLaunchState(prefix);
+  Object.assign(launchState, nextState);
+  refreshPipelineLaunchPanelState(prefix);
+}
+
+function getResolvedTargetStep(prefix, targetStepId = '') {
+  const targetSteps = getPipelineTargetStepsForPrefix(prefix);
+  const requestedStep = targetSteps.find((step) => step.id === targetStepId);
+  return requestedStep?.id || '';
+}
+
+if (typeof state !== 'undefined') refreshPipelineLaunchPanels();
+
 function extractMarkdownSectionValue(rawText, sectionTitle) {
   const escapedTitle = String(sectionTitle || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sectionPattern = new RegExp(`^##\\s+${escapedTitle}\\s*$([\\s\\S]*?)(?=^##\\s+|$)`, 'im');
@@ -324,28 +437,47 @@ async function runAgent(agent, correction = '', isRetry = false) {
 
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
-async function startPipeline(p) {
+async function startPipeline(p, options = {}) {
+  const targetStepId = getResolvedTargetStep(p, options.targetStepId || '');
+  const pipelineAgents = getPipelineTargetStepsForPrefix(p)
+    .map((step) => getPipelineAgents().find((agent) => agent.id === step.id))
+    .filter(Boolean);
+  const targetAgentId = targetStepId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
+  const warningBox = document.getElementById(`imgWarning-${p}`);
+  const btn = document.getElementById(`runBtn-${p}`);
+
   if (state.images[p].length === 0) {
-    document.getElementById(`imgWarning-${p}`).style.display = 'block';
+    if (warningBox) warningBox.style.display = 'block';
     showToast('⚠️ Charge au moins une image !', '#ff4757');
     return;
   }
-  document.getElementById(`imgWarning-${p}`).style.display = 'none';
+
+  if (warningBox) warningBox.style.display = 'none';
   document.getElementById(`socialSection-${p}`).style.display = 'none';
   document.getElementById(`socialOutput-${p}`).style.display = 'none';
   document.getElementById(`reseauxOnlySection-${p}`).style.display = 'none';
-  [`ss-insta-${p}`,`ss-fb-${p}`,`ss-marketplace-${p}`,`ss-pinterest-${p}`].forEach(id => {
+  [`ss-insta-${p}`, `ss-fb-${p}`, `ss-marketplace-${p}`, `ss-pinterest-${p}`].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
   state.socialSections = {};
   document.getElementById(`finalOutput-${p}`).style.display = 'none';
-  [`fs-titre-${p}`,`fs-tags-${p}`,`fs-description-${p}`,`fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach(id => {
+  [`fs-titre-${p}`, `fs-tags-${p}`, `fs-description-${p}`, `fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  const btn = document.getElementById(`runBtn-${p}`);
-  btn.disabled = true; btn.textContent = '⟳ Pipeline en cours...';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⟳ Pipeline en cours...';
+  }
+
+  setPipelineLaunchState(p, {
+    targetStepId: targetAgentId,
+    currentStepId: '',
+    isRunning: true,
+    lastStatus: 'en cours',
+  });
 
   const isSoloTabsFlow = p === 'tt' || p === 'col';
 
@@ -361,13 +493,17 @@ async function startPipeline(p) {
     if (pipelineBody) {
       const pipelineEl = document.getElementById(`pipeline-${p}`);
       const finalEl = document.getElementById(`finalOutput-${p}`);
-      if (pipelineEl) { pipelineEl.style.display = ''; pipelineBody.appendChild(pipelineEl); }
-      if (finalEl) { pipelineBody.appendChild(finalEl); }
+      if (pipelineEl) {
+        pipelineEl.style.display = '';
+        pipelineBody.appendChild(pipelineEl);
+      }
+      if (finalEl) pipelineBody.appendChild(finalEl);
       const socialSectionEl = document.getElementById(`socialSection-${p}`);
       if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
       const socialOutputEl = document.getElementById(`socialOutput-${p}`);
       if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
     }
+
     const titleEl = document.getElementById('pipelineViewTitle');
     if (titleEl) titleEl.textContent = currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
 
@@ -375,41 +511,100 @@ async function startPipeline(p) {
     if (timeline) timeline.style.display = '';
 
     const ctx = document.getElementById('headerContext');
-    if (ctx) { ctx.className = 'app-context mode-pipeline'; ctx.textContent = '⟳ Pipeline en cours...'; }
+    if (ctx) {
+      ctx.className = 'app-context mode-pipeline';
+      ctx.textContent = '⟳ Pipeline en cours...';
+    }
     buildPipelineTimeline();
     window.setPipelineExecutionActive?.(true);
     showView('pipeline');
   }
-  state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
-  Object.keys(state.orchAttempts).forEach(k => delete state.orchAttempts[k]);
+
+  state.selectedAccroche = null;
+  state.selectedCTA = null;
+  state.selectedTitre = null;
+  Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.alt = '';
   state.outputs.iris = '';
-  getPipelineAgents().forEach(a => {
-    state.outputs[a.id] = '';
-    const card = document.getElementById(`${p}-card-${a.id}`);
-    const stat = document.getElementById(`${p}-stat-${a.id}`);
-    const out = document.getElementById(`${p}-out-${a.id}`);
+
+  pipelineAgents.forEach((agent) => {
+    state.outputs[agent.id] = '';
+    const card = document.getElementById(`${p}-card-${agent.id}`);
+    const stat = document.getElementById(`${p}-stat-${agent.id}`);
+    const out = document.getElementById(`${p}-out-${agent.id}`);
     if (card) card.className = 'agent-card';
-    if (stat) { stat.className = 'agent-status s-wait'; stat.textContent = 'en attente'; }
-    if (out) { out.className = 'output-box empty'; out.textContent = '— pas encore généré —'; }
-    const br = document.getElementById(`${p}-br-${a.id}`); if (br) br.disabled = true;
-    const bs = document.getElementById(`${p}-bs-${a.id}`); if (bs) bs.disabled = true;
-    const bp = document.getElementById(`${p}-bp-${a.id}`); if (bp) bp.disabled = true;
-    const ob = document.getElementById(`orch-badge-${a.id}`); if (ob) ob.remove();
+    if (stat) {
+      stat.className = 'agent-status s-wait';
+      stat.textContent = 'en attente';
+    }
+    if (out) {
+      out.className = 'output-box empty';
+      out.textContent = '— pas encore généré —';
+    }
+    const br = document.getElementById(`${p}-br-${agent.id}`);
+    if (br) br.disabled = true;
+    const bs = document.getElementById(`${p}-bs-${agent.id}`);
+    if (bs) bs.disabled = true;
+    const bp = document.getElementById(`${p}-bp-${agent.id}`);
+    if (bp) bp.disabled = true;
+    const ob = document.getElementById(`orch-badge-${agent.id}`);
+    if (ob) ob.remove();
   });
+
   refreshSoloTabs(p);
-  for (const agent of getPipelineAgents()) {
+
+  let hasError = false;
+  let isSelectionPause = false;
+  let lastCompletedAgentId = '';
+
+  for (const agent of pipelineAgents) {
+    setPipelineLaunchState(p, {
+      currentStepId: agent.id,
+      targetStepId: targetAgentId,
+      isRunning: true,
+      lastStatus: `en cours · ${agent.id}`,
+    });
+
     const ok = await runAgent(agent);
-    if (!ok) break;
-    if (agent.hasSelection) break;
-      // Mode collection — pipeline limité à 3 agents pendant la phase de test
-      // description mènne au bout du pipeline
+    if (!ok) {
+      hasError = true;
+      break;
+    }
+
+    lastCompletedAgentId = agent.id;
+
+    if (agent.hasSelection) {
+      isSelectionPause = true;
+      break;
+    }
+
+    if (agent.id === targetAgentId) break;
+
+    // Mode collection — pipeline limité à description pendant la phase de transition.
     if (currentMode === 'collection' && agent.id === 'description') break;
   }
 
   assembleFinal();
-  btn.disabled = false; btn.innerHTML = '▶ Relancer tout';
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '▶ Relancer tout';
+  }
+
   window.setPipelineExecutionActive?.(false);
+
+  const finalStatus = hasError
+    ? 'erreur'
+    : isSelectionPause
+      ? 'en pause · sélection requise'
+      : 'terminé';
+
+  setPipelineLaunchState(p, {
+    currentStepId: lastCompletedAgentId || targetAgentId,
+    targetStepId: targetAgentId,
+    isRunning: false,
+    lastStatus: finalStatus,
+  });
 
   if (isSoloTabsFlow) {
     refreshSoloTabs(p);

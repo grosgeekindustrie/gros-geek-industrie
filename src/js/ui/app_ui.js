@@ -46,11 +46,16 @@
     global.refreshCollectionSoloTabs?.();
   }
 
+  function refreshPipelineLaunchPanels() {
+    global.refreshPipelineLaunchPanels?.();
+  }
+
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
     refreshDndTabs();
     refreshCollectionTabs();
+    refreshPipelineLaunchPanels();
   }
   function syncHeaderBackAction() {
     const backBtn = document.getElementById('appBackBtn');
@@ -233,6 +238,8 @@
       global.resetCollectionSoloTabs?.();
       refreshCollectionTabs();
     }
+
+    refreshPipelineLaunchPanels();
   }
 
   function selectMode(mode) {
@@ -260,6 +267,7 @@
     refreshDndTabs();
     global.refreshCollectionStepper?.();
     refreshCollectionTabs();
+    refreshPipelineLaunchPanels();
   }
 
   function selectModeBatch(mode) {

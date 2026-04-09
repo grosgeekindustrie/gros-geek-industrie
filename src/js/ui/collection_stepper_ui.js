@@ -13,22 +13,27 @@
     {
       title: 'Images',
       subtitle: 'Ajoute les visuels qui serviront à l\'analyse du pipeline.',
-      footerLabel: 'Étape 1 sur 4 · Visuels de référence',
+      footerLabel: 'Étape 1 sur 5 · Visuels de référence',
     },
     {
       title: 'Identité',
       subtitle: 'Cadre le personnage, l\'univers, le sculpteur et les signaux SEO de base.',
-      footerLabel: 'Étape 2 sur 4 · Identité de la fiche',
+      footerLabel: 'Étape 2 sur 5 · Identité de la fiche',
     },
     {
       title: 'Échelles',
       subtitle: 'Choisis les formats proposés et renseigne les dimensions utiles.',
-      footerLabel: 'Étape 3 sur 4 · Offre produit',
+      footerLabel: 'Étape 3 sur 5 · Offre produit',
     },
     {
       title: 'Détails & contexte',
       subtitle: 'Ajoute les particularités, le contexte personnage et les signaux marché qui aident les agents.',
-      footerLabel: 'Étape 4 sur 4 · Prêt pour le pipeline',
+      footerLabel: 'Étape 4 sur 5 · Contexte métier',
+    },
+    {
+      title: 'Lancement',
+      subtitle: 'Lance tout le pipeline ou rejoue la chaîne jusqu’à l’étape cible voulue.',
+      footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
     },
   ];
 
@@ -116,6 +121,7 @@
     syncStepPanels();
     syncHeader();
     syncFooterActions();
+    global.refreshPipelineLaunchPanels?.();
   }
 
   function goToCollectionStep(stepIndex) {
