@@ -479,10 +479,12 @@ const syncStandaloneLaunchButtons = (prefix) => {
   const launchState = getPipelineLaunchState(prefix);
   const steps = getPipelineTargetStepsForPrefix(prefix);
   const selectedStep = steps.find((step) => step.id === launchState.selectedStepId);
+  const resolvedStepId = selectedStep?.id || 'all';
   const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
 
   buttons.forEach((button) => {
     button.disabled = launchState.isRunning;
+    button.dataset.pipelineStep = resolvedStepId;
 
     if (button.id === `runBtn-${prefix}`) {
       const title = selectedStep
