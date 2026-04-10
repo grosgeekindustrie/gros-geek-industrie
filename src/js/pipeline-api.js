@@ -242,6 +242,7 @@ function getPipelineLaunchState(prefix) {
   state.pipelineLaunch = state.pipelineLaunch || {};
   state.pipelineLaunch[prefix] = state.pipelineLaunch[prefix] || {
     targetStepId: '',
+    selectedStepId: '',
     currentStepId: '',
     isRunning: false,
     lastStatus: 'prêt',
@@ -426,15 +427,31 @@ function syncCacheIndicator(usage = {}) {
 function getPipelineLaunchSummary(prefix) {
   const launchState = getPipelineLaunchState(prefix);
   const steps = getPipelineTargetStepsForPrefix(prefix);
+  const selectedStep = steps.find((step) => step.id === launchState.selectedStepId);
   const targetStep = steps.find((step) => step.id === launchState.targetStepId);
   const currentStep = steps.find((step) => step.id === launchState.currentStepId);
 
   return [
-    `Étape cible : ${targetStep ? targetStep.label : 'pipeline complet'}`,
+    `Étape sélectionnée : ${selectedStep ? selectedStep.label : 'pipeline complet'}`,
+    `Étape cible : ${targetStep ? targetStep.label : '—'}`,
     `Étape courante : ${currentStep ? currentStep.label : '—'}`,
     `État : ${launchState.lastStatus || 'prêt'}`,
     `Cache : ${getLastCacheStatus()}`,
   ].join('\n');
+}
+
+function selectPipelineLaunchTarget(prefix, stepId = '') {
+  const launchState = getPipelineLaunchState(prefix);
+  const normalizedStepId = String(stepId || '').trim();
+  const nextSelectedStepId = launchState.selectedStepId === normalizedStepId ? '' : normalizedStepId;
+
+  setPipelineLaunchState(prefix, {
+    selectedStepId: nextSelectedStepId,
+    currentStepId: launchState.currentStepId || '',
+    targetStepId: launchState.targetStepId || '',
+    isRunning: false,
+    lastStatus: 'prêt',
+  });
 }
 
 function runPipelineToTarget(prefix, targetStepId = '') {
@@ -443,26 +460,42 @@ function runPipelineToTarget(prefix, targetStepId = '') {
 
 const createLaunchTargetButton = (prefix, step, launchState) => {
   const button = document.createElement('button');
-  const isCurrentTarget = launchState.targetStepId === step.id;
+  const isSelected = launchState.selectedStepId === step.id;
 
   button.type = 'button';
-  button.className = `btn ${isCurrentTarget ? 'btn-accent' : 'btn-muted'}`;
+  button.className = `btn ${isSelected ? 'btn-accent' : 'btn-muted'}`;
   button.textContent = `↳ ${step.label}`;
   button.disabled = launchState.isRunning;
-  button.dataset.pipelineAction = 'launch';
+  button.dataset.pipelineAction = 'select-launch-target';
   button.dataset.pipelinePrefix = prefix;
   button.dataset.pipelineStep = step.id;
+  button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+  button.addEventListener('click', () => selectPipelineLaunchTarget(prefix, step.id));
 
   return button;
 };
 
 const syncStandaloneLaunchButtons = (prefix) => {
   const launchState = getPipelineLaunchState(prefix);
+  const steps = getPipelineTargetStepsForPrefix(prefix);
+  const selectedStep = steps.find((step) => step.id === launchState.selectedStepId);
   const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
 
   buttons.forEach((button) => {
-    if (button.id === `runBtn-${prefix}`) return;
     button.disabled = launchState.isRunning;
+
+    if (button.id === `runBtn-${prefix}`) {
+      const title = selectedStep
+        ? `Lancer jusqu’à ${selectedStep.label}`
+        : 'Lancer le pipeline complet';
+      button.title = title;
+      button.setAttribute('aria-label', title);
+      return;
+    }
+
+    button.textContent = selectedStep
+      ? `▶ Lancer jusqu’à ${selectedStep.label}`
+      : '▶ Pipeline complet';
   });
 };
 
@@ -785,7 +818,9 @@ async function runAgent(agent, correction = '', isRetry = false) {
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
 async function startPipeline(p, options = {}) {
-  const resolvedTargetStepId = getResolvedTargetStep(p, options.targetStepId || '');
+  const launchState = getPipelineLaunchState(p);
+  const requestedTargetStepId = String(options.targetStepId || '').trim() || launchState.selectedStepId || '';
+  const resolvedTargetStepId = getResolvedTargetStep(p, requestedTargetStepId);
   const targetStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedTargetStepId);
   const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedTargetStepId);
   const targetAgentId = targetStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
@@ -827,6 +862,7 @@ async function startPipeline(p, options = {}) {
 
   setPipelineLaunchState(p, {
     targetStepId: resolvedTargetStepId,
+    selectedStepId: launchState.selectedStepId || '',
     currentStepId: '',
     isRunning: true,
     lastStatus: 'en cours',
@@ -919,6 +955,7 @@ async function startPipeline(p, options = {}) {
     setPipelineLaunchState(p, {
       currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, agent.id),
       targetStepId: resolvedTargetStepId,
+      selectedStepId: launchState.selectedStepId || '',
       isRunning: true,
       lastStatus: `en cours · ${getPipelineDisplayStepIdForRuntimeAgent(p, agent.id)}`,
     });
@@ -957,6 +994,7 @@ async function startPipeline(p, options = {}) {
   setPipelineLaunchState(p, {
     currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || targetAgentId),
     targetStepId: resolvedTargetStepId,
+    selectedStepId: launchState.selectedStepId || '',
     isRunning: false,
     lastStatus: finalStatus,
   });
