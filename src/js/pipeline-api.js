@@ -23,6 +23,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
   const fixedContent = isLegacy ? null : promptData.fixedContent;
   const fixedContentBlocks = isLegacy ? [] : (Array.isArray(promptData.fixedContentBlocks) ? promptData.fixedContentBlocks : []);
   const promptDebug = isLegacy ? null : (promptData.promptDebug || null);
+  const runtimeAgentId = isLegacy ? agentId : (String(promptData.runtimeAgentId || '').trim() || agentId);
   const prefix = pfx();
   const content = [];
   const getRetryDelayMs = (attempt) => {
@@ -103,7 +104,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
       const data = await res.json();
       const usage = data.usage || {};
-      recordCacheDebugEvent(prefix, agentId, usage, promptDebug);
+      recordCacheDebugEvent(prefix, runtimeAgentId, usage, promptDebug);
       delete abortControllers[agentId];
       return { text: data.content.map((block) => block.text || '').join('\n'), usage };
     } catch (err) {

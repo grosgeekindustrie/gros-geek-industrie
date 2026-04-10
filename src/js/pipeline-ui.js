@@ -172,13 +172,20 @@ async function runTagsThreeAgents(ctx) {
 
     return acc;
   }, {});
+  const buildTagsRuntimeInput = (prompt, filled, runtimeAgentId) => ({
+    filled,
+    fixedContent: prompt.fixedContent,
+    fixedContentBlocks: prompt.fixedContentBlocks,
+    runtimeAgentId,
+    promptDebug: {
+      ...(prompt.promptDebug || {}),
+      promptChars: filled.length,
+    },
+  });
 
   // 1) EXPLORE
   const explorePrompt = buildPrompt('tags', ctx);
-  const exploreInput = {
-    filled: explorePrompt.filled,
-    fixedContent: explorePrompt.fixedContent
-  };
+  const exploreInput = buildTagsRuntimeInput(explorePrompt, explorePrompt.filled, 'tags.explore');
   const { text: rawExplore, usage: exploreUsage } = await callClaude('tags', exploreInput, false);
 
   const exploreTags = parseTagOutput(rawExplore).filter((tag) => tag.length <= 30).slice(0, 80);
@@ -186,13 +193,11 @@ async function runTagsThreeAgents(ctx) {
 
   // 2) FILTER
   const filterPrompt = buildPrompt('tags_filter', ctx);
-  const filterInput = {
-    filled:
-      `${filterPrompt.filled}\n\n` +
-      `CANDIDATS À FILTRER :\n` +
-      `${exploreTags.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
-    fixedContent: filterPrompt.fixedContent
-  };
+  const filterFilled =
+    `${filterPrompt.filled}\n\n` +
+    `CANDIDATS À FILTRER :\n` +
+    `${exploreTags.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
+  const filterInput = buildTagsRuntimeInput(filterPrompt, filterFilled, 'tags.filtre');
 
   const { text: rawFiltered, usage: filterUsage } = await callClaude('tags', filterInput, false);
   const filteredTags = parseTagOutput(rawFiltered).slice(0, 28);
@@ -201,13 +206,11 @@ async function runTagsThreeAgents(ctx) {
 
   // 3) SELECT
   const selectPrompt = buildPrompt('tags_select', ctx);
-  const selectInput = {
-    filled:
-      `${selectPrompt.filled}\n\n` +
-      `CANDIDATS RETENUS :\n` +
-      `${pool.map((t, i) => `${i + 1}. ${t}`).join('\n')}`,
-    fixedContent: selectPrompt.fixedContent
-  };
+  const selectFilled =
+    `${selectPrompt.filled}\n\n` +
+    `CANDIDATS RETENUS :\n` +
+    `${pool.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
+  const selectInput = buildTagsRuntimeInput(selectPrompt, selectFilled, 'tags.select');
 
   const { text: rawFinal, usage: selectUsage } = await callClaude('tags', selectInput, false);
   const finalTagsRaw = parseTagOutput(rawFinal);
