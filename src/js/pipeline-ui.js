@@ -477,8 +477,12 @@ const normalizePipelineActionRequest = (request = {}) => ({
 async function handlePipelineActionRequest(request = {}) {
   const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
   const activePrefix = prefix || pfx();
+  const launchState = typeof getPipelineLaunchState === 'function'
+    ? getPipelineLaunchState(activePrefix)
+    : null;
+  const resolvedLaunchStepId = stepId || launchState?.selectedStepId || 'all';
   const actionHandlers = {
-    launch: () => startPipeline(activePrefix, { targetStepId: stepId }),
+    launch: () => startPipeline(activePrefix, { targetStepId: resolvedLaunchStepId }),
     'rerun-agent': () => rerunAgent(agentId),
     'rerun-suite': () => rerunSuite(agentId),
     'stop-agent': () => stopAgent(agentId, activePrefix),
