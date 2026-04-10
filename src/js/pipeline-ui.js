@@ -351,27 +351,138 @@ function stopAgent(agentId, _p) {
   if (abortControllers[agentId]) { abortControllers[agentId].abort(); delete abortControllers[agentId]; }
 }
 
+const getResumePipelineAgents = (prefix) => {
+  const launchState = typeof getPipelineLaunchState === 'function'
+    ? getPipelineLaunchState(prefix)
+    : null;
+  const targetStepId = launchState?.targetStepId || '';
+  const runtimeAgents = typeof getPipelineRuntimeAgentsForTarget === 'function'
+    ? getPipelineRuntimeAgentsForTarget(prefix, targetStepId)
+    : [];
+
+  return runtimeAgents.length ? runtimeAgents : getPipelineAgents();
+};
+
+const getDisplayStepIdForAgent = (prefix, agentId) => {
+  if (typeof getPipelineDisplayStepIdForRuntimeAgent !== 'function') return agentId;
+  return getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId);
+};
+
+const setResumeLaunchState = (prefix, agentId, nextState = {}) => {
+  if (typeof setPipelineLaunchState !== 'function') return;
+
+  const launchState = typeof getPipelineLaunchState === 'function'
+    ? getPipelineLaunchState(prefix)
+    : null;
+  const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
+
+  setPipelineLaunchState(prefix, {
+    targetStepId: launchState?.targetStepId || '',
+    currentStepId: displayStepId,
+    isRunning: true,
+    lastStatus: `en cours · ${displayStepId}`,
+    ...nextState,
+  });
+};
+
+const finalizeResumeLaunchState = (prefix, agentId, lastStatus) => {
+  if (typeof setPipelineLaunchState !== 'function') return;
+
+  const launchState = typeof getPipelineLaunchState === 'function'
+    ? getPipelineLaunchState(prefix)
+    : null;
+  const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
+
+  setPipelineLaunchState(prefix, {
+    targetStepId: launchState?.targetStepId || '',
+    currentStepId: displayStepId,
+    isRunning: false,
+    lastStatus,
+  });
+};
+
+const syncResumeResultTab = (prefix, lastStatus) => {
+  if (lastStatus === 'terminé') {
+    const hasResult = prefix === 'tt'
+      ? window.isDndSoloResultAvailable?.()
+      : window.isCollectionSoloResultAvailable?.();
+
+    if (hasResult) {
+      activateSoloTab(prefix, 'result', { force: true });
+      return;
+    }
+  }
+
+  activateSoloTab(prefix, 'pipeline', { force: true });
+};
+
 async function rerunAgent(agentId) {
   const p = pfx();
-  const agent = getPipelineAgents().find(a => a.id === agentId);
+  const agents = getResumePipelineAgents(p);
+  const agent = agents.find(({ id }) => id === agentId) || getPipelineAgents().find(({ id }) => id === agentId);
+  if (!agent) return;
+
   const cor = document.getElementById(`${p}-cor-${agentId}`).value;
   state.orchAttempts[agentId] = 0;
-  await runAgent(agent, cor);
-  assembleFinal();
+  window.setPipelineExecutionActive?.(true);
+  setResumeLaunchState(p, agent.id);
+
+  let lastStatus = 'terminé';
+
+  try {
+    const ok = await runAgent(agent, cor);
+    if (!ok) {
+      lastStatus = 'erreur';
+    } else if (agent.hasSelection) {
+      lastStatus = 'en pause · sélection requise';
+    }
+  } finally {
+    window.setPipelineExecutionActive?.(false);
+    finalizeResumeLaunchState(p, agent.id, lastStatus);
+    assembleFinal();
+    syncResumeResultTab(p, lastStatus);
+  }
 }
 
 async function rerunSuite(agentId) {
   const p = pfx();
-  const idx = getPipelineAgents().findIndex(a => a.id === agentId);
+  const agents = getResumePipelineAgents(p);
+  const idx = agents.findIndex(({ id }) => id === agentId);
+  if (idx === -1) return;
+
   const cor = document.getElementById(`${p}-cor-${agentId}`).value;
-  for (let i = idx; i < getPipelineAgents().length; i++) {
-    if (getPipelineAgents()[i].optional) break;
-    state.orchAttempts[getPipelineAgents()[i].id] = 0;
-    const ok = await runAgent(getPipelineAgents()[i], i === idx ? cor : '');
-    if (!ok) break;
-    if (getPipelineAgents()[i].hasSelection) break;
+  let lastAgentId = agents[idx].id;
+  let lastStatus = 'terminé';
+
+  window.setPipelineExecutionActive?.(true);
+
+  try {
+    for (let i = idx; i < agents.length; i++) {
+      const agent = agents[i];
+      if (agent.optional) break;
+
+      setResumeLaunchState(p, agent.id);
+      state.orchAttempts[agent.id] = 0;
+
+      const ok = await runAgent(agent, i === idx ? cor : '');
+      lastAgentId = agent.id;
+
+      if (!ok) {
+        lastStatus = 'erreur';
+        break;
+      }
+
+      if (agent.hasSelection) {
+        lastStatus = 'en pause · sélection requise';
+        break;
+      }
+    }
+  } finally {
+    window.setPipelineExecutionActive?.(false);
+    finalizeResumeLaunchState(p, lastAgentId, lastStatus);
+    assembleFinal();
+    syncResumeResultTab(p, lastStatus);
   }
-  assembleFinal();
 }
 
 function persistRule(agentId) {

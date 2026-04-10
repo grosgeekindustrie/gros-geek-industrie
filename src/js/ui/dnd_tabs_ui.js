@@ -25,9 +25,11 @@
   const getTabButton = (tabId) => getRoot()?.querySelector(`[data-dnd-tab="${tabId}"]`) || null;
   const getTabState = (tabId) => getRoot()?.querySelector(`[data-dnd-tab-state="${tabId}"]`) || null;
   const getTabPanel = (tabId) => getRoot()?.querySelector(`[data-dnd-tab-panel="${tabId}"]`) || null;
+  const PIPELINE_PREFIX = 'tt';
+
   const getStatusBox = () => document.querySelector('[data-js="dnd-solo-status"]');
   const getStatusText = () => document.querySelector('[data-js="dnd-solo-status-text"]');
-  const getCurrentMode = () => global.currentMode || 'tabletop';
+  const getLaunchState = () => global.getPipelineLaunchState?.(PIPELINE_PREFIX) || null;
 
   const getNameField = () => document.getElementById('tt-fNomCourt') || document.getElementById('tt-fNom');
   const getFullNameField = () => document.getElementById('tt-fNom') || document.getElementById('tt-fNomCourt');
@@ -73,20 +75,32 @@
     ].some(isVisible);
   }
 
+  function getLaunchStatus() {
+    return String(getLaunchState()?.lastStatus || '').trim().toLowerCase();
+  }
+
   function isPipelineRunning() {
-    return getCurrentMode() === 'tabletop' && !!global.isPipelineExecutionActive?.();
+    const launchState = getLaunchState();
+    if (launchState) return Boolean(launchState.isRunning);
+    return !!global.isPipelineExecutionActive?.();
   }
 
   function hasPipelineError() {
+    const launchStatus = getLaunchStatus();
+    if (launchStatus) return launchStatus.includes('erreur');
     return getAgentStatusEntries().some(({ text }) => text.includes('erreur') || text.includes('alerte'));
   }
 
   function hasPipelinePause() {
+    const launchStatus = getLaunchStatus();
+    if (launchStatus) return launchStatus.includes('en pause');
     if (isPipelineRunning()) return false;
     return getAgentStatusEntries().some(({ text }) => text.includes('sélection requise'));
   }
 
   function hasPipelineStopped() {
+    const launchStatus = getLaunchStatus();
+    if (launchStatus) return launchStatus.includes('interrompu') || launchStatus.includes('stopp');
     if (isPipelineRunning()) return false;
     return getAgentStatusEntries().some(({ text }) => text.includes('stoppé'));
   }
