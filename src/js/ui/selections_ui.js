@@ -12,6 +12,24 @@
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt'));
   const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
 
+  const continueAfterSelection = async (agentId) => {
+    if (typeof global.continuePipelineAfterSelection === 'function') {
+      await global.continuePipelineAfterSelection(agentId);
+      return;
+    }
+
+    const agents = getAgents();
+    const currentIndex = agents.findIndex((agent) => agent.id === agentId);
+    const continuationAgents = currentIndex === -1 ? [] : agents.slice(currentIndex + 1);
+
+    for (const agent of continuationAgents) {
+      if (agent.optional) break;
+      const ok = await global.runAgent(agent);
+      if (!ok || agent.hasSelection) break;
+    }
+
+    global.assembleFinal?.();
+  };
 
   function getTagLibraryState() {
     const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : {};
@@ -344,7 +362,7 @@
     global.showToast?.('Titre copié ✓');
   }
 
-  function validateTitre(agentId) {
+  async function validateTitre(agentId) {
     const p = getPfx();
     const manual = document.getElementById(`${p}-titre-manual-${agentId}`).value.trim();
     const titre = manual || global.state.selectedTitre;
@@ -363,16 +381,7 @@
     document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
-    const agents = getAgents();
-    const idx = agents.findIndex((agent) => agent.id === agentId);
-    (async () => {
-      for (let i = idx + 1; i < agents.length; i++) {
-        if (agents[i].optional) break;
-        const ok = await global.runAgent(agents[i]);
-        if (!ok) break;
-        if (agents[i].hasSelection) break;
-      }
-    })();
+    await continueAfterSelection(agentId);
   }
 
   function parseChoices(output, prefix) {
@@ -453,7 +462,7 @@
     if (type === 'cta') global.state.selectedCTA = { num, text };
   }
 
-  function validateAccrocheCTA(agentId) {
+  async function validateAccrocheCTA(agentId) {
     const p = getPfx();
     if (!global.state.selectedAccroche || !global.state.selectedCTA) {
       alert('Choisis une accroche et un CTA.');
@@ -490,16 +499,7 @@
     document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ sélection validée';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
-    const agents = getAgents();
-    const idx = agents.findIndex((agent) => agent.id === agentId);
-    (async () => {
-      for (let i = idx + 1; i < agents.length; i++) {
-        if (agents[i].optional) break;
-        const ok = await global.runAgent(agents[i]);
-        if (!ok) break;
-      }
-      global.assembleFinal?.();
-    })();
+    await continueAfterSelection(agentId);
   }
 
   async function runTitreExplorer() {

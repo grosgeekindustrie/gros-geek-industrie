@@ -416,6 +416,81 @@ const syncResumeResultTab = (prefix, lastStatus) => {
   activateSoloTab(prefix, 'pipeline', { force: true });
 };
 
+const getContinuationAgentsAfterSelection = (prefix, agentId) => {
+  const agents = getResumePipelineAgents(prefix);
+  const currentIndex = agents.findIndex(({ id }) => id === agentId);
+
+  return currentIndex === -1 ? [] : agents.slice(currentIndex + 1);
+};
+
+const finalizePipelineContinuation = (prefix, agentId, lastStatus = 'terminé') => {
+  window.setPipelineExecutionActive?.(false);
+  finalizeResumeLaunchState(prefix, agentId, lastStatus);
+  assembleFinal();
+  syncResumeResultTab(prefix, lastStatus);
+};
+
+async function continuePipelineAfterSelection(agentId) {
+  const prefix = pfx();
+  const continuationAgents = getContinuationAgentsAfterSelection(prefix, agentId);
+
+  if (!continuationAgents.length) {
+    finalizePipelineContinuation(prefix, agentId, 'terminé');
+    return;
+  }
+
+  let lastAgentId = agentId;
+  let lastStatus = 'terminé';
+
+  window.setPipelineExecutionActive?.(true);
+
+  try {
+    for (const agent of continuationAgents) {
+      setResumeLaunchState(prefix, agent.id);
+      state.orchAttempts[agent.id] = 0;
+
+      const ok = await runAgent(agent);
+      lastAgentId = agent.id;
+
+      if (!ok) {
+        lastStatus = 'erreur';
+        break;
+      }
+
+      if (agent.hasSelection) {
+        lastStatus = 'en pause · sélection requise';
+        break;
+      }
+    }
+  } finally {
+    finalizePipelineContinuation(prefix, lastAgentId, lastStatus);
+  }
+}
+
+const normalizePipelineActionRequest = (request = {}) => ({
+  action: String(request.action || '').trim(),
+  prefix: String(request.prefix || '').trim(),
+  stepId: String(request.stepId || '').trim(),
+  agentId: String(request.agentId || '').trim(),
+});
+
+async function handlePipelineActionRequest(request = {}) {
+  const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
+  const activePrefix = prefix || pfx();
+  const actionHandlers = {
+    launch: () => startPipeline(activePrefix, { targetStepId: stepId }),
+    'rerun-agent': () => rerunAgent(agentId),
+    'rerun-suite': () => rerunSuite(agentId),
+    'stop-agent': () => stopAgent(agentId, activePrefix),
+    'validate-title': () => validateTitre(agentId),
+    'validate-selection': () => validateAccrocheCTA(agentId),
+  };
+  const actionHandler = actionHandlers[action];
+
+  if (!actionHandler) return;
+  return actionHandler();
+}
+
 async function rerunAgent(agentId) {
   const p = pfx();
   const agents = getResumePipelineAgents(p);

@@ -78,6 +78,21 @@ const getPipelineTargetStepMeta = (mode = currentMode, targetStepId = '') => {
   return steps.find((step) => step.id === targetStepId) || steps[steps.length - 1] || null;
 };
 
+const getPipelineFinalTargetStepId = (mode = currentMode) => {
+  const steps = PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || [];
+  return steps[steps.length - 1]?.id || '';
+};
+
+const normalizePipelineTargetStepId = (mode = currentMode, targetStepId = '') => {
+  const requestedTargetStepId = String(targetStepId || '').trim();
+
+  if (!requestedTargetStepId || requestedTargetStepId === 'all') {
+    return getPipelineFinalTargetStepId(mode);
+  }
+
+  return getPipelineTargetStepMeta(mode, requestedTargetStepId)?.id || getPipelineFinalTargetStepId(mode);
+};
+
 const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, targetStepId = '') => {
   const runtimeIds = getPipelineRuntimeAgentIds(mode);
   const targetStep = getPipelineTargetStepMeta(mode, targetStepId);
@@ -129,6 +144,8 @@ Object.assign(window.PipelineUIConfig, {
   getPipelineRuntimeAgentIds,
   getPipelineTargetSteps,
   getPipelineTargetStepMeta,
+  getPipelineFinalTargetStepId,
+  normalizePipelineTargetStepId,
   getPipelineRuntimeAgentIdsForTarget,
   getPipelineWarmupStepId,
   PROMPT_FILE_MAP,

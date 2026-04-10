@@ -441,6 +441,31 @@ function runPipelineToTarget(prefix, targetStepId = '') {
   startPipeline(prefix, { targetStepId });
 }
 
+const createLaunchTargetButton = (prefix, step, launchState) => {
+  const button = document.createElement('button');
+  const isCurrentTarget = launchState.targetStepId === step.id;
+
+  button.type = 'button';
+  button.className = `btn ${isCurrentTarget ? 'btn-accent' : 'btn-muted'}`;
+  button.textContent = `↳ ${step.label}`;
+  button.disabled = launchState.isRunning;
+  button.dataset.pipelineAction = 'launch';
+  button.dataset.pipelinePrefix = prefix;
+  button.dataset.pipelineStep = step.id;
+
+  return button;
+};
+
+const syncStandaloneLaunchButtons = (prefix) => {
+  const launchState = getPipelineLaunchState(prefix);
+  const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
+
+  buttons.forEach((button) => {
+    if (button.id === `runBtn-${prefix}`) return;
+    button.disabled = launchState.isRunning;
+  });
+};
+
 function renderPipelineLaunchPanel(prefix) {
   const actionsNode = document.getElementById(`launchTargets-${prefix}`);
   const statusNode = document.getElementById(`launchStatus-${prefix}`);
@@ -448,21 +473,15 @@ function renderPipelineLaunchPanel(prefix) {
 
   const launchState = getPipelineLaunchState(prefix);
   const targetSteps = getPipelineTargetStepsForPrefix(prefix);
+  const fragment = document.createDocumentFragment();
 
-  actionsNode.innerHTML = '';
-  targetSteps.forEach((step) => {
-    const button = document.createElement('button');
-    const isCurrentTarget = launchState.targetStepId === step.id;
+  targetSteps
+    .map((step) => createLaunchTargetButton(prefix, step, launchState))
+    .forEach((button) => fragment.appendChild(button));
 
-    button.type = 'button';
-    button.className = `btn ${isCurrentTarget ? 'btn-accent' : 'btn-muted'}`;
-    button.textContent = `↳ ${step.label}`;
-    button.disabled = launchState.isRunning;
-    button.onclick = () => runPipelineToTarget(prefix, step.id);
-    actionsNode.appendChild(button);
-  });
-
+  actionsNode.replaceChildren(fragment);
   statusNode.textContent = getPipelineLaunchSummary(prefix);
+  syncStandaloneLaunchButtons(prefix);
 }
 
 function refreshPipelineLaunchPanelState(prefix) {
@@ -563,9 +582,8 @@ if (typeof state !== 'undefined') getPipelineRunState('tt');
 if (typeof state !== 'undefined') getPipelineRunState('col');
 
 function getResolvedTargetStep(prefix, targetStepId = '') {
-  const targetSteps = getPipelineTargetStepsForPrefix(prefix);
-  const requestedStep = targetSteps.find((step) => step.id === targetStepId);
-  return requestedStep?.id || '';
+  const mode = getPipelineLaunchMode(prefix);
+  return window.normalizePipelineTargetStepId?.(mode, targetStepId) || '';
 }
 
 if (typeof state !== 'undefined') refreshPipelineLaunchPanels();

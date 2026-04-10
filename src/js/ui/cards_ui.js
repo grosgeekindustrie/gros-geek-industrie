@@ -39,15 +39,15 @@
         ${buildSelectionHTML(agent, p)}
         <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="${p}-cor-${agent.id}" placeholder="Pour cette fiche uniquement..."></textarea></div>
         <div class="agent-actions">
-          <button class="btn btn-accent" id="${p}-br-${agent.id}" onclick="rerunAgent('${agent.id}')" disabled>🔄 Relancer</button>
-          <button class="btn btn-success" id="${p}-bs-${agent.id}" onclick="rerunSuite('${agent.id}')" disabled>⏩ Suite</button>
+          <button class="btn btn-accent" id="${p}-br-${agent.id}" type="button" data-pipeline-action="rerun-agent" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}" disabled>🔄 Relancer</button>
+          <button class="btn btn-success" id="${p}-bs-${agent.id}" type="button" data-pipeline-action="rerun-suite" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}" disabled>⏩ Suite</button>
           <button class="btn btn-orange" id="${p}-bp-${agent.id}" onclick="persistRule('${agent.id}')" disabled>📌 Toujours</button>
           ${agent.id === 'tags'
             ? `<button class="btn btn-muted" title="Prompt Explore" onclick="openPromptLightbox('tags')">⚙️E</button>
                <button class="btn btn-muted" title="Prompt Filter" onclick="openPromptLightbox('tags_filter')">⚙️F</button>
                <button class="btn btn-muted" title="Prompt Select" onclick="openPromptLightbox('tags_select')">⚙️S</button>`
             : `<button class="btn btn-muted" onclick="openPromptLightbox('${agent.id}')">⚙️</button>`}
-          <button class="btn" id="${p}-bstop-${agent.id}" onclick="stopAgent('${agent.id}')" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);">⏹</button>
+          <button class="btn" id="${p}-bstop-${agent.id}" type="button" data-pipeline-action="stop-agent" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}" style="display:none;background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:var(--error);">⏹</button>
           <button class="btn btn-muted" onclick="copyOut('${agent.id}')">📋</button>
           <button class="btn btn-muted" onclick="showRawInput('${agent.id}')">&lt;/&gt;</button>
           ${agent.id === 'tags' ? `<button class="btn btn-orange" id="${p}-bexplore-tags" onclick="runTagExplorer()" disabled>🔭 Explorer</button>` : ''}
@@ -79,12 +79,12 @@
           <button class="btn btn-muted" onclick="pasteSelectedTitre('${agent.id}')">📋</button>
         </div>
       </div>
-      <button class="validate-btn" onclick="validateTitre('${agent.id}')">✅ Valider ce titre</button>
+      <button class="validate-btn" type="button" data-pipeline-action="validate-title" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}">✅ Valider ce titre</button>
     </div>`;
     }
     return `
     <div class="sel-zone" id="${p}-sel-accroche-${agent.id}"><h4>🎯 Choisir une accroche</h4><div id="${p}-sel-list-accroche-${agent.id}"></div></div>
-    <div class="sel-zone" id="${p}-sel-cta-${agent.id}"><h4>💬 Choisir un CTA</h4><div id="${p}-sel-list-cta-${agent.id}"></div><button class="validate-btn" onclick="validateAccrocheCTA('${agent.id}')">✅ Valider et assembler</button></div>`;
+    <div class="sel-zone" id="${p}-sel-cta-${agent.id}"><h4>💬 Choisir un CTA</h4><div id="${p}-sel-list-cta-${agent.id}"></div><button class="validate-btn" type="button" data-pipeline-action="validate-selection" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}">✅ Valider et assembler</button></div>`;
   }
 
   function resolveCardEls(id) {

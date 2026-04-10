@@ -13,6 +13,31 @@
   let currentView = 'home';
   let pendingBatchMode = null;
   let pipelineExecutionActive = false;
+  let pipelineActionDelegationBound = false;
+
+  const PIPELINE_ACTION_SELECTOR = '[data-pipeline-action]';
+
+  const buildPipelineActionRequest = (trigger) => ({
+    action: String(trigger.dataset.pipelineAction || '').trim(),
+    prefix: String(trigger.dataset.pipelinePrefix || '').trim(),
+    stepId: String(trigger.dataset.pipelineStep || '').trim(),
+    agentId: String(trigger.dataset.pipelineAgent || '').trim(),
+  });
+
+  const handleDelegatedPipelineActionClick = (event) => {
+    const trigger = event.target.closest(PIPELINE_ACTION_SELECTOR);
+    if (!trigger || trigger.disabled) return;
+
+    event.preventDefault();
+    global.handlePipelineActionRequest?.(buildPipelineActionRequest(trigger));
+  };
+
+  const bindPipelineActionDelegation = () => {
+    if (pipelineActionDelegationBound) return;
+
+    document.addEventListener('click', handleDelegatedPipelineActionClick);
+    pipelineActionDelegationBound = true;
+  };
 
   function getBatchWrapper() {
     return document.getElementById('batchWrapper');
@@ -366,6 +391,8 @@
   }
 
 
+  bindPipelineActionDelegation();
+
   global.PipelineUIApp = {
     showToast,
     clearAllStorage,
@@ -390,6 +417,7 @@
     updatePipelineTimeline,
     openSettings,
     closeSettings,
+    bindPipelineActionDelegation,
     getCurrentView: () => currentView,
     getPendingBatchMode: () => pendingBatchMode,
   };
