@@ -498,22 +498,50 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
     filesApiDebug = imageRequest.debug || filesApiDebug;
   }
 
+  let fixedPrefixChars = 0;
   const normalizedFixedBlocks = fixedContentBlocks
     .map((block, index) => {
       const text = String(block?.text || '').trim();
+      if (!text) return null;
+
       const chars = text.length;
+      fixedPrefixChars += chars;
       const cacheable = Boolean(block?.cacheable);
-      const cacheApplied = cacheable && chars >= CACHEABLE_BLOCK_MIN_CHARS;
+      const cacheApplied = cacheable && fixedPrefixChars >= CACHEABLE_BLOCK_MIN_CHARS;
 
       return {
         key: block?.key || `block_${index + 1}`,
         text,
         chars,
+        prefixChars: fixedPrefixChars,
         cacheable,
         cacheApplied,
+        cacheGroup: String(block?.cacheGroup || ''),
+        cacheLabel: String(block?.cacheLabel || ''),
       };
     })
-    .filter((block) => block.text);
+    .filter(Boolean);
+  const appliedBreakpointCount = normalizedFixedBlocks.filter((block) => block.cacheApplied).length;
+  const canApplyImageBreakpoint = imageContentBlocks.length > 0
+    && appliedBreakpointCount < 4
+    && normalizedFixedBlocks.some((block) => block.cacheApplied);
+
+  if (imageContentBlocks.length > 0) {
+    imageContentBlocks = imageContentBlocks.map((block, index) => {
+      if (!canApplyImageBreakpoint || index !== imageContentBlocks.length - 1) return block;
+      return {
+        ...block,
+        cache_control: { type: 'ephemeral' },
+      };
+    });
+
+    filesApiDebug = {
+      ...filesApiDebug,
+      promptCacheBreakpointApplied: canApplyImageBreakpoint,
+      promptCacheBreakpointType: canApplyImageBreakpoint ? 'last_image' : 'none',
+    };
+  }
+
   const runtimePromptDebug = isLegacy
     ? promptDebug
     : {
@@ -523,7 +551,10 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
           key: block.key,
           cacheable: block.cacheable,
           cacheApplied: block.cacheApplied,
+          cacheGroup: block.cacheGroup,
+          cacheLabel: block.cacheLabel,
           chars: block.chars,
+          prefixChars: block.prefixChars,
         })),
         filesApiDebug,
       };
@@ -999,7 +1030,8 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
 
   const fixedBlocks = Array.isArray(promptDebug?.fixedBlocks) ? promptDebug.fixedBlocks : [];
   const sharedBlock = fixedBlocks.find((block) => block.key === 'shared_prefix');
-  const cumulativeBlock = fixedBlocks.find((block) => block.key === 'cumulative_append_only');
+  const cumulativeBlocks = fixedBlocks.filter((block) => (block.cacheGroup || '').trim() === 'cumulative_append_only'
+    || String(block.key || '').startsWith('cumulative_append_only'));
   const launchState = getPipelineLaunchState(prefix);
   const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
   const filesApiDebug = promptDebug?.filesApiDebug && typeof promptDebug.filesApiDebug === 'object'
@@ -1016,7 +1048,9 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
     promptChars: promptDebug?.promptChars || 0,
     fixedChars: fixedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     sharedPrefixChars: sharedBlock?.chars || 0,
-    cumulativeChars: cumulativeBlock?.chars || 0,
+    cumulativeChars: cumulativeBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
+    cumulativeCacheAppliedChars: cumulativeBlocks.reduce((sum, block) => sum + (block.cacheApplied ? (block.chars || 0) : 0), 0),
+    cumulativeBlockCount: cumulativeBlocks.length,
     cacheAppliedChars: cacheAppliedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     fixedBlocks,
     filesApiDebug,
@@ -1083,7 +1117,10 @@ function buildCacheDebugReport(prefix = pfx()) {
     lines.push(`- bloc fixe total: ${event.fixedChars.toLocaleString()} chars`);
     lines.push(`- bloc fixe activé: ${event.cacheAppliedChars.toLocaleString()} chars`);
     lines.push(`- bloc commun: ${event.sharedPrefixChars.toLocaleString()} chars`);
-    lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars`);
+    lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars (${(event.cumulativeBlockCount || 0).toLocaleString()} bloc(s))`);
+    if (event.cumulativeCacheAppliedChars > 0) {
+      lines.push(`- cumulatif caché: ${event.cumulativeCacheAppliedChars.toLocaleString()} chars`);
+    }
     if (event.filesApiDebug?.enabled) {
       const filesApiStatus = formatFilesApiStatusLabel(event.filesApiDebug.status);
       lines.push(`- files api: ${filesApiStatus}`);
@@ -1094,6 +1131,9 @@ function buildCacheDebugReport(prefix = pfx()) {
       lines.push(`- uploads réels: ${(event.filesApiDebug.uploadedCount || 0).toLocaleString()}`);
       lines.push(`- invalidations: ${(event.filesApiDebug.invalidatedCount || 0).toLocaleString()}`);
       lines.push(`- images non résolues: ${(event.filesApiDebug.unresolvedCount || 0).toLocaleString()}`);
+      if (event.filesApiDebug.promptCacheBreakpointApplied) {
+        lines.push('- breakpoint images: ON');
+      }
       if (event.filesApiDebug.workspacePersisted === true) {
         lines.push('- persistance workspace: OK');
       } else if (event.filesApiDebug.workspacePersisted === false) {
@@ -1109,10 +1149,11 @@ function buildCacheDebugReport(prefix = pfx()) {
     event.fixedBlocks.forEach((block) => {
       const cacheLabel = block.cacheable
         ? (block.cacheApplied
-            ? ' · cache ON'
-            : ` · cache OFF (< ${CACHEABLE_BLOCK_MIN_CHARS.toLocaleString()} chars)`)
+            ? ` · cache ON (prefixe ${Number(block.prefixChars || block.chars || 0).toLocaleString()} chars)`
+            : ` · cache OFF (prefixe < ${CACHEABLE_BLOCK_MIN_CHARS.toLocaleString()} chars)`)
         : '';
-      lines.push(`  • ${block.key}: ${block.chars.toLocaleString()} chars${cacheLabel}`);
+      const blockLabel = block.cacheLabel ? ` — ${block.cacheLabel}` : '';
+      lines.push(`  • ${block.key}${blockLabel}: ${block.chars.toLocaleString()} chars${cacheLabel}`);
     });
     lines.push('');
   });

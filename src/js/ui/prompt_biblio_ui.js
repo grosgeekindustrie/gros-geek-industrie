@@ -25,9 +25,52 @@
     return sections.filter(Boolean).join('\n\n');
   };
 
-  const buildPipelineCumulativeFixedContent = (ctx = {}) => {
-    const cumulative = String(ctx.pipeline_cumulatif || '').trim();
-    return cumulative ? `CUMULATIF APPEND-ONLY:\n${cumulative}` : '';
+  const parsePipelineCumulativeEntries = (ctx = {}) => {
+    const explicitEntries = Array.isArray(ctx.pipeline_cumulative_entries)
+      ? ctx.pipeline_cumulative_entries
+          .map((entry) => ({
+            agentId: String(entry?.agentId || '').trim(),
+            content: String(entry?.content || '').trim(),
+          }))
+          .filter((entry) => entry.agentId && entry.content)
+      : [];
+
+    if (explicitEntries.length) return explicitEntries;
+
+    const raw = String(ctx.pipeline_cumulatif || '').trim();
+    if (!raw) return [];
+
+    return raw
+      .split(/\n(?=##\s+)/)
+      .map((section) => String(section || '').trim())
+      .filter(Boolean)
+      .map((section, index) => {
+        const match = section.match(/^##\s+([^\n]+)\n([\s\S]*)$/);
+        if (match) {
+          return {
+            agentId: String(match[1] || '').trim(),
+            content: String(match[2] || '').trim(),
+          };
+        }
+
+        return {
+          agentId: `step_${index + 1}`,
+          content: section,
+        };
+      })
+      .filter((entry) => entry.agentId && entry.content);
+  };
+
+  const buildPipelineCumulativeFixedBlocks = (ctx = {}) => {
+    const entries = parsePipelineCumulativeEntries(ctx);
+
+    return entries.map((entry, index) => ({
+      key: `cumulative_append_only_${String(index + 1).padStart(2, '0')}`,
+      text: `## ${entry.agentId}\n${entry.content}`,
+      cacheable: index === entries.length - 1,
+      cacheGroup: 'cumulative_append_only',
+      cacheLabel: entry.agentId,
+    }));
   };
 
   const buildFixedContentText = (blocks = []) => (
@@ -39,10 +82,10 @@
 
   const buildSharedBlocks = (ctx = {}, includeCumulative = true) => {
     const shared = buildPipelineSharedFixedContent(ctx);
-    const cumulative = includeCumulative ? buildPipelineCumulativeFixedContent(ctx) : '';
+    const cumulativeBlocks = includeCumulative ? buildPipelineCumulativeFixedBlocks(ctx) : [];
     return [
-      { key: 'shared_prefix', text: shared, cacheable: true },
-      { key: 'cumulative_append_only', text: cumulative, cacheable: false },
+      { key: 'shared_prefix', text: shared, cacheable: true, cacheGroup: 'shared_prefix' },
+      ...cumulativeBlocks,
     ];
   };
 
@@ -53,6 +96,8 @@
       index,
       key: block?.key || `block_${index + 1}`,
       cacheable: Boolean(block?.cacheable),
+      cacheGroup: String(block?.cacheGroup || ''),
+      cacheLabel: String(block?.cacheLabel || ''),
       chars: String(block?.text || '').trim().length,
     })),
   });
