@@ -83,24 +83,13 @@ const getPipelineFinalTargetStepId = (mode = currentMode) => {
   return steps[steps.length - 1]?.id || '';
 };
 
-const normalizePipelineTargetStepId = (mode = currentMode, targetStepId = '') => {
-  const requestedTargetStepId = String(targetStepId || '').trim();
+const normalizePipelineTargetStepId = (mode = currentMode, _targetStepId = '') => (
+  getPipelineFinalTargetStepId(mode)
+);
 
-  if (!requestedTargetStepId || requestedTargetStepId === 'all') {
-    return getPipelineFinalTargetStepId(mode);
-  }
-
-  return getPipelineTargetStepMeta(mode, requestedTargetStepId)?.id || getPipelineFinalTargetStepId(mode);
-};
-
-const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, targetStepId = '') => {
-  const runtimeIds = getPipelineRuntimeAgentIds(mode);
-  const targetStep = getPipelineTargetStepMeta(mode, targetStepId);
-  const stopAfterAgentId = targetStep?.stopAfterAgentId || runtimeIds[runtimeIds.length - 1] || '';
-  const stopIndex = runtimeIds.indexOf(stopAfterAgentId);
-
-  return stopIndex === -1 ? runtimeIds.slice() : runtimeIds.slice(0, stopIndex + 1);
-};
+const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, _targetStepId = '') => (
+  getPipelineRuntimeAgentIds(mode).slice()
+);
 
 const getPipelineWarmupStepId = (mode = currentMode) => {
   const steps = PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || [];

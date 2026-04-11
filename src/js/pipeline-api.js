@@ -204,7 +204,12 @@ function getPipelineLaunchMode(prefix) {
 
 function getPipelineTargetStepsForPrefix(prefix) {
   const mode = getPipelineLaunchMode(prefix);
-  return window.getPipelineTargetSteps?.(mode) || getPipelineAgents().map((agent) => ({
+
+  if (typeof getPipelineTargetSteps === 'function') {
+    return getPipelineTargetSteps(mode);
+  }
+
+  return getPipelineAgents().map((agent) => ({
     id: agent.id,
     label: agent.title,
   }));
@@ -212,16 +217,26 @@ function getPipelineTargetStepsForPrefix(prefix) {
 
 function getPipelineTargetStepMetaForPrefix(prefix, targetStepId = '') {
   const mode = getPipelineLaunchMode(prefix);
-  return window.getPipelineTargetStepMeta?.(mode, targetStepId) || null;
+
+  if (typeof getPipelineTargetStepMeta === 'function') {
+    return getPipelineTargetStepMeta(mode, targetStepId);
+  }
+
+  return null;
 }
 
-function getPipelineRuntimeAgentIdsForPrefix(prefix, targetStepId = '') {
+function getPipelineRuntimeAgentIdsForPrefix(prefix) {
   const mode = getPipelineLaunchMode(prefix);
-  return window.getPipelineRuntimeAgentIdsForTarget?.(mode, targetStepId) || getPipelineAgents().map((agent) => agent.id);
+
+  if (typeof getPipelineRuntimeAgentIds === 'function') {
+    return getPipelineRuntimeAgentIds(mode);
+  }
+
+  return getPipelineAgents().map((agent) => agent.id);
 }
 
-function getPipelineRuntimeAgentsForTarget(prefix, targetStepId = '') {
-  const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix, targetStepId);
+function getPipelineRuntimeAgentsForTarget(prefix, _targetStepId = '') {
+  const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix);
   const availableAgents = getPipelineAgents();
   const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
 
@@ -241,8 +256,6 @@ function getPipelineDisplayStepIdForRuntimeAgent(prefix, runtimeAgentId = '') {
 function getPipelineLaunchState(prefix) {
   state.pipelineLaunch = state.pipelineLaunch || {};
   state.pipelineLaunch[prefix] = state.pipelineLaunch[prefix] || {
-    targetStepId: '',
-    selectedStepId: '',
     currentStepId: '',
     isRunning: false,
     lastStatus: 'prêt',
@@ -278,14 +291,14 @@ function getActiveCacheDebugRun(prefix) {
   return getRuntimeDebugState().activeCacheRuns[prefix] || null;
 }
 
-function beginCacheDebugRun(prefix, targetStepId = '', pipelineAgents = []) {
+function beginCacheDebugRun(prefix, pipelineAgents = []) {
   const runtimeDebug = getRuntimeDebugState();
   const launchState = getPipelineLaunchState(prefix);
   const pipelineRunState = getPipelineRunState(prefix);
   const runRecord = {
     prefix,
     mode: getPipelineLaunchMode(prefix),
-    targetStepId,
+    launchScope: 'pipeline complet',
     startedAt: new Date().toISOString(),
     finishedAt: '',
     finalStatus: 'running',
@@ -367,7 +380,7 @@ function buildCacheDebugReport(prefix = pfx()) {
     '═══ RAPPORT CACHE PIPELINE ═══',
     `Mode: ${run.mode}`,
     `Préfixe: ${run.prefix}`,
-    `Étape cible: ${run.targetStepId || 'pipeline complet'}`,
+    `Lancement: ${run.launchScope || 'pipeline complet'}`,
     `Ordre: ${run.pipelineAgents.join(' -> ') || '—'}`,
     `Démarré: ${run.startedAt || '—'}`,
     `Terminé: ${run.finishedAt || '—'}`,
@@ -427,94 +440,37 @@ function syncCacheIndicator(usage = {}) {
 function getPipelineLaunchSummary(prefix) {
   const launchState = getPipelineLaunchState(prefix);
   const steps = getPipelineTargetStepsForPrefix(prefix);
-  const selectedStep = steps.find((step) => step.id === launchState.selectedStepId);
-  const targetStep = steps.find((step) => step.id === launchState.targetStepId);
   const currentStep = steps.find((step) => step.id === launchState.currentStepId);
 
   return [
-    `Étape sélectionnée : ${selectedStep ? selectedStep.label : 'pipeline complet'}`,
-    `Étape cible : ${targetStep ? targetStep.label : '—'}`,
+    'Pipeline : complet',
     `Étape courante : ${currentStep ? currentStep.label : '—'}`,
     `État : ${launchState.lastStatus || 'prêt'}`,
     `Cache : ${getLastCacheStatus()}`,
   ].join('\n');
 }
 
-function selectPipelineLaunchTarget(prefix, stepId = '') {
-  const launchState = getPipelineLaunchState(prefix);
-  const normalizedStepId = String(stepId || '').trim();
-  const nextSelectedStepId = launchState.selectedStepId === normalizedStepId ? '' : normalizedStepId;
-
-  setPipelineLaunchState(prefix, {
-    selectedStepId: nextSelectedStepId,
-    currentStepId: launchState.currentStepId || '',
-    targetStepId: launchState.targetStepId || '',
-    isRunning: false,
-    lastStatus: 'prêt',
-  });
-}
-
-function runPipelineToTarget(prefix, targetStepId = '') {
-  startPipeline(prefix, { targetStepId });
-}
-
-const createLaunchTargetButton = (prefix, step, launchState) => {
-  const button = document.createElement('button');
-  const isSelected = launchState.selectedStepId === step.id;
-
-  button.type = 'button';
-  button.className = `btn ${isSelected ? 'btn-accent' : 'btn-muted'}`;
-  button.textContent = `↳ ${step.label}`;
-  button.disabled = launchState.isRunning;
-  button.dataset.pipelineAction = 'select-launch-target';
-  button.dataset.pipelinePrefix = prefix;
-  button.dataset.pipelineStep = step.id;
-  button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-  button.addEventListener('click', () => selectPipelineLaunchTarget(prefix, step.id));
-
-  return button;
-};
-
 const syncStandaloneLaunchButtons = (prefix) => {
   const launchState = getPipelineLaunchState(prefix);
-  const steps = getPipelineTargetStepsForPrefix(prefix);
-  const selectedStep = steps.find((step) => step.id === launchState.selectedStepId);
-  const resolvedStepId = selectedStep?.id || 'all';
   const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
 
   buttons.forEach((button) => {
     button.disabled = launchState.isRunning;
-    button.dataset.pipelineStep = resolvedStepId;
-
     if (button.id === `runBtn-${prefix}`) {
-      const title = selectedStep
-        ? `Lancer jusqu’à ${selectedStep.label}`
-        : 'Lancer le pipeline complet';
-      button.title = title;
-      button.setAttribute('aria-label', title);
+      button.title = 'Lancer le pipeline complet';
+      button.setAttribute('aria-label', 'Lancer le pipeline complet');
       return;
     }
 
-    button.textContent = selectedStep
-      ? `▶ Lancer jusqu’à ${selectedStep.label}`
-      : '▶ Pipeline complet';
+    button.textContent = '▶ Lancer le pipeline complet';
   });
 };
 
 function renderPipelineLaunchPanel(prefix) {
-  const actionsNode = document.getElementById(`launchTargets-${prefix}`);
   const statusNode = document.getElementById(`launchStatus-${prefix}`);
-  if (!actionsNode || !statusNode) return;
 
-  const launchState = getPipelineLaunchState(prefix);
-  const targetSteps = getPipelineTargetStepsForPrefix(prefix);
-  const fragment = document.createDocumentFragment();
+  if (!statusNode) return;
 
-  targetSteps
-    .map((step) => createLaunchTargetButton(prefix, step, launchState))
-    .forEach((button) => fragment.appendChild(button));
-
-  actionsNode.replaceChildren(fragment);
   statusNode.textContent = getPipelineLaunchSummary(prefix);
   syncStandaloneLaunchButtons(prefix);
 }
@@ -576,7 +532,6 @@ function buildPipelineFormSnapshot(prefix) {
 function getPipelineRunState(prefix) {
   state.pipelineRun = state.pipelineRun || {};
   state.pipelineRun[prefix] = state.pipelineRun[prefix] || {
-    targetStepId: '',
     formSnapshot: '',
     warmupHint: '',
     cumulativeEntries: [],
@@ -585,12 +540,11 @@ function getPipelineRunState(prefix) {
   return state.pipelineRun[prefix];
 }
 
-function resetPipelineRunState(prefix, targetStepId = '') {
+function resetPipelineRunState(prefix) {
   const runState = getPipelineRunState(prefix);
   const warmupStepId = window.getPipelineWarmupStepId?.(getPipelineLaunchMode(prefix)) || 'marche';
   const formSnapshot = buildPipelineFormSnapshot(prefix);
 
-  runState.targetStepId = targetStepId;
   runState.formSnapshot = formSnapshot;
   runState.warmupHint = `Warmup compatible: préfixe stable avant ${warmupStepId}`;
   runState.cumulativeEntries = [];
@@ -616,9 +570,14 @@ function appendPipelineRunEntry(prefix, agentId, content) {
 if (typeof state !== 'undefined') getPipelineRunState('tt');
 if (typeof state !== 'undefined') getPipelineRunState('col');
 
-function getResolvedTargetStep(prefix, targetStepId = '') {
+function getResolvedTargetStep(prefix, _targetStepId = '') {
   const mode = getPipelineLaunchMode(prefix);
-  return window.normalizePipelineTargetStepId?.(mode, targetStepId) || '';
+
+  if (typeof getPipelineFinalTargetStepId === 'function') {
+    return getPipelineFinalTargetStepId(mode);
+  }
+
+  return '';
 }
 
 if (typeof state !== 'undefined') refreshPipelineLaunchPanels();
@@ -819,12 +778,11 @@ async function runAgent(agent, correction = '', isRetry = false) {
 
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
-async function startPipeline(p, options = {}) {
+async function startPipeline(p, _options = {}) {
   const launchState = getPipelineLaunchState(p);
-  const requestedTargetStepId = String(options.targetStepId || '').trim() || launchState.selectedStepId || '';
-  const resolvedTargetStepId = getResolvedTargetStep(p, requestedTargetStepId);
+  const resolvedTargetStepId = getResolvedTargetStep(p);
   const targetStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedTargetStepId);
-  const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedTargetStepId);
+  const pipelineAgents = getPipelineRuntimeAgentsForTarget(p);
   const targetAgentId = targetStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
   const runtimeAgentIds = new Set(pipelineAgents.map((agent) => agent.id));
   const knownAgentIds = ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'];
@@ -863,8 +821,6 @@ async function startPipeline(p, options = {}) {
   }
 
   setPipelineLaunchState(p, {
-    targetStepId: resolvedTargetStepId,
-    selectedStepId: launchState.selectedStepId || '',
     currentStepId: '',
     isRunning: true,
     lastStatus: 'en cours',
@@ -916,8 +872,8 @@ async function startPipeline(p, options = {}) {
   state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
-  resetPipelineRunState(p, resolvedTargetStepId);
-  beginCacheDebugRun(p, resolvedTargetStepId, pipelineAgents);
+  resetPipelineRunState(p);
+  beginCacheDebugRun(p, pipelineAgents);
 
   knownAgentIds.forEach((agentId) => {
     state.outputs[agentId] = '';
@@ -956,8 +912,6 @@ async function startPipeline(p, options = {}) {
   for (const agent of pipelineAgents) {
     setPipelineLaunchState(p, {
       currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, agent.id),
-      targetStepId: resolvedTargetStepId,
-      selectedStepId: launchState.selectedStepId || '',
       isRunning: true,
       lastStatus: `en cours · ${getPipelineDisplayStepIdForRuntimeAgent(p, agent.id)}`,
     });
@@ -995,8 +949,6 @@ async function startPipeline(p, options = {}) {
 
   setPipelineLaunchState(p, {
     currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || targetAgentId),
-    targetStepId: resolvedTargetStepId,
-    selectedStepId: launchState.selectedStepId || '',
     isRunning: false,
     lastStatus: finalStatus,
   });

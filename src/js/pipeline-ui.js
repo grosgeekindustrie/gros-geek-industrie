@@ -352,12 +352,8 @@ function stopAgent(agentId, _p) {
 }
 
 const getResumePipelineAgents = (prefix) => {
-  const launchState = typeof getPipelineLaunchState === 'function'
-    ? getPipelineLaunchState(prefix)
-    : null;
-  const targetStepId = launchState?.targetStepId || '';
   const runtimeAgents = typeof getPipelineRuntimeAgentsForTarget === 'function'
-    ? getPipelineRuntimeAgentsForTarget(prefix, targetStepId)
+    ? getPipelineRuntimeAgentsForTarget(prefix)
     : [];
 
   return runtimeAgents.length ? runtimeAgents : getPipelineAgents();
@@ -371,13 +367,9 @@ const getDisplayStepIdForAgent = (prefix, agentId) => {
 const setResumeLaunchState = (prefix, agentId, nextState = {}) => {
   if (typeof setPipelineLaunchState !== 'function') return;
 
-  const launchState = typeof getPipelineLaunchState === 'function'
-    ? getPipelineLaunchState(prefix)
-    : null;
   const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
 
   setPipelineLaunchState(prefix, {
-    targetStepId: launchState?.targetStepId || '',
     currentStepId: displayStepId,
     isRunning: true,
     lastStatus: `en cours · ${displayStepId}`,
@@ -388,13 +380,9 @@ const setResumeLaunchState = (prefix, agentId, nextState = {}) => {
 const finalizeResumeLaunchState = (prefix, agentId, lastStatus) => {
   if (typeof setPipelineLaunchState !== 'function') return;
 
-  const launchState = typeof getPipelineLaunchState === 'function'
-    ? getPipelineLaunchState(prefix)
-    : null;
   const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
 
   setPipelineLaunchState(prefix, {
-    targetStepId: launchState?.targetStepId || '',
     currentStepId: displayStepId,
     isRunning: false,
     lastStatus,
@@ -477,12 +465,8 @@ const normalizePipelineActionRequest = (request = {}) => ({
 async function handlePipelineActionRequest(request = {}) {
   const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
   const activePrefix = prefix || pfx();
-  const launchState = typeof getPipelineLaunchState === 'function'
-    ? getPipelineLaunchState(activePrefix)
-    : null;
-  const resolvedLaunchStepId = stepId || launchState?.selectedStepId || 'all';
   const actionHandlers = {
-    launch: () => startPipeline(activePrefix, { targetStepId: resolvedLaunchStepId }),
+    launch: () => startPipeline(activePrefix),
     'rerun-agent': () => rerunAgent(agentId),
     'rerun-suite': () => rerunSuite(agentId),
     'stop-agent': () => stopAgent(agentId, activePrefix),
