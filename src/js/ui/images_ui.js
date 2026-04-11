@@ -86,6 +86,10 @@
       originalWidth: original.originalWidth,
       originalHeight: original.originalHeight,
       cropRect: null,
+      contentHash: '',
+      anthropicFileId: '',
+      anthropicContentHash: '',
+      anthropicUploadedAt: '',
     };
   };
 
@@ -146,6 +150,10 @@
     currentImage.width = cropVariant.width;
     currentImage.height = cropVariant.height;
     currentImage.cropRect = cropVariant.crop;
+    currentImage.contentHash = '';
+    currentImage.anthropicFileId = '';
+    currentImage.anthropicContentHash = '';
+    currentImage.anthropicUploadedAt = '';
 
     renderThumbs(prefix);
     await persistImages(prefix);

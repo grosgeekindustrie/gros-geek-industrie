@@ -14,6 +14,94 @@
 // Important : ne pas lancer de refactor brutal ici sans campagne de retest complète.
 
 const CACHEABLE_BLOCK_MIN_CHARS = 4096;
+const ANTHROPIC_PROMPT_CACHING_BETA = 'prompt-caching-2024-07-31';
+const ANTHROPIC_FILES_API_BETA = 'files-api-2025-04-14';
+const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'analyse', 'alt']);
+
+function getAnthropicBetaHeader({ useFiles = false } = {}) {
+  return useFiles
+    ? `${ANTHROPIC_PROMPT_CACHING_BETA},${ANTHROPIC_FILES_API_BETA}`
+    : ANTHROPIC_PROMPT_CACHING_BETA;
+}
+
+function shouldUseImagesForAgent(agent) {
+  const agentId = typeof agent === 'string' ? agent : String(agent?.id || '').trim();
+  return Boolean(agent?.usesImages) || IMAGE_AWARE_AGENT_IDS.has(agentId);
+}
+
+async function ensureAnthropicImageFiles(prefix, apiKey) {
+  const images = Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : [];
+  if (!images.length) return [];
+
+  const uploadCandidates = images
+    .map((image, index) => ({ image, index }))
+    .filter(({ image }) => image?.base64 && (!image.anthropicFileId || !image.contentHash || image.anthropicContentHash !== image.contentHash));
+
+  if (!uploadCandidates.length) {
+    return images.filter((image) => image?.anthropicFileId);
+  }
+
+  const response = await fetch('/anthropic/files/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      images: uploadCandidates.map(({ image, index }) => ({
+        imageId: String(image.id || `image-${index + 1}`),
+        name: String(image.name || `image-${index + 1}`),
+        mediaType: String(image.mediaType || 'image/png'),
+        base64: String(image.base64 || ''),
+        contentHash: String(image.contentHash || ''),
+      })),
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+
+  const uploadedAt = new Date().toISOString();
+  const uploads = Array.isArray(data.images) ? data.images : [];
+  const uploadsById = new Map(uploads.map((entry) => [String(entry.imageId || ''), entry]));
+  let hasMutation = false;
+
+  images.forEach((image, index) => {
+    const imageId = String(image?.id || `image-${index + 1}`);
+    const uploaded = uploadsById.get(imageId);
+    if (!uploaded) return;
+
+    image.contentHash = String(uploaded.contentHash || image.contentHash || '');
+    image.anthropicFileId = String(uploaded.fileId || image.anthropicFileId || '');
+    image.anthropicContentHash = String(uploaded.contentHash || image.anthropicContentHash || '');
+    image.anthropicUploadedAt = uploadedAt;
+    hasMutation = true;
+  });
+
+  if (hasMutation) {
+    try {
+      const normalized = await window.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, images);
+      if (Array.isArray(normalized) && normalized.length) {
+        state.images[prefix] = normalized;
+      }
+    } catch (error) {
+      console.warn(`Persist Anthropic files failed for ${prefix}`, error);
+    }
+  }
+
+  return state.images[prefix].filter((image) => image?.anthropicFileId);
+}
+
+async function buildRequestImageBlocks(prefix, apiKey) {
+  const images = await ensureAnthropicImageFiles(prefix, apiKey);
+  return images.map((image) => ({
+    type: 'image',
+    source: {
+      type: 'file',
+      file_id: image.anthropicFileId,
+    },
+  }));
+}
 
 async function callClaude(agentId, promptData, useImages, retries = 3) {
   const apiKey = document.getElementById('apiKey').value.trim();
@@ -47,11 +135,9 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
   abortControllers[agentId] = controller;
 
-  if (useImages && state.images[prefix].length > 0) {
-    for (const img of state.images[prefix]) {
-      content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.base64 } });
-    }
-  }
+  const imageContentBlocks = useImages && state.images[prefix].length > 0
+    ? await buildRequestImageBlocks(prefix, apiKey)
+    : [];
 
   const normalizedFixedBlocks = fixedContentBlocks
     .map((block, index) => {
@@ -90,11 +176,14 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
       }
       content.push(contentBlock);
     });
+    content.push(...imageContentBlocks);
     content.push({ type: 'text', text: promptText });
   } else if (fixedContent && fixedContent.length >= CACHEABLE_BLOCK_MIN_CHARS) {
     content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
+    content.push(...imageContentBlocks);
     content.push({ type: 'text', text: promptText });
   } else {
+    content.push(...imageContentBlocks);
     content.push({ type: 'text', text: promptText });
   }
 
@@ -107,7 +196,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
+          'anthropic-beta': getAnthropicBetaHeader({ useFiles: imageContentBlocks.length > 0 }),
           'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
@@ -769,7 +858,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
       const prompt = buildPrompt(agent.id, ctx);
       const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
       state.inputs[agent.id] = rawFixed + prompt.filled;
-      const response = await callClaude(agent.id, prompt, agent.usesImages);
+      const response = await callClaude(agent.id, prompt, shouldUseImagesForAgent(agent));
       result = response.text;
       usage = response.usage || null;
     }

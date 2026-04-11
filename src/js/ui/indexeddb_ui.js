@@ -55,6 +55,10 @@
     const height = Number(safeRecord.height) || null;
     const originalWidth = Number(safeRecord.originalWidth) || width;
     const originalHeight = Number(safeRecord.originalHeight) || height;
+    const contentHash = String(safeRecord.contentHash || '');
+    const anthropicFileId = String(safeRecord.anthropicFileId || '');
+    const anthropicContentHash = String(safeRecord.anthropicContentHash || '');
+    const anthropicUploadedAt = String(safeRecord.anthropicUploadedAt || '');
 
     return {
       id: String(safeRecord.id || createImageId()),
@@ -68,6 +72,10 @@
       originalWidth,
       originalHeight,
       cropRect: cloneCropRect(safeRecord.cropRect),
+      contentHash,
+      anthropicFileId,
+      anthropicContentHash,
+      anthropicUploadedAt,
     };
   };
 

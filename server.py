@@ -5,6 +5,8 @@ Double-clic pour lancer. Ouvre http://localhost:8080 automatiquement.
 Ctrl+C pour arrêter.
 """
 
+import base64
+import hashlib
 import http.server
 import json
 import os
@@ -12,7 +14,9 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+import uuid
 import webbrowser
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Timer
 
@@ -21,6 +25,8 @@ ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
 ALLOWED_DIRS = {'prompts', 'biblios'}
 ALLOWED_SUBDIRS = {'tabletop', 'collection'}
+ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
+ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
 
 
 def safe_path(raw: str) -> Path | None:
@@ -39,6 +45,125 @@ def safe_path(raw: str) -> Path | None:
         return p
     except (ValueError, Exception):
         return None
+
+
+def load_anthropic_files_cache() -> dict:
+    if not ANTHROPIC_FILES_CACHE.exists():
+        return {}
+    try:
+        return json.loads(ANTHROPIC_FILES_CACHE.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+
+
+def save_anthropic_files_cache(cache: dict):
+    ANTHROPIC_FILES_CACHE.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def compute_image_content_hash(media_type: str, data: bytes) -> str:
+    digest = hashlib.sha256()
+    digest.update(media_type.encode('utf-8'))
+    digest.update(b'::')
+    digest.update(data)
+    return digest.hexdigest()
+
+
+def guess_filename(name: str, media_type: str) -> str:
+    safe_name = ''.join(c for c in (name or 'image').strip() if c.isalnum() or c in '._- ') or 'image'
+    if '.' in safe_name:
+        return safe_name
+
+    ext_map = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/webp': '.webp',
+        'image/gif': '.gif',
+    }
+    return f"{safe_name}{ext_map.get(media_type, '.bin')}"
+
+
+def build_multipart_file_body(filename: str, media_type: str, payload: bytes, boundary: str) -> bytes:
+    head = (
+        f"--{boundary}\r\n"
+        f"Content-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n"
+        f"Content-Type: {media_type}\r\n\r\n"
+    ).encode('utf-8')
+    tail = f"\r\n--{boundary}--\r\n".encode('utf-8')
+    return head + payload + tail
+
+
+def upload_image_to_anthropic(api_key: str, filename: str, media_type: str, payload: bytes) -> dict:
+    boundary = f"----EtsyPipeline{uuid.uuid4().hex}"
+    body = build_multipart_file_body(filename, media_type, payload, boundary)
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/files',
+        data=body,
+        method='POST',
+        headers={
+            'x-api-key': api_key,
+            'anthropic-version': '2023-06-01',
+            'anthropic-beta': ANTHROPIC_FILES_BETA,
+            'Content-Type': f'multipart/form-data; boundary={boundary}',
+        },
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        raw = resp.read().decode('utf-8')
+    return json.loads(raw)
+
+
+def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
+    cache = load_anthropic_files_cache()
+    resolved = []
+    cache_dirty = False
+
+    for index, image in enumerate(images):
+        image_id = str(image.get('imageId') or f'image-{index + 1}')
+        media_type = str(image.get('mediaType') or 'image/png')
+        base64_payload = str(image.get('base64') or '')
+        if not base64_payload:
+            raise ValueError(f'Image sans contenu base64: {image_id}')
+
+        try:
+            payload = base64.b64decode(base64_payload, validate=True)
+        except Exception as exc:
+            raise ValueError(f'Base64 invalide pour {image_id}') from exc
+
+        content_hash = str(image.get('contentHash') or '').strip() or compute_image_content_hash(media_type, payload)
+        cached = cache.get(content_hash)
+
+        if cached and cached.get('file_id'):
+            resolved.append({
+                'imageId': image_id,
+                'fileId': cached['file_id'],
+                'contentHash': content_hash,
+                'cached': True,
+            })
+            continue
+
+        filename = guess_filename(str(image.get('name') or image_id), media_type)
+        uploaded = upload_image_to_anthropic(api_key, filename, media_type, payload)
+        file_id = uploaded.get('id')
+        if not file_id:
+            raise RuntimeError(f'Réponse Anthropic invalide pour {image_id}')
+
+        cache[content_hash] = {
+            'file_id': file_id,
+            'filename': filename,
+            'media_type': media_type,
+            'updated_at': datetime.now(timezone.utc).isoformat(),
+        }
+        cache_dirty = True
+        resolved.append({
+            'imageId': image_id,
+            'fileId': file_id,
+            'contentHash': content_hash,
+            'cached': False,
+        })
+
+    if cache_dirty:
+        save_anthropic_files_cache(cache)
+
+    return resolved
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -189,6 +314,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split('?')[0]
+
+        if path == '/anthropic/files/upload':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                api_key = str(data.get('apiKey') or '').strip()
+                if not api_key:
+                    self.send_json(400, {'error': 'Clé API manquante'})
+                    return
+
+                images = data.get('images') or []
+                if not isinstance(images, list) or not images:
+                    self.send_json(400, {'error': 'Aucune image à uploader'})
+                    return
+
+                resolved = resolve_uploaded_images(api_key, images)
+                self.send_json(200, {'ok': True, 'images': resolved, 'count': len(resolved)})
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                raw_error = e.read().decode('utf-8', errors='replace') if hasattr(e, 'read') else ''
+                try:
+                    payload = json.loads(raw_error) if raw_error else {}
+                except Exception:
+                    payload = {}
+                self.send_json(e.code, {'error': payload.get('error', {}).get('message') or raw_error or str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
 
         if path in ('/batch/export', '/solo/export'):
             length = int(self.headers.get('Content-Length', 0))
