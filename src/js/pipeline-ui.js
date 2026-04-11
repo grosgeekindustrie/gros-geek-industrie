@@ -629,7 +629,9 @@ async function runTitreExplorer() {
   const prompt = buildPrompt('titre', ctx);
   const explorerPrompt = prompt.filled + '\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.';
   try {
-    const { text: result } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);
+    const { text: result, usage } = await callClaude('titre', { filled: explorerPrompt, fixedContent: prompt.fixedContent }, false);
+    showAgentCost('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
+    syncCacheIndicator(usage);
     const lines = result.split('\n').filter(l => l.match(/^\d+\.\s+/));
     const titres = lines.map(l => {
       const text = l.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();

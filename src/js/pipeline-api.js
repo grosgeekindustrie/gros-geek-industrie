@@ -635,7 +635,9 @@ async function runOrchestrator(agentId, output) {
   const orchCtx = { ...ctx, agent_id: agentId, tentative: attempt, output_to_validate: output };
   const prompt = buildPrompt('orchestrateur', orchCtx);
   try {
-    const { text: result } = await callClaude('orchestrateur', prompt.filled, false, 2);
+    const { text: result, usage } = await callClaude('orchestrateur', prompt.filled, false, 2);
+    showAgentCost('orchestrateur', usage, { prefix: pfx(), source: 'orchestrateur' });
+    syncCacheIndicator(usage);
     const clean = result.replace(/```json|```/g, '').trim();
     return JSON.parse(clean);
   } catch (e) {
@@ -1323,6 +1325,8 @@ async function runCollectionIrisSemanticSearch() {
 
     const response = await callClaude('iris', prompt, false);
     state.outputs.iris = response.text;
+    showAgentCost('iris', response.usage || null, { prefix: 'col', source: 'iris' });
+    syncCacheIndicator(response.usage || null);
 
     if (output) output.textContent = response.text;
     showToast('Recherche sémantique Iris générée ✓');
@@ -1416,7 +1420,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     }
 
     out.textContent = result;
-    showAgentCost(agent.id, usage);
+    showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
     syncCacheIndicator(usage);
     if (agent.id === 'tags') buildTagsUI(result);
     if (state.orchestrateurActif) {
@@ -1705,7 +1709,8 @@ async function runLeoAgent(p) {
     if (out) out.textContent = result;
     if (card) card.className = 'agent-card done';
     if (stat) { stat.className = 'agent-status s-done'; stat.textContent = '✓ done'; }
-    showAgentCost('social', usage);
+    showAgentCost('social', usage, { prefix: p, source: 'social' });
+    syncCacheIndicator(usage);
     displaySocialOutput(result, p);
     showToast('Posts générés ✓');
   } catch (err) {
@@ -1746,7 +1751,8 @@ async function runCamilleAgent(p) {
     if (out) out.textContent = result;
     if (card) card.className = 'agent-card done';
     if (stat) { stat.className = 'agent-status s-done'; stat.textContent = '✓ done'; }
-    showAgentCost('camille', usage);
+    showAgentCost('camille', usage, { prefix: p, source: 'camille' });
+    syncCacheIndicator(usage);
     displayCamilleOutput(result, p);
     showToast('Pinterest généré ✓');
   } catch (err) {
@@ -2093,55 +2099,318 @@ function copyAll() {
 
 // MONITORING COÛTS
 // ═══════════════════════════════════════════════════════════
-function showAgentCost(agentId, usage) {
-  if (!usage) return;
-  const isHaiku = (AGENT_MODELS[agentId] || '').includes('haiku');
-  const PRICE = isHaiku ? { input:0.80/1_000_000, cacheWrite:1.00/1_000_000, cacheRead:0.08/1_000_000, output:4.00/1_000_000 }
-                        : { input:3.00/1_000_000, cacheWrite:3.75/1_000_000, cacheRead:0.30/1_000_000, output:15.00/1_000_000 };
-  const inputTok   = usage.input_tokens || 0;
-  const outputTok  = usage.output_tokens || 0;
-  const cacheRead  = usage.cache_read_input_tokens || 0;
-  const cacheWrite = usage.cache_creation_input_tokens || 0;
-  const normalIn   = inputTok - cacheRead - cacheWrite;
-  const cost = (normalIn * PRICE.input) + (cacheWrite * PRICE.cacheWrite) + (cacheRead * PRICE.cacheRead) + (outputTok * PRICE.output);
-  const costCents = cost * 100;
-  state.sessionCost += costCents;
-  state.agentUsage[agentId] = { inputTok, outputTok, cacheRead, cacheWrite, normalIn, costCents };
-  const existing = document.getElementById(`cost-badge-${agentId}`);
-  if (existing) existing.remove();
-  const badge = document.createElement('div');
-  badge.id = `cost-badge-${agentId}`;
-  badge.style.cssText = 'margin:4px 0 6px;padding:4px 10px;border-radius:4px;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;';
-  const parts = [`📥 in: ${inputTok.toLocaleString()} tok`, `📤 out: ${outputTok.toLocaleString()} tok`];
-  if (cacheWrite > 0) parts.push(`✍️ écrit: ${cacheWrite.toLocaleString()} tok`);
-  if (cacheRead > 0) parts.push(`⚡ lu: ${cacheRead.toLocaleString()} tok`);
-  parts.push(`💰 ${costCents.toFixed(3)}¢`);
-  badge.innerHTML = parts.join('<span style="opacity:.3;">|</span>');
-  const body = document.getElementById(`${pfx()}-body-${agentId}`);
-  if (body) body.insertBefore(badge, body.firstChild);
+function getCostRatesForAgent(agentId = '') {
+  const model = String(AGENT_MODELS[agentId] || '');
+  const isHaiku = model.includes('haiku');
+
+  return isHaiku
+    ? { input: 0.80 / 1_000_000, cacheWrite: 1.00 / 1_000_000, cacheRead: 0.08 / 1_000_000, output: 4.00 / 1_000_000 }
+    : { input: 3.00 / 1_000_000, cacheWrite: 3.75 / 1_000_000, cacheRead: 0.30 / 1_000_000, output: 15.00 / 1_000_000 };
+}
+
+function toSafeTokenCount(value) {
+  return Math.max(0, Number(value) || 0);
+}
+
+function getCostTrackingState() {
+  state.costTracking = state.costTracking || {
+    entries: [],
+    nextOrder: 1,
+    aggregatesByKey: {},
+    totals: {
+      inputTok: 0,
+      outputTok: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      costCents: 0,
+    },
+  };
+  state.agentUsage = state.agentUsage || {};
+  state.sessionCost = Number(state.sessionCost) || 0;
+
+  return state.costTracking;
+}
+
+function getCostModeLabel(prefix = '') {
+  return prefix === 'col' ? 'Collection' : 'Tabletop';
+}
+
+function getCostModeShortLabel(prefix = '') {
+  return prefix === 'col' ? 'COL' : 'TT';
+}
+
+function getCostAgentLabel(prefix = '', agentId = '') {
+  const labelsByPrefix = {
+    tt: {
+      analyse: '01 Analyse',
+      alt: '02 Alt',
+      marche: '03 Marché',
+      tags: '04 Tags',
+      titre: '05 Titres',
+      titre_explorer: '05b Titre Explorer',
+      description: '06 Description',
+      social: '07 Léo',
+      camille: '08 Camille',
+      orchestrateur: 'QA Felix',
+    },
+    col: {
+      analyse: '01 Jules',
+      marche: '02 Luna',
+      tags: '03 Axel',
+      titre: '04 Nova',
+      titre_explorer: '04b Nova Explorer',
+      description: '05 Eden',
+      alt: '05b Jules ALT',
+      social: '06 Theo',
+      camille: '07 Zoe',
+      iris: 'Iris',
+      orchestrateur: 'QA Rex',
+    },
+  };
+
+  return labelsByPrefix[prefix]?.[agentId] || agentId;
+}
+
+function buildUsageCostSnapshot(agentId, usage = {}) {
+  const rates = getCostRatesForAgent(agentId);
+  const inputTok = toSafeTokenCount(usage.input_tokens);
+  const outputTok = toSafeTokenCount(usage.output_tokens);
+  const cacheRead = toSafeTokenCount(usage.cache_read_input_tokens);
+  const cacheWrite = toSafeTokenCount(usage.cache_creation_input_tokens);
+  const inputCostCents = inputTok * rates.input * 100;
+  const cacheWriteCostCents = cacheWrite * rates.cacheWrite * 100;
+  const cacheReadCostCents = cacheRead * rates.cacheRead * 100;
+  const outputCostCents = outputTok * rates.output * 100;
+  const costCents = inputCostCents + cacheWriteCostCents + cacheReadCostCents + outputCostCents;
+
+  return {
+    inputTok,
+    outputTok,
+    cacheRead,
+    cacheWrite,
+    inputCostCents,
+    cacheWriteCostCents,
+    cacheReadCostCents,
+    outputCostCents,
+    costCents,
+  };
+}
+
+function getAgentCostAggregateKey(prefix = '', agentId = '') {
+  return `${prefix || 'tt'}::${agentId}`;
+}
+
+function recomputeCostTracking() {
+  const tracking = getCostTrackingState();
+  const aggregatesByKey = {};
+  const totals = {
+    inputTok: 0,
+    outputTok: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    costCents: 0,
+  };
+
+  tracking.entries.forEach((entry) => {
+    totals.inputTok += entry.inputTok;
+    totals.outputTok += entry.outputTok;
+    totals.cacheRead += entry.cacheRead;
+    totals.cacheWrite += entry.cacheWrite;
+    totals.costCents += entry.costCents;
+
+    const aggregateKey = getAgentCostAggregateKey(entry.prefix, entry.agentId);
+    if (!aggregatesByKey[aggregateKey]) {
+      aggregatesByKey[aggregateKey] = {
+        key: aggregateKey,
+        prefix: entry.prefix,
+        mode: entry.mode,
+        agentId: entry.agentId,
+        label: entry.label,
+        source: entry.source,
+        executionCount: 0,
+        inputTok: 0,
+        outputTok: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        costCents: 0,
+        firstOrder: entry.order,
+        lastOrder: entry.order,
+        lastEntry: entry,
+      };
+    }
+
+    const aggregate = aggregatesByKey[aggregateKey];
+    aggregate.executionCount += 1;
+    aggregate.inputTok += entry.inputTok;
+    aggregate.outputTok += entry.outputTok;
+    aggregate.cacheRead += entry.cacheRead;
+    aggregate.cacheWrite += entry.cacheWrite;
+    aggregate.costCents += entry.costCents;
+    aggregate.lastOrder = entry.order;
+    aggregate.lastEntry = entry;
+  });
+
+  tracking.aggregatesByKey = aggregatesByKey;
+  tracking.totals = totals;
+  state.sessionCost = totals.costCents;
+  state.agentUsage = Object.fromEntries(
+    Object.entries(aggregatesByKey).map(([key, aggregate]) => [key, { ...aggregate }]),
+  );
+
+  return {
+    tracking,
+    aggregatesByKey,
+    totals,
+  };
+}
+
+function refreshSessionCostDisplay() {
+  const { totals } = recomputeCostTracking();
   const sessionEl = document.getElementById('session-cost');
-  if (sessionEl) {
-    sessionEl.textContent = `💰 ${state.sessionCost.toFixed(2)}¢`;
-    if (state.sessionCost > 10) sessionEl.style.color = 'var(--accent)';
-    if (state.sessionCost > 20) sessionEl.style.color = 'var(--error)';
-  }
+  if (!sessionEl) return;
+
+  sessionEl.textContent = `💰 ${totals.costCents.toFixed(2)}¢`;
+  sessionEl.style.color = '';
+  if (totals.costCents > 10) sessionEl.style.color = 'var(--accent)';
+  if (totals.costCents > 20) sessionEl.style.color = 'var(--error)';
+}
+
+function getAgentCostBodyElement(prefix, agentId) {
+  return document.getElementById(`${prefix}-body-${agentId}`) || document.getElementById(`body-${agentId}-${prefix}`);
+}
+
+function renderAgentCostBadge(prefix, agentId) {
+  const { aggregatesByKey } = recomputeCostTracking();
+  const aggregate = aggregatesByKey[getAgentCostAggregateKey(prefix, agentId)];
+  const body = getAgentCostBodyElement(prefix, agentId);
+  if (!aggregate || !body) return;
+
+  const badgeId = `cost-badge-${prefix}-${agentId}`;
+  const existing = document.getElementById(badgeId);
+  if (existing) existing.remove();
+
+  const badge = document.createElement('div');
+  badge.id = badgeId;
+  badge.style.cssText = 'margin:4px 0 6px;padding:4px 10px;border-radius:4px;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap;';
+
+  const lastEntry = aggregate.lastEntry || aggregate;
+  const parts = [
+    `Σ ${aggregate.costCents.toFixed(3)}¢`,
+    `run ${lastEntry.costCents.toFixed(3)}¢`,
+    `x${aggregate.executionCount}`,
+    `📥 ${lastEntry.inputTok.toLocaleString()} tok`,
+    `📤 ${lastEntry.outputTok.toLocaleString()} tok`,
+  ];
+
+  if (lastEntry.cacheWrite > 0) parts.push(`✍️ ${lastEntry.cacheWrite.toLocaleString()} tok`);
+  if (lastEntry.cacheRead > 0) parts.push(`⚡ ${lastEntry.cacheRead.toLocaleString()} tok`);
+
+  badge.innerHTML = parts.join('<span style="opacity:.3;">|</span>');
+  badge.title = [
+    `${getCostAgentLabel(prefix, agentId)} · ${getCostModeLabel(prefix)}`,
+    `Cumul session agent: ${aggregate.costCents.toFixed(3)}¢`,
+    `Dernière exécution: ${lastEntry.costCents.toFixed(3)}¢`,
+    `Exécutions: ${aggregate.executionCount}`,
+  ].join(' · ');
+  body.insertBefore(badge, body.firstChild);
+}
+
+function recordSessionCostEvent(agentId, usage, options = {}) {
+  if (!usage) return null;
+
+  const resolvedPrefix = String(options.prefix || pfx());
+  const resolvedAgentId = String(agentId || '').trim();
+  if (!resolvedAgentId) return null;
+
+  const tracking = getCostTrackingState();
+  const snapshot = buildUsageCostSnapshot(resolvedAgentId, usage);
+  const entry = {
+    order: tracking.nextOrder++,
+    prefix: resolvedPrefix,
+    mode: getPipelineLaunchMode(resolvedPrefix),
+    agentId: resolvedAgentId,
+    label: getCostAgentLabel(resolvedPrefix, resolvedAgentId),
+    source: String(options.source || 'agent'),
+    timestamp: new Date().toISOString(),
+    ...snapshot,
+  };
+
+  tracking.entries.push(entry);
+  recomputeCostTracking();
+  return entry;
+}
+
+function showAgentCost(agentId, usage, options = {}) {
+  const entry = recordSessionCostEvent(agentId, usage, options);
+  if (!entry) return;
+
+  refreshSessionCostDisplay();
+  renderAgentCostBadge(entry.prefix, entry.agentId);
 }
 
 function copyTokenReport() {
-  const isTT = currentMode === 'tabletop';
-  const AGENT_LABELS = isTT
-    ? { analyse:'01 Analyse', alt:'02 Alt', marche:'03 Marché', tags:'04 Tags', titre:'05 Titres', description:'06 Description', social:'07 Léo', camille:'08 Camille', orchestrateur:'QA Felix' }
-    : { analyse:'01 Jules', marche:'02 Luna', tags:'03 Axel', titre:'04 Nova', description:'05 Eden', social:'06 Theo', camille:'07 Zoe', iris:'Iris', orchestrateur:'QA Rex' };
-  const lines = ['═══ RAPPORT SESSION ═══'];
-  let totalIn = 0, totalOut = 0, totalCache = 0, totalCost = 0;
-  for (const [id, label] of Object.entries(AGENT_LABELS)) {
-    const u = state.agentUsage[id]; if (!u) continue;
-    const cacheStr = u.cacheRead > 0 ? ` ⚡${u.cacheRead.toLocaleString()}` : '';
-    lines.push(`${label.padEnd(16)}: in ${String(u.inputTok).padStart(6)} | out ${String(u.outputTok).padStart(5)} | ${u.costCents.toFixed(3)}¢${cacheStr}`);
-    totalIn += u.inputTok; totalOut += u.outputTok; totalCache += u.cacheRead; totalCost += u.costCents;
+  const { tracking, totals, aggregatesByKey } = recomputeCostTracking();
+  const entries = Array.isArray(tracking.entries) ? tracking.entries : [];
+  if (!entries.length) {
+    showToast('Aucun coût session à copier', '#ff4757');
+    return;
   }
+
+  const lines = [
+    '═══ RAPPORT SESSION COÛTS ═══',
+    `Événements: ${entries.length}`,
+    `Total session: ${totals.costCents.toFixed(3)}¢`,
+    `Input normal: ${totals.inputTok.toLocaleString()} tok`,
+    `Cache write: ${totals.cacheWrite.toLocaleString()} tok`,
+    `Cache read: ${totals.cacheRead.toLocaleString()} tok`,
+    `Output: ${totals.outputTok.toLocaleString()} tok`,
+    '',
+    '── Agrégat par agent ──',
+  ];
+
+  Object.values(aggregatesByKey)
+    .sort((left, right) => left.firstOrder - right.firstOrder)
+    .forEach((aggregate) => {
+      const cacheParts = [];
+      if (aggregate.cacheWrite > 0) cacheParts.push(`✍️ ${aggregate.cacheWrite.toLocaleString()}`);
+      if (aggregate.cacheRead > 0) cacheParts.push(`⚡ ${aggregate.cacheRead.toLocaleString()}`);
+      const cacheLabel = cacheParts.length ? ` | ${cacheParts.join(' | ')}` : '';
+
+      lines.push(
+        `${getCostModeShortLabel(aggregate.prefix)} · ${aggregate.label.padEnd(18)} x${aggregate.executionCount}`
+        + ` | in ${String(aggregate.inputTok).padStart(6)}`
+        + ` | out ${String(aggregate.outputTok).padStart(5)}`
+        + cacheLabel
+        + ` | ${aggregate.costCents.toFixed(3)}¢`,
+      );
+    });
+
   lines.push('──────────────────────────────────────');
-  lines.push(`TOTAL           : in ${String(totalIn).padStart(6)} | out ${String(totalOut).padStart(5)} | ${totalCost.toFixed(3)}¢`);
+  lines.push(
+    `TOTAL SESSION   : in ${String(totals.inputTok).padStart(6)} | out ${String(totals.outputTok).padStart(5)}`
+    + ` | ✍️ ${totals.cacheWrite.toLocaleString()}`
+    + ` | ⚡ ${totals.cacheRead.toLocaleString()}`
+    + ` | ${totals.costCents.toFixed(3)}¢`,
+  );
+  lines.push('');
+  lines.push('── Ledger détaillé ──');
+
+  entries.forEach((entry) => {
+    const cacheParts = [];
+    if (entry.cacheWrite > 0) cacheParts.push(`✍️ ${entry.cacheWrite.toLocaleString()}`);
+    if (entry.cacheRead > 0) cacheParts.push(`⚡ ${entry.cacheRead.toLocaleString()}`);
+    const cacheLabel = cacheParts.length ? ` | ${cacheParts.join(' | ')}` : '';
+
+    lines.push(
+      `#${entry.order} ${getCostModeShortLabel(entry.prefix)} · ${entry.label}`
+      + ` [${entry.source}]`
+      + ` | in ${entry.inputTok.toLocaleString()}`
+      + ` | out ${entry.outputTok.toLocaleString()}`
+      + cacheLabel
+      + ` | ${entry.costCents.toFixed(3)}¢`,
+    );
+  });
+
   lines.push(`\nGénéré le ${new Date().toLocaleString('fr-FR')}`);
   navigator.clipboard.writeText(lines.join('\n'));
   showToast('Rapport copié ✓');
