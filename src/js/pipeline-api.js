@@ -2171,6 +2171,68 @@ function getCostAgentLabel(prefix = '', agentId = '') {
   return labelsByPrefix[prefix]?.[agentId] || agentId;
 }
 
+
+function getCostModelAgentId(agentId = '') {
+  if (agentId === 'titre_explorer') return 'titre';
+  return agentId;
+}
+
+function getCostModelName(agentId = '') {
+  return String(AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
+}
+
+function getCostEntryType(entry = {}) {
+  if (entry.isWarmupEvent) return 'warmup';
+  if (entry.source === 'orchestrateur' || entry.agentId === 'orchestrateur') return 'orchestrateur';
+  if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
+  if (entry.source === 'social' || entry.source === 'camille') return 'social';
+  if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
+  if (entry.source === 'rerun') return 'rerun';
+  if (entry.source === 'pipeline') return 'pipeline';
+  return 'other';
+}
+
+function getCostEntryTypeLabel(entry = {}) {
+  const labels = {
+    pipeline: 'pipeline agent',
+    rerun: 'rerun',
+    orchestrateur: 'orchestrateur',
+    iris: 'iris',
+    social: 'social',
+    explorer: 'explorer',
+    warmup: 'warmup',
+    other: 'autre',
+  };
+
+  return labels[getCostEntryType(entry)] || 'autre';
+}
+
+function getCostEntryTotalTokens(entry = {}) {
+  return toSafeTokenCount(entry.inputTok) + toSafeTokenCount(entry.cacheWrite) + toSafeTokenCount(entry.cacheRead) + toSafeTokenCount(entry.outputTok);
+}
+
+function buildCostTypeTotals(entries = []) {
+  const totals = {
+    pipeline: { count: 0, costCents: 0 },
+    rerun: { count: 0, costCents: 0 },
+    iris: { count: 0, costCents: 0 },
+    warmup: { count: 0, costCents: 0 },
+    orchestrateur: { count: 0, costCents: 0 },
+    social: { count: 0, costCents: 0 },
+    explorer: { count: 0, costCents: 0 },
+    other: { count: 0, costCents: 0 },
+  };
+
+  entries.forEach((entry) => {
+    const type = getCostEntryType(entry);
+    if (!totals[type]) totals[type] = { count: 0, costCents: 0 };
+    totals[type].count += 1;
+    totals[type].costCents += Number(entry.costCents) || 0;
+  });
+
+  return totals;
+}
+
 function buildUsageCostSnapshot(agentId, usage = {}) {
   const rates = getCostRatesForAgent(agentId);
   const inputTok = toSafeTokenCount(usage.input_tokens);
@@ -2265,7 +2327,7 @@ function recomputeCostTracking() {
 }
 
 function refreshSessionCostDisplay() {
-  const { totals } = recomputeCostTracking();
+  const { tracking, totals } = recomputeCostTracking();
   const sessionEl = document.getElementById('session-cost');
   if (!sessionEl) return;
 
@@ -2273,7 +2335,14 @@ function refreshSessionCostDisplay() {
   sessionEl.style.color = '';
   if (totals.costCents > 10) sessionEl.style.color = 'var(--accent)';
   if (totals.costCents > 20) sessionEl.style.color = 'var(--error)';
+  sessionEl.title = [
+    'Cliquer pour copier le rapport coûts/tokens session',
+    `Total session : ${totals.costCents.toFixed(3)}¢`,
+    `Événements : ${Array.isArray(tracking.entries) ? tracking.entries.length : 0}`,
+  ].join(' · ');
+  sessionEl.setAttribute('aria-label', `Copier le rapport coûts/tokens session · total ${totals.costCents.toFixed(2)} cents`);
 }
+
 
 function getAgentCostBodyElement(prefix, agentId) {
   return document.getElementById(`${prefix}-body-${agentId}`) || document.getElementById(`body-${agentId}-${prefix}`);
@@ -2324,14 +2393,33 @@ function recordSessionCostEvent(agentId, usage, options = {}) {
 
   const tracking = getCostTrackingState();
   const snapshot = buildUsageCostSnapshot(resolvedAgentId, usage);
+  const activeCacheRun = getActiveCacheDebugRun(resolvedPrefix);
+  const activeCacheEvents = Array.isArray(activeCacheRun?.events) ? activeCacheRun.events : [];
+  const matchingCacheEvents = activeCacheEvents.filter((event) => {
+    return event.agentId === resolvedAgentId || event.displayStepId === resolvedAgentId;
+  });
+  const lastCacheEvent = matchingCacheEvents[matchingCacheEvents.length - 1] || null;
+  const warmupDetails = getCacheWarmupDetails(activeCacheEvents);
+  const cacheStatus = lastCacheEvent?.status || (snapshot.cacheRead > 0 ? 'hit' : snapshot.cacheWrite > 0 ? 'write' : 'miss');
+  const isWarmupEvent = Boolean(
+    String(options.source || 'agent') === 'pipeline'
+    && lastCacheEvent
+    && lastCacheEvent.status === 'write'
+    && warmupDetails.firstWriteOrder === lastCacheEvent.order
+  );
   const entry = {
     order: tracking.nextOrder++,
     prefix: resolvedPrefix,
     mode: getPipelineLaunchMode(resolvedPrefix),
     agentId: resolvedAgentId,
     label: getCostAgentLabel(resolvedPrefix, resolvedAgentId),
+    model: getCostModelName(resolvedAgentId),
     source: String(options.source || 'agent'),
     timestamp: new Date().toISOString(),
+    totalTokens: getCostEntryTotalTokens(snapshot),
+    cacheStatus,
+    isWarmupEvent,
+    cacheEventOrder: lastCacheEvent?.order || 0,
     ...snapshot,
   };
 
@@ -2339,6 +2427,7 @@ function recordSessionCostEvent(agentId, usage, options = {}) {
   recomputeCostTracking();
   return entry;
 }
+
 
 function showAgentCost(agentId, usage, options = {}) {
   const entry = recordSessionCostEvent(agentId, usage, options);
@@ -2356,65 +2445,106 @@ function copyTokenReport() {
     return;
   }
 
+  const categoryTotals = buildCostTypeTotals(entries);
+  const linesSum = entries.reduce((sum, entry) => sum + (Number(entry.costCents) || 0), 0);
+  const topEntries = [...entries].sort((left, right) => right.costCents - left.costCents).slice(0, 3);
+  const latestRuns = ['tt', 'col']
+    .map((prefix) => getLatestCacheDebugRun(prefix))
+    .filter(Boolean);
+  const warmupSummaries = latestRuns.length
+    ? latestRuns.map((run) => {
+        const details = getCacheWarmupDetails(run.events || []);
+        return `${getCostModeShortLabel(run.prefix)} ${details.enabled ? `ON (#${details.firstWriteOrder} → #${details.firstHitOrder})` : 'OFF'}`;
+      }).join(' | ')
+    : '—';
+  const orchestrateurState = categoryTotals.orchestrateur.count > 0
+    ? `${categoryTotals.orchestrateur.count} appel(s)`
+    : '0 appel (OFF ou non exécuté)';
+
   const lines = [
-    '═══ RAPPORT SESSION COÛTS ═══',
-    `Événements: ${entries.length}`,
-    `Total session: ${totals.costCents.toFixed(3)}¢`,
-    `Input normal: ${totals.inputTok.toLocaleString()} tok`,
+    '═══ RAPPORT SESSION COÛTS / TOKENS ═══',
+    `Généré: ${new Date().toLocaleString('fr-FR')}`,
+    `Événements économiques: ${entries.length}`,
+    `Total session (ledger): ${totals.costCents.toFixed(3)}¢`,
+    `Somme des lignes: ${linesSum.toFixed(3)}¢`,
+    `Écart ledger/somme: ${(totals.costCents - linesSum).toFixed(6)}¢`,
+    `Input: ${totals.inputTok.toLocaleString()} tok`,
     `Cache write: ${totals.cacheWrite.toLocaleString()} tok`,
     `Cache read: ${totals.cacheRead.toLocaleString()} tok`,
     `Output: ${totals.outputTok.toLocaleString()} tok`,
     '',
-    '── Agrégat par agent ──',
+    '── Totaux par périmètre ──',
+    `Pipeline standard: ${categoryTotals.pipeline.costCents.toFixed(3)}¢ (${categoryTotals.pipeline.count} événement(s))`,
+    `Warmup identifiable: ${categoryTotals.warmup.costCents.toFixed(3)}¢ (${categoryTotals.warmup.count} événement(s), sous-ensemble pipeline)`,
+    `Reruns: ${categoryTotals.rerun.costCents.toFixed(3)}¢ (${categoryTotals.rerun.count} événement(s))`,
+    `Iris: ${categoryTotals.iris.costCents.toFixed(3)}¢ (${categoryTotals.iris.count} événement(s))`,
+    `Orchestrateur: ${categoryTotals.orchestrateur.costCents.toFixed(3)}¢ (${orchestrateurState})`,
+    `Social: ${categoryTotals.social.costCents.toFixed(3)}¢ (${categoryTotals.social.count} événement(s))`,
+    `Explorer: ${categoryTotals.explorer.costCents.toFixed(3)}¢ (${categoryTotals.explorer.count} événement(s))`,
+    `Autre: ${categoryTotals.other.costCents.toFixed(3)}¢ (${categoryTotals.other.count} événement(s))`,
+    `Warmup cache détecté: ${warmupSummaries}`,
+    '',
+    '── Top 3 des postes les plus coûteux ──',
   ];
+
+  topEntries.forEach((entry, index) => {
+    lines.push(
+      `${index + 1}. #${entry.order} ${getCostModeShortLabel(entry.prefix)} · ${entry.label}`
+      + ` | ${entry.costCents.toFixed(3)}¢`
+      + ` | ${getCostEntryTypeLabel(entry)}`
+      + ` | ${entry.model}`,
+    );
+  });
+
+  lines.push('');
+  lines.push('── Agrégat par agent ──');
 
   Object.values(aggregatesByKey)
     .sort((left, right) => left.firstOrder - right.firstOrder)
     .forEach((aggregate) => {
+      const lastEntry = aggregate.lastEntry || aggregate;
       const cacheParts = [];
-      if (aggregate.cacheWrite > 0) cacheParts.push(`✍️ ${aggregate.cacheWrite.toLocaleString()}`);
-      if (aggregate.cacheRead > 0) cacheParts.push(`⚡ ${aggregate.cacheRead.toLocaleString()}`);
+      if (aggregate.cacheWrite > 0) cacheParts.push(`write ${aggregate.cacheWrite.toLocaleString()}`);
+      if (aggregate.cacheRead > 0) cacheParts.push(`read ${aggregate.cacheRead.toLocaleString()}`);
       const cacheLabel = cacheParts.length ? ` | ${cacheParts.join(' | ')}` : '';
+      const model = getCostModelName(aggregate.agentId);
 
       lines.push(
-        `${getCostModeShortLabel(aggregate.prefix)} · ${aggregate.label.padEnd(18)} x${aggregate.executionCount}`
-        + ` | in ${String(aggregate.inputTok).padStart(6)}`
-        + ` | out ${String(aggregate.outputTok).padStart(5)}`
+        `${getCostModeShortLabel(aggregate.prefix)} · ${aggregate.label} | ${model} | x${aggregate.executionCount}`
+        + ` | ${aggregate.costCents.toFixed(3)}¢`
+        + ` | in ${aggregate.inputTok.toLocaleString()}`
+        + ` | out ${aggregate.outputTok.toLocaleString()}`
         + cacheLabel
-        + ` | ${aggregate.costCents.toFixed(3)}¢`,
+        + ` | dernier type ${getCostEntryTypeLabel(lastEntry)}`,
       );
     });
 
-  lines.push('──────────────────────────────────────');
-  lines.push(
-    `TOTAL SESSION   : in ${String(totals.inputTok).padStart(6)} | out ${String(totals.outputTok).padStart(5)}`
-    + ` | ✍️ ${totals.cacheWrite.toLocaleString()}`
-    + ` | ⚡ ${totals.cacheRead.toLocaleString()}`
-    + ` | ${totals.costCents.toFixed(3)}¢`,
-  );
   lines.push('');
   lines.push('── Ledger détaillé ──');
 
   entries.forEach((entry) => {
-    const cacheParts = [];
-    if (entry.cacheWrite > 0) cacheParts.push(`✍️ ${entry.cacheWrite.toLocaleString()}`);
-    if (entry.cacheRead > 0) cacheParts.push(`⚡ ${entry.cacheRead.toLocaleString()}`);
-    const cacheLabel = cacheParts.length ? ` | ${cacheParts.join(' | ')}` : '';
-
     lines.push(
-      `#${entry.order} ${getCostModeShortLabel(entry.prefix)} · ${entry.label}`
-      + ` [${entry.source}]`
-      + ` | in ${entry.inputTok.toLocaleString()}`
-      + ` | out ${entry.outputTok.toLocaleString()}`
-      + cacheLabel
-      + ` | ${entry.costCents.toFixed(3)}¢`,
+      `#${entry.order} | ${entry.timestamp} | ${getCostModeShortLabel(entry.prefix)} | ${entry.label}`
+      + ` | ${getCostEntryTypeLabel(entry)}`
+      + ` | ${entry.model}`
+      + ` | source ${entry.source}`,
+    );
+    lines.push(
+      `   coût: ${entry.costCents.toFixed(3)}¢`
+      + ` (in ${entry.inputCostCents.toFixed(3)}¢ | write ${entry.cacheWriteCostCents.toFixed(3)}¢ | read ${entry.cacheReadCostCents.toFixed(3)}¢ | out ${entry.outputCostCents.toFixed(3)}¢)`,
+    );
+    lines.push(
+      `   tok : input ${entry.inputTok.toLocaleString()} | cache write ${entry.cacheWrite.toLocaleString()} | cache read ${entry.cacheRead.toLocaleString()} | output ${entry.outputTok.toLocaleString()} | total ${entry.totalTokens.toLocaleString()}`,
+    );
+    lines.push(
+      `   cache: ${entry.cacheStatus || '—'} | warmup: ${entry.isWarmupEvent ? 'oui' : 'non'} | contexte: ${entry.mode} / ${entry.prefix}`,
     );
   });
 
-  lines.push(`\nGénéré le ${new Date().toLocaleString('fr-FR')}`);
   navigator.clipboard.writeText(lines.join('\n'));
-  showToast('Rapport copié ✓');
+  showToast('Rapport coûts/tokens copié ✓');
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // PERSISTANCE FORMULAIRE

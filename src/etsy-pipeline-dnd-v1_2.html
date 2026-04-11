@@ -26,7 +26,7 @@
   <div class="app-header-left">
     <span class="app-logo" title="Annuler et revenir à l'accueil" onclick="cancelToHome()">🎲</span>
     <span class="hbadge">v1.2</span>
-    <span id="session-cost" class="app-cost" title="Coût estimé de la session">💰 0.00¢</span>
+    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" title="Cliquer pour copier le rapport coûts/tokens session" onclick="copyTokenReport()" aria-label="Copier le rapport coûts/tokens session">💰 0.00¢</button>
     <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" title="Cliquer pour copier le rapport cache complet" onclick="copyCacheDebugReport()" aria-label="Copier le rapport cache complet">🧠 cache —</button>
   </div>
   <!-- CENTER -->
