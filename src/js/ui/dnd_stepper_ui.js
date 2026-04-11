@@ -31,7 +31,7 @@
     },
     {
       title: 'Lancement',
-      subtitle: 'Lance tout le pipeline ou rejoue la chaîne jusqu’à l’étape cible voulue.',
+      subtitle: 'Lance le pipeline complet et suis l’état, le cache et le coût de la session.',
       footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
     },
   ];

@@ -215,11 +215,11 @@ function getPipelineTargetStepsForPrefix(prefix) {
   }));
 }
 
-function getPipelineTargetStepMetaForPrefix(prefix, targetStepId = '') {
+function getPipelineTargetStepMetaForPrefix(prefix, stepId = '') {
   const mode = getPipelineLaunchMode(prefix);
 
   if (typeof getPipelineTargetStepMeta === 'function') {
-    return getPipelineTargetStepMeta(mode, targetStepId);
+    return getPipelineTargetStepMeta(mode, stepId);
   }
 
   return null;
@@ -235,7 +235,7 @@ function getPipelineRuntimeAgentIdsForPrefix(prefix) {
   return getPipelineAgents().map((agent) => agent.id);
 }
 
-function getPipelineRuntimeAgentsForTarget(prefix, _targetStepId = '') {
+function getPipelineRuntimeAgentsForTarget(prefix) {
   const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix);
   const availableAgents = getPipelineAgents();
   const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
@@ -570,7 +570,7 @@ function appendPipelineRunEntry(prefix, agentId, content) {
 if (typeof state !== 'undefined') getPipelineRunState('tt');
 if (typeof state !== 'undefined') getPipelineRunState('col');
 
-function getResolvedTargetStep(prefix, _targetStepId = '') {
+function getResolvedTargetStep(prefix) {
   const mode = getPipelineLaunchMode(prefix);
 
   if (typeof getPipelineFinalTargetStepId === 'function') {
@@ -779,11 +779,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
 async function startPipeline(p, _options = {}) {
-  const launchState = getPipelineLaunchState(p);
-  const resolvedTargetStepId = getResolvedTargetStep(p);
-  const targetStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedTargetStepId);
+  const resolvedStepId = getResolvedTargetStep(p);
+  const finalStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedStepId);
   const pipelineAgents = getPipelineRuntimeAgentsForTarget(p);
-  const targetAgentId = targetStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
+  const finalAgentId = finalStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
   const runtimeAgentIds = new Set(pipelineAgents.map((agent) => agent.id));
   const knownAgentIds = ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'];
   const warningBox = document.getElementById(`imgWarning-${p}`);
@@ -929,7 +928,7 @@ async function startPipeline(p, _options = {}) {
       break;
     }
 
-    if (agent.id === targetAgentId) break;
+    if (agent.id === finalAgentId) break;
   }
 
   assembleFinal();
@@ -948,7 +947,7 @@ async function startPipeline(p, _options = {}) {
       : 'terminé';
 
   setPipelineLaunchState(p, {
-    currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || targetAgentId),
+    currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || finalAgentId),
     isRunning: false,
     lastStatus: finalStatus,
   });

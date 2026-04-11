@@ -73,9 +73,9 @@ const getPipelineTargetSteps = (mode = currentMode) => (
   }))
 );
 
-const getPipelineTargetStepMeta = (mode = currentMode, targetStepId = '') => {
+const getPipelineTargetStepMeta = (mode = currentMode, stepId = '') => {
   const steps = PIPELINE_TARGET_STEPS[getPipelineModeKey(mode)] || [];
-  return steps.find((step) => step.id === targetStepId) || steps[steps.length - 1] || null;
+  return steps.find((step) => step.id === stepId) || steps[steps.length - 1] || null;
 };
 
 const getPipelineFinalTargetStepId = (mode = currentMode) => {
@@ -83,11 +83,11 @@ const getPipelineFinalTargetStepId = (mode = currentMode) => {
   return steps[steps.length - 1]?.id || '';
 };
 
-const normalizePipelineTargetStepId = (mode = currentMode, _targetStepId = '') => (
+const normalizePipelineTargetStepId = (mode = currentMode, _stepId = '') => (
   getPipelineFinalTargetStepId(mode)
 );
 
-const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, _targetStepId = '') => (
+const getPipelineRuntimeAgentIdsForTarget = (mode = currentMode, _stepId = '') => (
   getPipelineRuntimeAgentIds(mode).slice()
 );
 
