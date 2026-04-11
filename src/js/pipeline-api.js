@@ -13,6 +13,8 @@
 // reporting) vers des modules UI dédiés, puis traiter le coeur pipeline en dernier.
 // Important : ne pas lancer de refactor brutal ici sans campagne de retest complète.
 
+const CACHEABLE_BLOCK_MIN_CHARS = 4096;
+
 async function callClaude(agentId, promptData, useImages, retries = 3) {
   const apiKey = document.getElementById('apiKey').value.trim();
   if (!apiKey) throw new Error('Clé API manquante');
@@ -52,22 +54,44 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
   }
 
   const normalizedFixedBlocks = fixedContentBlocks
-    .map((block) => ({
-      text: String(block?.text || '').trim(),
-      cacheable: Boolean(block?.cacheable),
-    }))
+    .map((block, index) => {
+      const text = String(block?.text || '').trim();
+      const chars = text.length;
+      const cacheable = Boolean(block?.cacheable);
+      const cacheApplied = cacheable && chars >= CACHEABLE_BLOCK_MIN_CHARS;
+
+      return {
+        key: block?.key || `block_${index + 1}`,
+        text,
+        chars,
+        cacheable,
+        cacheApplied,
+      };
+    })
     .filter((block) => block.text);
+  const runtimePromptDebug = isLegacy
+    ? promptDebug
+    : {
+        ...(promptDebug || {}),
+        fixedBlocks: normalizedFixedBlocks.map((block, index) => ({
+          index,
+          key: block.key,
+          cacheable: block.cacheable,
+          cacheApplied: block.cacheApplied,
+          chars: block.chars,
+        })),
+      };
 
   if (normalizedFixedBlocks.length > 0) {
     normalizedFixedBlocks.forEach((block) => {
       const contentBlock = { type: 'text', text: block.text };
-      if (block.cacheable && block.text.length > 4096) {
+      if (block.cacheApplied) {
         contentBlock.cache_control = { type: 'ephemeral' };
       }
       content.push(contentBlock);
     });
     content.push({ type: 'text', text: promptText });
-  } else if (fixedContent && fixedContent.length > 4096) {
+  } else if (fixedContent && fixedContent.length >= CACHEABLE_BLOCK_MIN_CHARS) {
     content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
     content.push({ type: 'text', text: promptText });
   } else {
@@ -104,7 +128,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
       const data = await res.json();
       const usage = data.usage || {};
-      recordCacheDebugEvent(prefix, runtimeAgentId, usage, promptDebug);
+      recordCacheDebugEvent(prefix, runtimeAgentId, usage, runtimePromptDebug);
       delete abortControllers[agentId];
       return { text: data.content.map((block) => block.text || '').join('\n'), usage };
     } catch (err) {
@@ -325,6 +349,11 @@ function finalizeCacheDebugRun(prefix, finalStatus = '') {
   activeRun.lastHeaderStatus = runtimeDebug.lastCacheStatus || '—';
   activeRun.launchStatus = getPipelineLaunchState(prefix).lastStatus || activeRun.launchStatus || 'prêt';
   activeRun.warmupHint = pipelineRunState.warmupHint || activeRun.warmupHint || 'Warmup non défini';
+
+  const warmupDetails = getCacheWarmupDetails(activeRun.events);
+  activeRun.warmupEnabled = warmupDetails.enabled;
+  activeRun.firstWriteOrder = warmupDetails.firstWriteOrder;
+  activeRun.firstHitOrder = warmupDetails.firstHitOrder;
   runtimeDebug.cacheRunHistory[prefix] = activeRun;
 }
 
@@ -342,6 +371,29 @@ function getCacheStatusFromUsage(usage = {}) {
   return 'miss';
 }
 
+function getCacheWarmupDetails(events = []) {
+  let firstWriteOrder = 0;
+  let firstHitOrder = 0;
+
+  for (const event of events) {
+    if (!firstWriteOrder && event.status === 'write') {
+      firstWriteOrder = event.order || 0;
+      continue;
+    }
+
+    if (firstWriteOrder && event.status === 'hit') {
+      firstHitOrder = event.order || 0;
+      break;
+    }
+  }
+
+  return {
+    enabled: Boolean(firstWriteOrder && firstHitOrder),
+    firstWriteOrder,
+    firstHitOrder,
+  };
+}
+
 function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) {
   const activeRun = getActiveCacheDebugRun(prefix);
   if (!activeRun) return;
@@ -350,6 +402,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
   const sharedBlock = fixedBlocks.find((block) => block.key === 'shared_prefix');
   const cumulativeBlock = fixedBlocks.find((block) => block.key === 'cumulative_append_only');
   const launchState = getPipelineLaunchState(prefix);
+  const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
   const event = {
     order: activeRun.events.length + 1,
     agentId,
@@ -362,6 +415,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
     fixedChars: fixedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     sharedPrefixChars: sharedBlock?.chars || 0,
     cumulativeChars: cumulativeBlock?.chars || 0,
+    cacheAppliedChars: cacheAppliedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     fixedBlocks,
     displayStepId: launchState.currentStepId || getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId),
     timestamp: new Date().toISOString(),
@@ -375,7 +429,10 @@ function buildCacheDebugReport(prefix = pfx()) {
   const run = getLatestCacheDebugRun(prefix);
   if (!run) return 'Aucun rapport cache disponible.';
 
-  const warmupStatus = run.warmupEnabled ? 'ON' : 'OFF';
+  const warmupDetails = getCacheWarmupDetails(run.events);
+  const warmupStatus = warmupDetails.enabled
+    ? `ON (#${warmupDetails.firstWriteOrder} → #${warmupDetails.firstHitOrder})`
+    : 'OFF';
   const lines = [
     '═══ RAPPORT CACHE PIPELINE ═══',
     `Mode: ${run.mode}`,
@@ -405,10 +462,16 @@ function buildCacheDebugReport(prefix = pfx()) {
     lines.push(`- output: ${event.outputTokens.toLocaleString()} tok`);
     lines.push(`- prompt variable: ${event.promptChars.toLocaleString()} chars`);
     lines.push(`- bloc fixe total: ${event.fixedChars.toLocaleString()} chars`);
+    lines.push(`- bloc fixe activé: ${event.cacheAppliedChars.toLocaleString()} chars`);
     lines.push(`- bloc commun: ${event.sharedPrefixChars.toLocaleString()} chars`);
     lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars`);
     event.fixedBlocks.forEach((block) => {
-      lines.push(`  • ${block.key}: ${block.chars.toLocaleString()} chars${block.cacheable ? ' · cacheable' : ''}`);
+      const cacheLabel = block.cacheable
+        ? (block.cacheApplied
+            ? ' · cache ON'
+            : ` · cache OFF (< ${CACHEABLE_BLOCK_MIN_CHARS.toLocaleString()} chars)`)
+        : '';
+      lines.push(`  • ${block.key}: ${block.chars.toLocaleString()} chars${cacheLabel}`);
     });
     lines.push('');
   });
@@ -497,36 +560,39 @@ function buildPipelineFormSnapshot(prefix) {
   const dimensions = typeof window.PipelineUIEchelles?.getDimsFromEchelles === 'function'
     ? window.PipelineUIEchelles.getDimsFromEchelles()
     : '';
-  const lines = [
-    `Mode: ${mode}`,
-    `Nom: ${document.getElementById(`${prefix}-fNom`)?.value?.trim() || ''}`,
-    `Nom court: ${document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || ''}`,
-    `Univers: ${document.getElementById(`${prefix}-fUnivers`)?.value?.trim() || ''}`,
-    `Sculpteur: ${document.getElementById(`${prefix}-fSculpteur`)?.value?.trim() || ''}`,
-    `Échelles: ${echelles}`,
-    `Dimensions: ${dimensions}`,
-    `Pièces: ${document.getElementById(`${prefix}-fPieces`)?.value?.trim() || ''}`,
-    `Pose: ${document.getElementById(`${prefix}-fPose`)?.value?.trim() || ''}`,
-    `Images: ${state.images[prefix]?.length || 0}`,
-    `URL boutique: ${typeof getShopUrl === 'function' ? getShopUrl() : ''}`,
-  ];
+  const lines = [];
+  const pushSnapshotLine = (label, value) => {
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) return;
+    lines.push(`${label}: ${normalizedValue}`);
+  };
+
+  pushSnapshotLine('Mode', mode);
+  pushSnapshotLine('Nom', document.getElementById(`${prefix}-fNom`)?.value);
+  pushSnapshotLine('Nom court', document.getElementById(`${prefix}-fNomCourt`)?.value);
+  pushSnapshotLine('Univers', document.getElementById(`${prefix}-fUnivers`)?.value);
+  pushSnapshotLine('Sculpteur', document.getElementById(`${prefix}-fSculpteur`)?.value);
+  pushSnapshotLine('Échelles', echelles);
+  pushSnapshotLine('Dimensions', dimensions);
+  pushSnapshotLine('Pièces', document.getElementById(`${prefix}-fPieces`)?.value);
+  pushSnapshotLine('Pose', document.getElementById(`${prefix}-fPose`)?.value);
 
   if (mode === 'tabletop') {
-    lines.push(`Type: ${document.getElementById('tt-fType')?.value?.trim() || ''}`);
-    lines.push(`Version: ${document.getElementById('tt-fVersion')?.value?.trim() || ''}`);
-    lines.push(`Archétypes: ${typeof getArchetypes === 'function' ? getArchetypes() : ''}`);
-    lines.push(`Notes: ${document.getElementById('tt-fNotes')?.value?.trim() || ''}`);
+    pushSnapshotLine('Type', document.getElementById('tt-fType')?.value);
+    pushSnapshotLine('Version', document.getElementById('tt-fVersion')?.value);
+    pushSnapshotLine('Archétypes', typeof getArchetypes === 'function' ? getArchetypes() : '');
+    pushSnapshotLine('Notes', document.getElementById('tt-fNotes')?.value);
   } else {
-    lines.push(`Medium: ${typeof getMediums === 'function' ? getMediums() : ''}`);
-    lines.push(`License sensible: ${document.getElementById('col-fLicense')?.checked ? 'oui' : 'non'}`);
-    lines.push(`Particularités: ${document.getElementById('col-fParticularites')?.value?.trim() || ''}`);
-    lines.push(`Description figurine: ${document.getElementById('col-fDescriptionFigurine')?.value?.trim() || ''}`);
-    lines.push(`Résumé personnage: ${document.getElementById('col-fResumePersonnage')?.value?.trim() || ''}`);
-    lines.push(`Connexes prioritaires: ${document.getElementById('col-fConnexesPrioritaires')?.value?.trim() || ''}`);
-    lines.push(`Lien perso: ${document.getElementById('col-fLienPerso')?.value?.trim() || ''}`);
+    pushSnapshotLine('Medium', typeof getMediums === 'function' ? getMediums() : '');
+    pushSnapshotLine('License sensible', document.getElementById('col-fLicense')?.checked ? 'oui' : 'non');
+    pushSnapshotLine('Particularités', document.getElementById('col-fParticularites')?.value);
+    pushSnapshotLine('Description figurine', document.getElementById('col-fDescriptionFigurine')?.value);
+    pushSnapshotLine('Résumé personnage', document.getElementById('col-fResumePersonnage')?.value);
+    pushSnapshotLine('Connexes prioritaires', document.getElementById('col-fConnexesPrioritaires')?.value);
+    pushSnapshotLine('Lien perso', document.getElementById('col-fLienPerso')?.value);
   }
 
-  return lines.filter((line) => !line.endsWith(': ')).join('\n');
+  return lines.join('\n');
 }
 
 function getPipelineRunState(prefix) {
