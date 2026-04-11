@@ -59,6 +59,11 @@
     const anthropicFileId = String(safeRecord.anthropicFileId || '');
     const anthropicContentHash = String(safeRecord.anthropicContentHash || '');
     const anthropicUploadedAt = String(safeRecord.anthropicUploadedAt || '');
+    const hasFreshAnthropicFile = Boolean(
+      anthropicFileId
+      && contentHash
+      && anthropicContentHash === contentHash
+    );
 
     return {
       id: String(safeRecord.id || createImageId()),
@@ -73,9 +78,9 @@
       originalHeight,
       cropRect: cloneCropRect(safeRecord.cropRect),
       contentHash,
-      anthropicFileId,
-      anthropicContentHash,
-      anthropicUploadedAt,
+      anthropicFileId: hasFreshAnthropicFile ? anthropicFileId : '',
+      anthropicContentHash: hasFreshAnthropicFile ? anthropicContentHash : '',
+      anthropicUploadedAt: hasFreshAnthropicFile ? anthropicUploadedAt : '',
     };
   };
 
@@ -161,8 +166,22 @@
     const record = await runStoreRequest({
       handler: (store) => store.get(workspaceKey),
     });
+    const serializedImages = serializeImages(record?.images || []);
+    const rawImages = Array.isArray(record?.images) ? record.images : [];
 
-    return serializeImages(record?.images || []);
+    if (JSON.stringify(rawImages) !== JSON.stringify(serializedImages)) {
+      await enqueueWrite(workspaceKey, () => runStoreRequest({
+        mode: 'readwrite',
+        handler: (store) => store.put({
+          workspaceKey,
+          prefix,
+          images: serializedImages,
+          updatedAt: new Date().toISOString(),
+        }),
+      }));
+    }
+
+    return serializedImages;
   };
 
   const restoreWorkspaceImages = async (prefix) => {

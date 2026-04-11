@@ -2,6 +2,8 @@ batch/
 __pycache__/
 *.pyc
 .DS_Store
-*.py
 *.patch
 src/**/*.bak*
+.anthropic_files_cache.json
+FETCH_HEAD
+*.bak_*

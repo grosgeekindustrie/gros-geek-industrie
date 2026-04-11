@@ -18,7 +18,7 @@ import uuid
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Timer
+from threading import Lock, Timer
 
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
@@ -27,6 +27,7 @@ ALLOWED_DIRS = {'prompts', 'biblios'}
 ALLOWED_SUBDIRS = {'tabletop', 'collection'}
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
 ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
+ANTHROPIC_FILES_CACHE_LOCK = Lock()
 
 
 def safe_path(raw: str) -> Path | None:
@@ -57,7 +58,9 @@ def load_anthropic_files_cache() -> dict:
 
 
 def save_anthropic_files_cache(cache: dict):
-    ANTHROPIC_FILES_CACHE.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding='utf-8')
+    tmp_path = ANTHROPIC_FILES_CACHE.with_name(f'{ANTHROPIC_FILES_CACHE.name}.{uuid.uuid4().hex}.tmp')
+    tmp_path.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding='utf-8')
+    tmp_path.replace(ANTHROPIC_FILES_CACHE)
 
 
 def compute_image_content_hash(media_type: str, data: bytes) -> str:
@@ -112,9 +115,7 @@ def upload_image_to_anthropic(api_key: str, filename: str, media_type: str, payl
 
 
 def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
-    cache = load_anthropic_files_cache()
     resolved = []
-    cache_dirty = False
 
     for index, image in enumerate(images):
         image_id = str(image.get('imageId') or f'image-{index + 1}')
@@ -129,7 +130,8 @@ def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
             raise ValueError(f'Base64 invalide pour {image_id}') from exc
 
         content_hash = str(image.get('contentHash') or '').strip() or compute_image_content_hash(media_type, payload)
-        cached = cache.get(content_hash)
+        with ANTHROPIC_FILES_CACHE_LOCK:
+            cached = load_anthropic_files_cache().get(content_hash)
 
         if cached and cached.get('file_id'):
             resolved.append({
@@ -146,22 +148,32 @@ def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
         if not file_id:
             raise RuntimeError(f'Réponse Anthropic invalide pour {image_id}')
 
-        cache[content_hash] = {
-            'file_id': file_id,
-            'filename': filename,
-            'media_type': media_type,
-            'updated_at': datetime.now(timezone.utc).isoformat(),
-        }
-        cache_dirty = True
+        with ANTHROPIC_FILES_CACHE_LOCK:
+            cache = load_anthropic_files_cache()
+            cached = cache.get(content_hash)
+            if cached and cached.get('file_id'):
+                resolved.append({
+                    'imageId': image_id,
+                    'fileId': cached['file_id'],
+                    'contentHash': content_hash,
+                    'cached': True,
+                })
+                continue
+
+            cache[content_hash] = {
+                'file_id': file_id,
+                'filename': filename,
+                'media_type': media_type,
+                'updated_at': datetime.now(timezone.utc).isoformat(),
+            }
+            save_anthropic_files_cache(cache)
+
         resolved.append({
             'imageId': image_id,
             'fileId': file_id,
             'contentHash': content_hash,
             'cached': False,
         })
-
-    if cache_dirty:
-        save_anthropic_files_cache(cache)
 
     return resolved
 

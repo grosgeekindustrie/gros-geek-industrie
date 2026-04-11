@@ -42,6 +42,15 @@
     return `${rawName} · copie`;
   };
 
+  const clearAnthropicImageFileState = (imageRecord, { keepContentHash = false } = {}) => {
+    if (!imageRecord || typeof imageRecord !== 'object') return;
+
+    if (!keepContentHash) imageRecord.contentHash = '';
+    imageRecord.anthropicFileId = '';
+    imageRecord.anthropicContentHash = '';
+    imageRecord.anthropicUploadedAt = '';
+  };
+
   const ensureOriginalSource = async (file) => {
     const originalDataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -150,10 +159,7 @@
     currentImage.width = cropVariant.width;
     currentImage.height = cropVariant.height;
     currentImage.cropRect = cropVariant.crop;
-    currentImage.contentHash = '';
-    currentImage.anthropicFileId = '';
-    currentImage.anthropicContentHash = '';
-    currentImage.anthropicUploadedAt = '';
+    clearAnthropicImageFileState(currentImage);
 
     renderThumbs(prefix);
     await persistImages(prefix);
@@ -192,6 +198,10 @@
       id: imageDb().createImageId?.() || `${Date.now()}`,
       name: buildDuplicateName(imageRecord.name),
     };
+
+    clearAnthropicImageFileState(duplicateRecord, {
+      keepContentHash: Boolean(imageRecord.contentHash),
+    });
 
     state.images[prefix].splice(imageIndex + 1, 0, duplicateRecord);
     renderThumbs(prefix);
