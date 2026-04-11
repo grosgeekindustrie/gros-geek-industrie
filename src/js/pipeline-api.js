@@ -20,6 +20,8 @@ const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'analyse', 'alt'
 const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000;
 const PROMPT_CACHE_ZONE_GRISE_MS = 2 * 60 * 1000;
 const PROMPT_CACHE_UI_REFRESH_MS = 5 * 1000;
+const CACHE_AWARE_RUNTIME_AGENT_ID = 'cache_aware_prelaunch';
+const CACHE_AWARE_STEP_ID = 'cache_aware';
 
 function getAnthropicBetaHeader({ useFiles = false } = {}) {
   return useFiles
@@ -909,14 +911,15 @@ function getActiveCacheDebugRun(prefix) {
   return getRuntimeDebugState().activeCacheRuns[prefix] || null;
 }
 
-function beginCacheDebugRun(prefix, pipelineAgents = []) {
+function beginCacheDebugRun(prefix, pipelineAgents = [], options = {}) {
   const runtimeDebug = getRuntimeDebugState();
   const launchState = getPipelineLaunchState(prefix);
   const pipelineRunState = getPipelineRunState(prefix);
   const runRecord = {
     prefix,
     mode: getPipelineLaunchMode(prefix),
-    launchScope: 'pipeline complet',
+    launchScope: String(options.launchScope || 'pipeline complet'),
+    cacheAwareEnabled: Boolean(options.cacheAwareEnabled),
     startedAt: new Date().toISOString(),
     finishedAt: '',
     finalStatus: 'running',
@@ -969,7 +972,9 @@ function getCacheWarmupDetails(events = []) {
   let firstWriteOrder = 0;
   let firstHitOrder = 0;
 
-  for (const event of events) {
+  const pipelineEvents = events.filter((event) => String(event?.source || 'pipeline') === 'pipeline');
+
+  for (const event of pipelineEvents) {
     if (!firstWriteOrder && event.status === 'write') {
       firstWriteOrder = event.order || 0;
       continue;
@@ -1015,6 +1020,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
     cacheAppliedChars: cacheAppliedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     fixedBlocks,
     filesApiDebug,
+    source: String(promptDebug?.source || 'pipeline'),
     displayStepId: launchState.currentStepId || getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId),
     timestamp: new Date().toISOString(),
   };
@@ -1031,6 +1037,7 @@ function buildCacheDebugReport(prefix = pfx()) {
   const warmupStatus = warmupDetails.enabled
     ? `ON (#${warmupDetails.firstWriteOrder} → #${warmupDetails.firstHitOrder})`
     : 'OFF';
+  const cacheAwareEvents = run.events.filter((event) => String(event?.source || '') === 'cache-aware-prelaunch');
   const lines = [
     '═══ RAPPORT CACHE PIPELINE ═══',
     `Mode: ${run.mode}`,
@@ -1041,7 +1048,8 @@ function buildCacheDebugReport(prefix = pfx()) {
     `Terminé: ${run.finishedAt || '—'}`,
     `Statut final: ${run.finalStatus || '—'}`,
     `Header cache: ${run.lastHeaderStatus || '—'}`,
-    `Warmup réel: ${warmupStatus}`,
+    `Cache-aware pré-pipeline: ${cacheAwareEvents.length ? `ON (${cacheAwareEvents.length} événement(s))` : 'OFF'}`,
+    `Warmup intra-pipeline réel: ${warmupStatus}`,
     `Warmup hint: ${run.warmupHint || '—'}`,
   ];
 
@@ -1065,6 +1073,7 @@ function buildCacheDebugReport(prefix = pfx()) {
 
   run.events.forEach((event) => {
     lines.push(`#${event.order} ${event.agentId} (${event.displayStepId || event.agentId})`);
+    lines.push(`- source: ${event.source || 'pipeline'}`);
     lines.push(`- cache: ${event.status}`);
     lines.push(`- lu: ${event.cacheReadTokens.toLocaleString()} tok`);
     lines.push(`- écrit: ${event.cacheWriteTokens.toLocaleString()} tok`);
@@ -1137,10 +1146,13 @@ function getPipelineLaunchSummary(prefix) {
   const launchState = getPipelineLaunchState(prefix);
   const steps = getPipelineTargetStepsForPrefix(prefix);
   const currentStep = steps.find((step) => step.id === launchState.currentStepId);
+  const currentStepLabel = launchState.currentStepId === CACHE_AWARE_STEP_ID
+    ? 'Cache-aware pré-pipeline'
+    : (currentStep ? currentStep.label : '—');
 
   return [
     'Pipeline : complet',
-    `Étape courante : ${currentStep ? currentStep.label : '—'}`,
+    `Étape courante : ${currentStepLabel}`,
     `État : ${launchState.lastStatus || 'prêt'}`,
     `Cache : ${getLastCacheStatus()}`,
   ].join('\n');
@@ -1281,6 +1293,116 @@ function getResolvedTargetStep(prefix) {
 
 if (typeof state !== 'undefined') refreshPipelineLaunchPanels();
 
+function buildPipelineCacheAwareSharedBlocks(prefix) {
+  const runState = getPipelineRunState(prefix);
+  const formSnapshot = String(runState.formSnapshot || buildPipelineFormSnapshot(prefix) || '').trim();
+
+  if (!formSnapshot) return [];
+
+  return [{
+    key: 'cache_aware_form_snapshot',
+    text: `=== CONTEXTE FORMULAIRE STABLE ===\n${formSnapshot}`,
+    cacheable: true,
+  }];
+}
+
+function withPipelineCacheAwarePromptData(prefix, promptData, options = {}) {
+  if (!promptData || typeof promptData === 'string') return promptData;
+
+  const sharedBlocks = buildPipelineCacheAwareSharedBlocks(prefix);
+  const runtimeSource = String(options.source || promptData.runtimeSource || 'pipeline');
+  const promptChars = Number(promptData?.promptDebug?.promptChars) || String(promptData.filled || '').length;
+
+  return {
+    ...promptData,
+    fixedContentBlocks: [
+      ...sharedBlocks,
+      ...(Array.isArray(promptData.fixedContentBlocks) ? promptData.fixedContentBlocks : []),
+    ],
+    runtimeSource,
+    promptDebug: {
+      ...(promptData.promptDebug || {}),
+      promptChars,
+      source: runtimeSource,
+    },
+  };
+}
+
+window.withPipelineCacheAwarePromptData = withPipelineCacheAwarePromptData;
+
+function buildCacheAwarePrelaunchPromptData(prefix, firstAgent) {
+  const ctx = buildCtx(firstAgent.id);
+  const basePrompt = buildPrompt(firstAgent.id, ctx);
+  const prelaunchFilled = [
+    'PHASE TECHNIQUE — CACHE-AWARE PRÉ-PIPELINE',
+    'Objectif : amorcer le préfixe commun stable partagé avant le pipeline standard.',
+    'Réponds uniquement : CACHE_AWARE_READY',
+  ].join('\n\n');
+
+  return withPipelineCacheAwarePromptData(prefix, {
+    filled: prelaunchFilled,
+    fixedContent: basePrompt.fixedContent,
+    fixedContentBlocks: Array.isArray(basePrompt.fixedContentBlocks) ? basePrompt.fixedContentBlocks : [],
+    runtimeAgentId: CACHE_AWARE_RUNTIME_AGENT_ID,
+    promptDebug: {
+      ...(basePrompt.promptDebug || {}),
+      promptChars: prelaunchFilled.length,
+    },
+  }, { source: 'cache-aware-prelaunch' });
+}
+
+async function runCacheAwarePrelaunch(prefix, pipelineAgents = []) {
+  const firstAgent = pipelineAgents.find(Boolean);
+  if (!firstAgent) return null;
+
+  setPipelineLaunchState(prefix, {
+    currentStepId: CACHE_AWARE_STEP_ID,
+    isRunning: true,
+    lastStatus: 'cache-aware pré-pipeline',
+  });
+
+  const promptData = buildCacheAwarePrelaunchPromptData(prefix, firstAgent);
+  const response = await callClaude('cache_aware', promptData, shouldUseImagesForAgent(firstAgent));
+  showAgentCost('cache_aware', response.usage || null, {
+    prefix,
+    source: 'cache-aware-prelaunch',
+  });
+  syncCacheIndicator(response.usage || null);
+
+  return response;
+}
+
+async function runPipelineWithCacheAware(prefix) {
+  const pipelineAgents = getPipelineRuntimeAgentsForTarget(prefix);
+
+  resetPipelineRunState(prefix);
+  beginCacheDebugRun(prefix, pipelineAgents, {
+    launchScope: 'cache-aware pré-pipeline + pipeline complet',
+    cacheAwareEnabled: true,
+  });
+
+  try {
+    await runCacheAwarePrelaunch(prefix, pipelineAgents);
+  } catch (error) {
+    finalizeCacheDebugRun(prefix, 'erreur cache-aware');
+    setPipelineLaunchState(prefix, {
+      currentStepId: CACHE_AWARE_STEP_ID,
+      isRunning: false,
+      lastStatus: 'erreur cache-aware',
+    });
+    showToast(`❌ Cache-aware pré-pipeline: ${error.message}`, '#ff4757');
+    return false;
+  }
+
+  return startPipeline(prefix, {
+    skipCacheRunInit: true,
+    preserveRunState: true,
+    preserveCacheStatus: true,
+  });
+}
+
+window.runPipelineWithCacheAware = runPipelineWithCacheAware;
+
 function extractMarkdownSectionValue(rawText, sectionTitle) {
   const escapedTitle = String(sectionTitle || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sectionPattern = new RegExp(`^##\\s+${escapedTitle}\\s*$([\\s\\S]*?)(?=^##\\s+|$)`, 'im');
@@ -1404,7 +1526,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
       const prompt = buildPrompt(agent.id, ctx);
       const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
       state.inputs[agent.id] = rawFixed + prompt.filled;
-      const response = await callClaude(agent.id, prompt, shouldUseImagesForAgent(agent));
+      const runtimePrompt = withPipelineCacheAwarePromptData(p, prompt, {
+        source: isRetry ? 'rerun' : 'pipeline',
+      });
+      const response = await callClaude(agent.id, runtimePrompt, shouldUseImagesForAgent(agent));
       result = response.text;
       usage = response.usage || null;
     }
@@ -1480,6 +1605,9 @@ async function runAgent(agent, correction = '', isRetry = false) {
 // PIPELINE CONTROL
 // ═══════════════════════════════════════════════════════════
 async function startPipeline(p, _options = {}) {
+  const skipCacheRunInit = Boolean(_options.skipCacheRunInit);
+  const preserveRunState = Boolean(_options.preserveRunState);
+  const preserveCacheStatus = Boolean(_options.preserveCacheStatus);
   const resolvedStepId = getResolvedTargetStep(p);
   const finalStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedStepId);
   const pipelineAgents = getPipelineRuntimeAgentsForTarget(p);
@@ -1496,7 +1624,7 @@ async function startPipeline(p, _options = {}) {
   }
 
   if (warningBox) warningBox.style.display = 'none';
-  setLastCacheStatus('—');
+  if (!preserveCacheStatus) setLastCacheStatus('—');
   document.getElementById(`socialSection-${p}`).style.display = 'none';
   document.getElementById(`socialOutput-${p}`).style.display = 'none';
   document.getElementById(`reseauxOnlySection-${p}`).style.display = 'none';
@@ -1572,8 +1700,13 @@ async function startPipeline(p, _options = {}) {
   state.selectedTitre = null;
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
-  resetPipelineRunState(p);
-  beginCacheDebugRun(p, pipelineAgents);
+  if (!preserveRunState) resetPipelineRunState(p);
+  if (!skipCacheRunInit) {
+    beginCacheDebugRun(p, pipelineAgents, {
+      launchScope: 'pipeline complet',
+      cacheAwareEnabled: false,
+    });
+  }
 
   knownAgentIds.forEach((agentId) => {
     state.outputs[agentId] = '';
@@ -2152,6 +2285,7 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       social: '07 Léo',
       camille: '08 Camille',
       orchestrateur: 'QA Felix',
+      cache_aware: '00 Cache-aware',
     },
     col: {
       analyse: '01 Jules',
@@ -2165,6 +2299,7 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       camille: '07 Zoe',
       iris: 'Iris',
       orchestrateur: 'QA Rex',
+      cache_aware: '00 Cache-aware',
     },
   };
 
@@ -2182,6 +2317,7 @@ function getCostModelName(agentId = '') {
 }
 
 function getCostEntryType(entry = {}) {
+  if (entry.source === 'cache-aware-prelaunch' || entry.agentId === 'cache_aware') return 'cache_aware_prelaunch';
   if (entry.isWarmupEvent) return 'warmup';
   if (entry.source === 'orchestrateur' || entry.agentId === 'orchestrateur') return 'orchestrateur';
   if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
@@ -2200,6 +2336,7 @@ function getCostEntryTypeLabel(entry = {}) {
     iris: 'iris',
     social: 'social',
     explorer: 'explorer',
+    cache_aware_prelaunch: 'cache-aware pré-pipeline',
     warmup: 'warmup',
     other: 'autre',
   };
@@ -2216,6 +2353,7 @@ function buildCostTypeTotals(entries = []) {
     pipeline: { count: 0, costCents: 0 },
     rerun: { count: 0, costCents: 0 },
     iris: { count: 0, costCents: 0 },
+    cache_aware_prelaunch: { count: 0, costCents: 0 },
     warmup: { count: 0, costCents: 0 },
     orchestrateur: { count: 0, costCents: 0 },
     social: { count: 0, costCents: 0 },
@@ -2474,6 +2612,7 @@ function copyTokenReport() {
     `Output: ${totals.outputTok.toLocaleString()} tok`,
     '',
     '── Totaux par périmètre ──',
+    `Cache-aware pré-pipeline: ${categoryTotals.cache_aware_prelaunch.costCents.toFixed(3)}¢ (${categoryTotals.cache_aware_prelaunch.count} événement(s))`,
     `Pipeline standard: ${categoryTotals.pipeline.costCents.toFixed(3)}¢ (${categoryTotals.pipeline.count} événement(s))`,
     `Warmup identifiable: ${categoryTotals.warmup.costCents.toFixed(3)}¢ (${categoryTotals.warmup.count} événement(s), sous-ensemble pipeline)`,
     `Reruns: ${categoryTotals.rerun.costCents.toFixed(3)}¢ (${categoryTotals.rerun.count} événement(s))`,

@@ -172,16 +172,22 @@ async function runTagsThreeAgents(ctx) {
 
     return acc;
   }, {});
-  const buildTagsRuntimeInput = (prompt, filled, runtimeAgentId) => ({
-    filled,
-    fixedContent: prompt.fixedContent,
-    fixedContentBlocks: prompt.fixedContentBlocks,
-    runtimeAgentId,
-    promptDebug: {
-      ...(prompt.promptDebug || {}),
-      promptChars: filled.length,
-    },
-  });
+  const buildTagsRuntimeInput = (prompt, filled, runtimeAgentId) => {
+    const runtimePrompt = {
+      filled,
+      fixedContent: prompt.fixedContent,
+      fixedContentBlocks: prompt.fixedContentBlocks,
+      runtimeAgentId,
+      promptDebug: {
+        ...(prompt.promptDebug || {}),
+        promptChars: filled.length,
+      },
+    };
+
+    return window.withPipelineCacheAwarePromptData
+      ? window.withPipelineCacheAwarePromptData(pfx(), runtimePrompt, { source: 'pipeline' })
+      : runtimePrompt;
+  };
 
   // 1) EXPLORE
   const explorePrompt = buildPrompt('tags', ctx);
@@ -345,6 +351,7 @@ const AGENT_MODELS = {
   titre:'claude-sonnet-4-20250514', description:'claude-sonnet-4-20250514',
   social:'claude-sonnet-4-20250514', camille:'claude-sonnet-4-20250514',
   iris:'claude-sonnet-4-20250514', orchestrateur:'claude-sonnet-4-20250514',
+  cache_aware:'claude-sonnet-4-20250514',
 };
 
 function stopAgent(agentId, _p) {
@@ -466,7 +473,7 @@ async function handlePipelineActionRequest(request = {}) {
   const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
   const activePrefix = prefix || pfx();
   const actionHandlers = {
-    launch: () => startPipeline(activePrefix),
+    launch: () => (window.runPipelineWithCacheAware ? window.runPipelineWithCacheAware(activePrefix) : startPipeline(activePrefix)),
     'rerun-agent': () => rerunAgent(agentId),
     'rerun-suite': () => rerunSuite(agentId),
     'stop-agent': () => stopAgent(agentId, activePrefix),
