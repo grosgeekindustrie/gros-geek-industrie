@@ -14,7 +14,6 @@
 
   const buildPipelineSharedFixedContent = (ctx = {}) => {
     const sections = [
-      `PIPELINE WARMUP:\n${ctx.pipeline_warmup_hint || 'Warmup non défini'}`,
       `SNAPSHOT FORMULAIRE:\n${ctx.pipeline_form_snapshot || 'Aucun snapshot disponible'}`,
       `CONTEXTE GLOBAL:\n${getBiblio('objectif')}`,
       `PSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
