@@ -8,18 +8,18 @@ window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIConfig = window.PipelineUIConfig || {};
 
 const PIPELINE_AGENTS = [
-  { id:'marche',      title:'📊 01 — Sophie · Analyse de marché',     usesImages:false, hasSelection:false },
+  { id:'marche',      title:'📊 01 — Sophie · Analyse de marché',     usesImages:true,  hasSelection:false },
   { id:'titre',       title:'🏷️ 02 — Maya · Titres SEO (×10)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
   { id:'tags',        title:'🔖 03 — Karim · Tags (×13)',             usesImages:false, hasSelection:false },
-  { id:'description', title:'📝 04 — Claire · Description',           usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'description', title:'📝 04 — Claire · Description',           usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
   { id:'alt',         title:'🖼️ 05 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
 ];
 
 const PIPELINE_AGENTS_COLLECTION = [
-  { id:'marche',      title:'📊 01 — Luna · Analyse de marché',       usesImages:false, hasSelection:false },
+  { id:'marche',      title:'📊 01 — Luna · Analyse de marché',       usesImages:true,  hasSelection:false },
   { id:'titre',       title:'🏷️ 02 — Nova · Titres SEO (×10)',       usesImages:false, hasSelection:true,  selectionType:'titre' },
   { id:'tags',        title:'🔖 03 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
-  { id:'description', title:'📝 04 — Eden · Description',            usesImages:false, hasSelection:true,  selectionType:'accroche_cta' },
+  { id:'description', title:'📝 04 — Eden · Description',            usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
   { id:'analyse',     title:'🖼️ 05 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
 ];
 

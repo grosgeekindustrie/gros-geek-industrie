@@ -30,7 +30,7 @@
         <span class="agent-num">${String(index + 1).padStart(2, '0')}</span>
         <span class="agent-title">${agent.title}</span>
         <span class="badge-rules" id="${p}-brul-${agent.id}">📌</span>
-        ${agent.usesImages ? '<span class="badge-img">📷</span>' : ''}
+        ${agent.usesImages ? `<span class="badge-img" id="${p}-bimg-${agent.id}" title="Images activées · en attente" aria-label="Images activées">📷</span>` : ''}
         <span class="agent-status s-wait" id="${p}-stat-${agent.id}">en attente</span>
         <span class="chevron" id="${p}-chev-${agent.id}">▾</span>
       </div>

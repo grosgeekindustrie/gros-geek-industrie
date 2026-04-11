@@ -29,16 +29,153 @@ function shouldUseImagesForAgent(agent) {
   return Boolean(agent?.usesImages) || IMAGE_AWARE_AGENT_IDS.has(agentId);
 }
 
+function getFreshAnthropicImageFiles(images = []) {
+  return images.filter((image) => (
+    image?.anthropicFileId
+    && image?.contentHash
+    && image?.anthropicContentHash === image?.contentHash
+  ));
+}
+
+function resolveFilesApiStatus(debug = {}) {
+  const usedFilesCount = Number(debug.usedFilesCount) || 0;
+  const uploadedCount = Number(debug.uploadedCount) || 0;
+  const filesReusedCount = Number(debug.filesReusedCount) || 0;
+  const hasError = Boolean(debug.error);
+
+  if (hasError) return 'error';
+  if (!usedFilesCount) return 'none';
+  if (uploadedCount > 0 && filesReusedCount > 0) return 'mixed';
+  if (uploadedCount > 0) return 'upload';
+  if (filesReusedCount > 0) return 'hit';
+  return 'none';
+}
+
+function formatFilesApiStatusLabel(status = 'none') {
+  switch (status) {
+    case 'hit':
+      return 'reuse';
+    case 'upload':
+      return 'upload';
+    case 'mixed':
+      return 'mixed';
+    case 'error':
+      return 'erreur';
+    default:
+      return 'none';
+  }
+}
+
+function getAgentFilesApiElements(prefix, agentId) {
+  return {
+    badge: document.getElementById(`${prefix}-bimg-${agentId}`),
+    card: document.getElementById(`${prefix}-card-${agentId}`),
+  };
+}
+
+function clearAgentFilesApiVisualState(prefix, agentId) {
+  const { badge, card } = getAgentFilesApiElements(prefix, agentId);
+  const states = ['files-api-hit', 'files-api-upload', 'files-api-mixed', 'files-api-error'];
+
+  if (badge) {
+    badge.classList.remove(...states);
+    badge.title = 'Images activées · en attente';
+  }
+
+  if (card) {
+    card.classList.remove(...states);
+  }
+}
+
+function applyAgentFilesApiVisualState(prefix, agentId, filesApiDebug = {}) {
+  const { badge, card } = getAgentFilesApiElements(prefix, agentId);
+  if (!badge && !card) return;
+
+  clearAgentFilesApiVisualState(prefix, agentId);
+
+  const status = resolveFilesApiStatus(filesApiDebug);
+  if (status === 'none') return;
+
+  const statusClass = `files-api-${status}`;
+  const requestedImagesCount = Number(filesApiDebug.requestedImagesCount) || 0;
+  const usedFilesCount = Number(filesApiDebug.usedFilesCount) || 0;
+  const localReuseCount = Number(filesApiDebug.localReuseCount) || 0;
+  const serverCacheHitsCount = Number(filesApiDebug.serverCacheHitsCount) || 0;
+  const uploadedCount = Number(filesApiDebug.uploadedCount) || 0;
+  const invalidatedCount = Number(filesApiDebug.invalidatedCount) || 0;
+  const parts = [
+    `Files API: ${formatFilesApiStatusLabel(status)}`,
+    `${requestedImagesCount} image(s) demandée(s)`,
+    `${usedFilesCount} file(s) utilisé(s)`,
+  ];
+
+  if (localReuseCount > 0) parts.push(`${localReuseCount} relu(s) localement`);
+  if (serverCacheHitsCount > 0) parts.push(`${serverCacheHitsCount} relu(s) via cache serveur`);
+  if (uploadedCount > 0) parts.push(`${uploadedCount} upload réel(s)`);
+  if (invalidatedCount > 0) parts.push(`${invalidatedCount} invalidation(s)`);
+  if (filesApiDebug.error) parts.push(`Erreur: ${filesApiDebug.error}`);
+
+  if (badge) {
+    badge.classList.add(statusClass);
+    badge.title = parts.join(' · ');
+  }
+
+  if (card) {
+    card.classList.add(statusClass);
+  }
+}
+
 async function ensureAnthropicImageFiles(prefix, apiKey) {
   const images = Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : [];
-  if (!images.length) return [];
+  const requestedImages = images.filter((image) => image?.base64);
+  if (!requestedImages.length) {
+    return {
+      images: [],
+      debug: {
+        enabled: false,
+        requestedImagesCount: 0,
+        usedFilesCount: 0,
+        localReuseCount: 0,
+        serverCacheHitsCount: 0,
+        filesReusedCount: 0,
+        uploadCandidatesCount: 0,
+        uploadedCount: 0,
+        invalidatedCount: 0,
+        status: 'none',
+      },
+    };
+  }
 
-  const uploadCandidates = images
+  const readyImagesBefore = getFreshAnthropicImageFiles(requestedImages);
+  const uploadCandidates = requestedImages
     .map((image, index) => ({ image, index }))
-    .filter(({ image }) => image?.base64 && (!image.anthropicFileId || !image.contentHash || image.anthropicContentHash !== image.contentHash));
+    .filter(({ image }) => !readyImagesBefore.includes(image));
+  const invalidatedCount = uploadCandidates.filter(({ image }) => (
+    image?.anthropicFileId
+    && image?.contentHash
+    && image?.anthropicContentHash
+    && image.anthropicContentHash !== image.contentHash
+  )).length;
 
   if (!uploadCandidates.length) {
-    return images.filter((image) => image?.anthropicFileId);
+    return {
+      images: readyImagesBefore,
+      debug: {
+        enabled: true,
+        requestedImagesCount: requestedImages.length,
+        usedFilesCount: readyImagesBefore.length,
+        localReuseCount: readyImagesBefore.length,
+        serverCacheHitsCount: 0,
+        filesReusedCount: readyImagesBefore.length,
+        uploadCandidatesCount: 0,
+        uploadedCount: 0,
+        invalidatedCount,
+        status: resolveFilesApiStatus({
+          usedFilesCount: readyImagesBefore.length,
+          filesReusedCount: readyImagesBefore.length,
+        }),
+      },
+    };
   }
 
   const response = await fetch('/anthropic/files/upload', {
@@ -58,12 +195,31 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.ok) {
-    throw new Error(data.error || `HTTP ${response.status}`);
+    const error = data.error || `HTTP ${response.status}`;
+    return {
+      images: readyImagesBefore,
+      debug: {
+        enabled: true,
+        requestedImagesCount: requestedImages.length,
+        usedFilesCount: readyImagesBefore.length,
+        localReuseCount: readyImagesBefore.length,
+        serverCacheHitsCount: 0,
+        filesReusedCount: readyImagesBefore.length,
+        uploadCandidatesCount: uploadCandidates.length,
+        uploadedCount: 0,
+        invalidatedCount,
+        status: 'error',
+        error,
+      },
+      error,
+    };
   }
 
   const uploadedAt = new Date().toISOString();
   const uploads = Array.isArray(data.images) ? data.images : [];
   const uploadsById = new Map(uploads.map((entry) => [String(entry.imageId || ''), entry]));
+  const serverCacheHitsCount = uploads.filter((entry) => Boolean(entry?.cached)).length;
+  const uploadedCount = uploads.filter((entry) => !entry?.cached).length;
   let hasMutation = false;
 
   images.forEach((image, index) => {
@@ -89,18 +245,60 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
     }
   }
 
-  return state.images[prefix].filter((image) => image?.anthropicFileId);
+  const readyImagesAfter = getFreshAnthropicImageFiles(Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : requestedImages);
+  const filesReusedCount = readyImagesBefore.length + serverCacheHitsCount;
+
+  return {
+    images: readyImagesAfter,
+    debug: {
+      enabled: true,
+      requestedImagesCount: requestedImages.length,
+      usedFilesCount: readyImagesAfter.length,
+      localReuseCount: readyImagesBefore.length,
+      serverCacheHitsCount,
+      filesReusedCount,
+      uploadCandidatesCount: uploadCandidates.length,
+      uploadedCount,
+      invalidatedCount,
+      status: resolveFilesApiStatus({
+        usedFilesCount: readyImagesAfter.length,
+        uploadedCount,
+        filesReusedCount,
+      }),
+    },
+  };
 }
 
 async function buildRequestImageBlocks(prefix, apiKey) {
-  const images = await ensureAnthropicImageFiles(prefix, apiKey);
-  return images.map((image) => ({
-    type: 'image',
-    source: {
-      type: 'file',
-      file_id: image.anthropicFileId,
-    },
-  }));
+  const result = await ensureAnthropicImageFiles(prefix, apiKey);
+  const images = Array.isArray(result?.images) ? result.images : [];
+  const debug = result?.debug || {
+    enabled: false,
+    requestedImagesCount: 0,
+    usedFilesCount: 0,
+    localReuseCount: 0,
+    serverCacheHitsCount: 0,
+    filesReusedCount: 0,
+    uploadCandidatesCount: 0,
+    uploadedCount: 0,
+    invalidatedCount: 0,
+    status: 'none',
+  };
+
+  if (result?.error) {
+    throw new Error(result.error);
+  }
+
+  return {
+    blocks: images.map((image) => ({
+      type: 'image',
+      source: {
+        type: 'file',
+        file_id: image.anthropicFileId,
+      },
+    })),
+    debug,
+  };
 }
 
 async function callClaude(agentId, promptData, useImages, retries = 3) {
@@ -135,9 +333,26 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
   abortControllers[agentId] = controller;
 
-  const imageContentBlocks = useImages && state.images[prefix].length > 0
-    ? await buildRequestImageBlocks(prefix, apiKey)
-    : [];
+  const hasRequestedImages = Boolean(useImages && state.images[prefix].length > 0);
+  let imageContentBlocks = [];
+  let filesApiDebug = {
+    enabled: hasRequestedImages,
+    requestedImagesCount: hasRequestedImages ? state.images[prefix].length : 0,
+    usedFilesCount: 0,
+    localReuseCount: 0,
+    serverCacheHitsCount: 0,
+    filesReusedCount: 0,
+    uploadCandidatesCount: 0,
+    uploadedCount: 0,
+    invalidatedCount: 0,
+    status: 'none',
+  };
+
+  if (hasRequestedImages) {
+    const imageRequest = await buildRequestImageBlocks(prefix, apiKey);
+    imageContentBlocks = imageRequest.blocks;
+    filesApiDebug = imageRequest.debug || filesApiDebug;
+  }
 
   const normalizedFixedBlocks = fixedContentBlocks
     .map((block, index) => {
@@ -166,6 +381,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
           cacheApplied: block.cacheApplied,
           chars: block.chars,
         })),
+        filesApiDebug,
       };
 
   if (normalizedFixedBlocks.length > 0) {
@@ -218,6 +434,9 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
       const data = await res.json();
       const usage = data.usage || {};
       recordCacheDebugEvent(prefix, runtimeAgentId, usage, runtimePromptDebug);
+      if (filesApiDebug.enabled) {
+        applyAgentFilesApiVisualState(prefix, runtimeAgentId, filesApiDebug);
+      }
       delete abortControllers[agentId];
       return { text: data.content.map((block) => block.text || '').join('\n'), usage };
     } catch (err) {
@@ -228,6 +447,13 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
       const canRetry = attempt < retries && isRetryableOverloadError(err);
       if (!canRetry) {
+        if (filesApiDebug.enabled) {
+          applyAgentFilesApiVisualState(prefix, runtimeAgentId, {
+            ...filesApiDebug,
+            status: 'error',
+            error: err.message,
+          });
+        }
         delete abortControllers[agentId];
         if (isRetryableOverloadError(err)) {
           throw new Error('Serveurs Anthropic surchargés après plusieurs tentatives. Réessaie dans quelques minutes.');
@@ -492,6 +718,9 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
   const cumulativeBlock = fixedBlocks.find((block) => block.key === 'cumulative_append_only');
   const launchState = getPipelineLaunchState(prefix);
   const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
+  const filesApiDebug = promptDebug?.filesApiDebug && typeof promptDebug.filesApiDebug === 'object'
+    ? { ...promptDebug.filesApiDebug }
+    : null;
   const event = {
     order: activeRun.events.length + 1,
     agentId,
@@ -506,6 +735,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
     cumulativeChars: cumulativeBlock?.chars || 0,
     cacheAppliedChars: cacheAppliedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     fixedBlocks,
+    filesApiDebug,
     displayStepId: launchState.currentStepId || getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId),
     timestamp: new Date().toISOString(),
   };
@@ -554,6 +784,19 @@ function buildCacheDebugReport(prefix = pfx()) {
     lines.push(`- bloc fixe activé: ${event.cacheAppliedChars.toLocaleString()} chars`);
     lines.push(`- bloc commun: ${event.sharedPrefixChars.toLocaleString()} chars`);
     lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars`);
+    if (event.filesApiDebug?.enabled) {
+      const filesApiStatus = formatFilesApiStatusLabel(event.filesApiDebug.status);
+      lines.push(`- files api: ${filesApiStatus}`);
+      lines.push(`- images demandées: ${(event.filesApiDebug.requestedImagesCount || 0).toLocaleString()}`);
+      lines.push(`- files utilisés: ${(event.filesApiDebug.usedFilesCount || 0).toLocaleString()}`);
+      lines.push(`- reuses locaux: ${(event.filesApiDebug.localReuseCount || 0).toLocaleString()}`);
+      lines.push(`- reuses cache serveur: ${(event.filesApiDebug.serverCacheHitsCount || 0).toLocaleString()}`);
+      lines.push(`- uploads réels: ${(event.filesApiDebug.uploadedCount || 0).toLocaleString()}`);
+      lines.push(`- invalidations: ${(event.filesApiDebug.invalidatedCount || 0).toLocaleString()}`);
+      if (event.filesApiDebug.error) {
+        lines.push(`- erreur files api: ${event.filesApiDebug.error}`);
+      }
+    }
     event.fixedBlocks.forEach((block) => {
       const cacheLabel = block.cacheable
         ? (block.cacheApplied
@@ -1055,6 +1298,7 @@ async function startPipeline(p, _options = {}) {
 
     const ob = document.getElementById(`orch-badge-${agentId}`);
     if (ob) ob.remove();
+    clearAgentFilesApiVisualState(p, agentId);
   });
 
   refreshSoloTabs(p);

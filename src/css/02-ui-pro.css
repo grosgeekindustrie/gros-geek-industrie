@@ -427,6 +427,66 @@ body.mode-collection .home-card:hover {
   background: var(--bg);
 }
 
+.badge-img {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  border: 0.0625rem solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .15s;
+}
+
+.badge-img.files-api-hit {
+  color: var(--success);
+  border-color: rgba(62,207,142,.34);
+  background: rgba(62,207,142,.12);
+  box-shadow: 0 0 0 0.0625rem rgba(62,207,142,.16);
+}
+
+.badge-img.files-api-upload {
+  color: var(--accent2);
+  border-color: rgba(255,107,53,.34);
+  background: rgba(255,107,53,.12);
+  box-shadow: 0 0 0 0.0625rem rgba(255,107,53,.16);
+}
+
+.badge-img.files-api-mixed {
+  color: var(--accent);
+  border-color: rgba(232,197,71,.34);
+  background: rgba(232,197,71,.12);
+  box-shadow: 0 0 0 0.0625rem rgba(232,197,71,.16);
+}
+
+.badge-img.files-api-error {
+  color: var(--error);
+  border-color: rgba(245,66,74,.34);
+  background: rgba(245,66,74,.12);
+  box-shadow: 0 0 0 0.0625rem rgba(245,66,74,.16);
+}
+
+.agent-card.files-api-hit {
+  box-shadow: inset 0 0 0 0.0625rem rgba(62,207,142,.16);
+}
+
+.agent-card.files-api-upload {
+  box-shadow: inset 0 0 0 0.0625rem rgba(255,107,53,.16);
+}
+
+.agent-card.files-api-mixed {
+  box-shadow: inset 0 0 0 0.0625rem rgba(232,197,71,.16);
+}
+
+.agent-card.files-api-error {
+  box-shadow: inset 0 0 0 0.0625rem rgba(245,66,74,.16);
+}
+
 .output-box {
   background: var(--bg);
   border: 1px solid var(--border);
