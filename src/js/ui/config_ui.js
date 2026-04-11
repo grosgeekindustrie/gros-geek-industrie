@@ -1,8 +1,8 @@
 'use strict';
 
 // Configuration statique du pipeline.
-// Source de vérité pour les agents par mode et pour la résolution des prompts disque.
-// À garder déclaratif : pas de logique UI métier ici.
+// Source de vérité pour les agents par mode, le mapping UI minimal par mode et la
+// résolution des prompts disque. À garder déclaratif : pas de logique métier UI ici.
 
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIConfig = window.PipelineUIConfig || {};
@@ -45,7 +45,57 @@ const PIPELINE_TARGET_STEPS = {
   ],
 };
 
+const PIPELINE_MODE_UI = {
+  tabletop: {
+    mode: 'tabletop',
+    prefix: 'tt',
+    formLabel: '🎲 Tabletop DnD',
+    pageTitle: '🎲 Etsy Pipeline DnD v1.2',
+    uiRootId: 'ui-tt',
+    panelIds: ['pipeline-tt', 'finalOutput-tt', 'socialSection-tt', 'socialOutput-tt', 'reseauxOnlySection-tt'],
+    tabs: {
+      initMethod: 'initDndSoloTabs',
+      refreshMethod: 'refreshDndSoloTabs',
+      activateMethod: 'activateDndSoloTab',
+      resetMethod: 'resetDndSoloTabs',
+      isResultAvailableMethod: 'isDndSoloResultAvailable',
+    },
+    stepper: {
+      initMethod: 'initDndStepper',
+      refreshMethod: 'refreshDndStepper',
+      resetMethod: 'resetDndStepper',
+    },
+  },
+  collection: {
+    mode: 'collection',
+    prefix: 'col',
+    formLabel: '🖼️ Collection',
+    pageTitle: '🖼️ Etsy Pipeline Collection v1.2',
+    uiRootId: 'ui-col',
+    panelIds: ['pipeline-col', 'finalOutput-col', 'socialSection-col', 'socialOutput-col', 'reseauxOnlySection-col'],
+    tabs: {
+      initMethod: 'initCollectionSoloTabs',
+      refreshMethod: 'refreshCollectionSoloTabs',
+      activateMethod: 'activateCollectionSoloTab',
+      resetMethod: 'resetCollectionSoloTabs',
+      isResultAvailableMethod: 'isCollectionSoloResultAvailable',
+    },
+    stepper: {
+      initMethod: 'initCollectionStepper',
+      refreshMethod: 'refreshCollectionStepper',
+      resetMethod: 'resetCollectionStepper',
+    },
+  },
+};
+
 const getPipelineModeKey = (mode = currentMode) => (mode === 'collection' ? 'collection' : 'tabletop');
+const getPipelineModes = () => Object.keys(PIPELINE_MODE_UI);
+const getPipelineUiConfig = (mode = currentMode) => PIPELINE_MODE_UI[getPipelineModeKey(mode)] || PIPELINE_MODE_UI.tabletop;
+const getPipelinePrefix = (mode = currentMode) => getPipelineUiConfig(mode).prefix;
+const getPipelineModeByPrefix = (prefix = 'tt') => (
+  getPipelineModes().find((mode) => getPipelineUiConfig(mode).prefix === prefix) || 'tabletop'
+);
+const getPipelinePrefixes = () => getPipelineModes().map((mode) => getPipelinePrefix(mode));
 
 const getPipelineAgentsForMode = (mode = currentMode) => (
   getPipelineModeKey(mode) === 'collection'
@@ -126,7 +176,13 @@ Object.assign(window.PipelineUIConfig, {
   PIPELINE_AGENTS_COLLECTION,
   PIPELINE_RUNTIME_AGENT_IDS,
   PIPELINE_TARGET_STEPS,
+  PIPELINE_MODE_UI,
   getPipelineModeKey,
+  getPipelineModes,
+  getPipelineUiConfig,
+  getPipelinePrefix,
+  getPipelineModeByPrefix,
+  getPipelinePrefixes,
   getPipelineAgents,
   getPipelineAgentsForMode,
   getPipelineLaunchLabel,

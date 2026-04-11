@@ -674,10 +674,11 @@ async function runTitreExplorer() {
 
 // ═══════════════════════════════════════════════════════════
 
-setupImageHandlers('tt');
-setupImageHandlers('col');
-restoreWorkspaceImages?.('tt');
-restoreWorkspaceImages?.('col');
+const pipelinePrefixes = typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : ['tt', 'col'];
+pipelinePrefixes.forEach((prefix) => {
+  setupImageHandlers(prefix);
+  restoreWorkspaceImages?.(prefix);
+});
 loadPersistedData();
 buildPipeline();
 buildEchellesUI();

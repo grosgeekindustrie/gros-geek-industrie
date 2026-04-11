@@ -3,21 +3,19 @@
 (function initPipelineUICollectionStepper(global) {
 
 // Stepper Collection.
-// Cette couche réorganise le formulaire Collection en étapes lisibles sans renommer
-// les champs déjà branchés au pipeline, à la persistance locale ou aux fetchs.
-// V1 : pas de validation bloquante forte. Le parcours guide l'utilisateur mais ne
-// remplace pas encore les règles métier futures (obligatoires, batch, imports, etc.).
+// Le markup reste spécifique au mode, mais la mécanique est maintenant mutualisée
+// via le core partagé pour réduire les écarts de comportement avec Tabletop.
   global.PipelineUI = global.PipelineUI || {};
 
   const STEP_DEFINITIONS = [
     {
       title: 'Images',
-      subtitle: 'Ajoute les visuels qui serviront à l\'analyse du pipeline.',
+      subtitle: "Ajoute les visuels qui serviront à l'analyse du pipeline.",
       footerLabel: 'Étape 1 sur 5 · Visuels de référence',
     },
     {
       title: 'Identité',
-      subtitle: 'Cadre le personnage, l\'univers, le sculpteur et les signaux SEO de base.',
+      subtitle: "Cadre le personnage, l'univers, le sculpteur et les signaux SEO de base.",
       footerLabel: 'Étape 2 sur 5 · Identité de la fiche',
     },
     {
@@ -32,158 +30,36 @@
     },
     {
       title: 'Lancement',
-      subtitle: 'Lance le pipeline complet et suis l’état, le cache et le coût de la session.',
+      subtitle: "Lance le pipeline complet et suis l’état, le cache et le coût de la session.",
       footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
     },
   ];
 
-  const uiState = {
-    activeStepIndex: 0,
-    maxVisitedStepIndex: 0,
-    isInitialized: false,
-  };
+  const createStepperController = global.PipelineUIStepperCore?.createStepperController;
+  if (typeof createStepperController !== 'function') return;
 
-  const getRoot = () => document.querySelector('[data-js="collection-stepper"]');
-  const getSteps = () => Array.from(document.querySelectorAll('[data-js="collection-step"]'));
-  const getJumpButtons = () => Array.from(document.querySelectorAll('[data-js="collection-stepper-jump"]'));
-  const getPrevButton = () => document.querySelector('[data-js="collection-stepper-prev"]');
-  const getNextButton = () => document.querySelector('[data-js="collection-stepper-next"]');
-  const getRunButton = () => document.querySelector('[data-js="collection-stepper"] #runBtn-col');
-  const getWarningBox = () => document.getElementById('imgWarning-col');
-  const getFooterLabel = () => document.querySelector('[data-js="collection-stepper-footer-label"]');
-  const getTitle = () => document.querySelector('[data-js="collection-stepper-title"]');
-  const getSubtitle = () => document.querySelector('[data-js="collection-stepper-subtitle"]');
+  const controller = createStepperController({
+    stepDefinitions: STEP_DEFINITIONS,
+    getRoot: () => document.querySelector('[data-js="collection-stepper"]'),
+    getSteps: () => Array.from(document.querySelectorAll('[data-js="collection-step"]')),
+    getJumpButtons: () => Array.from(document.querySelectorAll('[data-js="collection-stepper-jump"]')),
+    getPrevButton: () => document.querySelector('[data-js="collection-stepper-prev"]'),
+    getNextButton: () => document.querySelector('[data-js="collection-stepper-next"]'),
+    getRunButton: () => document.querySelector('[data-js="collection-stepper"] #runBtn-col'),
+    getWarningBox: () => document.getElementById('imgWarning-col'),
+    getFooterLabel: () => document.querySelector('[data-js="collection-stepper-footer-label"]'),
+    getTitle: () => document.querySelector('[data-js="collection-stepper-title"]'),
+    getSubtitle: () => document.querySelector('[data-js="collection-stepper-subtitle"]'),
+  });
 
-  const clampStepIndex = (index) => Math.min(Math.max(index, 0), STEP_DEFINITIONS.length - 1);
-
-  function isLastStep() {
-    return uiState.activeStepIndex === STEP_DEFINITIONS.length - 1;
-  }
-
-  function syncHeader() {
-    const title = getTitle();
-    const subtitle = getSubtitle();
-    const footerLabel = getFooterLabel();
-    const stepDef = STEP_DEFINITIONS[uiState.activeStepIndex];
-
-    if (title) title.textContent = stepDef.title;
-    if (subtitle) subtitle.textContent = stepDef.subtitle;
-    if (footerLabel) footerLabel.textContent = stepDef.footerLabel;
-
-    getJumpButtons().forEach((button) => {
-      const stepIndex = Number(button.dataset.stepIndex || 0);
-      const isCurrent = stepIndex === uiState.activeStepIndex;
-      const isComplete = stepIndex < uiState.activeStepIndex;
-      const isAccessible = true;
-
-      button.classList.toggle('is-current', isCurrent);
-      button.classList.toggle('is-complete', isComplete);
-      button.disabled = !isAccessible;
-      button.setAttribute('aria-current', isCurrent ? 'step' : 'false');
-    });
-  }
-
-  function syncStepPanels() {
-    getSteps().forEach((panel) => {
-      const stepIndex = Number(panel.dataset.stepIndex || 0);
-      panel.classList.toggle('is-active', stepIndex === uiState.activeStepIndex);
-    });
-  }
-
-  function syncFooterActions() {
-    const prevButton = getPrevButton();
-    const nextButton = getNextButton();
-    const runButton = getRunButton();
-    const warningBox = getWarningBox();
-    const lastStep = isLastStep();
-
-    if (prevButton) {
-      prevButton.disabled = uiState.activeStepIndex === 0;
-      prevButton.classList.remove('is-hidden');
-      prevButton.setAttribute('aria-disabled', prevButton.disabled ? 'true' : 'false');
-    }
-
-    if (nextButton) {
-      nextButton.classList.toggle('is-hidden', lastStep);
-      nextButton.setAttribute('aria-hidden', lastStep ? 'true' : 'false');
-    }
-
-    if (runButton) {
-      runButton.classList.toggle('is-hidden', !lastStep);
-      runButton.setAttribute('aria-hidden', lastStep ? 'false' : 'true');
-    }
-
-    if (warningBox) warningBox.classList.toggle('is-hidden', !lastStep);
-  }
-
-  function renderCollectionStepper() {
-    if (!getRoot()) return;
-    syncStepPanels();
-    syncHeader();
-    syncFooterActions();
-    global.refreshPipelineLaunchPanels?.();
-  }
-
-  function goToCollectionStep(stepIndex) {
-    const nextStepIndex = clampStepIndex(stepIndex);
-
-    uiState.maxVisitedStepIndex = Math.max(uiState.maxVisitedStepIndex, nextStepIndex);
-    uiState.activeStepIndex = nextStepIndex;
-    renderCollectionStepper();
-  }
-
-  function goToNextCollectionStep() {
-    if (isLastStep()) return;
-
-    const nextStepIndex = clampStepIndex(uiState.activeStepIndex + 1);
-    uiState.maxVisitedStepIndex = Math.max(uiState.maxVisitedStepIndex, nextStepIndex);
-    uiState.activeStepIndex = nextStepIndex;
-    renderCollectionStepper();
-  }
-
-  function goToPreviousCollectionStep() {
-    if (uiState.activeStepIndex === 0) return;
-
-    uiState.activeStepIndex = clampStepIndex(uiState.activeStepIndex - 1);
-    renderCollectionStepper();
-  }
-
-  function bindStepperEvents() {
-    const root = getRoot();
-    const prevButton = getPrevButton();
-    const nextButton = getNextButton();
-
-    if (!root || uiState.isInitialized) return;
-
-    prevButton?.addEventListener('click', goToPreviousCollectionStep);
-    nextButton?.addEventListener('click', goToNextCollectionStep);
-
-    root.addEventListener('click', (event) => {
-      const jumpButton = event.target.closest('[data-js="collection-stepper-jump"]');
-      if (!jumpButton) return;
-
-      goToCollectionStep(Number(jumpButton.dataset.stepIndex || 0));
-    });
-
-    uiState.isInitialized = true;
-  }
-
-  function refreshCollectionStepper() {
-    renderCollectionStepper();
-  }
-
-  function resetCollectionStepper() {
-    uiState.activeStepIndex = 0;
-    uiState.maxVisitedStepIndex = 0;
-    renderCollectionStepper();
-  }
-
-  function initCollectionStepper() {
-    if (!getRoot()) return;
-
-    bindStepperEvents();
-    renderCollectionStepper();
-  }
+  const {
+    init: initCollectionStepper,
+    refresh: refreshCollectionStepper,
+    goToStep: goToCollectionStep,
+    goToNextStep: goToNextCollectionStep,
+    goToPreviousStep: goToPreviousCollectionStep,
+    reset: resetCollectionStepper,
+  } = controller;
 
   global.PipelineUICollectionStepper = {
     STEP_DEFINITIONS,

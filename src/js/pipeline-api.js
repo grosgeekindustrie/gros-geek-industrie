@@ -705,16 +705,31 @@ function showOrchestratorBadge(agentId, result) {
 }
 
 function refreshSoloTabs(prefix) {
-  if (prefix === 'tt') window.refreshDndSoloTabs?.();
-  if (prefix === 'col') window.refreshCollectionSoloTabs?.();
+  const mode = typeof getPipelineModeByPrefix === 'function'
+    ? getPipelineModeByPrefix(prefix)
+    : (prefix === 'col' ? 'collection' : 'tabletop');
+  const refreshMethodName = typeof getPipelineUiConfig === 'function'
+    ? getPipelineUiConfig(mode)?.tabs?.refreshMethod
+    : (prefix === 'col' ? 'refreshCollectionSoloTabs' : 'refreshDndSoloTabs');
+  const refreshMethod = refreshMethodName ? window[refreshMethodName] : null;
+  refreshMethod?.();
 }
 
 function activateSoloTab(prefix, tabId, options = {}) {
-  if (prefix === 'tt') window.activateDndSoloTab?.(tabId, options);
-  if (prefix === 'col') window.activateCollectionSoloTab?.(tabId, options);
+  const mode = typeof getPipelineModeByPrefix === 'function'
+    ? getPipelineModeByPrefix(prefix)
+    : (prefix === 'col' ? 'collection' : 'tabletop');
+  const activateMethodName = typeof getPipelineUiConfig === 'function'
+    ? getPipelineUiConfig(mode)?.tabs?.activateMethod
+    : (prefix === 'col' ? 'activateCollectionSoloTab' : 'activateDndSoloTab');
+  const activateMethod = activateMethodName ? window[activateMethodName] : null;
+  activateMethod?.(tabId, options);
 }
 
 function getPipelineLaunchMode(prefix) {
+  if (typeof getPipelineModeByPrefix === 'function') {
+    return getPipelineModeByPrefix(prefix);
+  }
   return prefix === 'col' ? 'collection' : 'tabletop';
 }
 
@@ -782,6 +797,7 @@ function getPipelineLaunchState(prefix) {
 function getPromptCachePrefix(prefix = '') {
   if (prefix) return prefix;
   if (typeof pfx === 'function') return pfx();
+  if (typeof getPipelinePrefix === 'function') return getPipelinePrefix(currentMode);
   return currentMode === 'collection' ? 'col' : 'tt';
 }
 
@@ -1229,7 +1245,8 @@ function refreshPipelineLaunchPanelState(prefix) {
 }
 
 function refreshPipelineLaunchPanels() {
-  ['tt', 'col'].forEach((prefix) => renderPipelineLaunchPanel(prefix));
+  const prefixes = typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : ['tt', 'col'];
+  prefixes.forEach((prefix) => renderPipelineLaunchPanel(prefix));
 }
 
 function setPipelineLaunchState(prefix, nextState = {}) {
@@ -1319,8 +1336,10 @@ function appendPipelineRunEntry(prefix, agentId, content) {
     .join('\n\n');
 }
 
-if (typeof state !== 'undefined') getPipelineRunState('tt');
-if (typeof state !== 'undefined') getPipelineRunState('col');
+if (typeof state !== 'undefined') {
+  const prefixes = typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : ['tt', 'col'];
+  prefixes.forEach((prefix) => getPipelineRunState(prefix));
+}
 
 function getResolvedTargetStep(prefix) {
   const mode = getPipelineLaunchMode(prefix);

@@ -33,7 +33,7 @@
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode || 'tabletop';
-  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (getCurrentMode() === 'collection' ? 'col' : 'tt'));
+  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.getPipelinePrefix?.(getCurrentMode()) || (getCurrentMode() === 'collection' ? 'col' : 'tt')));
   const getEchellesApi = () => global.PipelineUIEchelles || {};
   const getConfig = () => global.PipelineUIConfig || global;
 

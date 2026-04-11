@@ -7,8 +7,29 @@
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode || 'tabletop';
-  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (getCurrentMode() === 'collection' ? 'col' : 'tt'));
+  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.getPipelinePrefix?.(getCurrentMode()) || (getCurrentMode() === 'collection' ? 'col' : 'tt')));
   const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
+  const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig?.(mode) || null;
+  const getModes = () => global.getPipelineModes?.() || ['tabletop', 'collection'];
+
+  const callModeUiMethod = (mode, section, action, ...args) => {
+    const methodName = getModeUiConfig(mode)?.[section]?.[`${action}Method`];
+    const method = methodName ? global[methodName] : null;
+    if (typeof method !== 'function') return undefined;
+    return method(...args);
+  };
+
+  const refreshModeStepper = (mode) => {
+    callModeUiMethod(mode, 'stepper', 'refresh');
+  };
+
+  const refreshModeTabs = (mode) => {
+    callModeUiMethod(mode, 'tabs', 'refresh');
+  };
+
+  const resetModeTabs = (mode) => {
+    callModeUiMethod(mode, 'tabs', 'reset');
+  };
 
   let currentView = 'home';
   let pendingBatchMode = null;
@@ -59,18 +80,6 @@
     );
   }
 
-  function refreshDndStepper() {
-    global.refreshDndStepper?.();
-  }
-
-  function refreshDndTabs() {
-    global.refreshDndSoloTabs?.();
-  }
-
-  function refreshCollectionTabs() {
-    global.refreshCollectionSoloTabs?.();
-  }
-
   function refreshPipelineLaunchPanels() {
     global.refreshPipelineLaunchPanels?.();
   }
@@ -78,8 +87,7 @@
   function setPipelineExecutionActive(isActive) {
     pipelineExecutionActive = !!isActive;
     syncHeaderBackAction();
-    refreshDndTabs();
-    refreshCollectionTabs();
+    getModes().forEach((mode) => refreshModeTabs(mode));
     refreshPipelineLaunchPanels();
   }
   function syncHeaderBackAction() {
@@ -244,26 +252,25 @@
   // Objectif stepper : afficher uniquement le formulaire tant que le pipeline
   // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
   function resetSingleFlowPanels(mode) {
-    const suffix = mode === 'collection' ? 'col' : 'tt';
+    const modeUiConfig = getModeUiConfig(mode);
+    const fallbackPrefix = mode === 'collection' ? 'col' : 'tt';
+    const panelIds = modeUiConfig?.panelIds || [
+      `pipeline-${fallbackPrefix}`,
+      `finalOutput-${fallbackPrefix}`,
+      `socialSection-${fallbackPrefix}`,
+      `socialOutput-${fallbackPrefix}`,
+      `reseauxOnlySection-${fallbackPrefix}`,
+    ];
 
-    ['pipeline', 'finalOutput', 'socialSection', 'socialOutput', 'reseauxOnlySection'].forEach((prefix) => {
-      const element = document.getElementById(`${prefix}-${suffix}`);
+    panelIds.forEach((panelId) => {
+      const element = document.getElementById(panelId);
       if (element) element.style.display = 'none';
     });
 
     setPipelineExecutionActive(false);
     syncHeaderBackAction();
-
-    if (mode === 'tabletop') {
-      global.resetDndSoloTabs?.();
-      refreshDndTabs();
-    }
-
-    if (mode === 'collection') {
-      global.resetCollectionSoloTabs?.();
-      refreshCollectionTabs();
-    }
-
+    resetModeTabs(mode);
+    refreshModeTabs(mode);
     refreshPipelineLaunchPanels();
   }
 
@@ -275,23 +282,23 @@
 
     if (mode !== getCurrentMode()) global.switchMode?.(mode);
 
+    const modeUiConfig = getModeUiConfig(mode);
+    const tabletopUiConfig = getModeUiConfig('tabletop');
+    const collectionUiConfig = getModeUiConfig('collection');
     const label = document.getElementById('formModeLabel');
-    if (mode === 'tabletop') {
-      document.getElementById('ui-tt').style.display = '';
-      document.getElementById('ui-col').style.display = 'none';
-      if (label) label.textContent = '🎲 Tabletop DnD';
-    } else {
-      document.getElementById('ui-tt').style.display = 'none';
-      document.getElementById('ui-col').style.display = '';
-      if (label) label.textContent = '🖼️ Collection';
-    }
+    const tabletopRoot = document.getElementById(tabletopUiConfig?.uiRootId || 'ui-tt');
+    const collectionRoot = document.getElementById(collectionUiConfig?.uiRootId || 'ui-col');
+
+    if (tabletopRoot) tabletopRoot.style.display = mode === 'tabletop' ? '' : 'none';
+    if (collectionRoot) collectionRoot.style.display = mode === 'collection' ? '' : 'none';
+    if (label) label.textContent = modeUiConfig?.formLabel || (mode === 'tabletop' ? '🎲 Tabletop DnD' : '🖼️ Collection');
 
     resetSingleFlowPanels(mode);
     showView('form');
-    refreshDndStepper();
-    refreshDndTabs();
-    global.refreshCollectionStepper?.();
-    refreshCollectionTabs();
+    getModes().forEach((knownMode) => {
+      refreshModeStepper(knownMode);
+      refreshModeTabs(knownMode);
+    });
     refreshPipelineLaunchPanels();
   }
 
