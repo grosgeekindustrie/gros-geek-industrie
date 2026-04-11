@@ -61,6 +61,24 @@ body.ready {
   border: 1px solid rgba(232,197,71,.18);
 }
 
+.hbadge.cache-freshness-hot {
+  color: var(--success);
+  background: rgba(62,207,142,.08);
+  border-color: rgba(62,207,142,.18);
+}
+
+.hbadge.cache-freshness-gray {
+  color: var(--accent2);
+  background: rgba(255,107,53,.08);
+  border-color: rgba(255,107,53,.18);
+}
+
+.hbadge.cache-freshness-stale {
+  color: var(--error);
+  background: rgba(245,66,74,.08);
+  border-color: rgba(245,66,74,.18);
+}
+
 /* ── Home screen ── */
 
 #view-home {

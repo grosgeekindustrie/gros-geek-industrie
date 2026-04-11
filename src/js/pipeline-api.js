@@ -17,6 +17,9 @@ const CACHEABLE_BLOCK_MIN_CHARS = 4096;
 const ANTHROPIC_PROMPT_CACHING_BETA = 'prompt-caching-2024-07-31';
 const ANTHROPIC_FILES_API_BETA = 'files-api-2025-04-14';
 const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'analyse', 'alt']);
+const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000;
+const PROMPT_CACHE_ZONE_GRISE_MS = 2 * 60 * 1000;
+const PROMPT_CACHE_UI_REFRESH_MS = 5 * 1000;
 
 function getAnthropicBetaHeader({ useFiles = false } = {}) {
   return useFiles
@@ -602,20 +605,21 @@ function getPipelineLaunchState(prefix) {
   return state.pipelineLaunch[prefix];
 }
 
-function getLastCacheStatus() {
-  state.runtimeDebug = state.runtimeDebug || {};
-  return state.runtimeDebug.lastCacheStatus || '—';
+function getPromptCachePrefix(prefix = '') {
+  if (prefix) return prefix;
+  if (typeof pfx === 'function') return pfx();
+  return currentMode === 'collection' ? 'col' : 'tt';
 }
 
-function setLastCacheStatus(status) {
-  state.runtimeDebug = state.runtimeDebug || {};
-  state.runtimeDebug.lastCacheStatus = status;
-
-  const cacheNode = document.getElementById('session-cache');
-  if (cacheNode) {
-    cacheNode.textContent = `🧠 cache ${status}`;
-    cacheNode.title = `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`;
-  }
+function formatPromptCacheTime(value) {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleTimeString('fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 function getRuntimeDebugState() {
@@ -623,7 +627,141 @@ function getRuntimeDebugState() {
   state.runtimeDebug.lastCacheStatus = state.runtimeDebug.lastCacheStatus || '—';
   state.runtimeDebug.activeCacheRuns = state.runtimeDebug.activeCacheRuns || {};
   state.runtimeDebug.cacheRunHistory = state.runtimeDebug.cacheRunHistory || {};
+  state.runtimeDebug.promptCacheByPrefix = state.runtimeDebug.promptCacheByPrefix || {};
+
+  if (!state.runtimeDebug.promptCacheTickerId && typeof window !== 'undefined') {
+    state.runtimeDebug.promptCacheTickerId = window.setInterval(() => {
+      renderPromptCacheIndicator();
+      refreshPipelineLaunchPanels();
+    }, PROMPT_CACHE_UI_REFRESH_MS);
+  }
+
   return state.runtimeDebug;
+}
+
+function getPromptCacheEntry(prefix = '', createIfMissing = false) {
+  const runtimeDebug = getRuntimeDebugState();
+  const resolvedPrefix = getPromptCachePrefix(prefix);
+
+  if (!runtimeDebug.promptCacheByPrefix[resolvedPrefix] && createIfMissing) {
+    runtimeDebug.promptCacheByPrefix[resolvedPrefix] = {
+      status: '—',
+      lastConfirmedAtMs: 0,
+      lastConfirmedAt: '',
+      expiresAtMs: 0,
+      expiresAt: '',
+    };
+  }
+
+  return runtimeDebug.promptCacheByPrefix[resolvedPrefix] || null;
+}
+
+function getPromptCacheFreshnessInfo(prefix = '', nowMs = Date.now()) {
+  const entry = getPromptCacheEntry(prefix, false);
+  if (!entry?.lastConfirmedAtMs) {
+    return {
+      hasEstimate: false,
+      state: 'none',
+      label: '',
+      lastConfirmedAt: '',
+      expiresAt: '',
+      lastConfirmedAtLabel: '—',
+      expiresAtLabel: '—',
+      remainingMs: 0,
+    };
+  }
+
+  const expiresAtMs = entry.expiresAtMs || (entry.lastConfirmedAtMs + PROMPT_CACHE_TTL_MS);
+  const remainingMs = expiresAtMs - nowMs;
+  let state = 'stale';
+  let label = 'probablement expiré';
+
+  if (remainingMs > PROMPT_CACHE_ZONE_GRISE_MS) {
+    state = 'hot';
+    label = 'chaud probable';
+  } else if (remainingMs > 0) {
+    state = 'gray';
+    label = 'zone grise';
+  }
+
+  return {
+    hasEstimate: true,
+    state,
+    label,
+    lastConfirmedAt: entry.lastConfirmedAt || new Date(entry.lastConfirmedAtMs).toISOString(),
+    expiresAt: entry.expiresAt || new Date(expiresAtMs).toISOString(),
+    lastConfirmedAtLabel: formatPromptCacheTime(entry.lastConfirmedAt || entry.lastConfirmedAtMs),
+    expiresAtLabel: formatPromptCacheTime(entry.expiresAt || expiresAtMs),
+    remainingMs,
+  };
+}
+
+function updatePromptCacheCheckpoint(prefix = '', status = '—') {
+  const resolvedPrefix = getPromptCachePrefix(prefix);
+  const entry = getPromptCacheEntry(resolvedPrefix, true);
+  const now = new Date();
+  entry.status = status;
+  entry.lastConfirmedAtMs = now.getTime();
+  entry.lastConfirmedAt = now.toISOString();
+  entry.expiresAtMs = entry.lastConfirmedAtMs + PROMPT_CACHE_TTL_MS;
+  entry.expiresAt = new Date(entry.expiresAtMs).toISOString();
+}
+
+function getLastCacheStatus(prefix = '') {
+  const resolvedPrefix = getPromptCachePrefix(prefix);
+  const entry = getPromptCacheEntry(resolvedPrefix, false);
+  const baseStatus = String(entry?.status || getRuntimeDebugState().lastCacheStatus || '—');
+  const freshness = getPromptCacheFreshnessInfo(resolvedPrefix);
+
+  if (!freshness.hasEstimate) return baseStatus;
+  if (baseStatus === '—') return freshness.label;
+  return `${baseStatus} · ${freshness.label}`;
+}
+
+function renderPromptCacheIndicator(prefix = '') {
+  const resolvedPrefix = getPromptCachePrefix(prefix);
+  const cacheNode = document.getElementById('session-cache');
+  if (!cacheNode) return;
+
+  const freshness = getPromptCacheFreshnessInfo(resolvedPrefix);
+  const status = getLastCacheStatus(resolvedPrefix);
+  const classes = ['cache-freshness-hot', 'cache-freshness-gray', 'cache-freshness-stale'];
+  cacheNode.classList.remove(...classes);
+  cacheNode.textContent = `🧠 cache ${status}`;
+
+  if (!freshness.hasEstimate) {
+    cacheNode.title = `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`;
+    return;
+  }
+
+  const stateClass = freshness.state === 'hot'
+    ? 'cache-freshness-hot'
+    : freshness.state === 'gray'
+      ? 'cache-freshness-gray'
+      : 'cache-freshness-stale';
+  cacheNode.classList.add(stateClass);
+  cacheNode.title = [
+    `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`,
+    `Dernier refresh confirmé : ${freshness.lastConfirmedAtLabel}`,
+    `Expiration estimée si inactif : ${freshness.expiresAtLabel}`,
+    `Fraîcheur estimée : ${freshness.label}`,
+  ].join(' · ');
+}
+
+function setLastCacheStatus(status, options = {}) {
+  const runtimeDebug = getRuntimeDebugState();
+  const resolvedPrefix = getPromptCachePrefix(options.prefix);
+  const entry = getPromptCacheEntry(resolvedPrefix, true);
+
+  entry.status = status;
+  runtimeDebug.lastCacheStatus = status;
+
+  if (status.startsWith('hit') || status.startsWith('write')) {
+    updatePromptCacheCheckpoint(resolvedPrefix, status);
+    runtimeDebug.lastCacheStatus = getLastCacheStatus(resolvedPrefix);
+  }
+
+  renderPromptCacheIndicator(resolvedPrefix);
 }
 
 function getActiveCacheDebugRun(prefix) {
@@ -764,8 +902,20 @@ function buildCacheDebugReport(prefix = pfx()) {
     `Header cache: ${run.lastHeaderStatus || '—'}`,
     `Warmup réel: ${warmupStatus}`,
     `Warmup hint: ${run.warmupHint || '—'}`,
-    '',
   ];
+
+  const freshness = getPromptCacheFreshnessInfo(prefix);
+  if (freshness.hasEstimate) {
+    lines.push(`Dernier refresh confirmé: ${freshness.lastConfirmedAtLabel}`);
+    lines.push(`Expiration estimée si inactif: ${freshness.expiresAtLabel}`);
+    lines.push(`Fraîcheur estimée: ${freshness.label}`);
+  } else {
+    lines.push('Dernier refresh confirmé: —');
+    lines.push('Expiration estimée si inactif: —');
+    lines.push('Fraîcheur estimée: —');
+  }
+
+  lines.push('');
 
   if (!run.events.length) {
     lines.push('Aucun événement cache enregistré.');
@@ -825,10 +975,11 @@ function syncCacheIndicator(usage = {}) {
     : cacheWrite > 0
       ? `write · ${cacheWrite.toLocaleString()} tok`
       : 'miss';
+  const prefix = getPromptCachePrefix();
 
-  setLastCacheStatus(cacheStatus);
-  const activeRun = getActiveCacheDebugRun(pfx());
-  if (activeRun) activeRun.lastHeaderStatus = cacheStatus;
+  setLastCacheStatus(cacheStatus, { prefix });
+  const activeRun = getActiveCacheDebugRun(prefix);
+  if (activeRun) activeRun.lastHeaderStatus = getLastCacheStatus(prefix);
   refreshPipelineLaunchPanels();
 }
 
