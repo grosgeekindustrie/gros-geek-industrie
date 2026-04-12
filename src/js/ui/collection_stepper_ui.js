@@ -7,33 +7,8 @@
 // via le core partagé pour réduire les écarts de comportement avec Tabletop.
   global.PipelineUI = global.PipelineUI || {};
 
-  const STEP_DEFINITIONS = [
-    {
-      title: 'Images',
-      subtitle: "Ajoute les visuels qui serviront à l'analyse du pipeline.",
-      footerLabel: 'Étape 1 sur 5 · Visuels de référence',
-    },
-    {
-      title: 'Identité',
-      subtitle: "Cadre le personnage, l'univers, le sculpteur et les signaux SEO de base.",
-      footerLabel: 'Étape 2 sur 5 · Identité de la fiche',
-    },
-    {
-      title: 'Échelles',
-      subtitle: 'Choisis les formats proposés et renseigne les dimensions utiles.',
-      footerLabel: 'Étape 3 sur 5 · Offre produit',
-    },
-    {
-      title: 'Détails & contexte',
-      subtitle: 'Ajoute les particularités, le contexte personnage et les signaux marché qui aident les agents.',
-      footerLabel: 'Étape 4 sur 5 · Contexte métier',
-    },
-    {
-      title: 'Lancement',
-      subtitle: "Lance le pipeline complet et suis l’état, le cache et le coût de la session.",
-      footerLabel: 'Étape 5 sur 5 · Pilotage du pipeline',
-    },
-  ];
+  const stepperData = global.PipelineUIDataStepperSteps || {};
+  const STEP_DEFINITIONS = stepperData.STEPPER_STEP_DEFINITIONS?.collection || [];
 
   const createStepperController = global.PipelineUIStepperCore?.createStepperController;
   if (typeof createStepperController !== 'function') return;

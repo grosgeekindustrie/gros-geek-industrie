@@ -6,8 +6,10 @@
   global.PipelineUI = global.PipelineUI || {};
 
   const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
+  const formFieldsData = global.PipelineUIDataFormFields || {};
+  const formCatalogsData = global.PipelineUIDataFormCatalogs || {};
 
-  const FORM_FIELDS_TT = [
+  const TABLETOP_FORM_FIELDS = formFieldsData.TABLETOP_FORM_FIELDS || [
     'tt-fNom',
     'tt-fNomCourt',
     'tt-fUnivers',
@@ -21,7 +23,8 @@
     'tt-fArchSeo',
   ];
 
-  const FORM_FIELDS_COL = [
+  const COLLECTION_FORM_FIELDS = formFieldsData.COLLECTION_FORM_FIELDS || [
+    'col-fType',
     'col-fNomCourt',
     'col-fNom',
     'col-fUnivers',
@@ -31,11 +34,24 @@
     'col-fPose',
   ];
 
+  const TABLETOP_FORM_CATALOGS = formCatalogsData.TABLETOP_FORM_CATALOGS || {};
+  const COLLECTION_FORM_CATALOGS = formCatalogsData.COLLECTION_FORM_CATALOGS || {};
+
+  const COLLECTION_DYNAMIC_IDS = {
+    mediumGroup: 'col-fMediumGroup',
+    mediumSubcategoriesWrap: 'col-fMediumSubcategoriesWrap',
+    mediumSubcategoriesGroup: 'col-fMediumSubcategoriesGroup',
+    genreWrap: 'col-fGenreWrap',
+    genreGroup: 'col-fGenreGroup',
+  };
+
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode || 'tabletop';
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.getPipelinePrefix?.(getCurrentMode()) || (getCurrentMode() === 'collection' ? 'col' : 'tt')));
   const getEchellesApi = () => global.PipelineUIEchelles || {};
   const getConfig = () => global.PipelineUIConfig || global;
+
+  const getCheckedValues = (selector) => [...document.querySelectorAll(selector)].map((input) => input.value);
 
   const readAppSettings = () => {
     try {
@@ -47,6 +63,165 @@
 
   const writeAppSettings = (nextSettings) => {
     localStorage.setItem('pipeline.settings', JSON.stringify(nextSettings));
+  };
+
+  const renderSelectOptions = (selectId, options = [], selectedValue = null) => {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const nextValue = selectedValue ?? select.value;
+    select.innerHTML = options.map((option) => (
+      `<option value="${String(option.value)}">${String(option.label)}</option>`
+    )).join('');
+
+    if (options.some((option) => option.value === nextValue)) {
+      select.value = nextValue;
+    } else if (options.length > 0) {
+      select.value = options[0].value;
+    }
+  };
+
+  const renderCheckboxGroup = ({ rootId, options = [], selectedValues = [], onChange = null }) => {
+    const root = document.getElementById(rootId);
+    if (!root) return;
+
+    const selected = new Set((selectedValues || []).map((value) => String(value)));
+    root.innerHTML = options.map((option) => {
+      const checked = selected.has(String(option.value)) ? ' checked' : '';
+      return `<label class="social-check"><input type="checkbox" value="${String(option.value)}"${checked}/> ${String(option.label)}</label>`;
+    }).join('');
+
+    root.querySelectorAll('input').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (typeof onChange === 'function') {
+          onChange();
+          return;
+        }
+
+        saveFormState();
+      });
+    });
+  };
+
+  const ensureCollectionDynamicField = ({ wrapperId, groupId, labelText, hintText }) => {
+    let wrapper = document.getElementById(wrapperId);
+    if (wrapper) return wrapper;
+
+    const mediumGroup = document.getElementById(COLLECTION_DYNAMIC_IDS.mediumGroup);
+    const mediumField = mediumGroup?.closest('.fg.full');
+    const formGrid = mediumField?.parentElement;
+    if (!mediumField || !formGrid) return null;
+
+    wrapper = document.createElement('div');
+    wrapper.id = wrapperId;
+    wrapper.className = 'fg full';
+    wrapper.innerHTML = `
+      <label>${labelText} <span class="fg-hint">→ ${hintText}</span></label>
+      <div id="${groupId}" class="option-chip-group"></div>
+    `;
+
+    mediumField.insertAdjacentElement('afterend', wrapper);
+    return wrapper;
+  };
+
+  const ensureCollectionMediumMetaFields = () => {
+    ensureCollectionDynamicField({
+      wrapperId: COLLECTION_DYNAMIC_IDS.mediumSubcategoriesWrap,
+      groupId: COLLECTION_DYNAMIC_IDS.mediumSubcategoriesGroup,
+      labelText: 'Sous-catégories de medium',
+      hintText: 'contexte supplémentaire pour les agents',
+    });
+
+    ensureCollectionDynamicField({
+      wrapperId: COLLECTION_DYNAMIC_IDS.genreWrap,
+      groupId: COLLECTION_DYNAMIC_IDS.genreGroup,
+      labelText: 'Genres transverses',
+      hintText: 'ambiance, tonalité, sous-genre',
+    });
+  };
+
+  const getCollectionMediumValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.mediumGroup} input:checked`);
+  const getCollectionMediumSubcategoryValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.mediumSubcategoriesGroup} input:checked`);
+  const getCollectionGenreValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.genreGroup} input:checked`);
+
+  const renderCollectionMediumMeta = ({ selectedSubcategories = null, selectedGenres = null, shouldSave = false } = {}) => {
+    ensureCollectionMediumMetaFields();
+
+    const selectedMedia = getCollectionMediumValues();
+    const currentSubcategories = selectedSubcategories || getCollectionMediumSubcategoryValues();
+    const currentGenres = selectedGenres || getCollectionGenreValues();
+    const subcategoryOptions = typeof formCatalogsData.getCollectionSubcategoriesForMedia === 'function'
+      ? formCatalogsData.getCollectionSubcategoriesForMedia(selectedMedia)
+      : [];
+    const genreOptions = COLLECTION_FORM_CATALOGS.sharedGenres || [];
+
+    renderCheckboxGroup({
+      rootId: COLLECTION_DYNAMIC_IDS.mediumSubcategoriesGroup,
+      options: subcategoryOptions,
+      selectedValues: currentSubcategories,
+      onChange: () => saveFormState(),
+    });
+
+    renderCheckboxGroup({
+      rootId: COLLECTION_DYNAMIC_IDS.genreGroup,
+      options: genreOptions,
+      selectedValues: currentGenres,
+      onChange: () => saveFormState(),
+    });
+
+    const subcategoriesWrap = document.getElementById(COLLECTION_DYNAMIC_IDS.mediumSubcategoriesWrap);
+    const genresWrap = document.getElementById(COLLECTION_DYNAMIC_IDS.genreWrap);
+    if (subcategoriesWrap) subcategoriesWrap.style.display = subcategoryOptions.length ? '' : 'none';
+    if (genresWrap) genresWrap.style.display = genreOptions.length ? '' : 'none';
+
+    if (shouldSave) saveFormState();
+  };
+
+  const renderTabletopCatalogs = () => {
+    renderSelectOptions('tt-fArchPrincipal', TABLETOP_FORM_CATALOGS.archetypes?.primaryOptions || []);
+    renderCheckboxGroup({
+      rootId: 'tt-archSecondaires',
+      options: TABLETOP_FORM_CATALOGS.archetypes?.secondaryOptions || [],
+      selectedValues: getCheckedValues('#tt-archSecondaires input:checked'),
+      onChange: () => saveFormState(),
+    });
+    renderSelectOptions('tt-fType', TABLETOP_FORM_CATALOGS.typeOptions || []);
+    renderSelectOptions('tt-fVersion', TABLETOP_FORM_CATALOGS.versionOptions || []);
+  };
+
+  const renderCollectionCatalogs = () => {
+    renderSelectOptions('col-fType', COLLECTION_FORM_CATALOGS.typeOptions || []);
+    renderCheckboxGroup({
+      rootId: COLLECTION_DYNAMIC_IDS.mediumGroup,
+      options: (COLLECTION_FORM_CATALOGS.media || []).map((entry) => ({ value: entry.value, label: entry.label })),
+      selectedValues: getCollectionMediumValues(),
+      onChange: () => {
+        renderCollectionMediumMeta({ shouldSave: false });
+        saveFormState();
+      },
+    });
+    renderCollectionMediumMeta({ shouldSave: false });
+  };
+
+  function renderDeclarativeFormCatalogs({ shouldSave = false } = {}) {
+    renderTabletopCatalogs();
+    renderCollectionCatalogs();
+    if (shouldSave) saveFormState();
+  }
+
+  const formatCommaList = (values = []) => values.join(', ');
+
+  const buildCollectionMediumContext = () => {
+    const mediums = getCollectionMediumValues();
+    const mediumSubcategories = getCollectionMediumSubcategoryValues();
+    const genres = getCollectionGenreValues();
+    const parts = [];
+
+    if (mediums.length) parts.push(`Mediums: ${formatCommaList(mediums)}`);
+    if (mediumSubcategories.length) parts.push(`Sous-catégories: ${formatCommaList(mediumSubcategories)}`);
+    if (genres.length) parts.push(`Genres: ${formatCommaList(genres)}`);
+
+    return parts.join(' | ');
   };
 
   const getShopUrl = () => {
@@ -66,9 +241,9 @@
   function getArchetypes() {
     if (getCurrentMode() !== 'tabletop') return '';
 
-    const principal = document.getElementById('tt-fArchPrincipal').value || '';
-    const secondaires = [...document.querySelectorAll('#tt-archSecondaires input:checked')].map((input) => input.value);
-    const seo = (document.getElementById('tt-fArchSeo').value || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const principal = document.getElementById('tt-fArchPrincipal')?.value || '';
+    const secondaires = getCheckedValues('#tt-archSecondaires input:checked');
+    const seo = (document.getElementById('tt-fArchSeo')?.value || '').split(',').map((value) => value.trim()).filter(Boolean);
     const parts = [];
 
     if (principal) parts.push(`Principal: ${principal}`);
@@ -79,12 +254,21 @@
   }
 
   function getMediums() {
-    return [...document.querySelectorAll('#col-fMediumGroup input:checked')].map((input) => input.value).join(', ');
+    return formatCommaList(getCollectionMediumValues());
   }
 
   function getCollectionData() {
+    const mediumSubcategories = getCollectionMediumSubcategoryValues();
+    const genres = getCollectionGenreValues();
+
     return {
+      typePiece: document.getElementById('col-fType')?.value || 'FIGURINE',
       medium: getMediums(),
+      mediumSubcategories: formatCommaList(mediumSubcategories),
+      medium_subcategories: formatCommaList(mediumSubcategories),
+      genres: formatCommaList(genres),
+      mediumContext: buildCollectionMediumContext(),
+      medium_context: buildCollectionMediumContext(),
       license: document.getElementById('col-fLicense')?.checked ? 'oui' : 'non',
       particularites: document.getElementById('col-fParticularites')?.value || '',
       descriptionFigurine: document.getElementById('col-fDescriptionFigurine')?.value || '',
@@ -97,20 +281,23 @@
   }
 
   function toggleBuzz(p) {
-    const checked = document.getElementById(`${p}-fBuzz`).checked;
-    document.getElementById(`${p}-fBuzzNote`).classList.toggle('visible', checked);
+    const checked = document.getElementById(`${p}-fBuzz`)?.checked;
+    document.getElementById(`${p}-fBuzzNote`)?.classList.toggle('visible', !!checked);
   }
 
   function toggleLicense() {
-    const checked = document.getElementById('col-fLicense').checked;
-    document.getElementById('col-licenseLabel').textContent = checked
-      ? 'Oui — décrire uniquement via le medium et les termes connexes'
-      : 'Non — nommer librement le personnage et l\'univers';
+    const checked = document.getElementById('col-fLicense')?.checked;
+    const label = document.getElementById('col-licenseLabel');
+    if (label) {
+      label.textContent = checked
+        ? 'Oui — décrire uniquement via le medium et les termes connexes'
+        : 'Non — nommer librement le personnage et l\'univers';
+    }
     saveFormState();
   }
 
   function toggleBuzzCollection() {
-    document.getElementById('col-fBuzzCollectionNote').classList.toggle('visible', document.getElementById('col-fBuzzCollection').checked);
+    document.getElementById('col-fBuzzCollectionNote')?.classList.toggle('visible', !!document.getElementById('col-fBuzzCollection')?.checked);
     saveFormState();
   }
 
@@ -150,28 +337,20 @@
   }
 
   function buildCtx(agentId, correction = '') {
-  const state = getState();
-const currentMode = getCurrentMode();
-const p = getPfx();
-const echellesApi = getEchellesApi();
+    const state = getState();
+    const currentMode = getCurrentMode();
+    const p = getPfx();
+    const echellesApi = getEchellesApi();
 
-const getFieldValue = (suffix) =>
-  document.getElementById(`${p}-${suffix}`)?.value?.trim() || '';
-
-const formatName = (value) =>
-  value.replace(/\b\w/g, (char) => char.toUpperCase());
-
-const rawNomField = getFieldValue('fNom');
-const rawNomCourtField = getFieldValue('fNomCourt');
-
-const rawNom = rawNomField || rawNomCourtField || 'Figurine';
-const rawNomCourt = rawNomCourtField || rawNom.split(' ')[0];
-
-const nom = formatName(rawNom);
-const nomCourt = formatName(rawNomCourt);
-
-const rules = (state.persistentRules[agentId] || []).join('\n');
-
+    const getFieldValue = (suffix) => document.getElementById(`${p}-${suffix}`)?.value?.trim() || '';
+    const formatName = (value) => value.replace(/\b\w/g, (char) => char.toUpperCase());
+    const rawNomField = getFieldValue('fNom');
+    const rawNomCourtField = getFieldValue('fNomCourt');
+    const rawNom = rawNomField || rawNomCourtField || 'Figurine';
+    const rawNomCourt = rawNomCourtField || rawNom.split(' ')[0];
+    const nom = formatName(rawNom);
+    const nomCourt = formatName(rawNomCourt);
+    const rules = (state.persistentRules[agentId] || []).join('\n');
     const collectionDescription = document.getElementById('col-fDescriptionFigurine')?.value || '';
     const collectionResume = document.getElementById('col-fResumePersonnage')?.value || '';
     const normalizedOutputs = { ...state.outputs };
@@ -181,7 +360,6 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
     }
 
     const pipelineRun = state.pipelineRun?.[p] || {};
-
     const base = {
       nom,
       nomCourt,
@@ -226,12 +404,11 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
 
   function saveFormState() {
     const currentMode = getCurrentMode();
-    const p = getPfx();
     const echellesApi = getEchellesApi();
     const data = {};
 
     if (currentMode === 'tabletop') {
-      FORM_FIELDS_TT.forEach((id) => {
+      TABLETOP_FORM_FIELDS.forEach((id) => {
         const el = document.getElementById(id);
         if (el) data[id] = el.value;
       });
@@ -239,11 +416,11 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
         checked: document.getElementById(`tt-ec${i}`)?.checked || false,
         dim: document.getElementById(`tt-ed${i}`)?.value || '',
       }));
-      data._archSec = [...document.querySelectorAll('#tt-archSecondaires input:checked')].map((input) => input.value);
+      data._archSec = getCheckedValues('#tt-archSecondaires input:checked');
       data._buzz = document.getElementById('tt-fBuzz')?.checked || false;
       data._buzzNote = document.getElementById('tt-fBuzzNote')?.value || '';
     } else {
-      FORM_FIELDS_COL.forEach((id) => {
+      COLLECTION_FORM_FIELDS.forEach((id) => {
         const el = document.getElementById(id);
         if (el) data[id] = el.value;
       });
@@ -252,7 +429,9 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
         dim: document.getElementById(`col-ed${i}`)?.value || '',
       }));
       data._license = document.getElementById('col-fLicense')?.checked || false;
-      data._mediums = [...document.querySelectorAll('#col-fMediumGroup input:checked')].map((input) => input.value);
+      data._mediums = getCollectionMediumValues();
+      data._mediumSubcategories = getCollectionMediumSubcategoryValues();
+      data._genres = getCollectionGenreValues();
       data._particularites = document.getElementById('col-fParticularites')?.value || '';
       data._descriptionFigurine = document.getElementById('col-fDescriptionFigurine')?.value || '';
       data._resumePersonnage = document.getElementById('col-fResumePersonnage')?.value || '';
@@ -265,7 +444,7 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
         return checked ? Number(checked.value) : null;
       })();
       data._customEchelles = [];
-      for (let c = 0; c < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); c++) {
+      for (let c = 0; c < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); c += 1) {
         const idx = (echellesApi.ECHELLES_COLLECTION || []).length + c;
         data._customEchelles.push({
           checked: document.getElementById(`col-ec${idx}`)?.checked || false,
@@ -281,13 +460,15 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
   function loadFormState() {
     const currentMode = getCurrentMode();
     const echellesApi = getEchellesApi();
+    renderDeclarativeFormCatalogs({ shouldSave: false });
+
     try {
       const saved = localStorage.getItem(`pipeline.form.${currentMode}`) || localStorage.getItem(`pipeline_form_${currentMode}`);
       if (!saved) return;
       const data = JSON.parse(saved);
 
       if (currentMode === 'tabletop') {
-        FORM_FIELDS_TT.forEach((id) => {
+        TABLETOP_FORM_FIELDS.forEach((id) => {
           const el = document.getElementById(id);
           if (el && data[id] !== undefined) el.value = data[id];
         });
@@ -300,9 +481,11 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
             if (dim && entry.dim) dim.value = entry.dim;
           }
         });
-        if (data._archSec) document.querySelectorAll('#tt-archSecondaires input').forEach((input) => {
-          input.checked = data._archSec.includes(input.value);
-        });
+        if (data._archSec) {
+          document.querySelectorAll('#tt-archSecondaires input').forEach((input) => {
+            input.checked = data._archSec.includes(input.value);
+          });
+        }
         if (data._buzz !== undefined) {
           const el = document.getElementById('tt-fBuzz');
           if (el) {
@@ -315,7 +498,7 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
           if (el) el.value = data._buzzNote;
         }
       } else {
-        FORM_FIELDS_COL.forEach((id) => {
+        COLLECTION_FORM_FIELDS.forEach((id) => {
           const el = document.getElementById(id);
           if (el && data[id] !== undefined) el.value = data[id];
         });
@@ -335,8 +518,15 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
             toggleLicense();
           }
         }
-        if (data._mediums) document.querySelectorAll('#col-fMediumGroup input').forEach((input) => {
-          input.checked = data._mediums.includes(input.value);
+        if (data._mediums) {
+          document.querySelectorAll('#col-fMediumGroup input').forEach((input) => {
+            input.checked = data._mediums.includes(input.value);
+          });
+        }
+        renderCollectionMediumMeta({
+          selectedSubcategories: data._mediumSubcategories || [],
+          selectedGenres: data._genres || [],
+          shouldSave: false,
         });
         if (data._particularites !== undefined) {
           const el = document.getElementById('col-fParticularites');
@@ -391,22 +581,20 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
   }
 
   function attachFormPersistence() {
-    FORM_FIELDS_TT.forEach((id) => {
+    TABLETOP_FORM_FIELDS.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', saveFormState);
       if (el.tagName === 'SELECT') el.addEventListener('change', saveFormState);
     });
 
-    FORM_FIELDS_COL.forEach((id) => {
+    COLLECTION_FORM_FIELDS.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('input', saveFormState);
       if (el.tagName === 'SELECT') el.addEventListener('change', saveFormState);
     });
 
-    document.querySelectorAll('#tt-archSecondaires input').forEach((input) => input.addEventListener('change', saveFormState));
-    document.querySelectorAll('#col-fMediumGroup input').forEach((input) => input.addEventListener('change', saveFormState));
     ['col-fParticularites', 'col-fDescriptionFigurine', 'col-fResumePersonnage', 'col-fLienPerso', 'col-fConnexesPrioritaires'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', saveFormState);
@@ -515,11 +703,17 @@ const rules = (state.persistentRules[agentId] || []).join('\n');
   }
 
   global.PipelineUIForms = {
-    FORM_FIELDS_TT,
-    FORM_FIELDS_COL,
+    FORM_FIELDS_TT: TABLETOP_FORM_FIELDS,
+    FORM_FIELDS_COL: COLLECTION_FORM_FIELDS,
+    TABLETOP_FORM_FIELDS,
+    COLLECTION_FORM_FIELDS,
     getArchetypes,
     getMediums,
     getCollectionData,
+    getCollectionMediumSubcategoryValues,
+    getCollectionGenreValues,
+    renderCollectionMediumMeta,
+    renderDeclarativeFormCatalogs,
     toggleBuzz,
     toggleLicense,
     toggleBuzzCollection,

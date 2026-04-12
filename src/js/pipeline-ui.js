@@ -57,9 +57,6 @@ const {
   resetLbPrompt,
 } = window.PipelineUILibrary;
 const {
-  ECHELLES,
-  ECHELLES_COLLECTION,
-  CUSTOM_COLLECTION_COUNT,
   buildEchellesUI,
   toggleEch,
   getEchellesSelected,
@@ -680,6 +677,7 @@ pipelinePrefixes.forEach((prefix) => {
   restoreWorkspaceImages?.(prefix);
 });
 loadPersistedData();
+renderDeclarativeFormCatalogs?.({ shouldSave: false });
 buildPipeline();
 buildEchellesUI();
 loadFormState();

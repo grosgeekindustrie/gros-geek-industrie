@@ -36,22 +36,21 @@ function switchMode(mode) {
 
   document.body.classList.toggle('mode-collection', !isTabletop);
 
-  const titles = {
-    tabletop: { h1: '🎲 Etsy Pipeline DnD', page: '🎲 Etsy Pipeline DnD v1.2' },
-    collection: { h1: '🖼️ Etsy Pipeline Collection', page: '🖼️ Etsy Pipeline Collection v1.2' },
-  };
+  const modeTitle = modeUiConfig?.headerTitle || (isTabletop ? '🎲 Etsy Pipeline DnD' : '🖼️ Etsy Pipeline Collection');
+  const pageTitle = modeUiConfig?.pageTitle || (isTabletop ? '🎲 Etsy Pipeline DnD v1.2' : '🖼️ Etsy Pipeline Collection v1.2');
+  const headerModeLabel = modeUiConfig?.headerModeLabel || (isTabletop ? 'DnD Tabletop' : 'Collection');
 
   const headerTitle = document.getElementById('headerTitle');
   if (headerTitle?.textContent !== undefined) {
-    headerTitle.textContent = titles[mode].h1;
+    headerTitle.textContent = modeTitle;
   }
 
   const headerMode = document.getElementById('headerMode');
   if (headerMode) {
-    headerMode.textContent = isTabletop ? 'DnD Tabletop' : 'Collection';
+    headerMode.textContent = headerModeLabel;
   }
 
-  document.title = modeUiConfig?.pageTitle || titles[mode].page;
+  document.title = pageTitle;
   document.getElementById('modeTabletop')?.classList.toggle('active', isTabletop);
   document.getElementById('modeCollection')?.classList.toggle('active', !isTabletop);
 
@@ -61,6 +60,7 @@ function switchMode(mode) {
   if (tabletopRoot?.style) tabletopRoot.style.display = isTabletop ? '' : 'none';
   if (collectionRoot?.style) collectionRoot.style.display = isTabletop ? 'none' : '';
 
+  renderDeclarativeFormCatalogs?.({ shouldSave: false });
   buildEchellesUI();
   buildPipeline();
   loadFormState();

@@ -306,7 +306,10 @@
     pendingBatchMode = mode;
     global._pendingBatchMode = mode;
     const modalTitle = document.querySelector('#batchModal h2');
-    if (modalTitle) modalTitle.textContent = mode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection';
+    if (modalTitle) {
+      const modeUiConfig = getModeUiConfig(mode);
+      modalTitle.textContent = modeUiConfig?.batchTitle || (mode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection');
+    }
     global.openBatchModal?.();
   }
 
