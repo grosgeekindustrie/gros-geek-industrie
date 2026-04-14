@@ -28,6 +28,8 @@ ALLOWED_SUBDIRS = {'tabletop', 'collection'}
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
 ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
 ANTHROPIC_FILES_CACHE_LOCK = Lock()
+SOLO_EXPORT_ROOT = 'export'
+BATCH_EXPORT_ROOT = 'batch'
 
 
 def safe_path(raw: str) -> Path | None:
@@ -183,16 +185,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"  {self.command} {self.path} → {args[0]}")
 
-    def save_export_files(self, files):
-        """Écrire une liste de fichiers exportés en sanitizant chaque segment du chemin."""
+    def save_export_files(self, files, output_root):
+        """Écrire les exports uniquement dans le dossier généré attendu."""
         saved = []
+        target_root = (ROOT / output_root).resolve()
+        target_root.mkdir(parents=True, exist_ok=True)
 
         for export_file in files:
-            filename = export_file.get('filename', 'export.md')
-            parts = filename.replace('\\', '/').split('/')
-            parts = [''.join(c for c in part if c.isalnum() or c in '._- ') for part in parts]
-            parts = [part for part in parts if part]
-            filepath = ROOT.joinpath(*parts)
+            filename = str(export_file.get('filename') or 'export.md')
+            raw_parts = filename.replace('\\', '/').split('/')
+            parts = []
+
+            for raw_part in raw_parts:
+                clean_part = ''.join(c for c in raw_part if c.isalnum() or c in '._- ').strip()
+                if not clean_part or clean_part in ('.', '..'):
+                    continue
+                parts.append(clean_part)
+
+            if not parts:
+                parts = ['export.md']
+
+            if parts[0] != output_root:
+                parts.insert(0, output_root)
+
+            filepath = ROOT.joinpath(*parts).resolve()
+
+            try:
+                filepath.relative_to(target_root)
+            except ValueError as exc:
+                raise ValueError(f'Chemin export non autorisé: {filename}') from exc
+
             filepath.parent.mkdir(parents=True, exist_ok=True)
             filepath.write_text(export_file.get('content', ''), encoding='utf-8')
             saved.append(str(filepath.relative_to(ROOT)))
@@ -360,10 +382,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path in ('/batch/export', '/solo/export'):
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
+            output_root = BATCH_EXPORT_ROOT if path == '/batch/export' else SOLO_EXPORT_ROOT
+
             try:
                 data = json.loads(body)
                 files = data.get('files', [])
-                saved = self.save_export_files(files)
+                saved = self.save_export_files(files, output_root)
                 self.send_json(200, {'ok': True, 'saved': saved, 'count': len(saved)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})

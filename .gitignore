@@ -1,9 +1,23 @@
+# Generated runtime outputs
 batch/
+export/
+
+# Local caches
+.cache/
+.anthropic_files_cache.json
 __pycache__/
 *.pyc
+
+# Out-of-process / transfer workspaces
+patch/
+prompt de transfert/
+
+# Local noise
 .DS_Store
-*.patch
-src/**/*.bak*
-.anthropic_files_cache.json
 FETCH_HEAD
+logs/
+tmp/
+*.tmp
+*.patch
 *.bak_*
+src/**/*.bak*
