@@ -304,9 +304,14 @@
     el.parentElement.querySelectorAll('.titre-item').forEach((node) => node.classList.remove('selected'));
     el.classList.add('selected');
     el.querySelector('input').checked = true;
-    global.state.selectedTitre = el.querySelector('.titre-text').textContent.trim();
+    const selectedTitre = el.querySelector('.titre-text').textContent.trim();
+    global.state.selectedTitre = selectedTitre;
     const p = getPfx();
-    document.getElementById(`${p}-titre-manual-${agentId}`).value = '';
+    const input = document.getElementById(`${p}-titre-manual-${agentId}`);
+    if (input) {
+      input.value = selectedTitre;
+      updateTitreCounter(agentId);
+    }
   }
 
   function updateTitreCounter(agentId) {
@@ -364,16 +369,19 @@
 
   async function validateTitre(agentId) {
     const p = getPfx();
-    const manual = document.getElementById(`${p}-titre-manual-${agentId}`).value.trim();
-    const titre = manual || global.state.selectedTitre;
+    const input = document.getElementById(`${p}-titre-manual-${agentId}`);
+    const titre = input?.value.trim() || '';
+    const selectedTitre = String(global.state.selectedTitre || '').trim();
     if (!titre) {
       alert('Choisis ou saisis un titre.');
       return;
     }
 
+    global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
-    if (manual) {
-      validateTitreSegment(manual);
+    global.setPipelineRunEntry?.(p, agentId, titre);
+    if (titre !== selectedTitre) {
+      validateTitreSegment(titre);
       global.showToast?.('✅ Titre manuel ajouté aux exemples validés');
     }
 

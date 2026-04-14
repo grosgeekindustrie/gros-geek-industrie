@@ -1331,6 +1331,12 @@ function resetPipelineRunState(prefix) {
   return runState;
 }
 
+function refreshPipelineRunCumulativeText(runState) {
+  runState.cumulativeText = runState.cumulativeEntries
+    .map((entry) => `## ${entry.agentId}\n${entry.content}`)
+    .join('\n\n');
+}
+
 function appendPipelineRunEntry(prefix, agentId, content) {
   const trimmed = String(content || '').trim();
   if (!trimmed) return;
@@ -1340,9 +1346,23 @@ function appendPipelineRunEntry(prefix, agentId, content) {
     agentId,
     content: trimmed,
   });
-  runState.cumulativeText = runState.cumulativeEntries
-    .map((entry) => `## ${entry.agentId}\n${entry.content}`)
-    .join('\n\n');
+  refreshPipelineRunCumulativeText(runState);
+}
+
+function setPipelineRunEntry(prefix, agentId, content) {
+  const trimmed = String(content || '').trim();
+  const runState = getPipelineRunState(prefix);
+  runState.cumulativeEntries = runState.cumulativeEntries
+    .filter((entry) => entry.agentId !== agentId);
+
+  if (trimmed) {
+    runState.cumulativeEntries.push({
+      agentId,
+      content: trimmed,
+    });
+  }
+
+  refreshPipelineRunCumulativeText(runState);
 }
 
 if (typeof state !== 'undefined') {
@@ -1604,7 +1624,9 @@ async function runAgent(agent, correction = '', isRetry = false) {
     }
 
     state.outputs[agent.id] = result;
-    appendPipelineRunEntry(p, agent.id, result);
+    if (!(agent.id === 'titre' && agent.hasSelection)) {
+      appendPipelineRunEntry(p, agent.id, result);
+    }
 
     if (currentMode === 'collection' && agent.id === 'analyse') {
       state.outputs.alt = extractAltFromAnalyseOutput(result);
