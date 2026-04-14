@@ -17,6 +17,13 @@
     // Pour les tests agent par agent, on coupe le pré-lancement cache-aware afin
     // d'éviter un appel supplémentaire avant l'agent travaillé.
     cacheAwarePrelaunch: true,
+
+    promptBiblio: {
+      includeObjectif: false,
+      includePsycho: true,
+      includeBiblioTitres: false,
+      includeBiblioTags: false,
+    },
   };
 
   Object.assign(global.PipelineUIDataDev, {

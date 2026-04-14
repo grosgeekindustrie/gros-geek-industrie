@@ -12,13 +12,39 @@
     return getState().bibliosByMode[getCurrentMode()][key] || '';
   }
 
+  const getPromptBiblioDevConfig = () => global.PIPELINE_DEV_CONFIG?.promptBiblio || {};
+
+  const isPromptBiblioEnabled = (key) => {
+    const config = getPromptBiblioDevConfig();
+    const disabledByKey = {
+      objectif: config.includeObjectif === false,
+      psycho: config.includePsycho === false,
+      titres: config.includeBiblioTitres === false,
+      tags: config.includeBiblioTags === false,
+    };
+
+    return !disabledByKey[key];
+  };
+
+  const getOptionalBiblio = (key) => (
+    isPromptBiblioEnabled(key) ? getBiblio(key) : ''
+  );
+
+  const getOptionalBiblioTagsForPrompt = () => {
+    if (!isPromptBiblioEnabled('tags')) return '';
+    return getBiblioTagsFormatted() || '_(aucun retour enregistré)_';
+  };
+
   const buildPipelineSharedFixedContent = (ctx = {}) => {
+    const objectif = getOptionalBiblio('objectif');
+    const psycho = getOptionalBiblio('psycho');
+
     const sections = [
       `SNAPSHOT FORMULAIRE:\n${ctx.pipeline_form_snapshot || 'Aucun snapshot disponible'}`,
-      `CONTEXTE GLOBAL:\n${getBiblio('objectif')}`,
-      `PSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
-      // `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
-      // `BIBLIOTHÈQUE TAGS:\n${getBiblioTagsFormatted() || '_(aucun retour enregistré)_'}`,
+      objectif ? `CONTEXTE GLOBAL:\n${objectif}` : '',
+      psycho ? `PSYCHOLOGIE CLIENT:\n${psycho}` : '',
+      // `BIBLIOTHÈQUE TITRES:\n${getOptionalBiblio('titres')}`,
+      // `BIBLIOTHÈQUE TAGS:\n${getOptionalBiblioTagsForPrompt()}`,
     ];
 
     return sections.filter(Boolean).join('\n\n');
@@ -205,11 +231,11 @@
       .replace(/\[\[TITRE_VALIDE\]\]/g, ctx.outputs.titre_valide || '')
       .replace(/\[\[DESCRIPTION\]\]/g, ctx.outputs.description_assembled || ctx.outputs.description || '')
       .replace(/\[\[ARCHETYPES\]\]/g, ctx.archetypes || '')
-      .replace(/\[\[OBJECTIF\]\]/g, getBiblio('objectif'))
-      .replace(/\[\[PSYCHO\]\]/g, getBiblio('psycho'))
+      .replace(/\[\[OBJECTIF\]\]/g, getOptionalBiblio('objectif'))
+      .replace(/\[\[PSYCHO\]\]/g, getOptionalBiblio('psycho'))
       .replace(/\[\[BIBLIO_SEMANTIQUE\]\]/g, getBiblio('bibliotheque-semantique'))
-      .replace(/\[\[BIBLIO_TITRES\]\]/g, getBiblio('titres'))
-      .replace(/\[\[BIBLIO_TAGS\]\]/g, getBiblioTagsFormatted() || '_(aucun retour enregistré)_')
+      .replace(/\[\[BIBLIO_TITRES\]\]/g, getOptionalBiblio('titres'))
+      .replace(/\[\[BIBLIO_TAGS\]\]/g, getOptionalBiblioTagsForPrompt())
       .replace(/\[\[MEDIUM\]\]/g, ctx.medium || '')
       .replace(/\[\[LICENSE\]\]/g, ctx.license || 'non')
       .replace(/\[\[PARTICULARITES\]\]/g, ctx.particularites || '')
