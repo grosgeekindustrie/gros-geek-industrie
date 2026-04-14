@@ -11,16 +11,16 @@
   const PIPELINE_DEV_CONFIG = {
     stopAfterByMode: {
       tabletop: 'marche',
-      collection: 'marche',
+      collection: 'titre',
     },
 
     // Pour les tests agent par agent, on coupe le pré-lancement cache-aware afin
     // d'éviter un appel supplémentaire avant l'agent travaillé.
-    cacheAwarePrelaunch: true,
+    cacheAwarePrelaunch: false,
 
     promptBiblio: {
       includeObjectif: false,
-      includePsycho: true,
+      includePsycho: false,
       includeBiblioTitres: false,
       includeBiblioTags: false,
     },

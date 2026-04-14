@@ -2,85 +2,126 @@
 
 ## Mission
 
-Génère exactement 10 titres Etsy pour une figurine de collection.
+Génère exactement 5 bases de titres Etsy pour une fiche Collection.
 
 ## Données
 
 * Personnage : `[[NOM]]`
-* Univers / second bloc utile : `[[UNIVERS]]`
+* Univers : `[[UNIVERS]]`
 * Medium : `[[MEDIUM]]`
-* Bibliothèque titres : `[[BIBLIO_TITRES]]`
+* Analyse marché : `[[MARCHE]]`
 
-## Règle principale
+## Objectif
 
-Produis des titres naturels, denses et crédibles, dans le ton de la boutique, sans copier mécaniquement la bibliothèque.
+Produire des bases de titres SEO propres, crédibles et directement exploitables.
+Le titre final pourra être ajusté manuellement.
 
-## Structure attendue
+## Identité verrouillée
 
-`[Personnage - second bloc utile], [figurine|statue|figurine de collection|statue de collection], [résine à peindre|à peindre en résine], garage kit[, enrichissement utile]`
+Le bloc identité doit commencer exactement sous cette forme :
+`[[NOM]] - [[UNIVERS]]`
 
-## Contraintes
+Applique uniquement une correction de casse :
+la première lettre du personnage et de l’univers doit être en majuscule.
+Ne modifie jamais l’orthographe.
+Ne traduis jamais.
+Ne francise jamais.
+Ne remplace jamais par une variante.
 
-* Le bloc identité est obligatoire : `Personnage - second bloc utile`
-* Si `[[UNIVERS]]` duplique le personnage, évite le doublon
-* Chaque titre doit contenir au moins 2 termes parmi : `figurine`, `statue`, `garage kit`
-* `figurine` = choix par défaut
-* `statue` seulement si cela correspond réellement au positionnement de la pièce
-* `14K HD` est autorisé seulement si cela sonne naturel
-* Une échelle ou précision simple (`1/7`, `1/8`, `1/10`, `1/12`, `chibi`, `pose muséum`) est autorisée uniquement si elle est explicitement présente dans `[[MEDIUM]]`
+## Usage de l’analyse marché
+
+L’analyse marché sert uniquement à choisir :
+* la cible client
+* l’angle collection / peinture
+* le niveau de positionnement
+
+Ne reprends jamais dans le titre :
+* rôle du personnage
+* nature du personnage
+* détail visuel
+* décor
+* élément de scène
+* formulation narrative issue de l’analyse marché
+
+## Structure cible
+
+`[[NOM]] - [[UNIVERS]], [combinaison produit] imprimée/imprimé en 3D à peindre, [cible simple]`
+
+## Termes produit
+
+Chaque titre utilise une seule combinaison produit :
+
+* `statue de collection` + `garage kit`
+* `figurine de collection` + `garage kit`
+
+Alterner ces deux combinaisons dans les 5 titres.
+
+## Accord produit
+
+Si la combinaison commence par `statue de collection`, écrire :
+`statue de collection imprimée en 3D à peindre, garage kit`
+
+Si la combinaison commence par `figurine de collection`, écrire :
+`figurine de collection imprimée en 3D à peindre, garage kit`
+
+## Contraintes SEO
+
 * N’invente jamais d’échelle
+* N’affiche une échelle que si elle est explicitement fournie
+* Pas de pipe `|`
+* Ne pas répéter `collection` et `collectionneurs` dans le même titre
 
-## Enrichissements autorisés
+## Angles à varier
 
-* 1 angle large max : `fantasy`, `dark fantasy`, `survival horror`, `anime`, `manga`, `jeu vidéo`, `JDR`, `science-fiction`, `gothique`, `mythologique`, `cyberpunk`, etc.
-* 1 cible large max : `pour collectionneurs`, `pour peintres`, `pour fans de jeux vidéo`, `pour fans d’anime`, `pour fans de fantasy`, `pour fans de dark fantasy`, `pour fans de JDR` , ect ...
+Les 5 titres varient seulement sur :
+1. Statue de collection
+2. Figurine de collection
+3. Peintres
+4. Fans de jeux vidéo
+5. Fans / collectionneurs
+
+## Cibles autorisées
+
+Utilise uniquement une cible complète :
+
+* pour collectionneurs
+* pour peintres
+* pour peintres et collectionneurs
+* pour fans de jeux vidéo
+* pour fans de fantasy
+* pour fans de dark fantasy
+* pour fans d’anime ou manga
+
+Ne termine jamais un titre par `pour fans`.
 
 ## Interdits
 
-* Ne jamais afficher d’échelle si elle n’est pas explicitement fournie dans les données d’entrée
-* Si des échelles sont fournies, utiliser uniquement celles-ci, jamais une autre
-* copier la bibliothèque
-* pipe `|`
-* slogan ou ton promo
+* Copier une bibliothèque ou un exemple
+* Slogan ou ton promo
 * `cadeau idéal`
 * `gaming`
 * `premium`, `incroyable`, `magnifique`, `exceptionnel`, `luxe`
-* rôle du personnage
-* détail de scène, pose, décor, arme, base, sculpture
-* qualificatif inventé du type `héros culte`, `personnage iconique`, `survivant`, `agent spécial`
+* Qualificatif inventé
+* Rôle du personnage
+* Détail visuel, décor, arme, base, sculpture
+* Répéter la même structure 5 fois
 
 ## Longueur
 
-* vise `125 à 140` caractères
-* légèrement plus court si le titre est déjà fort
-* n’ajoute jamais un bloc faible juste pour remplir
+* Vise 115 à 140 caractères
+* Plus court accepté si le titre est fort
+* Ne remplis jamais avec un bloc faible
 
-## Style
+## Sortie stricte
 
-* titres variés mais dans la même famille
-* ton boutique 2026
-* dense mais pas bavard
-* lisible et SEO
+[RECOMMANDÉ]
+1. ...
 
-## Diversité :
-- Les 10 titres ne doivent pas être de simples permutations du même moule
-- Varie réellement entre angle collection, angle peinture et angle univers / licence
-- Répartis les titres entre ces 3 directions au lieu de répéter la même fin
+[VARIANTES]
+2. ...
+3. ...
+4. ...
+5. ...
 
-## Fins naturelles uniquement :
-- pour collectionneurs et fans de ...
-- pour peintres et collectionneurs
-- pour peintres et fans de ...
-- pour collectionneurs et fans de ...
-- pour fans de ... et collectionneurs
-
-Interdit :
-- collectionneurs de ...
-- peintres de ...
-- collectionneurs et peintres de ...
-
-## Sortie
-
-* liste numérotée uniquement
-* un titre par ligne
-* aucune explication
+Aucune explication.
+Aucun commentaire.
