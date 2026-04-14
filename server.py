@@ -129,7 +129,6 @@ def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
         except Exception as exc:
             raise ValueError(f'Base64 invalide pour {image_id}') from exc
 
-        client_hash = str(image.get('contentHash') or '').strip()
         content_hash = compute_image_content_hash(media_type, payload)
         with ANTHROPIC_FILES_CACHE_LOCK:
             cached = load_anthropic_files_cache().get(content_hash)
