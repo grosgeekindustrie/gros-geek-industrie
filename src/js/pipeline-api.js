@@ -733,6 +733,15 @@ function getPipelineLaunchMode(prefix) {
   return prefix === 'col' ? 'collection' : 'tabletop';
 }
 
+function getSafePipelineAgentsFallback() {
+  if (typeof getPipelineAgents === 'function') {
+    const agents = getPipelineAgents();
+    return Array.isArray(agents) ? agents : [];
+  }
+
+  return [];
+}
+
 function getPipelineTargetStepsForPrefix(prefix) {
   const mode = getPipelineLaunchMode(prefix);
 
@@ -740,7 +749,7 @@ function getPipelineTargetStepsForPrefix(prefix) {
     return getPipelineTargetSteps(mode);
   }
 
-  return getPipelineAgents().map((agent) => ({
+  return getSafePipelineAgentsFallback().map((agent) => ({
     id: agent.id,
     label: agent.title,
   }));
@@ -763,12 +772,12 @@ function getPipelineRuntimeAgentIdsForPrefix(prefix) {
     return getPipelineRuntimeAgentIds(mode);
   }
 
-  return getPipelineAgents().map((agent) => agent.id);
+  return getSafePipelineAgentsFallback().map((agent) => agent.id);
 }
 
 function getPipelineRuntimeAgentsForTarget(prefix) {
   const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix);
-  const availableAgents = getPipelineAgents();
+  const availableAgents = getSafePipelineAgentsFallback();
   const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
 
   return runtimeAgentIds.map((agentId) => agentMap.get(agentId)).filter(Boolean);

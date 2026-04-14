@@ -17,8 +17,8 @@
       `SNAPSHOT FORMULAIRE:\n${ctx.pipeline_form_snapshot || 'Aucun snapshot disponible'}`,
       `CONTEXTE GLOBAL:\n${getBiblio('objectif')}`,
       `PSYCHOLOGIE CLIENT:\n${getBiblio('psycho')}`,
-      `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
-      `BIBLIOTHÈQUE TAGS:\n${getBiblioTagsFormatted() || '_(aucun retour enregistré)_'}`,
+      // `BIBLIOTHÈQUE TITRES:\n${getBiblio('titres')}`,
+      // `BIBLIOTHÈQUE TAGS:\n${getBiblioTagsFormatted() || '_(aucun retour enregistré)_'}`,
     ];
 
     return sections.filter(Boolean).join('\n\n');
