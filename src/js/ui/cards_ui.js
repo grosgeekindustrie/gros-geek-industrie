@@ -57,7 +57,13 @@
 
   function buildSelectionHTML(agent, p) {
     if (agent.id === 'tags') {
-      return `<div class="sel-zone" id="${p}-sel-tags" style="display:none;"><h4>🔖 Tags générés</h4><div id="${p}-sel-list-tags"></div></div>`;
+      return `
+    <div class="sel-zone tags-selection-zone" id="${p}-sel-tags" style="display:none;">
+      <div id="${p}-sel-tags-runtime"></div>
+      <div class="tags-selection-footer">
+        <button class="validate-btn tags-validate-btn" id="${p}-validate-tags" type="button" data-pipeline-action="validate-tags" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}" disabled>✅ Valider les tags sélectionnés</button>
+      </div>
+    </div>`;
     }
     if (!agent.hasSelection) return '';
     if (agent.selectionType === 'titre') {

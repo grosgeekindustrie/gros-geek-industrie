@@ -68,6 +68,16 @@
 
   function collectTagsFromSelection(modePrefix) {
     const p = modePrefix || (typeof global.pfx === 'function' ? global.pfx() : 'col');
+    const tagRows = [...document.querySelectorAll(`#${p}-sel-tags .tags-selection-item`)];
+
+    if (tagRows.length) {
+      return tagRows
+        .filter((row) => row.querySelector('.tags-selection-checkbox')?.checked)
+        .map((row) => row.querySelector('.tags-selection-input')?.value || '')
+        .map((tag) => (global.PipelineUIHelpers?.normalizeTagValue ? global.PipelineUIHelpers.normalizeTagValue(tag) : String(tag || '').trim()))
+        .filter(Boolean);
+    }
+
     const selectors = [
       `#${p}-sel-tags .titre-item .titre-text`,
       `#${p}-sel-tags .titre-text`,
@@ -91,8 +101,6 @@
       .map((tag) => (helpers.normalizeTagValue ? helpers.normalizeTagValue(tag) : String(tag || '').trim()))
       .filter(Boolean);
 
-    if (!tags.length) return '';
-
     const seen = new Set();
     const duplicateCount = tags.reduce((count, tag) => {
       const key = tag.toLowerCase();
@@ -101,23 +109,24 @@
       return count;
     }, 0);
 
-    const normalized = helpers.formatTagsNumbered
-      ? helpers.formatTagsNumbered(tags)
-      : tags.map((tag, index) => `${index + 1}. ${tag}`).join('\n');
-
+    const normalized = tags.join(', ');
     const runtimeState = global.state || (typeof state !== 'undefined' ? state : null);
     if (runtimeState?.outputs) {
       runtimeState.outputs.tags = normalized;
     }
 
-    syncSelectionField('tags', normalized, p);
+    const previewNode = document.getElementById(`${p}-tags-final-output`);
+    if (previewNode) {
+      previewNode.textContent = normalized || '— aucun tag sélectionné —';
+    }
+
     syncFinalPre('tags', normalized, p);
 
     if (duplicateCount > 0) {
       const signature = `${p}:${normalized}`;
       if (lastTagsDuplicateSignature !== signature) {
         lastTagsDuplicateSignature = signature;
-        global.showToast?.(`⚠️ ${duplicateCount} doublon(s) tag détecté(s) dans la liste`, '#ff4757', 5000);
+        global.showToast?.(`⚠️ ${duplicateCount} doublon(s) tag détecté(s) dans la sélection`, '#ff4757', 5000);
       }
     } else {
       lastTagsDuplicateSignature = '';

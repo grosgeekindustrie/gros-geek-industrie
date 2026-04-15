@@ -1581,10 +1581,21 @@ async function runAgent(agent, correction = '', isRetry = false) {
   if (stopBtn) stopBtn.style.display = 'inline-flex';
   if (!['analyse','alt','marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
   if (agent.hasSelection && !isRetry) {
-    state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null;
+    state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null; state.selectedTags = [];
     [`${p}-sel-${agent.id}`, `${p}-sel-accroche-${agent.id}`, `${p}-sel-cta-${agent.id}`].forEach(id => {
       const z = document.getElementById(id);
-      if (z) { z.classList.remove('visible'); const d = z.querySelector('[id]'); if (d) d.innerHTML = ''; }
+      if (!z) return;
+      z.classList.remove('visible');
+      if (agent.selectionType === 'tags' && id === `${p}-sel-${agent.id}`) {
+        z.style.display = 'none';
+        const runtimeRoot = document.getElementById(`${p}-sel-tags-runtime`);
+        if (runtimeRoot) runtimeRoot.innerHTML = '';
+        const validateBtn = document.getElementById(`${p}-validate-tags`);
+        if (validateBtn) validateBtn.disabled = true;
+        return;
+      }
+      const d = z.querySelector('[id]');
+      if (d) d.innerHTML = '';
     });
   }
   try {
@@ -1602,8 +1613,14 @@ async function runAgent(agent, correction = '', isRetry = false) {
     result = response.text;
     usage = response.usage || null;
 
-    state.outputs[agent.id] = result;
-    if (!(agent.id === 'titre' && agent.hasSelection)) {
+    if (agent.selectionType === 'tags') {
+      state.outputs.tags_raw = result;
+      state.outputs.tags = '';
+    } else {
+      state.outputs[agent.id] = result;
+    }
+
+    if (!(agent.hasSelection && ['titre', 'tags'].includes(agent.id))) {
       appendPipelineRunEntry(p, agent.id, result);
     }
 
@@ -1617,7 +1634,6 @@ async function runAgent(agent, correction = '', isRetry = false) {
     out.textContent = result;
     showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
     syncCacheIndicator(usage);
-    if (agent.id === 'tags') buildTagsUI(result);
     if (state.orchestrateurActif) {
       stat.className = 'agent-status s-run'; stat.textContent = '🔍 audit...';
       const orchResult = await runOrchestrator(agent.id, result);
@@ -1642,6 +1658,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     if (agent.hasSelection) {
       stat.className = 'agent-status s-run'; stat.textContent = '⏳ sélection requise';
       if (agent.selectionType === 'titre') buildTitreSelectionUI(agent.id, result);
+      else if (agent.selectionType === 'tags') buildTagsUI(result);
       else buildAccrocheCTASelectionUI(agent.id, result);
     } else {
       stat.className = 'agent-status s-done'; stat.textContent = '✓ done';
@@ -1709,7 +1726,7 @@ async function startPipeline(p, _options = {}) {
     if (el) el.style.display = 'none';
   });
 
-  ['titre_valide', 'description_assembled', 'tags', 'alt'].forEach((key) => {
+  ['titre_valide', 'description_assembled', 'tags', 'tags_raw', 'alt'].forEach((key) => {
     state.outputs[key] = '';
   });
 
@@ -1768,6 +1785,7 @@ async function startPipeline(p, _options = {}) {
   state.selectedAccroche = null;
   state.selectedCTA = null;
   state.selectedTitre = null;
+  state.selectedTags = [];
   Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
   if (!preserveRunState) resetPipelineRunState(p);

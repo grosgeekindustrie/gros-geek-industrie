@@ -31,6 +31,8 @@
     global.assembleFinal?.();
   };
 
+  const TAG_SELECTION_MAX = 13;
+
   function getTagLibraryState() {
     const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : {};
     return {
@@ -55,55 +57,6 @@
     };
   }
 
-  function buildTagTextHtml(tag, tagState) {
-    if (tagState.isExactBlacklisted) {
-      return helpers().escapeHtml ? helpers().escapeHtml(tag) : tag;
-    }
-    if (tagState.matchedTerm && helpers().highlightTermInText) {
-      return helpers().highlightTermInText(tag, tagState.matchedTerm, 'tag-term-highlight');
-    }
-    return helpers().escapeHtml ? helpers().escapeHtml(tag) : tag;
-  }
-
-  function buildTagStateBadge(tagState) {
-    if (tagState.isExactBlacklisted) {
-      return '<span class="tag-state-badge is-blacklisted">⚠ tag exclu</span>';
-    }
-    if (tagState.matchedTerm) {
-      return '<span class="tag-state-badge is-warning">⚠ terme exclu</span>';
-    }
-    if (tagState.isValidated) {
-      return '<span class="tag-state-badge is-validated">✓ validé</span>';
-    }
-    return '';
-  }
-
-  function buildTagItemMarkup(tag, itemId, source, libraryState) {
-    const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const len = tag.length;
-    const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
-    const tagState = getTagVisualState(tag, libraryState);
-    const itemClasses = [
-      'titre-item',
-      tagState.isValidated ? 'tag-is-validated' : '',
-      tagState.isExactBlacklisted ? 'tag-is-blacklisted' : '',
-      !tagState.isExactBlacklisted && tagState.matchedTerm ? 'tag-has-blacklisted-term' : '',
-    ].filter(Boolean).join(' ');
-
-    return `<div class="${itemClasses}" id="${itemId}">
-      <div class="titre-main">
-        <span class="titre-text">${buildTagTextHtml(tag, tagState)}</span>
-        ${buildTagStateBadge(tagState)}
-      </div>
-      <span class="titre-char" style="color:${lenColor};">${len}</span>
-      <div class="titre-actions">
-        <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','${itemId}','${source}')">👎</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','${itemId}')">🔄</button>
-      </div>
-    </div>`;
-  }
-
   function filterExplorerTags(tags, libraryState) {
     const seen = new Set();
     return tags.filter((tag) => {
@@ -122,44 +75,372 @@
     });
   }
 
+  function getTagsSelectionZone() {
+    return document.getElementById(`${getPfx()}-sel-tags`);
+  }
+
+  function getTagsSelectionRuntimeRoot() {
+    return document.getElementById(`${getPfx()}-sel-tags-runtime`);
+  }
+
+  function getTagsSelectionRows() {
+    return [...document.querySelectorAll(`#${getPfx()}-sel-tags .tags-selection-item`)];
+  }
+
+  function normalizeTagInputValue(value) {
+    return helpers().normalizeTagValue
+      ? helpers().normalizeTagValue(value)
+      : String(value || '').trim();
+  }
+
+  function getTagsSelectionRowValue(row) {
+    const input = row?.querySelector('.tags-selection-input');
+    return normalizeTagInputValue(input?.value || '');
+  }
+
+  function getTagsSelectionRowState(row, rows = getTagsSelectionRows(), libraryState = getTagLibraryState()) {
+    const value = getTagsSelectionRowValue(row);
+    const key = value.toLowerCase();
+    const duplicateCount = rows.reduce((count, candidate) => {
+      if (candidate === row) return count;
+      return getTagsSelectionRowValue(candidate).toLowerCase() === key && key ? count + 1 : count;
+    }, 0);
+    const libraryVisualState = getTagVisualState(value, libraryState);
+    const hasLengthError = value.length > 30;
+    const hasEmptyError = !value;
+    const hasDuplicateError = duplicateCount > 0;
+    const isRowValid = !hasEmptyError && !hasLengthError && !hasDuplicateError && !libraryVisualState.isExactBlacklisted && !libraryVisualState.matchedTerm;
+
+    return {
+      value,
+      duplicateCount,
+      hasLengthError,
+      hasEmptyError,
+      hasDuplicateError,
+      isRowValid,
+      ...libraryVisualState,
+    };
+  }
+
+  function buildTagsSelectionRowMarkup(tag, index) {
+    const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
+    return `
+      <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item>
+        <div class="tags-selection-checkbox-wrap">
+          <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" />
+        </div>
+        <div class="tags-selection-main">
+          <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" />
+          <div class="tags-selection-meta">
+            <span class="tags-selection-chip" data-tags-length>0 car.</span>
+            <span class="tags-selection-chip" data-tags-status>—</span>
+            <span class="tags-selection-chip is-library" data-tags-library hidden></span>
+          </div>
+        </div>
+        <div class="tags-selection-actions">
+          <button class="btn btn-muted" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés">👍</button>
+          <button class="btn btn-muted" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag">👎</button>
+        </div>
+      </article>`;
+  }
+
+  function splitTagsIntoColumns(tags = []) {
+    const left = [];
+    const right = [];
+
+    tags.forEach((tag, index) => {
+      if (index % 2 === 0) {
+        left.push(tag);
+      } else {
+        right.push(tag);
+      }
+    });
+
+    return [left, right];
+  }
+
+  function getTagsSelectedValues({ onlyValid = false } = {}) {
+    const rows = getTagsSelectionRows();
+    const libraryState = getTagLibraryState();
+
+    return rows
+      .filter((row) => row.querySelector('.tags-selection-checkbox')?.checked)
+      .map((row) => ({ row, state: getTagsSelectionRowState(row, rows, libraryState) }))
+      .filter(({ state }) => (onlyValid ? state.isRowValid : true))
+      .map(({ state }) => state.value)
+      .filter(Boolean);
+  }
+
+  function copyTagsSelectionValues(values, successMessage) {
+    navigator.clipboard.writeText(values.join(', '));
+    global.showToast?.(successMessage);
+  }
+
+  function copyTagsSelectionColumn(columnIndex) {
+    const column = document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
+    if (!column) return;
+
+    const values = [...column.querySelectorAll('.tags-selection-input')]
+      .map((input) => normalizeTagInputValue(input.value))
+      .filter(Boolean);
+
+    if (!values.length) {
+      global.showToast?.('Aucun tag à copier dans cette liste', '#ff4757');
+      return;
+    }
+
+    copyTagsSelectionValues(values, `Liste brute ${columnIndex} copiée ✓`);
+  }
+
+  function copyTagsSelectionFinalOutput() {
+    const values = getTagsSelectedValues();
+    if (!values.length) {
+      global.showToast?.('Aucun tag sélectionné à copier', '#ff4757');
+      return;
+    }
+
+    copyTagsSelectionValues(values, 'Sortie finale tags copiée ✓');
+  }
+
+  function updateTagsSelectionSummary() {
+    const p = getPfx();
+    const rows = getTagsSelectionRows();
+    const libraryState = getTagLibraryState();
+    let checkedCount = 0;
+    let validSelectedCount = 0;
+    let invalidSelectedCount = 0;
+
+    rows.forEach((row) => {
+      const rowState = getTagsSelectionRowState(row, rows, libraryState);
+      const checkbox = row.querySelector('.tags-selection-checkbox');
+      const lengthChip = row.querySelector('[data-tags-length]');
+      const statusChip = row.querySelector('[data-tags-status]');
+      const libraryChip = row.querySelector('[data-tags-library]');
+      const isChecked = Boolean(checkbox?.checked);
+
+      row.classList.toggle('is-checked', isChecked);
+      row.classList.toggle('is-invalid', !rowState.isRowValid);
+      row.classList.toggle('is-library-validated', rowState.isValidated);
+      row.dataset.tagsValid = rowState.isRowValid ? 'true' : 'false';
+
+      if (lengthChip) {
+        lengthChip.textContent = `${rowState.value.length} car.`;
+        lengthChip.className = `tags-selection-chip ${rowState.hasLengthError ? 'is-invalid' : 'is-valid'}`.trim();
+      }
+
+      if (statusChip) {
+        let statusText = '✓ valide';
+        let statusClass = 'is-valid';
+
+        if (rowState.hasEmptyError) {
+          statusText = '✗ vide';
+          statusClass = 'is-invalid';
+        } else if (rowState.hasLengthError) {
+          statusText = '✗ > 30 car.';
+          statusClass = 'is-invalid';
+        } else if (rowState.hasDuplicateError) {
+          statusText = '✗ doublon';
+          statusClass = 'is-invalid';
+        } else if (rowState.isExactBlacklisted) {
+          statusText = '✗ blacklisté';
+          statusClass = 'is-invalid';
+        } else if (rowState.matchedTerm) {
+          statusText = '✗ terme exclu';
+          statusClass = 'is-invalid';
+        }
+
+        statusChip.textContent = statusText;
+        statusChip.className = `tags-selection-chip ${statusClass}`.trim();
+      }
+
+      if (libraryChip) {
+        if (rowState.isValidated) {
+          libraryChip.hidden = false;
+          libraryChip.textContent = '✓ validé';
+        } else if (rowState.isExactBlacklisted) {
+          libraryChip.hidden = false;
+          libraryChip.textContent = '⚠ blacklist';
+        } else if (rowState.matchedTerm) {
+          libraryChip.hidden = false;
+          libraryChip.textContent = '⚠ terme';
+        } else {
+          libraryChip.hidden = true;
+          libraryChip.textContent = '';
+        }
+      }
+
+      if (isChecked) {
+        checkedCount += 1;
+        if (rowState.isRowValid) validSelectedCount += 1;
+        else invalidSelectedCount += 1;
+      }
+    });
+
+    const summaryNodes = {
+      total: document.getElementById(`${p}-tags-stat-total`),
+      selected: document.getElementById(`${p}-tags-stat-selected`),
+      valid: document.getElementById(`${p}-tags-stat-valid`),
+      invalid: document.getElementById(`${p}-tags-stat-invalid`),
+      counter: document.getElementById(`${p}-tags-selected-counter`),
+    };
+
+    if (summaryNodes.total) summaryNodes.total.textContent = String(rows.length);
+    if (summaryNodes.selected) summaryNodes.selected.textContent = `${checkedCount} / ${TAG_SELECTION_MAX}`;
+    if (summaryNodes.valid) summaryNodes.valid.textContent = String(validSelectedCount);
+    if (summaryNodes.invalid) summaryNodes.invalid.textContent = String(invalidSelectedCount);
+    if (summaryNodes.counter) summaryNodes.counter.textContent = `${checkedCount} sélectionné(s)`;
+
+    const validateButton = document.getElementById(`${p}-validate-tags`);
+    if (validateButton) {
+      validateButton.disabled = checkedCount === 0 || checkedCount > TAG_SELECTION_MAX || invalidSelectedCount > 0;
+    }
+
+    global.PipelineUIRender?.syncTagsOutputFromUI?.();
+  }
+
+  function bindTagsSelectionEvents() {
+    const zone = getTagsSelectionZone();
+    if (!zone || zone.dataset.tagsUiBound === 'true') return;
+
+    zone.dataset.tagsUiBound = 'true';
+
+    zone.addEventListener('change', (event) => {
+      if (!event.target.classList.contains('tags-selection-checkbox')) return;
+
+      if (event.target.checked) {
+        const checkedCount = getTagsSelectionRows().filter((row) => row.querySelector('.tags-selection-checkbox')?.checked).length;
+        if (checkedCount > TAG_SELECTION_MAX) {
+          event.target.checked = false;
+          global.showToast?.(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
+        }
+      }
+
+      updateTagsSelectionSummary();
+    });
+
+    zone.addEventListener('input', (event) => {
+      if (!event.target.classList.contains('tags-selection-input')) return;
+      updateTagsSelectionSummary();
+    });
+
+    zone.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-tags-action], [data-tags-copy]');
+      if (!button) return;
+
+      if (button.dataset.tagsCopy) {
+        if (button.dataset.tagsCopy === 'final') {
+          copyTagsSelectionFinalOutput();
+        } else {
+          copyTagsSelectionColumn(button.dataset.tagsCopy);
+        }
+        return;
+      }
+
+      const row = button.closest('.tags-selection-item');
+      const rowValue = getTagsSelectionRowValue(row);
+      if (!rowValue) {
+        global.showToast?.('Tag vide : impossible de lancer cette action', '#ff4757');
+        return;
+      }
+
+      if (button.dataset.tagsAction === 'validate-library') {
+        await validateTag(rowValue);
+        updateTagsSelectionSummary();
+        return;
+      }
+
+      if (button.dataset.tagsAction === 'blacklist-library') {
+        await invalidateTag(rowValue, null, 'main');
+      }
+    });
+
+    document.addEventListener('pipeline:tags-library-updated', () => {
+      updateTagsSelectionSummary();
+    });
+  }
+
   function buildTagsUI(output) {
     const p = getPfx();
     const tags = helpers().parseTagOutput ? helpers().parseTagOutput(output) : [];
-    if (!tags.length) return;
+    const zone = getTagsSelectionZone();
+    const runtimeRoot = getTagsSelectionRuntimeRoot();
+    if (!zone || !runtimeRoot) return;
 
-    const zone = document.getElementById(`${p}-sel-tags`);
-    const list = document.getElementById(`${p}-sel-list-tags`);
-    if (!zone || !list) return;
+    global.state.outputs.tags_raw = output;
+    global.state.outputs.tags = '';
+    global.state.selectedTags = [];
+
+    if (!tags.length) {
+      runtimeRoot.innerHTML = '<div class="tags-selection-empty">Aucun tag généré.</div>';
+      zone.style.display = 'block';
+      const validateButton = document.getElementById(`${p}-validate-tags`);
+      if (validateButton) validateButton.disabled = true;
+      return;
+    }
+
+    const [leftColumn, rightColumn] = splitTagsIntoColumns(tags);
+
+    runtimeRoot.innerHTML = `
+      <div class="tags-selection-shell">
+        <div class="tags-selection-topbar">
+          <div class="tags-selection-heading">
+            <div class="tags-selection-title">🔖 Sélection manuelle des tags</div>
+            <div class="tags-selection-subtitle">Coche jusqu'à ${TAG_SELECTION_MAX} tags, édite-les si besoin, puis valide pour relancer le pipeline. La sortie finale utilisée ensuite est la liste cochée, séparée par des virgules.</div>
+          </div>
+          <div class="tags-selection-toolbar">
+            <button class="btn btn-muted" type="button" data-tags-copy="1">📋 Liste brute 1</button>
+            <button class="btn btn-muted" type="button" data-tags-copy="2">📋 Liste brute 2</button>
+            <button class="btn btn-accent" type="button" data-tags-copy="final">📋 Sortie finale</button>
+          </div>
+        </div>
+        <div class="tags-selection-stats">
+          <div class="tags-selection-stat">
+            <span class="tags-selection-stat-label">Candidats</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-total">0</span>
+          </div>
+          <div class="tags-selection-stat">
+            <span class="tags-selection-stat-label">Sélection</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-selected">0 / ${TAG_SELECTION_MAX}</span>
+          </div>
+          <div class="tags-selection-stat">
+            <span class="tags-selection-stat-label">Valides</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-valid">0</span>
+          </div>
+          <div class="tags-selection-stat">
+            <span class="tags-selection-stat-label">Invalides</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-invalid">0</span>
+          </div>
+        </div>
+        <div class="tags-selection-columns">
+          <section class="tags-selection-column" id="${p}-tags-column-1">
+            <div class="tags-selection-column-head">
+              <span class="tags-selection-column-title">Liste brute 1</span>
+              <span class="tags-selection-chip" id="${p}-tags-selected-counter">0 sélectionné(s)</span>
+            </div>
+            <div class="tags-selection-list">${leftColumn.map(buildTagsSelectionRowMarkup).join('')}</div>
+          </section>
+          <section class="tags-selection-column" id="${p}-tags-column-2">
+            <div class="tags-selection-column-head">
+              <span class="tags-selection-column-title">Liste brute 2</span>
+              <span class="tags-selection-chip">Édition live</span>
+            </div>
+            <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length)).join('')}</div>
+          </section>
+        </div>
+        <section class="tags-selection-preview">
+          <div class="tags-selection-preview-head">
+            <span class="tags-selection-preview-title">Sortie finale officielle</span>
+            <span class="tags-selection-chip">CSV downstream</span>
+          </div>
+          <pre class="tags-selection-preview-output" id="${p}-tags-final-output">— aucun tag sélectionné —</pre>
+        </section>
+      </div>`;
 
     zone.style.display = 'block';
     modals().ensureLibraryModals?.();
     modals().ensureTagsManualAddButton?.();
-
-    list.innerHTML = tags.map((tag, i) => {
-      const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      const len = tag.length;
-      const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
-      return `<div class="titre-item" id="tag-item-${i}">
-      <span class="titre-text">${tag}</span>
-      <span class="titre-char" style="color:${lenColor};">${len}</span>
-      <div class="titre-actions">
-        <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','tag-item-${i}','main')">👎</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','tag-item-${i}')">🔄</button>
-      </div></div>`;
-    }).join('');
-
-    const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : { blacklisted: [] };
-    const blacklisted = parsed.blacklisted || [];
-    if (blacklisted.length) {
-      tags.forEach((tag, i) => {
-        const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(tag, blacklisted, { minTermLength: 2 }) : null;
-        if (term) {
-          const el = document.getElementById(`tag-item-${i}`);
-          if (el) setTimeout(() => tagsApi().autoRegenTag?.(tag, term, el), i * 300);
-        }
-      });
-    }
+    bindTagsSelectionEvents();
+    updateTagsSelectionSummary();
 
     const exploreBtn = document.getElementById(`${p}-bexplore-tags`);
     if (exploreBtn) exploreBtn.disabled = false;
@@ -169,19 +450,23 @@
     const parsed = global.parseBiblioTags(global.getBiblio('tags'));
     const validated = parsed.validated || [];
     const blacklisted = parsed.blacklisted || [];
+    const normalizedTag = normalizeTagInputValue(tag);
 
-    if (validated.includes(tag)) {
+    if (!normalizedTag) return;
+
+    if (validated.some((entry) => helpers().sameTag ? helpers().sameTag(entry, normalizedTag) : entry === normalizedTag)) {
       global.showToast?.('Déjà validé');
       return;
     }
 
-    validated.push(tag);
+    validated.push(normalizedTag);
     const updated = global.buildBiblioTagsRaw(validated, blacklisted);
     try {
       const res = await fetch(`/files/biblios/${global.currentMode}/tags.md`, { method: 'PUT', body: updated });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       global.state.bibliosByMode[global.currentMode].tags = updated;
-      global.showToast?.(`👍 "${tag}" validé`);
+      document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
+      global.showToast?.(`👍 "${normalizedTag}" validé`);
     } catch (error) {
       global.showToast?.('Erreur sauvegarde', '#ff4757');
     }
@@ -190,10 +475,52 @@
   async function invalidateTag(tag, itemId = null, source = 'main') {
     modals().openLibraryBlacklistModal?.({
       kind: 'tags',
-      currentValue: helpers().normalizeTagValue ? helpers().normalizeTagValue(tag) : String(tag || '').trim(),
+      currentValue: normalizeTagInputValue(tag),
       itemId,
       source,
     });
+  }
+
+  async function validateTags(agentId) {
+    const p = getPfx();
+    const selectedTags = getTagsSelectedValues({ onlyValid: true });
+    const invalidSelectedCount = getTagsSelectionRows().filter((row) => {
+      const checkbox = row.querySelector('.tags-selection-checkbox');
+      if (!checkbox?.checked) return false;
+      return row.dataset.tagsValid !== 'true';
+    }).length;
+
+    if (!selectedTags.length) {
+      alert('Choisis au moins un tag valide.');
+      return;
+    }
+
+    if (invalidSelectedCount > 0) {
+      alert('Corrige les tags invalides avant de valider.');
+      return;
+    }
+
+    if (selectedTags.length > TAG_SELECTION_MAX) {
+      alert(`Tu ne peux pas valider plus de ${TAG_SELECTION_MAX} tags.`);
+      return;
+    }
+
+    const finalCsv = selectedTags.join(', ');
+    global.state.selectedTags = selectedTags;
+    global.state.outputs.tags = finalCsv;
+    global.setPipelineRunEntry?.(p, agentId, finalCsv);
+    global.PipelineUIRender?.syncSelectionField?.('tags', finalCsv, p);
+    global.PipelineUIRender?.syncFinalPre?.('tags', finalCsv, p);
+
+    const zone = getTagsSelectionZone();
+    const status = document.getElementById(`${p}-stat-${agentId}`);
+    if (zone) zone.style.display = 'none';
+    if (status) {
+      status.textContent = '✓ sélection validée';
+      status.className = 'agent-status s-done';
+    }
+
+    await continueAfterSelection(agentId);
   }
 
   async function runTagExplorer() {
@@ -575,6 +902,7 @@
     buildTagsUI,
     validateTag,
     invalidateTag,
+    validateTags,
     runTagExplorer,
     closeExplorer,
     buildTitreSelectionUI,

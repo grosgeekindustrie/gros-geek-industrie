@@ -142,6 +142,7 @@
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     global.state.bibliosByMode[global.currentMode].tags = updated;
+    document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
   }
 
   async function saveTitresLibrary(validated, blacklisted) {

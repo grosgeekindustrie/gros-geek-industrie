@@ -356,6 +356,7 @@ async function handlePipelineActionRequest(request = {}) {
     'rerun-suite': () => rerunSuite(agentId),
     'stop-agent': () => stopAgent(agentId, activePrefix),
     'validate-title': () => validateTitre(agentId),
+    'validate-tags': () => validateTags(agentId),
     'validate-selection': () => validateAccrocheCTA(agentId),
   };
   const actionHandler = actionHandlers[action];
@@ -491,7 +492,7 @@ function assembleFinal() {
   }
 }
 
-function copyOut(agentId) { navigator.clipboard.writeText(state.outputs[agentId] || ''); showToast('Copié ✓'); }
+function copyOut(agentId) { const p = pfx(); const node = document.getElementById(`${p}-out-${agentId}`); const text = node?.textContent || state.outputs[agentId] || ''; navigator.clipboard.writeText(text); showToast('Copié ✓'); }
 function copyAllOutputs() {
   const agents = [
     { id:'analyse', label:'01 — ANALYSE VISUELLE' }, { id:'alt', label:'02 — BALISE ALT' },

@@ -10,14 +10,14 @@
   const pipelineAgentsByMode = {
     tabletop: [
       { id:'titre',       title:'🏷️ 01 — Maya · Titres SEO (×5)',         usesImages:false, hasSelection:true,  selectionType:'titre' },
-      { id:'tags',        title:'🔖 02 — Karim · Tags (×13)',             usesImages:false, hasSelection:false },
+      { id:'tags',        title:'🔖 02 — Karim · Tags (×13)',             usesImages:false, hasSelection:true,  selectionType:'tags' },
       { id:'marche',      title:'📊 03 — Sophie · Analyse de marché',     usesImages:true,  hasSelection:false },
       { id:'description', title:'📝 04 — Claire · Description',           usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
       { id:'alt',         title:'🖼️ 05 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
     ],
     collection: [
       { id:'titre',       title:'🏷️ 01 — Nova · Titres SEO (×5)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
-      { id:'tags',        title:'🔖 02 — Axel · Tags (×13)',              usesImages:false, hasSelection:false },
+      { id:'tags',        title:'🔖 02 — Axel · Tags (×13)',              usesImages:false, hasSelection:true,  selectionType:'tags' },
       { id:'marche',      title:'📊 03 — Luna · Analyse de marché',       usesImages:true,  hasSelection:false },
       { id:'description', title:'📝 04 — Eden · Description',             usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
       { id:'analyse',     title:'🖼️ 05 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
