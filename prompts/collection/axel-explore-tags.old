@@ -240,27 +240,6 @@ Chaque tag doit pouvoir être copié tel quel dans la barre de recherche Etsy.
 • tags incomplets qui ressemblent à une liste de mots-clés  
 • tags trop larges sans ancrage produit, personnage, univers ou connexe exact
 
-
-## Qualité de formulation prioritaire
-
-Chaque tag doit être une mini-requête française naturelle, réellement tapable sur Etsy.
-
-Tu n’assembles pas des mots-clés.
-Tu rédiges une recherche courte, fluide et crédible.
-
-Règles :
-• n’ajoute jamais un mot non fourni, non autorisé, ou non présent dans `[[CONNEXES_PRIORITAIRES]]`
-• respecte les accords grammaticaux entre produit, fabrication et finition
-• utilise l’espace disponible seulement si l’ajout rend la recherche plus naturelle, plus précise ou plus utile
-• n’ajoute jamais un mot décoratif, narratif ou matériau parasite pour “remplir”
-• entre deux formulations, choisis toujours la plus naturelle en français
-
-Avant de garder un tag, vérifie :
-• est-ce qu’un acheteur Etsy francophone pourrait vraiment taper cela ?
-• est-ce que chaque mot est autorisé ou fourni ?
-• est-ce que les mots sont bien accordés entre eux ?
-• est-ce que le remplissage améliore la recherche au lieu de la casser ?
-
 ## Exclusions bibliothèque
 
 Respecte strictement la bibliothèque d’exclusions tags.

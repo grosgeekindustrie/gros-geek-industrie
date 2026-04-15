@@ -30,8 +30,8 @@
     isPromptBiblioEnabled(key) ? getBiblio(key) : ''
   );
 
-  const getOptionalBiblioTagsForPrompt = () => {
-    if (!isPromptBiblioEnabled('tags')) return '';
+  const getOptionalBiblioTagsForPrompt = (agentId) => {
+    if (agentId !== 'tags') return '';
     return getBiblioTagsFormatted() || '_(aucun retour enregistré)_';
   };
 
@@ -235,7 +235,7 @@
       .replace(/\[\[PSYCHO\]\]/g, getOptionalBiblio('psycho'))
       .replace(/\[\[BIBLIO_SEMANTIQUE\]\]/g, getBiblio('bibliotheque-semantique'))
       .replace(/\[\[BIBLIO_TITRES\]\]/g, getOptionalBiblio('titres'))
-      .replace(/\[\[BIBLIO_TAGS\]\]/g, getOptionalBiblioTagsForPrompt())
+      .replace(/\[\[BIBLIO_TAGS\]\]/g, getOptionalBiblioTagsForPrompt(agentId))
       .replace(/\[\[MEDIUM\]\]/g, ctx.medium || '')
       .replace(/\[\[LICENSE\]\]/g, ctx.license || 'non')
       .replace(/\[\[PARTICULARITES\]\]/g, ctx.particularites || '')
