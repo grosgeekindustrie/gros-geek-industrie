@@ -35,7 +35,7 @@
         <span class="chevron" id="${p}-chev-${agent.id}">▾</span>
       </div>
       <div class="agent-body" id="${p}-body-${agent.id}">
-        <div class="output-box empty" id="${p}-out-${agent.id}">— pas encore généré —</div>
+        ${agent.id === 'tags' ? '' : `<div class="output-box empty" id="${p}-out-${agent.id}">— pas encore généré —</div>`}
         ${buildSelectionHTML(agent, p)}
         <div class="correction-area"><label>💬 Correction ponctuelle</label><textarea id="${p}-cor-${agent.id}" placeholder="Pour cette fiche uniquement..."></textarea></div>
         <div class="agent-actions">
