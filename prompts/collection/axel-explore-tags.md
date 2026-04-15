@@ -19,7 +19,7 @@ Medium : `[[MEDIUM]]`
 Licence protégée : `[[LICENSE]]`  
 Connexes prioritaires : `[[CONNEXES_PRIORITAIRES]]`  
 Titre validé : `[[TITRE_VALIDE]]`
-Exclusions tags : `[[BIBLIO_TAGS_EXCLUSIONS]]`
+Exclusions tags : `[[BIBLIO_TAGS]]`
 
 ## Lien titre → tags
 
