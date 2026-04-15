@@ -257,18 +257,27 @@
     return formatCommaList(getCollectionMediumValues());
   }
 
-  function getCollectionData() {
-    const mediumSubcategories = getCollectionMediumSubcategoryValues();
-    const genres = getCollectionGenreValues();
+  const getCollectionMediumMetaData = () => {
+    const mediumSubcategories = formatCommaList(getCollectionMediumSubcategoryValues());
+    const genres = formatCommaList(getCollectionGenreValues());
+    const mediumContext = buildCollectionMediumContext();
 
+    return {
+      mediumSubcategories,
+      medium_subcategories: mediumSubcategories,
+      genres,
+      genresTransverses: genres,
+      genres_transverses: genres,
+      mediumContext,
+      medium_context: mediumContext,
+    };
+  };
+
+  function getCollectionData() {
     return {
       typePiece: document.getElementById('col-fType')?.value || 'FIGURINE',
       medium: getMediums(),
-      mediumSubcategories: formatCommaList(mediumSubcategories),
-      medium_subcategories: formatCommaList(mediumSubcategories),
-      genres: formatCommaList(genres),
-      mediumContext: buildCollectionMediumContext(),
-      medium_context: buildCollectionMediumContext(),
+      ...getCollectionMediumMetaData(),
       license: document.getElementById('col-fLicense')?.checked ? 'oui' : 'non',
       particularites: document.getElementById('col-fParticularites')?.value || '',
       descriptionFigurine: document.getElementById('col-fDescriptionFigurine')?.value || '',

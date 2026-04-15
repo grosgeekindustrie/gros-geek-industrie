@@ -42,8 +42,8 @@ Priorité aux éléments suivants s’ils sont présents dans le titre :
 • intention d’achat  
 • medium  
 • sous-catégories medium  
-• les termes exacts issus de `[[GENRES_TRANSVERSES]]`, sans invention  
-• les termes exacts issus de `[[MEDIUM_CONTEXT]]`, sans invention
+• des termes exact issu de `[[GENRES_TRANSVERSES]]`, pas d'invention  
+• des termes exact issu de `[[MEDIUM_CONTEXT]]`, pas d'invention
 
 Ne copie pas le titre entier.  
 Transforme ses éléments en tags courts, lisibles et complémentaires.
@@ -71,32 +71,52 @@ Transforme ses éléments en tags courts, lisibles et complémentaires.
 • N’ajoute jamais un matériau, un nom de sculpteur, un nom de studio ou un autre mot parasite s’il n’est pas explicitement fourni dans un champ dédié ou listé dans les éléments autorisés  
 • Hors tags commençant par `cadeau`, chaque tag doit contenir un produit explicite
 
-## Construction et enrichissement des tags
+## Longueur utile
+
+Chaque tag peut utiliser jusqu’à 30 caractères espaces compris.
+
+Ne fais pas des tags trop courts si un ajout cohérent peut renforcer le SEO.
+
+Quand il reste de la place, enrichis le tag avec un élément utile parmi :
+
+• univers  
+• personnage  
+• produit  
+• finition  
+• fabrication  
+• intention d’achat  
+• connexe fourni  
+• des termes exact issu de `[[GENRES_TRANSVERSES]]`, sans invention  
+• des termes exact issu de `[[MEDIUM_CONTEXT]]`, sans invention
+
+Ne rallonge jamais un tag avec un mot faible ou incohérent.
+
+Repères :
+• moins de 20 caractères = généralement trop court  
+• 20 à 23 caractères = acceptable seulement si le tag est déjà naturel et difficile à enrichir  
+• 24 à 30 caractères = zone idéale
 
 Objectif :
-produire des tags entre 24 et 30 caractères espaces compris dès que possible,
-sans dépasser 30 caractères.
 
-Règle de construction :
-1. construis d’abord un tag avec un produit explicite
-2. ajoute ensuite `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact selon ce qui est pertinent
-3. si le tag reste trop court, ajoute ensuite des termes exacts issus de `[[MEDIUM_CONTEXT]]` ou/et de `[[GENRES_TRANSVERSES]]`
-4. si le tag atteint une forme naturelle entre 24 et 30 caractères, garde-le
-5. si l’ajout d’un terme dépasse 30 caractères, n’utilise pas ce terme
+• tag court seulement si aucun enrichissement naturel n’est possible  
+• tag plus long si cela améliore la recherche  
+• toujours 30 caractères maximum
 
-Règles absolues :
-• hors tags commençant par `cadeau`, chaque tag doit contenir un produit explicite
-• les termes exacts issus de `[[MEDIUM_CONTEXT]]` et de `[[GENRES_TRANSVERSES]]` ont le même statut
-• utilise ceux qui tiennent naturellement dans le tag, sans priorité systématique de l’un sur l’autre
-• quand plusieurs termes exacts fournis tiennent naturellement dans le tag, tu peux en utiliser plusieurs
-• n’invente rien
-• ne reformule rien
-• ne résume rien
-• tout mot ajouté doit venir textuellement des données fournies ou des éléments autorisés
-• ne garde pas un tag court si un enrichissement exact fourni tient naturellement dans la limite
-• moins de 20 caractères = généralement insuffisant
-• 20 à 23 caractères = acceptable seulement si aucun enrichissement exact fourni ne tient naturellement
-• 24 à 30 caractères = zone cible
+## Densité SEO
+
+Quand un tag est trop court ou faible, complète-le avec un produit, un univers, une intention, un connexe exact ou un autre terme exact utile issu des données fournies.
+
+Les termes exacts issus de `[[GENRES_TRANSVERSES]]` et `[[MEDIUM_CONTEXT]]` sont des enrichissements SEO prioritaires quand un tag reste trop court ou trop nu.
+
+Ne laisse pas un tag vague si une version plus complète tient sous 30 caractères.
+
+Un tag doit exploiter intelligemment l’espace disponible sans dépasser 30 caractères.
+
+Quand un tag contient un connexe et reste trop nu, complète d’abord avec `[[UNIVERS]]` avant d’ajouter un terme de genre ou de contexte.
+
+Varie les termes exacts utiles disponibles dans `[[GENRES_TRANSVERSES]]` et `[[MEDIUM_CONTEXT]]` quand plusieurs termes fournis peuvent enrichir naturellement les tags.
+
+
 
 ## Ordre naturel des mots
 
@@ -113,8 +133,8 @@ Priorité d’ordre :
 • produit + univers + intention  
 • produit + connexe + univers  
 • produit + connexe + fabrication  
-• connexe + produit + univers  
-• personnage + produit + univers  
+• connexe + produit + univers
+• personnage + produit + univers
 • cadeau + produit + personnage  
 • cadeau + produit + univers  
 • cadeau + intention + univers
@@ -164,10 +184,11 @@ Respecte les accords en français.
 • Un tag sans `[[NOM]]`, sans `[[UNIVERS]]` et sans connexe exact est à éviter  
 • Un tag générique n’est acceptable que s’il contient un produit explicite et une intention d’achat claire  
 • Les tags style / collection / jeux vidéo doivent rester rattachés à un produit clair quand le personnage ou l’univers n’apparaissent pas  
-• des termes de genre ou de contexte ne doivent pas remplacer un produit explicite si ce produit tient naturellement dans le tag  
-• des termes de genre ou de contexte peuvent servir d’enrichissement principal s’ils sont textuellement fournis, qu’ils restent naturels en français et qu’un produit explicite est présent dans le tag  
-• n’utilise jamais un nom de sculpteur ou de studio s’il n’existe pas de champ dédié de sculpteur dans les données fournies  
-• quand un tag utilise des termes exacts issus de `[[GENRES_TRANSVERSES]]` ou de `[[MEDIUM_CONTEXT]]`, il doit garder un ancrage fort avec un produit explicite et, si cela tient naturellement, avec `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact
+• un terme de genre ou de contexte ne doit pas remplacer un produit explicite si ce produit tient naturellement dans le tag  
+• un terme de genre ou de contexte peut servir d’enrichissement principal s’il est textuellement fourni, qu’il reste naturel en français et qu’un produit explicite est présent dans le tag
+• n’utilise jamais un nom de sculpteur ou de studio s’il n’existe pas de champ dédié de sculpteur dans les données fournies
+• quand un tag utilise un terme de genre ou de contexte, il doit garder un ancrage fort avec `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact, selon ce qui tient naturellement dans le tag
+
 
 ## Connexes
 
@@ -194,8 +215,7 @@ Formes autorisées :
 • `figurine [univers] de collection`  
 • `statue [univers] de collection`  
 • `cadeau fan [univers]`  
-• `cadeau collectionneur [univers]`  
-• `cadeau [produit] [personnage]`
+• `cadeau collectionneur [univers]`
 
 Évite les formes mécaniques comme :
 
@@ -272,7 +292,7 @@ Si un tag contient un terme exclu, remplace-le par une formulation plus précise
 • 7 tags produit + personnage + univers  
 • 4 tags finition / fabrication  
 • 4 tags connexes prioritaires  
-• 3 tags cadeau / cible, dont au moins 1 avec produit explicite  
+• 3 tags cadeau / cible  
 • 3 tags univers / style
 
 ## Auto-contrôle avant sortie
@@ -301,14 +321,15 @@ Avant de répondre, vérifie mentalement :
 • tout mot ajouté vient textuellement des données fournies ou des éléments autorisés  
 • aucun tag ne commence par `collection` si un produit peut ouvrir naturellement le tag  
 • aucun tag hors `cadeau` n’est conservé s’il ne contient pas un produit explicite  
-• aucun tag trop générique n’est conservé s’il ne contient qu’un produit + des termes de genre ou de contexte  
-• si un tag reste trop court ou trop nu, utilise des termes exacts utiles issus de `[[MEDIUM_CONTEXT]]` et de `[[GENRES_TRANSVERSES]]` selon ce qui tient naturellement dans le tag
+• aucun tag trop générique n’est conservé s’il ne contient qu’un produit + des termes de genre ou de contexte
+• si un tag reste trop court ou trop nu, utilise en priorité un terme exact utile issu de `[[GENRES_TRANSVERSES]]` ou `[[MEDIUM_CONTEXT]]` quand il tient naturellement
 
 ## Doublons de sens
 
 Ne garde pas deux tags qui expriment la même recherche avec un simple changement d’ordre.
 
 Si deux tags veulent dire la même chose, conserve uniquement la version la plus naturelle en français.
+
 
 ## Ordre de sortie
 

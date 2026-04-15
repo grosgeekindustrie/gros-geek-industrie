@@ -3,6 +3,7 @@
 
 ## BLACKLISTÉS
 - personnage
+- personnages
 - héros
 - gaming
 - fan gaming

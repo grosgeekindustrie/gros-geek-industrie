@@ -1272,6 +1272,9 @@ function buildPipelineFormSnapshot(prefix) {
   const dimensions = typeof window.PipelineUIEchelles?.getDimsFromEchelles === 'function'
     ? window.PipelineUIEchelles.getDimsFromEchelles()
     : '';
+  const collectionData = mode === 'collection' && typeof getCollectionData === 'function'
+    ? getCollectionData()
+    : {};
   const lines = [];
   const pushSnapshotLine = (label, value) => {
     const normalizedValue = String(value || '').trim();
@@ -1295,7 +1298,10 @@ function buildPipelineFormSnapshot(prefix) {
     pushSnapshotLine('Archétypes', typeof getArchetypes === 'function' ? getArchetypes() : '');
     pushSnapshotLine('Notes', document.getElementById('tt-fNotes')?.value);
   } else {
-    pushSnapshotLine('Medium', typeof getMediums === 'function' ? getMediums() : '');
+    pushSnapshotLine('Medium', collectionData.medium || (typeof getMediums === 'function' ? getMediums() : ''));
+    pushSnapshotLine('Sous-catégories medium', collectionData.mediumSubcategories || collectionData.medium_subcategories || '');
+    pushSnapshotLine('Genres transverses', collectionData.genresTransverses || collectionData.genres_transverses || collectionData.genres || '');
+    pushSnapshotLine('Contexte medium', collectionData.mediumContext || collectionData.medium_context || '');
     pushSnapshotLine('License sensible', document.getElementById('col-fLicense')?.checked ? 'oui' : 'non');
     pushSnapshotLine('Particularités', document.getElementById('col-fParticularites')?.value);
     pushSnapshotLine('Description figurine', document.getElementById('col-fDescriptionFigurine')?.value);

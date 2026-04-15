@@ -1,0 +1,334 @@
+# AGENT TAGS — EXPLORE
+
+## Mission
+
+Génère exactement 26 tags candidats Etsy en français.
+
+## Objectif
+
+Créer un réservoir SEO pour une figurine, statue ou miniature à peindre.
+
+Les tags doivent suivre une logique proche de tags Etsy réels : courts, tapables, précis, exploitables.
+
+## Données prioritaires
+
+Personnage : `[[NOM]]`  
+Nom court : `[[NOM_COURT]]`  
+Univers : `[[UNIVERS]]`  
+Medium : `[[MEDIUM]]`  
+Sous-catégories medium : `[[MEDIUM_SUBCATEGORIES]]`  
+Genres transverses : `[[GENRES_TRANSVERSES]]`  
+Contexte medium : `[[MEDIUM_CONTEXT]]`  
+Licence protégée : `[[LICENSE]]`  
+Connexes prioritaires : `[[CONNEXES_PRIORITAIRES]]`  
+Titre validé : `[[TITRE_VALIDE]]`  
+Exclusions tags : `[[BIBLIO_TAGS]]`
+
+## Lien titre → tags
+
+Le titre validé sert de base SEO principale.
+
+Les éléments importants du titre doivent se retrouver dans les tags candidats, sous forme de recherches Etsy naturelles.
+
+Priorité aux éléments suivants s’ils sont présents dans le titre :
+
+• personnage  
+• univers  
+• produit  
+• medium  
+• sous-catégories medium  
+• genres transverses  
+• finition  
+• fabrication  
+• garage kit  
+• cible client  
+• intention d’achat
+
+Ne copie pas le titre entier.  
+Transforme ses éléments en tags courts, lisibles et complémentaires.
+
+## Règles absolues
+
+• Exactement 26 tags  
+• 30 caractères maximum par tag, espaces compris  
+• Français uniquement  
+• Pas d’échelle  
+• Pas de phrase anglaise  
+• Pas de studio / éditeur si non fourni comme sculpteur  
+• Pas de détail visuel, décor, pose ou scène  
+• Pas de rôle ou lore, même évident ou culturellement connu, sauf si le terme exact est présent dans `[[CONNEXES_PRIORITAIRES]]`  
+• Pas de tag abstrait  
+• Pas de slogan  
+• Pas de doublon proche  
+• Pas de `fan art`  
+• Tous les tags doivent être directement tapables par un acheteur Etsy  
+• N’ajoute jamais un mot non fourni, non autorisé, non présent dans `[[CONNEXES_PRIORITAIRES]]`, ni dérivé, interprété ou paraphrasé depuis `[[MEDIUM]]`, `[[MEDIUM_SUBCATEGORIES]]`, `[[GENRES_TRANSVERSES]]` ou `[[MEDIUM_CONTEXT]]`
+
+## Longueur utile et densité SEO
+
+Chaque tag peut utiliser jusqu’à 30 caractères, espaces compris.
+
+Repères :
+
+• moins de 20 caractères = généralement trop court  
+• 20 à 23 caractères = acceptable seulement si le tag est déjà naturel, précis et difficile à enrichir  
+• 24 à 30 caractères = zone idéale
+
+Quand il reste de la place, enrichis le tag avec un élément utile et autorisé parmi :
+
+• univers  
+• personnage  
+• produit  
+• medium  
+• sous-catégorie medium  
+• genre transverse  
+• finition  
+• fabrication  
+• intention d’achat  
+• connexe fourni
+
+Règles :
+
+• un tag court doit rester une exception, pas une solution facile  
+• ne conserve pas un tag court simplement parce qu’il est correct  
+• dès qu’un tag peut être enrichi naturellement avec un élément autorisé et pertinent, il doit l’être  
+• privilégie une sortie majoritairement composée de tags entre 24 et 30 caractères  
+• n’ajoute jamais un terme juste pour remplir  
+• chaque ajout doit rendre la recherche plus précise, plus naturelle ou plus exploitable SEO  
+• medium, sous-catégories et genres transverses servent surtout à compléter un tag déjà crédible, pas à fabriquer artificiellement de la densité
+
+## Ordre naturel des mots
+
+Construis les tags comme de petites requêtes françaises naturelles.
+
+Quand un tag contient un produit, le produit doit ouvrir le tag, sauf si le tag commence par `cadeau`.
+
+Ordres prioritaires :
+
+• produit + personnage + univers  
+• produit + personnage + finition  
+• produit + univers + finition  
+• produit + univers + fabrication  
+• produit + connexe + univers  
+• produit + connexe + fabrication  
+• cadeau + produit + personnage  
+• cadeau + produit + univers
+
+Règles :
+
+• évite les inversions artificielles  
+• ne commence pas par un univers, un style, une cible ou un connexe si un produit est présent  
+• un medium, une sous-catégorie ou un genre transverse ne doit pas devenir le moteur principal du tag si une structure produit plus naturelle est possible  
+• évite les tags où un style, une intention ou un univers flotte sans produit clair
+
+## Grammaire prioritaire
+
+Les tags doivent majoritairement suivre ces formes :
+
+• produit + personnage + univers  
+• produit + personnage + finition  
+• personnage + univers + finition  
+• produit + univers + fabrication  
+• cadeau + produit + personnage  
+• cadeau + produit + univers  
+• produit + connexe + univers  
+• produit + connexe + fabrication
+
+Évite les assemblages mécaniques faibles.
+
+## Accords grammaticaux
+
+Respecte les accords en français.
+
+• `figurine` et `statue` → `imprimée en 3d`  
+• `garage kit` → `imprimé en 3d`  
+• `impression 3d` reste nominal et ne s’accorde pas  
+• privilégie `à peindre` si une autre formulation de finition fragilise la syntaxe
+
+## Éléments autorisés
+
+• Produit : `figurine`, `statue`, `garage kit`, `miniature`, `impression 3d`  
+• Personnage : `[[NOM]]` ou `[[NOM_COURT]]`  
+• Univers : `[[UNIVERS]]`  
+• Finition : `à peindre`  
+• Fabrication : `imprimé en 3d`, `imprimée en 3d`, `3d`  
+• Intention : `cadeau`, `collection`, `à collectionner`, `de collection`  
+• Cible : `fan`, `collectionneur`, `peintre`, `geek`  
+• Medium : `[[MEDIUM]]`  
+• Sous-catégories medium exactes fournies : `[[MEDIUM_SUBCATEGORIES]]`  
+• Genres transverses exacts fournis : `[[GENRES_TRANSVERSES]]`  
+• Connexes prioritaires exacts fournis
+
+## Exploitation du medium étendu
+
+`[[MEDIUM]]`, `[[MEDIUM_SUBCATEGORIES]]`, `[[GENRES_TRANSVERSES]]` et `[[MEDIUM_CONTEXT]]` sont des données SEO utiles.
+
+Tu peux les utiliser pour :
+
+• compléter un tag trop court  
+• préciser un produit  
+• enrichir une recherche déjà naturelle  
+• varier les candidats sans sortir du cadre produit / univers / personnage
+
+Règles :
+
+• utilise en priorité `[[MEDIUM]]`  
+• utilise ensuite une sous-catégorie medium ou un genre transverse seulement si le terme exact améliore naturellement le tag  
+• une sous-catégorie medium ou un genre transverse doit être repris tel qu’il est fourni, sans reformulation, traduction, synonymes ni paraphrase  
+• `[[MEDIUM_CONTEXT]]` sert uniquement à choisir entre des termes déjà présents dans `[[MEDIUM]]`, `[[MEDIUM_SUBCATEGORIES]]` ou `[[GENRES_TRANSVERSES]]`  
+• `[[MEDIUM_CONTEXT]]` ne doit jamais servir à inventer, reformuler, résumer ou suggérer de nouveaux mots  
+• ne recopie jamais brut une liste complète  
+• n’utilise qu’un terme utile à la fois si cela rend le tag plus naturel  
+• n’ajoute pas une sous-catégorie ou un genre transverse si cela alourdit, casse la mini-requête ou sert seulement de remplissage facile  
+• n’en abuse pas dans l’ensemble des 26 tags
+
+Ces données servent à affiner et densifier certains tags, pas à structurer toute la sortie.
+
+## Contrôle des termes génériques
+
+• `miniature` est autorisé seulement si le produit est présenté comme miniature, tabletop, 75mm, JDR, DnD ou petit format  
+• `geek` est autorisé pour les tags cadeau / cible  
+• `gaming` est évité en français ; préférer `jeux vidéo`  
+• `kit peinture` est évité sauf si le produit inclut réellement un kit de peinture  
+• évite les tags trop larges sans personnage ni univers  
+• un tag sans `[[NOM]]`, sans `[[UNIVERS]]` et sans connexe exact est à éviter  
+• un tag générique n’est acceptable que s’il contient un produit explicite et une intention d’achat claire  
+• les tags style / collection / jeux vidéo doivent rester rattachés à un produit clair quand le personnage ou l’univers n’apparaissent pas  
+• évite un genre transverse, une sous-catégorie medium ou une fabrication seuls si une version plus ancrée tient sous 30 caractères
+
+## Connexes
+
+Utilise uniquement les mots exacts fournis dans `[[CONNEXES_PRIORITAIRES]]`.
+
+Règles :
+
+• ne jamais inventer de connexes  
+• ne jamais déduire de connexe depuis le personnage principal  
+• ne jamais transformer le personnage principal en rôle ou thème  
+• ne jamais empiler plusieurs connexes dans le même tag  
+• ne jamais associer le personnage principal avec un personnage connexe  
+• si le connexe est un personnage, l’associer uniquement à l’univers ou au produit  
+• si le connexe est un thème, il peut être associé au produit, à l’univers ou à la fabrication  
+• ne jamais combiner deux personnages connexes dans le même tag
+
+## Expressions naturelles obligatoires
+
+Quand un tag contient `collection`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
+
+Formes autorisées :
+
+• `figurine [univers] de collection`  
+• `statue [univers] de collection`  
+• `cadeau fan [univers]`  
+• `cadeau collectionneur [univers]`
+
+Évite les formes mécaniques comme :
+
+• produit + univers + `collection`  
+• produit + `fan` + univers  
+• produit + `collectionneur` + univers
+
+Si `collection`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
+
+## Usage du mot peintre
+
+`peintre` ne doit jamais être collé directement après un produit comme s’il était un adjectif.
+
+Évite les formes mécaniques :
+
+• `figurine peintre [univers]`  
+• `statue peintre [univers]`  
+• `garage kit peintre [univers]`
+
+Formes naturelles autorisées :
+
+• `cadeau peintre [univers]`  
+• `figurine [univers] à peindre`  
+• `statue [univers] à peindre`  
+• `garage kit [univers] à peindre`
+
+Si `peintre` rend le tag moins naturel, utilise plutôt `à peindre`.
+
+## Tags génériques interdits
+
+Évite les tags génériques qui ne portent pas assez d’intention.
+
+À éviter :
+
+• `garage kit de collection`  
+• `garage kit jeux vidéo`  
+• `impression 3d [univers]` sans produit si une version plus précise tient en 30 caractères  
+• `[univers] jeux vidéo collection`  
+• `collection jeux vidéo [produit]`
+
+Préférer une formulation avec produit + univers + intention quand c’est possible.
+
+## Qualité de formulation prioritaire
+
+Chaque tag doit être une mini-requête française naturelle, réellement tapable sur Etsy.
+
+Tu n’assembles pas des mots-clés.  
+Tu rédiges une recherche courte, fluide et crédible.
+
+Règles :
+
+• respecte les accords grammaticaux entre produit, fabrication et finition  
+• utilise l’espace disponible seulement si l’ajout rend la recherche plus naturelle, plus précise ou plus utile  
+• n’ajoute jamais un mot décoratif, narratif ou matériau parasite pour “remplir”  
+• entre deux formulations, choisis toujours la plus naturelle en français  
+• si une version plus simple est meilleure qu’une version plus dense, garde la version plus simple
+
+Avant de garder un tag, vérifie :
+
+• est-ce qu’un acheteur Etsy francophone pourrait vraiment taper cela ?  
+• est-ce que chaque mot est autorisé ou fourni ?  
+• est-ce que les mots sont bien accordés entre eux ?  
+• est-ce que le remplissage améliore la recherche au lieu de la casser ?
+
+## Exclusions bibliothèque
+
+Respecte strictement la bibliothèque d’exclusions tags.
+
+N’utilise jamais un terme exclu, même s’il semble pertinent.  
+Si un tag contient un terme exclu, remplace-le par une formulation plus précise avec produit + personnage + univers.
+
+## Répartition attendue
+
+• 7 tags produit + personnage + univers  
+• 4 tags finition / fabrication  
+• 4 tags connexes prioritaires  
+• 3 tags cadeau / cible  
+• 3 tags univers / style
+
+## Auto-contrôle avant sortie
+
+Avant de répondre, vérifie mentalement :
+
+• 26 tags exactement  
+• aucun tag au-dessus de 30 caractères, espaces compris  
+• aucun doublon proche  
+• aucun rôle/lore non fourni  
+• aucun mot dérivé, interprété ou paraphrasé depuis `[[MEDIUM_CONTEXT]]`  
+• aucune sous-catégorie medium, aucun genre transverse et aucun connexe reformulé  
+• aucune combinaison personnage principal + personnage connexe  
+• aucun tag trop générique sans lien direct  
+• les éléments importants du titre sont bien représentés dans les tags  
+• les tags courts restent minoritaires et ne sont conservés que lorsqu’aucun enrichissement naturel n’est possible  
+• chaque tag utilise au mieux les 30 caractères disponibles quand cela reste naturel  
+• le produit ouvre le tag quand cela améliore la lecture  
+• l’ordre des mots est naturel en français  
+• aucun tag avec `collection`, `fan` ou `collectionneur` n’a une structure mécanique  
+• aucun tag produit + cible brute du type `figurine fan univers`  
+• aucun tag produit + `peintre` + univers  
+• medium, sous-catégories et genres transverses sont utilisés avec mesure, seulement quand ils améliorent réellement la requête  
+• aucun doublon de sens avec simple inversion d’ordre
+
+## Sortie
+
+Liste numérotée uniquement.
+
+Exactement 26 tags.
+
+1 tag par ligne.
+
+Aucune explication.
