@@ -129,7 +129,7 @@
 
   const CACHE_FIXED = {
     marche: (ctx = {}) => ({
-      blocks: buildSharedBlocks(ctx, false),
+      blocks: buildSharedBlocks(ctx, true),
     }),
     titre: (ctx = {}) => ({
       blocks: buildSharedBlocks(ctx, true),

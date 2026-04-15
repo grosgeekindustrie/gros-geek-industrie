@@ -765,8 +765,13 @@ function getPipelineTargetStepMetaForPrefix(prefix, stepId = '') {
   return null;
 }
 
-function getPipelineRuntimeAgentIdsForPrefix(prefix) {
+function getPipelineRuntimeAgentIdsForPrefix(prefix, stepId = '') {
   const mode = getPipelineLaunchMode(prefix);
+  const resolvedStepId = String(stepId || '').trim();
+
+  if (typeof getPipelineRuntimeAgentIdsForTarget === 'function') {
+    return getPipelineRuntimeAgentIdsForTarget(mode, resolvedStepId);
+  }
 
   if (typeof getPipelineRuntimeAgentIds === 'function') {
     return getPipelineRuntimeAgentIds(mode);
@@ -775,8 +780,8 @@ function getPipelineRuntimeAgentIdsForPrefix(prefix) {
   return getSafePipelineAgentsFallback().map((agent) => agent.id);
 }
 
-function getPipelineRuntimeAgentsForTarget(prefix) {
-  const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix);
+function getPipelineRuntimeAgentsForTarget(prefix, stepId = '') {
+  const runtimeAgentIds = getPipelineRuntimeAgentIdsForPrefix(prefix, stepId);
   const availableAgents = getSafePipelineAgentsFallback();
   const agentMap = new Map(availableAgents.map((agent) => [agent.id, agent]));
 
@@ -1379,6 +1384,10 @@ if (typeof state !== 'undefined') {
 function getResolvedTargetStep(prefix) {
   const mode = getPipelineLaunchMode(prefix);
 
+  if (typeof normalizePipelineTargetStepId === 'function') {
+    return normalizePipelineTargetStepId(mode);
+  }
+
   if (typeof getPipelineFinalTargetStepId === 'function') {
     return getPipelineFinalTargetStepId(mode);
   }
@@ -1468,7 +1477,8 @@ async function runCacheAwarePrelaunch(prefix, pipelineAgents = []) {
 }
 
 async function runPipelineWithCacheAware(prefix) {
-  const pipelineAgents = getPipelineRuntimeAgentsForTarget(prefix);
+  const resolvedStepId = getResolvedTargetStep(prefix);
+  const pipelineAgents = getPipelineRuntimeAgentsForTarget(prefix, resolvedStepId);
 
   resetPipelineRunState(prefix);
   beginCacheDebugRun(prefix, pipelineAgents, {
@@ -1700,7 +1710,7 @@ async function startPipeline(p, _options = {}) {
   const preserveCacheStatus = Boolean(_options.preserveCacheStatus);
   const resolvedStepId = getResolvedTargetStep(p);
   const finalStepMeta = getPipelineTargetStepMetaForPrefix(p, resolvedStepId);
-  const pipelineAgents = getPipelineRuntimeAgentsForTarget(p);
+  const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedStepId);
   const finalAgentId = finalStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
   const runtimeAgentIds = new Set(pipelineAgents.map((agent) => agent.id));
   const knownAgentIds = ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'];

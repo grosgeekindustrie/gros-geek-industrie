@@ -10,8 +10,10 @@
   const modeData = global.PipelineUIDataModes || {};
   const agentsData = global.PipelineUIDataAgents || {};
   const promptMapsData = global.PipelineUIDataPromptMaps || {};
+  const devData = global.PipelineUIDataDev || {};
 
   const pipelineModeUi = modeData.PIPELINE_MODE_UI || {};
+  const pipelineDevConfig = devData.PIPELINE_DEV_CONFIG || global.PIPELINE_DEV_CONFIG || {};
   const pipelineAgents = agentsData.PIPELINE_AGENTS_BY_MODE?.tabletop || [];
   const pipelineAgentsCollection = agentsData.PIPELINE_AGENTS_BY_MODE?.collection || [];
   const pipelineRuntimeAgentIds = agentsData.PIPELINE_RUNTIME_AGENT_IDS || {};
@@ -78,13 +80,31 @@
     return steps[steps.length - 1]?.id || '';
   };
 
-  const normalizePipelineTargetStepId = (mode = global.currentMode, _stepId = '') => (
-    getPipelineFinalTargetStepId(mode)
-  );
+  const getPipelineDevStopAfterStepId = (mode = global.currentMode) => {
+    const modeKey = getPipelineModeKey(mode);
+    return String(pipelineDevConfig.stopAfterByMode?.[modeKey] || '').trim();
+  };
 
-  const getPipelineRuntimeAgentIdsForTarget = (mode = global.currentMode, _stepId = '') => (
-    getPipelineRuntimeAgentIds(mode).slice()
-  );
+  const normalizePipelineTargetStepId = (mode = global.currentMode, stepId = '') => {
+    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const finalStepId = steps[steps.length - 1]?.id || '';
+    const requestedStepId = String(stepId || '').trim();
+    const devStopAfterStepId = getPipelineDevStopAfterStepId(mode);
+    const candidateStepId = requestedStepId || devStopAfterStepId || finalStepId;
+
+    return steps.some((step) => step.id === candidateStepId) ? candidateStepId : finalStepId;
+  };
+
+  const getPipelineRuntimeAgentIdsForTarget = (mode = global.currentMode, stepId = '') => {
+    const runtimeAgentIds = getPipelineRuntimeAgentIds(mode).slice();
+    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const resolvedStepId = normalizePipelineTargetStepId(mode, stepId);
+    const targetStepMeta = steps.find((step) => step.id === resolvedStepId) || steps[steps.length - 1] || null;
+    const stopAfterAgentId = String(targetStepMeta?.stopAfterAgentId || '').trim();
+    const stopAfterAgentIndex = runtimeAgentIds.indexOf(stopAfterAgentId);
+
+    return stopAfterAgentIndex === -1 ? runtimeAgentIds : runtimeAgentIds.slice(0, stopAfterAgentIndex + 1);
+  };
 
   const getPipelineWarmupStepId = (mode = global.currentMode) => {
     const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
@@ -113,6 +133,7 @@
     getPipelineTargetSteps,
     getPipelineTargetStepMeta,
     getPipelineFinalTargetStepId,
+    getPipelineDevStopAfterStepId,
     normalizePipelineTargetStepId,
     getPipelineRuntimeAgentIdsForTarget,
     getPipelineWarmupStepId,
@@ -134,6 +155,7 @@
     getPipelineTargetSteps,
     getPipelineTargetStepMeta,
     getPipelineFinalTargetStepId,
+    getPipelineDevStopAfterStepId,
     normalizePipelineTargetStepId,
     getPipelineRuntimeAgentIdsForTarget,
     getPipelineWarmupStepId,
