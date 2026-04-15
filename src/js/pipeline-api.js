@@ -1577,7 +1577,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
   stat.className = 'agent-status s-run'; stat.textContent = '⟳ génération...';
   const ctxEl = document.getElementById('headerContext');
   if (ctxEl) ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u,'').trim();
-  out.className = 'output-box'; out.textContent = '';
+  if (out) {
+    out.className = 'output-box';
+    out.textContent = '';
+  }
   if (stopBtn) stopBtn.style.display = 'inline-flex';
   if (!['analyse','alt','marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
   if (agent.hasSelection && !isRetry) {
@@ -1631,7 +1634,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
       appendPipelineRunEntry(p, 'alt', result);
     }
 
-    out.textContent = result;
+    if (out) out.textContent = result;
     showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
     syncCacheIndicator(usage);
     if (state.orchestrateurActif) {
@@ -1672,7 +1675,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     refreshSoloTabs(p);
     return true;
   } catch (err) {
-    out.textContent = `❌ ${err.message}`;
+    if (out) out.textContent = `❌ ${err.message}`;
     card.className = 'agent-card error';
     updatePipelineTimeline(agent.id, 'error');
     stat.className = 'agent-status s-err';

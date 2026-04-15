@@ -335,6 +335,10 @@ async function continuePipelineAfterSelection(agentId) {
         break;
       }
     }
+  } catch (error) {
+    lastStatus = 'erreur';
+    console.error('continuePipelineAfterSelection failed', error);
+    showToast(`❌ Suite du pipeline: ${error.message}`, '#ff4757');
   } finally {
     finalizePipelineContinuation(prefix, lastAgentId, lastStatus);
   }
@@ -385,6 +389,10 @@ async function rerunAgent(agentId) {
     } else if (agent.hasSelection) {
       lastStatus = 'en pause · sélection requise';
     }
+  } catch (error) {
+    lastStatus = 'erreur';
+    console.error('rerunAgent failed', error);
+    showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
   } finally {
     window.setPipelineExecutionActive?.(false);
     finalizeResumeLaunchState(p, agent.id, lastStatus);
@@ -426,6 +434,10 @@ async function rerunSuite(agentId) {
         break;
       }
     }
+  } catch (error) {
+    lastStatus = 'erreur';
+    console.error('rerunSuite failed', error);
+    showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
   } finally {
     window.setPipelineExecutionActive?.(false);
     finalizeResumeLaunchState(p, lastAgentId, lastStatus);
