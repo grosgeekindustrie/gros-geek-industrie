@@ -1592,42 +1592,15 @@ async function runAgent(agent, correction = '', isRetry = false) {
     let result = '';
     let usage = null;
 
-    if (agent.id === 'tags' && currentMode === 'collection') {
-      const tagsFlow = await runTagsThreeAgents(ctx);
-      result = tagsFlow.output;
-      usage = tagsFlow.usage || null;
-      state.outputs.tags_final_csv = tagsFlow.outputFinalCsv || '';
-      state.outputs.tags_debug_csv = tagsFlow.outputDebugCsv || '';
-      state.inputs[agent.id] = [
-        '===== TAGS EXPLORE INPUT =====',
-        tagsFlow.debug?.exploreInput || '',
-        '',
-        '===== TAGS EXPLORE OUTPUT =====',
-        tagsFlow.debug?.explore || '',
-        '',
-        '===== TAGS FILTER INPUT =====',
-        tagsFlow.debug?.filterInput || '',
-        '',
-        '===== TAGS FILTER OUTPUT =====',
-        tagsFlow.debug?.filter || '',
-        '',
-        '===== TAGS SELECT INPUT =====',
-        tagsFlow.debug?.selectInput || '',
-        '',
-        '===== TAGS SELECT OUTPUT =====',
-        tagsFlow.debug?.select || '',
-      ].join('\n');
-    } else {
-      const prompt = buildPrompt(agent.id, ctx);
-      const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
-      state.inputs[agent.id] = rawFixed + prompt.filled;
-      const runtimePrompt = withPipelineCacheAwarePromptData(p, prompt, {
-        source: isRetry ? 'rerun' : 'pipeline',
-      });
-      const response = await callClaude(agent.id, runtimePrompt, shouldUseImagesForAgent(agent));
-      result = response.text;
-      usage = response.usage || null;
-    }
+    const prompt = buildPrompt(agent.id, ctx);
+    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
+    state.inputs[agent.id] = rawFixed + prompt.filled;
+    const runtimePrompt = withPipelineCacheAwarePromptData(p, prompt, {
+      source: isRetry ? 'rerun' : 'pipeline',
+    });
+    const response = await callClaude(agent.id, runtimePrompt, shouldUseImagesForAgent(agent));
+    result = response.text;
+    usage = response.usage || null;
 
     state.outputs[agent.id] = result;
     if (!(agent.id === 'titre' && agent.hasSelection)) {
@@ -1731,12 +1704,12 @@ async function startPipeline(p, _options = {}) {
   });
   state.socialSections = {};
   document.getElementById(`finalOutput-${p}`).style.display = 'none';
-  [`fs-titre-${p}`, `fs-tags-${p}`, `fs-description-${p}`, `fs-alt-${p}`, ...(p === 'col' ? ['fs-tags-debug-col'] : [])].forEach((id) => {
+  [`fs-titre-${p}`, `fs-tags-${p}`, `fs-description-${p}`, `fs-alt-${p}`].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
 
-  ['titre_valide', 'description_assembled', 'tags_final_csv', 'tags_debug_csv', 'alt'].forEach((key) => {
+  ['titre_valide', 'description_assembled', 'tags', 'alt'].forEach((key) => {
     state.outputs[key] = '';
   });
 
@@ -2152,15 +2125,13 @@ function copySection(key) { navigator.clipboard.writeText(state.outputs[key] || 
 function buildFinalOutputExport(prefixOverride) {
   const prefix = prefixOverride || pfx();
   const titre = state.outputs.titre_valide || '';
-  const tags = prefix === 'col' ? (state.outputs.tags_final_csv || state.outputs.tags || '') : (state.outputs.tags || '');
-  const tagsDebug = prefix === 'col' ? (state.outputs.tags_debug_csv || '') : '';
+  const tags = state.outputs.tags || '';
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
   const alt = state.outputs.alt || '';
 
   const parts = [];
   if (titre) parts.push(`── TITRE ──\n${titre}`);
   if (tags) parts.push(`── TAGS ──\n${tags}`);
-  if (tagsDebug) parts.push(`── AXEL · EXPLORE + FILTER ──\n${tagsDebug}`);
   if (desc) parts.push(`── DESCRIPTION ──\n${desc}`);
   if (alt) parts.push(`── BALISE ALT ──\n${alt}`);
 
@@ -2228,10 +2199,7 @@ function getSoloFinalOutputAgentLabels(prefixOverride) {
 
 function buildSoloFinalOutputFiles(prefixOverride) {
   const exportMeta = getSoloExportMeta(prefixOverride);
-  const tags = exportMeta.prefix === 'col'
-    ? (state.outputs.tags_final_csv || state.outputs.tags || '')
-    : (state.outputs.tags || '');
-  const tagsDebug = exportMeta.prefix === 'col' ? (state.outputs.tags_debug_csv || '') : '';
+  const tags = state.outputs.tags || '';
   const completeParts = [
     '# Output final',
     '',
@@ -2241,10 +2209,6 @@ function buildSoloFinalOutputFiles(prefixOverride) {
     '## 🔖 Tags',
     tags,
   ];
-
-  if (tagsDebug) {
-    completeParts.push('', '## 🧭 Axel · Explore + Filter', tagsDebug);
-  }
 
   completeParts.push(
     '',

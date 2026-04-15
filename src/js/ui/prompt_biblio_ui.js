@@ -137,12 +137,6 @@
     tags: (ctx = {}) => ({
       blocks: buildSharedBlocks(ctx, true),
     }),
-    tags_filter: (ctx = {}) => ({
-      blocks: buildSharedBlocks(ctx, true),
-    }),
-    tags_select: (ctx = {}) => ({
-      blocks: buildSharedBlocks(ctx, true),
-    }),
     description: (ctx = {}) => ({
       blocks: buildSharedBlocks(ctx, true),
     }),

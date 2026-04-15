@@ -81,7 +81,7 @@
 
     try {
       const ctx = global.buildCtx('tags');
-      const prompt = global.buildPrompt('tags_select', ctx);
+      const prompt = global.buildPrompt('tags', ctx);
       const { blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
       const rejectedTags = [originalText];
       let replacementTag = '';

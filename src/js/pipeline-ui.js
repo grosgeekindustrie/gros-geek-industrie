@@ -128,146 +128,9 @@ const {
 
 // Extracted to src/js/ui/helper_ui.js
 
-// Flow tags 3 agents.
-// Ce helper reste ici car il consomme à la fois le prompt builder et callClaude.
-// Si on l'extrait plus tard, il devra garder la même séquence explore → filter → select.
-
-const formatTagsCsvLine = (tags = []) => {
-  const uniqueTags = [];
-  const seen = new Set();
-
-  for (const rawTag of tags) {
-    const normalizedTag = normalizeTagValue(String(rawTag || ''));
-    if (!normalizedTag) continue;
-
-    const normalizedKey = normalizedTag.toLowerCase();
-    if (seen.has(normalizedKey)) continue;
-
-    seen.add(normalizedKey);
-    uniqueTags.push(normalizedTag);
-  }
-
-  return uniqueTags.join(', ');
-};
-
-const formatTagsDebugCsvBlock = (exploreTags = [], filteredTags = []) => {
-  const sections = [];
-  const exploreCsv = formatTagsCsvLine(exploreTags);
-  const filterCsv = formatTagsCsvLine(filteredTags);
-
-  if (exploreCsv) sections.push(`EXPLORE (${exploreTags.length})\n${exploreCsv}`);
-  if (filterCsv) sections.push(`FILTER (${filteredTags.length})\n${filterCsv}`);
-
-  return sections.join('\n\n');
-};
-
-async function runTagsThreeAgents(ctx) {
-  const syncValidatedTitleFromManualInput = () => {
-    const prefix = pfx();
-    const manualTitle = document.getElementById(`${prefix}-titre-manual-titre`)?.value?.trim() || '';
-    const validatedTitle = manualTitle || state.outputs.titre_valide || state.selectedTitre || '';
-
-    if (!validatedTitle) return;
-
-    state.selectedTitre = validatedTitle;
-    state.outputs.titre_valide = validatedTitle;
-    ctx.outputs = {
-      ...(ctx.outputs || {}),
-      titre_valide: validatedTitle,
-    };
-    window.setPipelineRunEntry?.(prefix, 'titre', validatedTitle);
-  };
-
-  syncValidatedTitleFromManualInput();
-
-  const mergeUsage = (...usages) => usages.reduce((acc, usage) => {
-    Object.entries(usage || {}).forEach(([key, value]) => {
-      acc[key] = (acc[key] || 0) + (Number(value) || 0);
-    });
-
-    return acc;
-  }, {});
-  const buildTagsRuntimeInput = (prompt, filled, runtimeAgentId) => {
-    const runtimePrompt = {
-      filled,
-      fixedContent: prompt.fixedContent,
-      fixedContentBlocks: prompt.fixedContentBlocks,
-      runtimeAgentId,
-      promptDebug: {
-        ...(prompt.promptDebug || {}),
-        promptChars: filled.length,
-      },
-    };
-
-    return window.withPipelineCacheAwarePromptData
-      ? window.withPipelineCacheAwarePromptData(pfx(), runtimePrompt, { source: 'pipeline' })
-      : runtimePrompt;
-  };
-
-  // 1) EXPLORE
-  const explorePrompt = buildPrompt('tags', ctx);
-  const exploreInput = buildTagsRuntimeInput(explorePrompt, explorePrompt.filled, 'tags.explore');
-  const { text: rawExplore, usage: exploreUsage } = await callClaude('tags', exploreInput, false);
-
-  const exploreTags = parseTagOutput(rawExplore).filter((tag) => tag.length <= 30).slice(0, 80);
-  if (!exploreTags.length) throw new Error('Aucun tag candidat généré');
-
-  // 2) FILTER
-  const filterPrompt = buildPrompt('tags_filter', ctx);
-  const filterFilled =
-    `${filterPrompt.filled}\n\n` +
-    `CANDIDATS À FILTRER :\n` +
-    `${exploreTags.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
-  const filterInput = buildTagsRuntimeInput(filterPrompt, filterFilled, 'tags.filtre');
-
-  const { text: rawFiltered, usage: filterUsage } = await callClaude('tags', filterInput, false);
-  const filteredTags = parseTagOutput(rawFiltered).slice(0, 28);
-
-  const pool = filteredTags.length ? filteredTags : exploreTags;
-
-  // 3) SELECT
-  const selectPrompt = buildPrompt('tags_select', ctx);
-  const selectFilled =
-    `${selectPrompt.filled}\n\n` +
-    `CANDIDATS RETENUS :\n` +
-    `${pool.map((t, i) => `${i + 1}. ${t}`).join('\n')}`;
-  const selectInput = buildTagsRuntimeInput(selectPrompt, selectFilled, 'tags.select');
-
-  const { text: rawFinal, usage: selectUsage } = await callClaude('tags', selectInput, false);
-  const finalTagsRaw = parseTagOutput(rawFinal);
-
-  // sécurisation douce : si le sélecteur renvoie moins de 13 tags,
-  // on complète avec le pool filtré sans doublons
-  const merged = [];
-  const seen = new Set();
-
-  for (const tag of [...finalTagsRaw, ...pool]) {
-    const key = tag.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(tag);
-    if (merged.length === 13) break;
-  }
-
-  if (!merged.length) throw new Error('Aucun tag final généré');
-
-  const finalTags = merged.slice(0, 13);
-
-  return {
-    output: formatTagsNumbered(finalTags),
-    outputFinalCsv: formatTagsCsvLine(finalTags),
-    outputDebugCsv: formatTagsDebugCsvBlock(exploreTags, filteredTags),
-    usage: mergeUsage(exploreUsage, filterUsage, selectUsage),
-    debug: {
-      exploreInput: exploreInput.filled,
-      explore: rawExplore,
-      filterInput: filterInput.filled,
-      filter: rawFiltered,
-      selectInput: selectInput.filled,
-      select: rawFinal
-    }
-  };
-}
+// Flux tags : Collection et Tabletop utilisent désormais le même mono-agent.
+// La future sélection manuelle UI viendra dans un second temps, sans réintroduire
+// le trio explore → filter → select.
 
 // ═══════════════════════════════════════════════════════════
 // BIBLIOTHÈQUES
@@ -602,11 +465,10 @@ function refreshRules(agentId) {
 function assembleFinal() {
   const p = pfx();
   const titre = state.outputs.titre_valide || '';
-  const tags = p === 'col' ? (state.outputs.tags_final_csv || state.outputs.tags || '') : (state.outputs.tags || '');
-  const tagsDebug = p === 'col' ? (state.outputs.tags_debug_csv || '') : '';
+  const tags = state.outputs.tags || '';
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
   const alt = state.outputs.alt || '';
-  if (!titre && !tags && !tagsDebug && !desc && !alt) return;
+  if (!titre && !tags && !desc && !alt) return;
   const show = (sectionId, contentId, content) => {
     if (!content) return;
     document.getElementById(sectionId).style.display = 'block';
@@ -614,7 +476,6 @@ function assembleFinal() {
   };
   show(`fs-titre-${p}`, `fc-titre-${p}`, titre);
   show(`fs-tags-${p}`, `fc-tags-${p}`, tags);
-  if (p === 'col') show('fs-tags-debug-col', 'fc-tags-debug-col', tagsDebug);
   show(`fs-description-${p}`, `fc-description-${p}`, desc);
   show(`fs-alt-${p}`, `fc-alt-${p}`, alt);
   const fo = document.getElementById(`finalOutput-${p}`);

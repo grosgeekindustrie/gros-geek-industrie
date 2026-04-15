@@ -364,10 +364,6 @@
     const collectionResume = document.getElementById('col-fResumePersonnage')?.value || '';
     const normalizedOutputs = { ...state.outputs };
 
-    if (currentMode === 'collection') {
-      normalizedOutputs.tags = normalizedOutputs.tags_final_csv || normalizedOutputs.tags || '';
-    }
-
     const pipelineRun = state.pipelineRun?.[p] || {};
     const base = {
       nom,
