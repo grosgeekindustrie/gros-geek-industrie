@@ -1,5 +1,4 @@
 ## VALIDÉS
-
 + Ayanami Rei – Neon Genesis Evangelion statue de collection en résine à peindre, garage kit pour collectionneurs et fans d’anime
 + Tanathos - Hades figurine en résine à peindre et assembler, pour Collectionneurs et fans de mythologie et jeux indés
 + Bayonetta – Winged Witch statue de collection en résine à peindre, garage kit pour collectionneurs et fans de jeux vidéo
@@ -17,9 +16,13 @@
 + Barbarian Queen statue à peindre en résine et assembler, garage Kit HD 14k,pour fans de fantasy et d’univers Donjons & Dragons
 + Prince of Persia – The Forgotten Sands statue de collection en résine à peindre, garage kit pour peintres et collectionneurs
 + The Queen of Ashen Vale – Dark Fantasy, figurine résine à peindre 14K HD, garage kit pour peintres et collectionneurs de figurine fantasy
-+ Hornet Silksong diorama résine à peindre et assembler imprimé en 3D, garage kit pour gamers & fans d’Hollow Knight 
++ Hornet Silksong diorama résine à peindre et assembler imprimé en 3D, garage kit pour gamers & fans d’Hollow Knight
 + Shakra - Hollow Knight Figurine résine à peindre, garage kit 14k HD pour collectionneurs, gamers et fans de jeux vidéo
 + Aphrodite - Hades  figurine résine à peindre et assembler imprimé en 3D, garage kit pour collectionneurs & fans de jeux vidéo
 + Gustave – Clair Obscur Expédition 33 figurine de collection en résine à peindre, garage kit pour collectionneurs et fans de JRPG
 + Maelle – Clair Obscur Expédition 33 figurine de collection en résine à peindre, garage kit pour collectionneurs et fans de JRPG
 + Karlach - Baldur's Gate 3 Figurine a peindre en résine 14k HD pour fan de Bg3 et joueur Dnd, RPG, fantasy
++ Nyx - Hades, statue de collection imprimée en 3D à peindre, garage kit pour fans de dark fantasy
+
+## BLACKLISTÉS
+
