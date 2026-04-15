@@ -162,6 +162,24 @@ const formatTagsDebugCsvBlock = (exploreTags = [], filteredTags = []) => {
 };
 
 async function runTagsThreeAgents(ctx) {
+  const syncValidatedTitleFromManualInput = () => {
+    const prefix = pfx();
+    const manualTitle = document.getElementById(`${prefix}-titre-manual-titre`)?.value?.trim() || '';
+    const validatedTitle = manualTitle || state.outputs.titre_valide || state.selectedTitre || '';
+
+    if (!validatedTitle) return;
+
+    state.selectedTitre = validatedTitle;
+    state.outputs.titre_valide = validatedTitle;
+    ctx.outputs = {
+      ...(ctx.outputs || {}),
+      titre_valide: validatedTitle,
+    };
+    window.setPipelineRunEntry?.(prefix, 'titre', validatedTitle);
+  };
+
+  syncValidatedTitleFromManualInput();
+
   const mergeUsage = (...usages) => usages.reduce((acc, usage) => {
     Object.entries(usage || {}).forEach(([key, value]) => {
       acc[key] = (acc[key] || 0) + (Number(value) || 0);

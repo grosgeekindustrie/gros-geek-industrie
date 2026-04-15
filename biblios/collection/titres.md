@@ -23,6 +23,7 @@
 + Maelle – Clair Obscur Expédition 33 figurine de collection en résine à peindre, garage kit pour collectionneurs et fans de JRPG
 + Karlach - Baldur's Gate 3 Figurine a peindre en résine 14k HD pour fan de Bg3 et joueur Dnd, RPG, fantasy
 + Nyx - Hades, statue de collection imprimée en 3D à peindre, garage kit pour fans de dark fantasy
++ Nyx - Hades statue de collection à peindre, garage kit pour peintres et fans de sorcière, prêtresse nécromancienne et de jeux vidéo
 
 ## BLACKLISTÉS
 

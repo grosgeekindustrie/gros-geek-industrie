@@ -2,7 +2,7 @@
 
 ## Mission
 
-Génère exactement 42 tags candidats Etsy en français.
+Génère exactement 26 tags candidats Etsy en français.
 
 ## Objectif
 
@@ -19,6 +19,7 @@ Medium : `[[MEDIUM]]`
 Licence protégée : `[[LICENSE]]`  
 Connexes prioritaires : `[[CONNEXES_PRIORITAIRES]]`  
 Titre validé : `[[TITRE_VALIDE]]`
+Exclusions tags : `[[BIBLIO_TAGS_EXCLUSIONS]]`
 
 ## Lien titre → tags
 
@@ -42,7 +43,7 @@ Transforme ses éléments en tags courts, lisibles et complémentaires.
 
 ## Règles absolues
 
-• Exactement 42 tags  
+• Exactement 26 tags  
 • 30 caractères maximum par tag, espaces compris  
 • Français uniquement  
 • Pas d’échelle  
@@ -101,12 +102,9 @@ Priorité d’ordre :
 • cadeau + produit + personnage / univers  
 • connexe + produit + univers
 
-Le produit doit souvent ouvrir le tag quand il est présent :
-
-• `figurine`  
-• `statue`  
-• `garage kit`  
-• `miniature`
+Quand un tag contient un produit, le produit doit ouvrir le tag.
+Quand un tag contient aussi personnage, univers, style ou fabrication, l’ordre prioritaire est :
+produit + personnage/univers + style/fabrication/intention
 
 Évite les inversions artificielles.
 
@@ -191,6 +189,40 @@ Formes autorisées :
 
 Si `collection`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
 
+## Usage du mot peintre
+
+`peintre` ne doit jamais être collé directement après un produit comme s’il était un adjectif.
+
+Évite les formes mécaniques :
+
+• `figurine peintre [univers]`  
+• `statue peintre [univers]`  
+• `garage kit peintre [univers]`
+
+Formes naturelles autorisées :
+
+• `cadeau peintre figurine`  
+• `cadeau peintre [univers]`  
+• `figurine [univers] à peindre`  
+• `statue [univers] à peindre`  
+• `garage kit [univers] à peindre`
+
+Si `peintre` rend le tag moins naturel, utilise plutôt `à peindre`.
+
+## Tags génériques interdits
+
+Évite les tags génériques qui ne portent pas assez d’intention.
+
+À éviter :
+
+• `garage kit de collection`  
+• `garage kit jeux vidéo`  
+• `impression 3d [univers]` sans produit si une version plus précise tient en 30 caractères  
+• `[univers] jeux vidéo collection`  
+• `collection jeux vidéo [produit]`
+
+Préférer une formulation avec produit + univers + intention quand c’est possible.
+
 ## Qualité linguistique
 
 Un tag doit sonner comme une recherche client naturelle.
@@ -208,19 +240,26 @@ Chaque tag doit pouvoir être copié tel quel dans la barre de recherche Etsy.
 • tags incomplets qui ressemblent à une liste de mots-clés  
 • tags trop larges sans ancrage produit, personnage, univers ou connexe exact
 
+## Exclusions bibliothèque
+
+Respecte strictement la bibliothèque d’exclusions tags.
+
+N’utilise jamais un terme exclu, même s’il semble pertinent.
+Si un tag contient un terme exclu, remplace-le par une formulation plus précise avec produit + personnage + univers.
+
 ## Répartition attendue
 
-• 14 tags produit + personnage + univers  
-• 8 tags finition / fabrication  
-• 8 tags connexes prioritaires  
-• 6 tags cadeau / cible  
-• 6 tags univers / style
+• 7 tags produit + personnage + univers  
+• 4 tags finition / fabrication  
+• 4 tags connexes prioritaires  
+• 3 tags cadeau / cible  
+• 3 tags univers / style
 
 ## Auto-contrôle avant sortie
 
 Avant de répondre, vérifie mentalement :
 
-• 42 tags exactement  
+• 26 tags exactement  
 • aucun tag au-dessus de 30 caractères, espaces compris  
 • aucun doublon proche  
 • aucun rôle/lore non fourni  
@@ -234,6 +273,7 @@ Avant de répondre, vérifie mentalement :
 • mini phrase avec une syntaxe parfaite en français  
 • aucun tag avec `collection`, `fan` ou `collectionneur` n’a une structure mécanique  
 • aucun tag produit + cible brute du type `figurine fan univers`  
+• aucun tag produit + `peintre` + univers  
 • aucun doublon de sens avec simple inversion d’ordre
 
 ## Ordre obligatoire si plusieurs ordres sont possibles
@@ -258,7 +298,7 @@ Si deux tags veulent dire la même chose, conserve uniquement la version la plus
 
 Liste numérotée uniquement.
 
-Exactement 42 tags.
+Exactement 26 tags.
 
 1 tag par ligne.
 
