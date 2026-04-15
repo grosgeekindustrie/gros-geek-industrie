@@ -126,21 +126,13 @@
     const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
     return `
       <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item>
-        <div class="tags-selection-checkbox-wrap">
+        <label class="tags-selection-checkbox-wrap">
           <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" />
-        </div>
-        <div class="tags-selection-main">
-          <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" />
-          <div class="tags-selection-meta">
-            <span class="tags-selection-chip" data-tags-length>0 car.</span>
-            <span class="tags-selection-chip" data-tags-status>—</span>
-            <span class="tags-selection-chip is-library" data-tags-library hidden></span>
-          </div>
-        </div>
-        <div class="tags-selection-actions">
-          <button class="btn btn-muted" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés">👍</button>
-          <button class="btn btn-muted" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag">👎</button>
-        </div>
+        </label>
+        <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" />
+        <span class="tags-selection-length" data-tags-length>0</span>
+        <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">✓</button>
+        <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">✕</button>
       </article>`;
   }
 
@@ -213,61 +205,35 @@
     rows.forEach((row) => {
       const rowState = getTagsSelectionRowState(row, rows, libraryState);
       const checkbox = row.querySelector('.tags-selection-checkbox');
-      const lengthChip = row.querySelector('[data-tags-length]');
-      const statusChip = row.querySelector('[data-tags-status]');
-      const libraryChip = row.querySelector('[data-tags-library]');
+      const lengthNode = row.querySelector('[data-tags-length]');
       const isChecked = Boolean(checkbox?.checked);
 
       row.classList.toggle('is-checked', isChecked);
       row.classList.toggle('is-invalid', !rowState.isRowValid);
       row.classList.toggle('is-library-validated', rowState.isValidated);
+      row.classList.toggle('is-library-blacklisted', rowState.isExactBlacklisted || Boolean(rowState.matchedTerm));
       row.dataset.tagsValid = rowState.isRowValid ? 'true' : 'false';
 
-      if (lengthChip) {
-        lengthChip.textContent = `${rowState.value.length} car.`;
-        lengthChip.className = `tags-selection-chip ${rowState.hasLengthError ? 'is-invalid' : 'is-valid'}`.trim();
+      if (lengthNode) {
+        lengthNode.textContent = String(rowState.value.length);
+        lengthNode.className = `tags-selection-length ${rowState.hasLengthError ? 'is-invalid' : ''}`.trim();
       }
 
-      if (statusChip) {
-        let statusText = '✓ valide';
-        let statusClass = 'is-valid';
-
-        if (rowState.hasEmptyError) {
-          statusText = '✗ vide';
-          statusClass = 'is-invalid';
-        } else if (rowState.hasLengthError) {
-          statusText = '✗ > 30 car.';
-          statusClass = 'is-invalid';
-        } else if (rowState.hasDuplicateError) {
-          statusText = '✗ doublon';
-          statusClass = 'is-invalid';
-        } else if (rowState.isExactBlacklisted) {
-          statusText = '✗ blacklisté';
-          statusClass = 'is-invalid';
-        } else if (rowState.matchedTerm) {
-          statusText = '✗ terme exclu';
-          statusClass = 'is-invalid';
-        }
-
-        statusChip.textContent = statusText;
-        statusChip.className = `tags-selection-chip ${statusClass}`.trim();
+      let rowTitle = 'Tag valide';
+      if (rowState.hasEmptyError) {
+        rowTitle = 'Tag vide';
+      } else if (rowState.hasLengthError) {
+        rowTitle = 'Tag trop long';
+      } else if (rowState.hasDuplicateError) {
+        rowTitle = 'Tag en doublon';
+      } else if (rowState.isExactBlacklisted) {
+        rowTitle = 'Tag blacklisté';
+      } else if (rowState.matchedTerm) {
+        rowTitle = 'Tag contenant un terme exclu';
+      } else if (rowState.isValidated) {
+        rowTitle = 'Tag déjà validé en bibliothèque';
       }
-
-      if (libraryChip) {
-        if (rowState.isValidated) {
-          libraryChip.hidden = false;
-          libraryChip.textContent = '✓ validé';
-        } else if (rowState.isExactBlacklisted) {
-          libraryChip.hidden = false;
-          libraryChip.textContent = '⚠ blacklist';
-        } else if (rowState.matchedTerm) {
-          libraryChip.hidden = false;
-          libraryChip.textContent = '⚠ terme';
-        } else {
-          libraryChip.hidden = true;
-          libraryChip.textContent = '';
-        }
-      }
+      row.title = rowTitle;
 
       if (isChecked) {
         checkedCount += 1;
@@ -384,12 +350,12 @@
       <div class="tags-selection-shell">
         <div class="tags-selection-topbar">
           <div class="tags-selection-heading">
-            <div class="tags-selection-title">🔖 Sélection manuelle des tags</div>
-            <div class="tags-selection-subtitle">Coche jusqu'à ${TAG_SELECTION_MAX} tags, édite-les si besoin, puis valide pour relancer le pipeline. La sortie finale utilisée ensuite est la liste cochée, séparée par des virgules.</div>
+            <div class="tags-selection-title">🔖 Sélection manuelle</div>
+            <div class="tags-selection-subtitle">2 colonnes · ${TAG_SELECTION_MAX} tags max · une ligne par tag.</div>
           </div>
           <div class="tags-selection-toolbar">
-            <button class="btn btn-muted" type="button" data-tags-copy="1">📋 Liste brute 1</button>
-            <button class="btn btn-muted" type="button" data-tags-copy="2">📋 Liste brute 2</button>
+            <button class="btn btn-muted" type="button" data-tags-copy="1">📋 Liste 1</button>
+            <button class="btn btn-muted" type="button" data-tags-copy="2">📋 Liste 2</button>
             <button class="btn btn-accent" type="button" data-tags-copy="final">📋 Sortie finale</button>
           </div>
         </div>
@@ -414,23 +380,36 @@
         <div class="tags-selection-columns">
           <section class="tags-selection-column" id="${p}-tags-column-1">
             <div class="tags-selection-column-head">
-              <span class="tags-selection-column-title">Liste brute 1</span>
-              <span class="tags-selection-chip" id="${p}-tags-selected-counter">0 sélectionné(s)</span>
+              <span class="tags-selection-column-title">Liste 1</span>
+              <span class="tags-selection-column-meta" id="${p}-tags-selected-counter">0 sélectionné(s)</span>
+            </div>
+            <div class="tags-selection-grid-head" aria-hidden="true">
+              <span>☑</span>
+              <span>Tag</span>
+              <span>Long.</span>
+              <span>Valid</span>
+              <span>Invalid</span>
             </div>
             <div class="tags-selection-list">${leftColumn.map(buildTagsSelectionRowMarkup).join('')}</div>
           </section>
           <section class="tags-selection-column" id="${p}-tags-column-2">
             <div class="tags-selection-column-head">
-              <span class="tags-selection-column-title">Liste brute 2</span>
-              <span class="tags-selection-chip">Édition live</span>
+              <span class="tags-selection-column-title">Liste 2</span>
+              <span class="tags-selection-column-meta">Édition live</span>
+            </div>
+            <div class="tags-selection-grid-head" aria-hidden="true">
+              <span>☑</span>
+              <span>Tag</span>
+              <span>Long.</span>
+              <span>Valid</span>
+              <span>Invalid</span>
             </div>
             <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length)).join('')}</div>
           </section>
         </div>
         <section class="tags-selection-preview">
           <div class="tags-selection-preview-head">
-            <span class="tags-selection-preview-title">Sortie finale officielle</span>
-            <span class="tags-selection-chip">CSV downstream</span>
+            <span class="tags-selection-preview-title">Sortie finale</span>
           </div>
           <pre class="tags-selection-preview-output" id="${p}-tags-final-output">— aucun tag sélectionné —</pre>
         </section>
