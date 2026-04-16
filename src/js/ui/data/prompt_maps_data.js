@@ -11,6 +11,7 @@
     tabletop: {
       analyse:'marcus', alt:'nadia', marche:'sophie', tags:'karim',
       titre:'maya', description:'claire', social:'leo', camille:'camille', orchestrateur:'felix',
+      alias_lookup:'alias_lookup', translate_listing:'translate_listing',
     },
     collection: {
       alt:'jules',
@@ -22,6 +23,8 @@
       social:'theo',
       camille:'zoe',
       orchestrateur:'rex',
+      alias_lookup:'alias_lookup',
+      translate_listing:'translate_listing',
     },
   };
 

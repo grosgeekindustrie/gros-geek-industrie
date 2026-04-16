@@ -74,6 +74,41 @@ function switchMode(mode) {
   } catch (error) {}
 }
 
+const createEmptyTranslationLanguageBlock = () => ({
+  title: '',
+  tags: '',
+  description: '',
+  alt: '',
+});
+
+const createEmptyTranslationWorkspace = () => ({
+  source: {
+    title: '',
+    tags: '',
+    description: '',
+    alt: '',
+    name: '',
+    universe: '',
+  },
+  aliases: {
+    fr: { name: '', universe: '' },
+    en: { name: '', universe: '' },
+    de: { name: '', universe: '' },
+    es: { name: '', universe: '' },
+  },
+  results: {
+    fr: createEmptyTranslationLanguageBlock(),
+    en: createEmptyTranslationLanguageBlock(),
+    de: createEmptyTranslationLanguageBlock(),
+    es: createEmptyTranslationLanguageBlock(),
+  },
+  meta: {
+    sourceCapturedAt: '',
+    aliasLookupAt: '',
+    translatedAtByLanguage: {},
+  },
+});
+
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
@@ -94,6 +129,10 @@ var state = {
   sessionCost: 0,
   mode: 'tabletop',
   agentUsage: {},
+  translations: {
+    tt: createEmptyTranslationWorkspace(),
+    col: createEmptyTranslationWorkspace(),
+  },
 };
 
 window.PipelineUI = window.PipelineUI || {};

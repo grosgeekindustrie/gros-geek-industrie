@@ -2538,6 +2538,8 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       camille: '07 Camille',
       orchestrateur: 'QA Felix',
       cache_aware: '00 Cache-aware',
+      alias_lookup: 'TR Alias',
+      translate_listing: 'TR Traduction',
     },
     col: {
       titre: '01 Nova',
@@ -2550,6 +2552,8 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       iris: 'Iris',
       orchestrateur: 'QA Rex',
       cache_aware: '00 Cache-aware',
+      alias_lookup: 'TR Alias',
+      translate_listing: 'TR Traduction',
     },
   };
 
@@ -2559,6 +2563,7 @@ function getCostAgentLabel(prefix = '', agentId = '') {
 
 function getCostModelAgentId(agentId = '') {
   if (agentId === 'titre_explorer') return 'titre';
+  if (agentId === 'alias_lookup' || agentId === 'translate_listing') return 'description';
   return agentId;
 }
 
@@ -2573,6 +2578,7 @@ function getCostEntryType(entry = {}) {
   if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
   if (entry.source === 'social' || entry.source === 'camille') return 'social';
   if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
+  if (entry.source === 'translation' || entry.agentId === 'alias_lookup' || entry.agentId === 'translate_listing') return 'translation';
   if (entry.source === 'rerun') return 'rerun';
   if (entry.source === 'pipeline') return 'pipeline';
   return 'other';
@@ -2586,6 +2592,7 @@ function getCostEntryTypeLabel(entry = {}) {
     iris: 'iris',
     social: 'social',
     explorer: 'explorer',
+    translation: 'traduction',
     cache_aware_prelaunch: 'cache-aware pré-pipeline',
     warmup: 'warmup',
     other: 'autre',
@@ -2608,6 +2615,7 @@ function buildCostTypeTotals(entries = []) {
     orchestrateur: { count: 0, costCents: 0 },
     social: { count: 0, costCents: 0 },
     explorer: { count: 0, costCents: 0 },
+    translation: { count: 0, costCents: 0 },
     other: { count: 0, costCents: 0 },
   };
 
@@ -2870,6 +2878,7 @@ function copyTokenReport() {
     `Orchestrateur: ${categoryTotals.orchestrateur.costCents.toFixed(3)}¢ (${orchestrateurState})`,
     `Social: ${categoryTotals.social.costCents.toFixed(3)}¢ (${categoryTotals.social.count} événement(s))`,
     `Explorer: ${categoryTotals.explorer.costCents.toFixed(3)}¢ (${categoryTotals.explorer.count} événement(s))`,
+    `Traduction: ${categoryTotals.translation.costCents.toFixed(3)}¢ (${categoryTotals.translation.count} événement(s))`,
     `Autre: ${categoryTotals.other.costCents.toFixed(3)}¢ (${categoryTotals.other.count} événement(s))`,
     `Warmup cache détecté: ${warmupSummaries}`,
     '',

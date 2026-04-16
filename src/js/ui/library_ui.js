@@ -77,6 +77,8 @@
       tags: 'Axel · Explore Tags',
       tags_filter: 'Céline · Filter Tags',
       tags_select: 'Axel · Select Tags',
+      alias_lookup: 'Alias Lookup · Terminologie locale',
+      translate_listing: 'Translate Listing · Traduction fiche nette',
     };
     const agents = getConfig().getPipelineAgents ? getConfig().getPipelineAgents() : [];
     const label = id === 'orchestrateur'
