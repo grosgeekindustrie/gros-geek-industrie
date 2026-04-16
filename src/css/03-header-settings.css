@@ -278,3 +278,90 @@
   font-weight: 800;
   color: var(--accent);
 }
+
+.settings-section-stack {
+  display:block;
+  padding-top:14px;
+  padding-bottom:14px;
+}
+
+.settings-stack-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:1rem;
+  margin-bottom:.85rem;
+}
+
+.settings-stack-copy {
+  display:flex;
+  flex-direction:column;
+  gap:.3rem;
+  min-width:0;
+}
+
+.settings-help {
+  color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  font-size:.68rem;
+  line-height:1.45;
+}
+
+.settings-language-grid {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:.65rem;
+}
+
+.settings-language-option {
+  display:flex;
+  align-items:flex-start;
+  gap:.65rem;
+  min-width:0;
+  padding:.8rem .85rem;
+  border:1px solid var(--border);
+  border-radius:.8rem;
+  background:rgba(255,255,255,.03);
+  cursor:pointer;
+  transition:border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.settings-language-option:hover {
+  border-color:var(--accent);
+  background:rgba(255,255,255,.045);
+  transform:translateY(-1px);
+}
+
+.settings-language-option input {
+  margin:.1rem 0 0;
+  accent-color:var(--accent);
+  flex-shrink:0;
+}
+
+.settings-language-copy {
+  display:flex;
+  flex-direction:column;
+  gap:.12rem;
+  min-width:0;
+}
+
+.settings-language-code {
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:.74rem;
+  font-weight:700;
+  line-height:1.2;
+}
+
+.settings-language-label {
+  color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  font-size:.68rem;
+  line-height:1.4;
+}
+
+@media (max-width: 840px) {
+  .settings-language-grid {
+    grid-template-columns:1fr;
+  }
+}

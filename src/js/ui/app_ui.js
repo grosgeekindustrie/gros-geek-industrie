@@ -381,23 +381,144 @@
     step.className = `pipeline-step${status !== 'wait' ? ` ${status}` : ''}`;
   }
 
+  const SETTINGS_STORAGE_KEY = 'pipeline.settings';
+  const SETTINGS_DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
+  const SETTINGS_TRANSLATION_INPUT_SELECTOR = 'input[data-translation-language]';
+
+  const readStoredSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const writeStoredSettings = (nextSettings = {}) => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+    return nextSettings;
+  };
+
+  const getTranslationRuntime = () => global.PipelineUITranslationsRuntime || global.PipelineUI?.translationsRuntime || null;
+
+  const getTranslationLanguageOptions = () => {
+    const supportedLanguages = getTranslationRuntime()?.SUPPORTED_TRANSLATION_LANGUAGES || {};
+
+    return Object.entries(supportedLanguages)
+      .filter(([language]) => language !== 'fr')
+      .map(([language, meta]) => ({
+        language,
+        label: String(meta?.label || language).trim(),
+      }));
+  };
+
+  const getTranslationSettingsModeLabel = (mode = getCurrentMode()) => {
+    if (mode === 'collection') return 'Mode Collection';
+    if (mode === 'tabletop') return 'Mode DnD';
+    return 'Mode courant';
+  };
+
+  const createTranslationLanguageOption = ({ language, label, isChecked }) => {
+    const option = document.createElement('label');
+    option.className = 'settings-language-option';
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = language;
+    input.checked = isChecked;
+    input.setAttribute('data-translation-language', language);
+
+    const copy = document.createElement('span');
+    copy.className = 'settings-language-copy';
+
+    const code = document.createElement('span');
+    code.className = 'settings-language-code';
+    code.textContent = language.toUpperCase();
+
+    const text = document.createElement('span');
+    text.className = 'settings-language-label';
+    text.textContent = label;
+
+    copy.append(code, text);
+    option.append(input, copy);
+    return option;
+  };
+
+  const renderTranslationLanguageSettings = (mode = getCurrentMode()) => {
+    const section = document.getElementById('translationSettingsSection');
+    const group = document.getElementById('translationLanguagesGroup');
+    const hint = document.getElementById('translationSettingsHint');
+
+    if (!section || !group) return;
+
+    const isSupportedMode = mode === 'tabletop' || mode === 'collection';
+    section.hidden = !isSupportedMode;
+    if (!isSupportedMode) return;
+
+    const runtime = getTranslationRuntime();
+    const enabledLanguages = runtime?.getEnabledTranslationLanguages?.(mode) || [];
+    const options = getTranslationLanguageOptions();
+
+    group.replaceChildren(...options.map((entry) => createTranslationLanguageOption({
+      ...entry,
+      isChecked: enabledLanguages.includes(entry.language),
+    })));
+
+    if (hint) {
+      hint.textContent = `FR reste la source · ${getTranslationSettingsModeLabel(mode)}`;
+    }
+  };
+
+  const getSelectedTranslationLanguages = () => {
+    const group = document.getElementById('translationLanguagesGroup');
+    if (!group) return [];
+
+    return Array.from(group.querySelectorAll(SETTINGS_TRANSLATION_INPUT_SELECTOR))
+      .filter((input) => input.checked)
+      .map((input) => String(input.value || '').trim().toLowerCase())
+      .filter(Boolean);
+  };
+
+  const loadSettingsPanelValues = (mode = getCurrentMode()) => {
+    const settings = readStoredSettings();
+    const apiKeyInput = document.getElementById('apiKey');
+    const shopUrlInput = document.getElementById('shopUrl');
+
+    if (apiKeyInput) {
+      apiKeyInput.value = String(settings.apiKey || '').trim();
+    }
+
+    if (shopUrlInput) {
+      shopUrlInput.value = String(settings.shopUrl || shopUrlInput.value || SETTINGS_DEFAULT_SHOP_URL).trim();
+    }
+
+    renderTranslationLanguageSettings(mode);
+  };
+
+  const persistSettingsPanelValues = (mode = getCurrentMode()) => {
+    const settings = readStoredSettings();
+    const apiKey = String(document.getElementById('apiKey')?.value || '').trim();
+    const shopUrl = String(document.getElementById('shopUrl')?.value || '').trim();
+
+    if (apiKey) {
+      settings.apiKey = apiKey;
+    }
+
+    settings.shopUrl = shopUrl || SETTINGS_DEFAULT_SHOP_URL;
+    settings.translationLanguagesByMode = settings.translationLanguagesByMode || {};
+    settings.translationLanguagesByMode[mode] = getSelectedTranslationLanguages();
+    writeStoredSettings(settings);
+  };
+
   function openSettings() {
+    loadSettingsPanelValues(getCurrentMode());
     document.getElementById('settingsOverlay').classList.add('visible');
     document.getElementById('settingsPanel').classList.add('visible');
   }
 
   function closeSettings() {
+    persistSettingsPanelValues(getCurrentMode());
     document.getElementById('settingsOverlay').classList.remove('visible');
     document.getElementById('settingsPanel').classList.remove('visible');
-
-    const apiKey = document.getElementById('apiKey')?.value;
-    if (!apiKey) return;
-
-    try {
-      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-      settings.apiKey = apiKey;
-      localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-    } catch (error) {}
   }
 
 
