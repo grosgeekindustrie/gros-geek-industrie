@@ -11,7 +11,7 @@
   const PIPELINE_DEV_CONFIG = {
     stopAfterByMode: {
       tabletop: 'marche',
-      collection: 'description',
+      collection: 'alt',
     },
 
     // Pour les tests agent par agent, on coupe le pré-lancement cache-aware afin

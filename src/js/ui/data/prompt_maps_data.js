@@ -13,7 +13,7 @@
       titre:'maya', description:'claire', social:'leo', camille:'camille', orchestrateur:'felix',
     },
     collection: {
-      analyse:'jules',
+      alt:'jules',
       iris:'iris',
       marche:'luna',
       tags:'tags',

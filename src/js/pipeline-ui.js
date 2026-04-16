@@ -224,7 +224,7 @@ const {
 const abortControllers = {};
 window.abortControllers = abortControllers;
 const AGENT_MODELS = {
-  analyse:'claude-sonnet-4-20250514', alt:'claude-sonnet-4-20250514',
+  alt:'claude-sonnet-4-20250514',
   marche:'claude-sonnet-4-20250514', tags:'claude-sonnet-4-20250514',
   titre:'claude-sonnet-4-20250514', description:'claude-sonnet-4-20250514',
   social:'claude-sonnet-4-20250514', camille:'claude-sonnet-4-20250514',
@@ -506,15 +506,28 @@ function assembleFinal() {
 
 function copyOut(agentId) { const p = pfx(); const node = document.getElementById(`${p}-out-${agentId}`); const text = node?.textContent || state.outputs[agentId] || ''; navigator.clipboard.writeText(text); showToast('Copié ✓'); }
 function copyAllOutputs() {
-  const agents = [
-    { id:'analyse', label:'01 — ANALYSE VISUELLE' }, { id:'alt', label:'02 — BALISE ALT' },
-    { id:'marche', label:'03 — ANALYSE MARCHÉ' }, { id:'tags', label:'04 — TAGS' },
-    { id:'titre', label:'05 — TITRES' }, { id:'description', label:'06 — DESCRIPTION' },
-  ];
-  const parts = agents.map(a => { const out = state.outputs[a.id] || ''; return out ? `${'═'.repeat(50)}\n${a.label}\n${'═'.repeat(50)}\n${out}` : null; }).filter(Boolean);
+  const p = pfx();
+  const agents = p === 'col'
+    ? [
+        { id:'tags', label:'01 — TAGS' },
+        { id:'titre', label:'02 — TITRES' },
+        { id:'description', label:'03 — DESCRIPTION' },
+        { id:'alt', label:'04 — BALISE ALT' },
+      ]
+    : [
+        { id:'marche', label:'01 — ANALYSE MARCHÉ' },
+        { id:'tags', label:'02 — TAGS' },
+        { id:'titre', label:'03 — TITRES' },
+        { id:'description', label:'04 — DESCRIPTION' },
+        { id:'alt', label:'05 — BALISE ALT' },
+      ];
+  const parts = agents.map((agent) => {
+    const out = state.outputs[agent.id] || '';
+    return out ? `${'═'.repeat(50)}\n${agent.label}\n${'═'.repeat(50)}\n${out}` : null;
+  }).filter(Boolean);
   if (!parts.length) { showToast('Aucun output à copier', '#ff4757'); return; }
   navigator.clipboard.writeText(parts.join('\n\n'));
-  showToast(`Review globale copiée — ${parts.length} agents ✓`);
+  showToast(`Review globale copiée — ${parts.length} blocs ✓`);
 }
 
 async function runTitreExplorer() {

@@ -143,9 +143,6 @@
     alt: (ctx = {}) => ({
       blocks: buildSharedBlocks(ctx, true),
     }),
-    analyse: (ctx = {}) => ({
-      blocks: buildSharedBlocks(ctx, true),
-    }),
   };
 
   function parseBiblioTags(raw) {
@@ -220,6 +217,7 @@
       .replace(/\[\[TYPE\]\]/g, ctx.type || '')
       .replace(/\[\[BUZZ\]\]/g, ctx.buzz ? `OUI${ctx.buzzNote ? ' — ' + ctx.buzzNote : ''}` : 'NON')
       .replace(/\[\[ANALYSE\]\]/g, ctx.outputs.analyse || '')
+      .replace(/\[\[ALT\]\]/g, ctx.outputs.alt || '')
       .replace(/\[\[MARCHE\]\]/g, ctx.outputs.marche || '')
       .replace(/\[\[TAGS\]\]/g, ctx.outputs.tags || '')
       .replace(/\[\[TITRE_VALIDE\]\]/g, ctx.outputs.titre_valide || '')

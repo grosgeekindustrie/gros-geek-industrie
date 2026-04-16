@@ -19,13 +19,13 @@
       { id:'titre',       title:'🏷️ 01 — Nova · Titres SEO (×5)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
       { id:'tags',        title:'🔖 02 — Axel · Tags (×13)',              usesImages:false, hasSelection:true,  selectionType:'tags' },
       { id:'description', title:'📝 03 — Eden · Description',             usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
-      { id:'analyse',     title:'🖼️ 04 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
+      { id:'alt',         title:'🖼️ 04 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
     ],
   };
 
   const pipelineRuntimeAgentIds = {
     tabletop: ['titre', 'tags', 'marche', 'description', 'alt'],
-    collection: ['titre', 'tags', 'description', 'analyse'],
+    collection: ['titre', 'tags', 'description', 'alt'],
   };
 
   const pipelineTargetSteps = {
@@ -40,7 +40,7 @@
       { id:'titre',       label:'Nova · Titres SEO (×5)',     stopAfterAgentId:'titre' },
       { id:'tags',        label:'Axel · Tags (×13)',          stopAfterAgentId:'tags' },
       { id:'description', label:'Eden · Description',         stopAfterAgentId:'description' },
-      { id:'alt',         label:'Jules · Balise ALT finale',  stopAfterAgentId:'analyse' },
+      { id:'alt',         label:'Jules · Balise ALT finale',  stopAfterAgentId:'alt' },
     ],
   };
 

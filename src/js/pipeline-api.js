@@ -16,7 +16,7 @@
 const CACHEABLE_BLOCK_MIN_CHARS = 4096;
 const ANTHROPIC_PROMPT_CACHING_BETA = 'prompt-caching-2024-07-31';
 const ANTHROPIC_FILES_API_BETA = 'files-api-2025-04-14';
-const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'analyse', 'alt']);
+const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'alt']);
 const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000;
 const PROMPT_CACHE_ZONE_GRISE_MS = 2 * 60 * 1000;
 const PROMPT_CACHE_UI_REFRESH_MS = 5 * 1000;
@@ -1698,19 +1698,6 @@ function extractMarkdownSectionValue(rawText, sectionTitle) {
   return match ? match[1].trim() : '';
 }
 
-function extractAltFromAnalyseOutput(rawText) {
-  const source = String(rawText || '');
-  const sectionTitles = ['BALISE_ALT', 'BALISE ALT', 'ALT'];
-
-  for (const title of sectionTitles) {
-    const sectionValue = extractMarkdownSectionValue(source, title);
-    if (sectionValue) return sectionValue;
-  }
-
-  const inlinePattern = /^(?:[-*]\s*)?(?:balise\s*alt|alt)\s*[:：-]\s*(.+)$/im;
-  const inlineMatch = source.match(inlinePattern);
-  return inlineMatch ? inlineMatch[1].trim() : '';
-}
 
 async function runCollectionIrisSemanticSearch() {
   const button = document.getElementById('runIrisBtn-col');
@@ -1774,7 +1761,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
     out.textContent = '';
   }
   if (stopBtn) stopBtn.style.display = 'inline-flex';
-  if (!['analyse','alt','marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
+  if (!['alt', 'marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
   if (agent.hasSelection && !isRetry) {
     state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null; state.selectedTags = [];
     [`${p}-sel-${agent.id}`, `${p}-sel-accroche-${agent.id}`, `${p}-sel-cta-${agent.id}`].forEach(id => {
@@ -1819,12 +1806,6 @@ async function runAgent(agent, correction = '', isRetry = false) {
       appendPipelineRunEntry(p, agent.id, result, { quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id });
     }
 
-    if (currentMode === 'collection' && agent.id === 'analyse') {
-      state.outputs.alt = extractAltFromAnalyseOutput(result);
-      appendPipelineRunEntry(p, 'alt', state.outputs.alt, { quality: 'derive', validation: 'derive', origin: 'auto', sourceAgentId: agent.id });
-    } else if (agent.id === 'alt') {
-      appendPipelineRunEntry(p, 'alt', result, { quality: 'derive', validation: 'derive', origin: 'auto', sourceAgentId: agent.id });
-    }
 
     if (out) out.textContent = result;
     showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
@@ -1895,7 +1876,7 @@ async function startPipeline(p, _options = {}) {
   const pipelineAgents = getPipelineRuntimeAgentsForTarget(p, resolvedStepId);
   const finalAgentId = finalStepMeta?.stopAfterAgentId || pipelineAgents[pipelineAgents.length - 1]?.id || '';
   const runtimeAgentIds = new Set(pipelineAgents.map((agent) => agent.id));
-  const knownAgentIds = ['analyse', 'marche', 'titre', 'tags', 'description', 'alt'];
+  const knownAgentIds = ['marche', 'titre', 'tags', 'description', 'alt'];
   const warningBox = document.getElementById(`imgWarning-${p}`);
   const btn = document.getElementById(`runBtn-${p}`);
 
@@ -2401,11 +2382,9 @@ function getSoloFinalOutputAgentLabels(prefixOverride) {
     titre: '01 Nova — Titres',
     titre_valide: '01b Titre validé',
     tags: '02 Axel — Tags',
-    marche: '03 Luna — Analyse marché',
-    description: '04 Eden — Description brute',
-    description_assembled: '04b Description assemblée',
-    analyse: '05 Jules — ALT finale (source)',
-    alt: '05b Jules — Balise ALT finale',
+    description: '03 Eden — Description brute',
+    description_assembled: '03b Description assemblée',
+    alt: '04 Jules — Balise ALT finale',
     iris: 'Hors pipeline — Iris sémantique',
   };
 }
@@ -2564,12 +2543,10 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       titre: '01 Nova',
       titre_explorer: '01b Nova Explorer',
       tags: '02 Axel',
-      marche: '03 Luna',
-      description: '04 Eden',
-      analyse: '05 Jules',
-      alt: '05b Jules ALT',
-      social: '06 Theo',
-      camille: '07 Zoe',
+      description: '03 Eden',
+      alt: '04 Jules ALT',
+      social: '05 Theo',
+      camille: '06 Zoe',
       iris: 'Iris',
       orchestrateur: 'QA Rex',
       cache_aware: '00 Cache-aware',
