@@ -1,0 +1,213 @@
+/* Workspace traduction V1.
+   Étroit et non destructif : s'ajoute sous l'output final existant.
+   Collection + DnD uniquement. */
+
+.translation-workspace-mount {
+  margin-top: 1rem;
+}
+
+.translation-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.translation-workspace.is-empty {
+  opacity: 0.88;
+}
+
+.translation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.translation-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.translation-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.translation-alias-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.translation-alias-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.translation-alias-title {
+  font-family: 'Clash Display', 'Syne', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.translation-alias-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.translation-alias-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.translation-alias-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.translation-language-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.translation-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.translation-input,
+.translation-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.translation-input:focus,
+.translation-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0.1rem rgba(255, 255, 255, 0.08);
+}
+
+.translation-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.translation-tab {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text2);
+  border-radius: 999rem;
+  padding: 0.5rem 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.translation-tab.is-active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.translation-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.translation-editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.translation-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.translation-editor-title {
+  font-family: 'Clash Display', 'Syne', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.translation-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.translation-textarea[data-field="description"],
+.translation-textarea[data-field="alt"] {
+  min-height: 8rem;
+}
+
+.translation-textarea[data-field="tags"],
+.translation-textarea[data-field="title"] {
+  min-height: 4rem;
+}
+
+.translation-empty {
+  padding: 0.9rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+@media (max-width: 56rem) {
+  .translation-toolbar,
+  .translation-alias-head,
+  .translation-editor-head {
+    align-items: flex-start;
+  }
+
+  .translation-toolbar {
+    flex-direction: column;
+  }
+}

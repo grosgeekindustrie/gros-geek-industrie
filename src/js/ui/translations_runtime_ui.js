@@ -119,29 +119,55 @@
     universe: getFieldValue(`${prefix}-fUnivers`) || '',
   });
 
-  const syncSourceAliases = (prefix = getCurrentPrefix()) => {
+  const syncSourceAliases = (prefix = getCurrentPrefix(), options = {}) => {
     const workspace = ensureTranslationState(prefix);
     const identity = getSourceIdentity(prefix);
-    workspace.source.name = identity.name;
-    workspace.source.universe = identity.universe;
+    const sourceOverride = options.sourceOverride || {};
+
+    const sourceName = String(sourceOverride.name || workspace.source.name || identity.name || '').trim();
+    const sourceUniverse = String(sourceOverride.universe || workspace.source.universe || identity.universe || '').trim();
+
+    workspace.source.name = sourceName;
+    workspace.source.universe = sourceUniverse;
     workspace.aliases.fr = {
-      name: identity.name,
-      universe: identity.universe,
+      name: sourceName,
+      universe: sourceUniverse,
     };
     return workspace;
   };
 
-  const captureTranslationSource = (prefix = getCurrentPrefix()) => {
-    const workspace = syncSourceAliases(prefix);
+  const mergeAliasesIntoWorkspace = (workspace, aliasesOverride = {}, languages = []) => {
+    const normalizedLanguages = ['fr', ...normalizeLanguages(languages.length ? languages : Object.keys(aliasesOverride))];
+
+    normalizedLanguages.forEach((language) => {
+      const incoming = aliasesOverride?.[language];
+      if (!incoming) return;
+
+      workspace.aliases[language] = {
+        name: String(incoming.name || workspace.aliases[language]?.name || '').trim(),
+        universe: String(incoming.universe || workspace.aliases[language]?.universe || '').trim(),
+      };
+    });
+
+    return workspace;
+  };
+
+  const captureTranslationSource = (prefix = getCurrentPrefix(), options = {}) => {
+    const workspace = syncSourceAliases(prefix, options);
     const state = getState();
+    const sourceOverride = options.sourceOverride || {};
     const description = state.outputs?.description_assembled || state.outputs?.description || '';
+
+    mergeAliasesIntoWorkspace(workspace, options.aliasesOverride || {}, Object.keys(options.aliasesOverride || {}));
 
     workspace.source = {
       ...workspace.source,
-      title: String(state.outputs?.titre_valide || '').trim(),
-      tags: String(state.outputs?.tags || '').trim(),
-      description: String(description || '').trim(),
-      alt: String(state.outputs?.alt || '').trim(),
+      title: String(sourceOverride.title || state.outputs?.titre_valide || workspace.source.title || '').trim(),
+      tags: String(sourceOverride.tags || state.outputs?.tags || workspace.source.tags || '').trim(),
+      description: String(sourceOverride.description || description || workspace.source.description || '').trim(),
+      alt: String(sourceOverride.alt || state.outputs?.alt || workspace.source.alt || '').trim(),
+      name: String(sourceOverride.name || workspace.aliases.fr?.name || workspace.source.name || '').trim(),
+      universe: String(sourceOverride.universe || workspace.aliases.fr?.universe || workspace.source.universe || '').trim(),
     };
 
     workspace.results.fr = {
@@ -229,7 +255,8 @@
   const runAliasLookup = async (prefix = getCurrentPrefix(), options = {}) => {
     const mode = getModeFromPrefix(prefix);
     const activeLanguages = normalizeLanguages(options.languages || getEnabledTranslationLanguages(mode));
-    const workspace = captureTranslationSource(prefix);
+    const workspace = captureTranslationSource(prefix, options);
+    mergeAliasesIntoWorkspace(workspace, options.aliasesOverride || {}, activeLanguages);
 
     if (!activeLanguages.length) {
       return workspace;
@@ -271,7 +298,8 @@
   const runTranslation = async (prefix = getCurrentPrefix(), targetLanguage = 'en', options = {}) => {
     const mode = getModeFromPrefix(prefix);
     const language = normalizeLanguage(targetLanguage);
-    const workspace = captureTranslationSource(prefix);
+    const workspace = captureTranslationSource(prefix, options);
+    mergeAliasesIntoWorkspace(workspace, options.aliasesOverride || {}, [language]);
 
     if (!language || language === 'fr') {
       return workspace;

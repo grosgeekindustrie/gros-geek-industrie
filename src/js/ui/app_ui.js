@@ -519,6 +519,7 @@
     persistSettingsPanelValues(getCurrentMode());
     document.getElementById('settingsOverlay').classList.remove('visible');
     document.getElementById('settingsPanel').classList.remove('visible');
+    global.renderTranslationWorkspace?.(getPfx());
   }
 
 

@@ -1905,6 +1905,7 @@ async function startPipeline(p, _options = {}) {
   ['titre_valide', 'description_assembled', 'tags', 'tags_raw', 'alt'].forEach((key) => {
     state.outputs[key] = '';
   });
+  window.resetTranslationWorkspace?.(p);
 
   if (btn) {
     btn.disabled = true;
@@ -2031,6 +2032,7 @@ async function startPipeline(p, _options = {}) {
   }
 
   assembleFinal();
+  window.renderTranslationWorkspace?.(p);
 
   if (btn) {
     btn.disabled = false;
