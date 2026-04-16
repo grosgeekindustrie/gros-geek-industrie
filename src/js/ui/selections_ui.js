@@ -487,7 +487,7 @@
     const finalCsv = selectedTags.join(', ');
     global.state.selectedTags = selectedTags;
     global.state.outputs.tags = finalCsv;
-    global.setPipelineRunEntry?.(p, agentId, finalCsv);
+    global.setPipelineRunEntry?.(p, agentId, finalCsv, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
     global.PipelineUIRender?.syncSelectionField?.('tags', finalCsv, p);
     global.PipelineUIRender?.syncFinalPre?.('tags', finalCsv, p);
 
@@ -685,7 +685,7 @@
 
     global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
-    global.setPipelineRunEntry?.(p, agentId, titre);
+    global.setPipelineRunEntry?.(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
     if (titre !== selectedTitre) {
       validateTitreSegment(titre);
       global.showToast?.('✅ Titre manuel ajouté aux exemples validés');

@@ -549,6 +549,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
         fixedBlocks: normalizedFixedBlocks.map((block, index) => ({
           index,
           key: block.key,
+          text: block.text,
           cacheable: block.cacheable,
           cacheApplied: block.cacheApplied,
           cacheGroup: block.cacheGroup,
@@ -832,6 +833,7 @@ function getRuntimeDebugState() {
   state.runtimeDebug.activeCacheRuns = state.runtimeDebug.activeCacheRuns || {};
   state.runtimeDebug.cacheRunHistory = state.runtimeDebug.cacheRunHistory || {};
   state.runtimeDebug.promptCacheByPrefix = state.runtimeDebug.promptCacheByPrefix || {};
+  state.runtimeDebug.tokenCountCache = state.runtimeDebug.tokenCountCache || {};
 
   if (!state.runtimeDebug.promptCacheTickerId && typeof window !== 'undefined') {
     state.runtimeDebug.promptCacheTickerId = window.setInterval(() => {
@@ -1054,11 +1056,151 @@ function getCacheWarmupDetails(events = []) {
   };
 }
 
+function normalizePipelineRunEntryMeta(entry = {}, fallbackAgentId = '') {
+  return {
+    sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || fallbackAgentId || '').trim(),
+    quality: String(entry?.quality || 'brut').trim(),
+    validation: String(entry?.validation || 'non_valide').trim(),
+    origin: String(entry?.origin || 'auto').trim(),
+  };
+}
+
+function hashTokenCountContent(text = '') {
+  let hash = 2166136261;
+  const input = String(text || '');
+
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(16);
+}
+
+function getTokenCountCacheKey(model = '', text = '') {
+  const normalizedText = String(text || '');
+  return [String(model || ''), normalizedText.length, hashTokenCountContent(normalizedText)].join('::');
+}
+
+async function countTokensForSectionText(model = '', text = '') {
+  const normalizedText = String(text || '').trim();
+  if (!normalizedText) return 0;
+
+  const apiKey = document.getElementById('apiKey')?.value?.trim();
+  if (!apiKey) throw new Error('Clé API manquante');
+
+  const runtimeDebug = getRuntimeDebugState();
+  const resolvedModel = String(model || 'claude-sonnet-4-20250514').trim();
+  const cacheKey = getTokenCountCacheKey(resolvedModel, normalizedText);
+  const cachedValue = runtimeDebug.tokenCountCache[cacheKey];
+  if (typeof cachedValue === 'number') return cachedValue;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages/count_tokens', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: resolvedModel,
+      messages: [{
+        role: 'user',
+        content: [{ type: 'text', text: normalizedText }],
+      }],
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `count_tokens HTTP ${response.status}`);
+  }
+
+  const totalInputTokens = Number(data?.input_tokens);
+  if (!Number.isFinite(totalInputTokens)) {
+    throw new Error('count_tokens sans input_tokens');
+  }
+
+  runtimeDebug.tokenCountCache[cacheKey] = totalInputTokens;
+  return totalInputTokens;
+}
+
+function buildSectionTextFromBlocks(blocks = []) {
+  return blocks
+    .map((block) => String(block?.text || '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function getEventSectionTexts(event = {}) {
+  const fixedBlocks = Array.isArray(event.fixedBlocks) ? event.fixedBlocks : [];
+  const cumulativeBlocks = fixedBlocks.filter((block) => (block.cacheGroup || '').trim() === 'cumulative_append_only'
+    || String(block.key || '').startsWith('cumulative_append_only'));
+  const sharedBlocks = fixedBlocks.filter((block) => block.key === 'shared_prefix');
+  const snapshotBlocks = fixedBlocks.filter((block) => block.key === 'cache_aware_form_snapshot');
+  const cacheableBlocks = fixedBlocks.filter((block) => block.cacheable);
+  const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
+  const cumulativeNetBlocks = cumulativeBlocks.filter((block) => String(block?.validation || '') === 'valide');
+  const cumulativeBrutBlocks = cumulativeBlocks.filter((block) => String(block?.quality || '') === 'brut' || String(block?.validation || '') === 'non_valide');
+  const cumulativeDerivedBlocks = cumulativeBlocks.filter((block) => String(block?.quality || '') === 'derive');
+  const cumulativeManualBlocks = cumulativeBlocks.filter((block) => String(block?.origin || '') === 'manuel');
+  const cumulativeAutoBlocks = cumulativeBlocks.filter((block) => String(block?.origin || '') === 'auto');
+
+  return {
+    fixedTotal: buildSectionTextFromBlocks(fixedBlocks),
+    sharedPrefix: buildSectionTextFromBlocks(sharedBlocks),
+    snapshot: buildSectionTextFromBlocks(snapshotBlocks),
+    cumulativeTotal: buildSectionTextFromBlocks(cumulativeBlocks),
+    cumulativeNet: buildSectionTextFromBlocks(cumulativeNetBlocks),
+    cumulativeBrut: buildSectionTextFromBlocks(cumulativeBrutBlocks),
+    cumulativeDerived: buildSectionTextFromBlocks(cumulativeDerivedBlocks),
+    cumulativeManual: buildSectionTextFromBlocks(cumulativeManualBlocks),
+    cumulativeAuto: buildSectionTextFromBlocks(cumulativeAutoBlocks),
+    cacheableFixed: buildSectionTextFromBlocks(cacheableBlocks),
+    cacheAppliedFixed: buildSectionTextFromBlocks(cacheAppliedBlocks),
+  };
+}
+
+async function buildEventTokenSections(event = {}) {
+  const sectionTexts = getEventSectionTexts(event);
+  const model = AGENT_MODELS[event.agentId] || 'claude-sonnet-4-20250514';
+  const sectionEntries = Object.entries(sectionTexts);
+  const tokenSections = {};
+
+  await Promise.all(sectionEntries.map(async ([key, value]) => {
+    tokenSections[key] = value ? await countTokensForSectionText(model, value) : 0;
+  }));
+
+  return tokenSections;
+}
+
 function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) {
   const activeRun = getActiveCacheDebugRun(prefix);
   if (!activeRun) return;
 
-  const fixedBlocks = Array.isArray(promptDebug?.fixedBlocks) ? promptDebug.fixedBlocks : [];
+  const promptFixedBlocks = Array.isArray(promptDebug?.fixedBlocks) ? promptDebug.fixedBlocks : [];
+  const runState = getPipelineRunState(prefix);
+  const cumulativeMetaByAgent = new Map(
+    (Array.isArray(runState?.cumulativeEntries) ? runState.cumulativeEntries : []).map((entry) => [
+      String(entry?.agentId || '').trim(),
+      normalizePipelineRunEntryMeta(entry),
+    ])
+  );
+  const fixedBlocks = promptFixedBlocks.map((block) => {
+    if ((block.cacheGroup || '').trim() !== 'cumulative_append_only' && !String(block.key || '').startsWith('cumulative_append_only')) {
+      return block;
+    }
+
+    const meta = cumulativeMetaByAgent.get(String(block.cacheLabel || '').trim()) || normalizePipelineRunEntryMeta({ agentId: block.cacheLabel || block.key });
+    return {
+      ...block,
+      sourceAgentId: meta.sourceAgentId,
+      quality: meta.quality,
+      validation: meta.validation,
+      origin: meta.origin,
+    };
+  });
   const sharedBlock = fixedBlocks.find((block) => block.key === 'shared_prefix');
   const cumulativeBlocks = fixedBlocks.filter((block) => (block.cacheGroup || '').trim() === 'cumulative_append_only'
     || String(block.key || '').startsWith('cumulative_append_only'));
@@ -1093,7 +1235,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
   activeRun.lastHeaderStatus = getRuntimeDebugState().lastCacheStatus || activeRun.lastHeaderStatus || '—';
 }
 
-function buildCacheDebugReport(prefix = pfx()) {
+async function buildCacheDebugReport(prefix = pfx()) {
   const run = getLatestCacheDebugRun(prefix);
   if (!run) return 'Aucun rapport cache disponible.';
 
@@ -1135,22 +1277,41 @@ function buildCacheDebugReport(prefix = pfx()) {
     return lines.join('\n');
   }
 
-  run.events.forEach((event) => {
+  for (const event of run.events) {
     lines.push(`#${event.order} ${event.agentId} (${event.displayStepId || event.agentId})`);
     lines.push(`- source: ${event.source || 'pipeline'}`);
     lines.push(`- cache: ${event.status}`);
-    lines.push(`- lu: ${event.cacheReadTokens.toLocaleString()} tok`);
-    lines.push(`- écrit: ${event.cacheWriteTokens.toLocaleString()} tok`);
-    lines.push(`- input: ${event.inputTokens.toLocaleString()} tok`);
-    lines.push(`- output: ${event.outputTokens.toLocaleString()} tok`);
+    lines.push(`- lu API réel: ${event.cacheReadTokens.toLocaleString()} tok`);
+    lines.push(`- écrit API réel: ${event.cacheWriteTokens.toLocaleString()} tok`);
+    lines.push(`- input API réel: ${event.inputTokens.toLocaleString()} tok`);
+    lines.push(`- output API réel: ${event.outputTokens.toLocaleString()} tok`);
     lines.push(`- prompt variable: ${event.promptChars.toLocaleString()} chars`);
     lines.push(`- bloc fixe total: ${event.fixedChars.toLocaleString()} chars`);
     lines.push(`- bloc fixe activé: ${event.cacheAppliedChars.toLocaleString()} chars`);
     lines.push(`- bloc commun: ${event.sharedPrefixChars.toLocaleString()} chars`);
-    lines.push(`- cumulatif: ${event.cumulativeChars.toLocaleString()} chars (${(event.cumulativeBlockCount || 0).toLocaleString()} bloc(s))`);
+    lines.push(`- cumulatif transmis: ${event.cumulativeChars.toLocaleString()} chars (${(event.cumulativeBlockCount || 0).toLocaleString()} bloc(s))`);
     if (event.cumulativeCacheAppliedChars > 0) {
       lines.push(`- cumulatif caché: ${event.cumulativeCacheAppliedChars.toLocaleString()} chars`);
     }
+
+    try {
+      const tokenSections = await buildEventTokenSections(event);
+      lines.push(`- bloc fixe total (count_tokens): ${Number(tokenSections.fixedTotal || 0).toLocaleString()} tok`);
+      lines.push(`- bloc commun (count_tokens): ${Number(tokenSections.sharedPrefix || 0).toLocaleString()} tok`);
+      lines.push(`- snapshot formulaire (count_tokens): ${Number(tokenSections.snapshot || 0).toLocaleString()} tok`);
+      lines.push(`- cumulatif net validé (count_tokens): ${Number(tokenSections.cumulativeNet || 0).toLocaleString()} tok`);
+      lines.push(`- cumulatif brut / non validé (count_tokens): ${Number(tokenSections.cumulativeBrut || 0).toLocaleString()} tok`);
+      if (Number(tokenSections.cumulativeDerived || 0) > 0) {
+        lines.push(`- cumulatif dérivé (count_tokens): ${Number(tokenSections.cumulativeDerived || 0).toLocaleString()} tok`);
+      }
+      lines.push(`- cumulatif manuel (count_tokens): ${Number(tokenSections.cumulativeManual || 0).toLocaleString()} tok`);
+      lines.push(`- cumulatif auto (count_tokens): ${Number(tokenSections.cumulativeAuto || 0).toLocaleString()} tok`);
+      lines.push(`- bloc fixe cacheable (count_tokens): ${Number(tokenSections.cacheableFixed || 0).toLocaleString()} tok`);
+      lines.push(`- bloc fixe caché (count_tokens): ${Number(tokenSections.cacheAppliedFixed || 0).toLocaleString()} tok`);
+    } catch (error) {
+      lines.push(`- count_tokens sections: indisponible (${error.message})`);
+    }
+
     if (event.filesApiDebug?.enabled) {
       const filesApiStatus = formatFilesApiStatusLabel(event.filesApiDebug.status);
       lines.push(`- files api: ${filesApiStatus}`);
@@ -1183,17 +1344,22 @@ function buildCacheDebugReport(prefix = pfx()) {
             : ` · cache OFF (prefixe < ${CACHEABLE_BLOCK_MIN_CHARS.toLocaleString()} chars)`)
         : '';
       const blockLabel = block.cacheLabel ? ` — ${block.cacheLabel}` : '';
-      lines.push(`  • ${block.key}${blockLabel}: ${block.chars.toLocaleString()} chars${cacheLabel}`);
+      const metaParts = [];
+      if (block.validation) metaParts.push(block.validation);
+      if (block.origin) metaParts.push(block.origin);
+      if (block.quality && block.quality !== 'brut') metaParts.push(block.quality);
+      const metaLabel = metaParts.length ? ` · ${metaParts.join(' / ')}` : '';
+      lines.push(`  • ${block.key}${blockLabel}: ${block.chars.toLocaleString()} chars${cacheLabel}${metaLabel}`);
     });
     lines.push('');
-  });
+  }
 
   return lines.join('\n').trim();
 }
 
-function copyCacheDebugReport(prefix = pfx()) {
-  const report = buildCacheDebugReport(prefix);
-  navigator.clipboard.writeText(report);
+async function copyCacheDebugReport(prefix = pfx()) {
+  const report = await buildCacheDebugReport(prefix);
+  await navigator.clipboard.writeText(report);
   showToast('Rapport cache copié ✓');
 }
 
@@ -1348,28 +1514,44 @@ function refreshPipelineRunCumulativeText(runState) {
     .join('\n\n');
 }
 
-function appendPipelineRunEntry(prefix, agentId, content) {
+function appendPipelineRunEntry(prefix, agentId, content, meta = {}) {
   const trimmed = String(content || '').trim();
   if (!trimmed) return;
 
   const runState = getPipelineRunState(prefix);
+  const normalizedMeta = normalizePipelineRunEntryMeta({
+    agentId,
+    ...meta,
+  }, agentId);
   runState.cumulativeEntries.push({
     agentId,
     content: trimmed,
+    ...normalizedMeta,
   });
   refreshPipelineRunCumulativeText(runState);
 }
 
-function setPipelineRunEntry(prefix, agentId, content) {
+function setPipelineRunEntry(prefix, agentId, content, meta = {}) {
   const trimmed = String(content || '').trim();
   const runState = getPipelineRunState(prefix);
+  const previousEntry = runState.cumulativeEntries.find((entry) => entry.agentId === agentId) || {};
   runState.cumulativeEntries = runState.cumulativeEntries
     .filter((entry) => entry.agentId !== agentId);
 
   if (trimmed) {
+    const normalizedMeta = normalizePipelineRunEntryMeta({
+      agentId,
+      sourceAgentId: previousEntry.sourceAgentId || agentId,
+      quality: previousEntry.quality || 'net',
+      validation: previousEntry.validation || 'valide',
+      origin: previousEntry.origin || 'manuel',
+      ...meta,
+    }, agentId);
+
     runState.cumulativeEntries.push({
       agentId,
       content: trimmed,
+      ...normalizedMeta,
     });
   }
 
@@ -1634,14 +1816,14 @@ async function runAgent(agent, correction = '', isRetry = false) {
     }
 
     if (!(agent.hasSelection && ['titre', 'tags'].includes(agent.id))) {
-      appendPipelineRunEntry(p, agent.id, result);
+      appendPipelineRunEntry(p, agent.id, result, { quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id });
     }
 
     if (currentMode === 'collection' && agent.id === 'analyse') {
       state.outputs.alt = extractAltFromAnalyseOutput(result);
-      appendPipelineRunEntry(p, 'alt', state.outputs.alt);
+      appendPipelineRunEntry(p, 'alt', state.outputs.alt, { quality: 'derive', validation: 'derive', origin: 'auto', sourceAgentId: agent.id });
     } else if (agent.id === 'alt') {
-      appendPipelineRunEntry(p, 'alt', result);
+      appendPipelineRunEntry(p, 'alt', result, { quality: 'derive', validation: 'derive', origin: 'auto', sourceAgentId: agent.id });
     }
 
     if (out) out.textContent = result;
