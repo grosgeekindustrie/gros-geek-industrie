@@ -38,6 +38,10 @@
     const map = getRuntime().SUPPORTED_TRANSLATION_LANGUAGES || {};
     return map[language]?.label || language.toUpperCase();
   };
+  const normalizeWorkspaceLanguage = (language = '') => {
+    const normalized = String(language || '').trim().toLowerCase();
+    return SUPPORTED_LANGUAGES.includes(normalized) ? normalized : '';
+  };
   const escapeHtml = (value = '') => String(value || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -122,6 +126,29 @@
     return aliases;
   };
 
+  const buildPromptMenuMarkup = (workspace) => {
+    const isOpen = Boolean(workspace.meta?.promptMenuOpen);
+
+    return `
+      <div class="translation-prompt-menu-wrap">
+        <button
+          type="button"
+          class="btn btn-muted translation-prompt-toggle"
+          data-role="prompt-menu-toggle"
+          aria-expanded="${isOpen ? 'true' : 'false'}"
+          title="Prompts traduction"
+        >⚙️</button>
+        ${isOpen ? `
+          <div class="translation-prompt-menu">
+            <button type="button" class="translation-prompt-action" data-role="open-translate-prompt">📝 Prompt traduction</button>
+            <button type="button" class="translation-prompt-action" data-role="open-alias-prompt">🧭 Prompt alias</button>
+            <button type="button" class="translation-prompt-action" data-role="refresh-source">↻ Recharger FR</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  };
+
   const buildToolbarMarkup = (prefix, workspace, visibleLanguages) => {
     const activeLanguage = workspace.meta.activeLanguage || 'fr';
     const hasTargetLanguage = visibleLanguages.some((language) => language !== 'fr');
@@ -134,7 +161,7 @@
         <div class="translation-toolbar-group">
           <button type="button" class="btn btn-accent" data-role="translate" data-prefix="${prefix}" ${hasTargetLanguage ? '' : 'disabled'}>🌍 Traduire</button>
           <button type="button" class="btn btn-muted" data-role="import" data-prefix="${prefix}">📥 Importer</button>
-          <button type="button" class="btn btn-muted" data-role="prompt" data-prefix="${prefix}" title="Prompt traduction">⚙️</button>
+          ${buildPromptMenuMarkup(workspace)}
           <span class="translation-status">${escapeHtml(targetHint)}</span>
         </div>
         <div class="translation-toolbar-group">
@@ -265,34 +292,154 @@
     };
   };
 
+  const buildSectionBlock = (heading = '', value = '') => [
+    `## ${heading}`,
+    String(value || '').trim(),
+    '',
+  ].join('\n');
+
   const buildWorkspaceMarkdownPack = (prefix = 'tt') => {
     const payload = getWorkspacePack(prefix);
-    return [
+    const sections = [
       '# Translation Workspace Pack',
       '',
-      `mode: ${payload.mode}`,
-      `prefix: ${payload.prefix}`,
-      `visible_languages: ${payload.visibleLanguages.join(', ')}`,
-      `exported_at: ${payload.exportedAt}`,
-      '',
-      '```json',
-      JSON.stringify(payload, null, 2),
-      '```',
-      '',
-    ].join('\n');
+      buildSectionBlock('MODE', payload.mode),
+      buildSectionBlock('PREFIX', payload.prefix),
+      buildSectionBlock('VISIBLE_LANGUAGES', payload.visibleLanguages.join(', ')),
+      buildSectionBlock('EXPORTED_AT', payload.exportedAt),
+      buildSectionBlock('SOURCE_NAME', payload.workspace?.source?.name || ''),
+      buildSectionBlock('SOURCE_UNIVERSE', payload.workspace?.source?.universe || ''),
+    ];
+
+    payload.visibleLanguages.forEach((language) => {
+      const aliases = payload.workspace?.aliases?.[language] || {};
+      const result = payload.workspace?.results?.[language] || {};
+      sections.push(buildSectionBlock(`ALIAS_${language.toUpperCase()}_NAME`, aliases.name || ''));
+      sections.push(buildSectionBlock(`ALIAS_${language.toUpperCase()}_UNIVERSE`, aliases.universe || ''));
+      sections.push(buildSectionBlock(`${language.toUpperCase()}_TITLE`, result.title || ''));
+      sections.push(buildSectionBlock(`${language.toUpperCase()}_TAGS`, result.tags || ''));
+      sections.push(buildSectionBlock(`${language.toUpperCase()}_DESCRIPTION`, result.description || ''));
+      sections.push(buildSectionBlock(`${language.toUpperCase()}_ALT`, result.alt || ''));
+    });
+
+    sections.push('```json');
+    sections.push(JSON.stringify(payload, null, 2));
+    sections.push('```');
+    sections.push('');
+
+    return sections.join('\n');
+  };
+
+  const extractSectionValue = (input = '', heading = '') => {
+    const escapedHeading = String(heading || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^##\\s+${escapedHeading}\\s*$([\\s\\S]*?)(?=^##\\s+|\\Z)`, 'im');
+    const match = String(input || '').match(pattern);
+    return match ? match[1].trim() : '';
+  };
+
+  const createEmptyImportWorkspace = () => ({
+    source: { title: '', tags: '', description: '', alt: '', name: '', universe: '' },
+    aliases: {
+      fr: { name: '', universe: '' },
+      en: { name: '', universe: '' },
+      de: { name: '', universe: '' },
+      es: { name: '', universe: '' },
+    },
+    results: {
+      fr: { title: '', tags: '', description: '', alt: '', rawResponse: '' },
+      en: { title: '', tags: '', description: '', alt: '', rawResponse: '' },
+      de: { title: '', tags: '', description: '', alt: '', rawResponse: '' },
+      es: { title: '', tags: '', description: '', alt: '', rawResponse: '' },
+    },
+    meta: { sourceCapturedAt: '', aliasLookupAt: '', translatedAtByLanguage: {}, activeLanguage: 'fr', promptMenuOpen: false },
+  });
+
+  const parseLegacyListingMarkdownPack = (input = '') => {
+    const workspace = createEmptyImportWorkspace();
+    const mode = String(extractSectionValue(input, 'MODE') || 'tabletop').trim() || 'tabletop';
+    const prefix = String(extractSectionValue(input, 'PREFIX') || (mode === 'collection' ? 'col' : 'tt')).trim() || (mode === 'collection' ? 'col' : 'tt');
+    const visibleLanguages = [
+      'fr',
+      ...String(extractSectionValue(input, 'VISIBLE_LANGUAGES') || '')
+        .split(/[;,\n]/)
+        .map(normalizeWorkspaceLanguage)
+        .filter((language) => language && language !== 'fr'),
+    ].filter((language, index, array) => array.indexOf(language) === index);
+
+    workspace.source.name = extractSectionValue(input, 'SOURCE_NAME');
+    workspace.source.universe = extractSectionValue(input, 'SOURCE_UNIVERSE');
+    workspace.aliases.fr = { name: workspace.source.name, universe: workspace.source.universe };
+
+    SUPPORTED_LANGUAGES.forEach((language) => {
+      const languageKey = language.toUpperCase();
+      workspace.aliases[language] = {
+        name: extractSectionValue(input, `ALIAS_${languageKey}_NAME`) || workspace.aliases[language]?.name || '',
+        universe: extractSectionValue(input, `ALIAS_${languageKey}_UNIVERSE`) || workspace.aliases[language]?.universe || '',
+      };
+      workspace.results[language] = {
+        ...workspace.results[language],
+        title: extractSectionValue(input, `${languageKey}_TITLE`) || workspace.results[language]?.title || '',
+        tags: extractSectionValue(input, `${languageKey}_TAGS`) || workspace.results[language]?.tags || '',
+        description: extractSectionValue(input, `${languageKey}_DESCRIPTION`) || workspace.results[language]?.description || '',
+        alt: extractSectionValue(input, `${languageKey}_ALT`) || workspace.results[language]?.alt || '',
+      };
+    });
+
+    workspace.source.title = workspace.results.fr.title;
+    workspace.source.tags = workspace.results.fr.tags;
+    workspace.source.description = workspace.results.fr.description;
+    workspace.source.alt = workspace.results.fr.alt;
+
+    return {
+      version: 1,
+      kind: 'translation_workspace',
+      mode,
+      prefix,
+      visibleLanguages,
+      exportedAt: extractSectionValue(input, 'EXPORTED_AT') || new Date().toISOString(),
+      workspace,
+    };
   };
 
   const parseWorkspaceMarkdownPack = (raw = '') => {
     const input = String(raw || '').trim();
     const fencedMatch = input.match(/```json\s*([\s\S]*?)```/i);
-    const jsonCandidate = fencedMatch?.[1]?.trim() || input;
-    const parsed = JSON.parse(jsonCandidate);
 
+    if (fencedMatch?.[1]) {
+      const parsed = JSON.parse(fencedMatch[1].trim());
+      if (parsed?.kind === 'translation_workspace' && parsed.workspace) {
+        return parsed;
+      }
+    }
+
+    if (/^##\s+FR_(TITLE|TAGS|DESCRIPTION|ALT)\s*$/im.test(input)) {
+      return parseLegacyListingMarkdownPack(input);
+    }
+
+    const parsed = JSON.parse(input);
     if (parsed?.kind !== 'translation_workspace' || !parsed.workspace) {
       throw new Error('Pack traduction invalide');
     }
 
     return parsed;
+  };
+
+  const setPromptMenuOpen = (prefix = 'tt', isOpen = false) => {
+    const workspace = getWorkspace(prefix);
+    if (!workspace) return;
+    workspace.meta.promptMenuOpen = Boolean(isOpen);
+    renderTranslationWorkspace(prefix);
+  };
+
+  const refreshSourceFromFinalOutputs = (prefix = 'tt') => {
+    const runtime = getRuntime();
+    runtime.captureTranslationSource?.(prefix, {
+      aliasesOverride: getAliasesSnapshot(prefix),
+    });
+    const workspace = getWorkspace(prefix);
+    if (workspace) workspace.meta.promptMenuOpen = false;
+    renderTranslationWorkspace(prefix);
+    global.showToast?.('Base FR rechargée ✓');
   };
 
   const renderTranslationWorkspace = (prefix = 'tt') => {
@@ -477,6 +624,11 @@
     if (!prefix) return;
 
     const role = button.dataset.role;
+    const workspace = getWorkspace(prefix);
+    const shouldKeepPromptMenuOpen = ['prompt-menu-toggle', 'open-translate-prompt', 'open-alias-prompt', 'refresh-source'].includes(role);
+    if (workspace && !shouldKeepPromptMenuOpen) {
+      workspace.meta.promptMenuOpen = false;
+    }
 
     try {
       if (role === 'tab') {
@@ -494,8 +646,27 @@
         return;
       }
 
-      if (role === 'prompt') {
+      if (role === 'prompt-menu-toggle') {
+        setPromptMenuOpen(prefix, !workspace?.meta?.promptMenuOpen);
+        return;
+      }
+
+      if (role === 'open-translate-prompt') {
+        if (workspace) workspace.meta.promptMenuOpen = false;
+        renderTranslationWorkspace(prefix);
         global.openPromptLightbox?.('translate_listing');
+        return;
+      }
+
+      if (role === 'open-alias-prompt') {
+        if (workspace) workspace.meta.promptMenuOpen = false;
+        renderTranslationWorkspace(prefix);
+        global.openPromptLightbox?.('alias_lookup');
+        return;
+      }
+
+      if (role === 'refresh-source') {
+        refreshSourceFromFinalOutputs(prefix);
         return;
       }
 
@@ -578,6 +749,9 @@
     renderTranslationWorkspace,
     exportWorkspacePack,
     importWorkspacePack,
+    buildWorkspaceMarkdownPack,
+    parseWorkspaceMarkdownPack,
+    refreshSourceFromFinalOutputs,
   };
 
   global.PipelineUI.translationsWorkspace = global.PipelineUI.translationsWorkspace || {};

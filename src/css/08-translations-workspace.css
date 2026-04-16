@@ -35,6 +35,51 @@
   flex-wrap: wrap;
 }
 
+.translation-prompt-menu-wrap {
+  position: relative;
+}
+
+.translation-prompt-toggle {
+  min-width: 2.6rem;
+}
+
+.translation-prompt-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 40;
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: rgba(14, 17, 24, 0.98);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.28);
+}
+
+.translation-prompt-action {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.translation-prompt-action:hover,
+.translation-prompt-action:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
 .translation-status {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.72rem;
