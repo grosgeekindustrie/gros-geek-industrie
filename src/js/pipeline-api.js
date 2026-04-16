@@ -1802,7 +1802,7 @@ async function runAgent(agent, correction = '', isRetry = false) {
       state.outputs[agent.id] = result;
     }
 
-    if (!(agent.hasSelection && ['titre', 'tags'].includes(agent.id))) {
+    if (!agent.hasSelection) {
       appendPipelineRunEntry(p, agent.id, result, { quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id });
     }
 

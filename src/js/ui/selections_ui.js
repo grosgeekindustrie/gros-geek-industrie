@@ -807,7 +807,15 @@
       result.push(line);
     }
 
-    global.state.outputs[`${agentId}_assembled`] = result.join('\n').trim();
+    const assembledDescription = result.join('\n').trim();
+
+    global.state.outputs[`${agentId}_assembled`] = assembledDescription;
+    global.setPipelineRunEntry?.(p, agentId, assembledDescription, {
+      quality: 'net',
+      validation: 'valide',
+      origin: 'manuel',
+      sourceAgentId: agentId,
+    });
     document.getElementById(`${p}-sel-accroche-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-sel-cta-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ sélection validée';

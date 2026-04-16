@@ -579,7 +579,7 @@
           if (dim && entry.dim) dim.value = entry.dim;
         });
         if (Number.isInteger(data._originEchelleIndex)) {
-          global.setEchelleOrigin?.(data._originEchelleIndex, { shouldSave: false });
+          global.setEchelleOrigin?.(data._originEchelleIndex, { shouldSave: false, recalculate: false });
         }
       }
     } catch (error) {}

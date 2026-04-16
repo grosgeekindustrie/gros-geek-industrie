@@ -36,19 +36,49 @@
     };
   };
 
-  const normalizeScaleLabel = (value = '') => value.replace(/\s+/g, '');
+  const normalizeScaleLabel = (value = '') => String(value || '').replace(/\s+/g, '');
 
-  const parseScaleDenominator = (label = '') => {
-    const match = normalizeScaleLabel(label).match(/^1[/:](\d+(?:[.,]\d+)?)$/i);
+  const parseScaleDescriptor = (label = '') => {
+    const normalizedLabel = normalizeScaleLabel(label);
+    const ratioMatch = normalizedLabel.match(/^1[/:](\d+(?:[.,]\d+)?)$/i);
+    if (ratioMatch) {
+      const denominator = Number(ratioMatch[1].replace(',', '.'));
+      return Number.isFinite(denominator)
+        ? { kind: 'ratio', value: denominator }
+        : null;
+    }
 
-    if (!match) return null;
+    const millimeterMatch = normalizedLabel.match(/^(\d+(?:[.,]\d+)?)mm$/i);
+    if (millimeterMatch) {
+      const millimeters = Number(millimeterMatch[1].replace(',', '.'));
+      return Number.isFinite(millimeters)
+        ? { kind: 'millimeter', value: millimeters }
+        : null;
+    }
 
-    const denominator = Number(match[1].replace(',', '.'));
-    return Number.isFinite(denominator) ? denominator : null;
+    return null;
+  };
+
+  const getScaleFactor = (originLabel = '', targetLabel = '') => {
+    const originDescriptor = parseScaleDescriptor(originLabel);
+    const targetDescriptor = parseScaleDescriptor(targetLabel);
+
+    if (!originDescriptor || !targetDescriptor) return null;
+    if (originDescriptor.kind !== targetDescriptor.kind) return null;
+
+    if (originDescriptor.kind === 'ratio') {
+      return originDescriptor.value / targetDescriptor.value;
+    }
+
+    if (originDescriptor.kind === 'millimeter') {
+      return targetDescriptor.value / originDescriptor.value;
+    }
+
+    return null;
   };
 
   const parseDimensions = (value = '') => {
-    const matches = value.match(/\d+(?:[.,]\d+)?/g) || [];
+    const matches = String(value || '').match(/\d+(?:[.,]\d+)?/g) || [];
     const dimensions = matches.map((entry) => Number(entry.replace(',', '.')));
 
     if (dimensions.length !== 3 || dimensions.some((dimension) => !Number.isFinite(dimension))) {
@@ -77,18 +107,50 @@
     return Number.isInteger(index) ? index : null;
   };
 
+  const getRowDimensionSource = (index) => getRowEls(index).row?.dataset.dimensionSource || '';
+
+  const setRowDimensionSource = (index, source = '') => {
+    const { row } = getRowEls(index);
+    if (!row) return;
+
+    if (source) {
+      row.dataset.dimensionSource = source;
+      return;
+    }
+
+    delete row.dataset.dimensionSource;
+  };
+
+  const getFirstCheckedIndex = () => {
+    if (!isCollectionMode()) return null;
+
+    for (let index = 0; index < getCollectionRowCount(); index += 1) {
+      if (getRowEls(index).checkbox?.checked) {
+        return index;
+      }
+    }
+
+    return null;
+  };
+
   const updateOriginState = () => {
     if (!isCollectionMode()) return;
 
     const originIndex = getOriginIndex();
 
     for (let index = 0; index < getCollectionRowCount(); index += 1) {
-      const { row, originRadio } = getRowEls(index);
+      const { row, originRadio, checkbox } = getRowEls(index);
       if (!row) continue;
 
       const isOrigin = originIndex === index;
       row.classList.toggle('is-origin', isOrigin);
       row.dataset.origin = isOrigin ? 'true' : 'false';
+
+      if (isOrigin && checkbox?.checked) {
+        setRowDimensionSource(index, 'origin');
+      } else if (getRowDimensionSource(index) === 'origin') {
+        setRowDimensionSource(index);
+      }
 
       if (originRadio) {
         originRadio.setAttribute('aria-checked', String(isOrigin));
@@ -96,27 +158,38 @@
     }
   };
 
-  const applyAutoDimensions = (index, { shouldSave = true } = {}) => {
+  const isAutoManagedRow = (index) => {
+    const { dimInput } = getRowEls(index);
+    const source = getRowDimensionSource(index);
+
+    return source !== 'manual' || !String(dimInput?.value || '').trim();
+  };
+
+  const applyAutoDimensions = (index, { shouldSave = true, force = false } = {}) => {
     if (!isCollectionMode()) return false;
 
     const originIndex = getOriginIndex();
     if (originIndex === null || originIndex === index) return false;
 
-    const { dimInput: targetDimInput, checkbox: targetCheckbox } = getRowEls(index);
-    if (!targetCheckbox?.checked || !targetDimInput) return false;
+    const {
+      row,
+      dimInput: targetDimInput,
+      checkbox: targetCheckbox,
+    } = getRowEls(index);
+
+    if (!targetCheckbox?.checked || !targetDimInput || !row) return false;
+    if (!force && !isAutoManagedRow(index)) return false;
 
     const originLabel = getCollectionScaleLabel(originIndex);
     const targetLabel = getCollectionScaleLabel(index);
     const originDimensions = parseDimensions(getRowEls(originIndex).dimInput?.value || '');
-    const originDenominator = parseScaleDenominator(originLabel);
-    const targetDenominator = parseScaleDenominator(targetLabel);
+    const scaleFactor = getScaleFactor(originLabel, targetLabel);
 
-    if (!originDimensions || !originDenominator || !targetDenominator) return false;
+    if (!originDimensions || !Number.isFinite(scaleFactor)) return false;
 
-    const percentage = Math.ceil((originDenominator / targetDenominator) * 100);
-    const scaledDimensions = originDimensions.map((dimension) => roundHalfUp((dimension * percentage) / 100));
-
+    const scaledDimensions = originDimensions.map((dimension) => roundHalfUp(dimension * scaleFactor));
     targetDimInput.value = formatDimensions(scaledDimensions);
+    setRowDimensionSource(index, 'auto');
 
     if (shouldSave && typeof global.saveFormState === 'function') {
       global.saveFormState();
@@ -125,7 +198,22 @@
     return true;
   };
 
-  const setEchelleOrigin = (index, { shouldSave = true } = {}) => {
+  const recalculateCollectionDimensions = ({ shouldSave = true, force = false } = {}) => {
+    if (!isCollectionMode()) return;
+
+    updateOriginState();
+
+    for (let index = 0; index < getCollectionRowCount(); index += 1) {
+      if (getOriginIndex() === index) continue;
+      applyAutoDimensions(index, { shouldSave: false, force });
+    }
+
+    if (shouldSave && typeof global.saveFormState === 'function') {
+      global.saveFormState();
+    }
+  };
+
+  const setEchelleOrigin = (index, { shouldSave = true, recalculate = true } = {}) => {
     if (!isCollectionMode()) return;
 
     const { checkbox, originRadio } = getRowEls(index);
@@ -133,6 +221,10 @@
 
     originRadio.checked = true;
     updateOriginState();
+
+    if (recalculate) {
+      recalculateCollectionDimensions({ shouldSave: false });
+    }
 
     if (shouldSave && typeof global.saveFormState === 'function') {
       global.saveFormState();
@@ -212,6 +304,15 @@
     });
 
     dimInput?.addEventListener('input', () => {
+      if (isCollectionMode()) {
+        if (getOriginIndex() === index) {
+          setRowDimensionSource(index, 'origin');
+          recalculateCollectionDimensions({ shouldSave: false });
+        } else {
+          setRowDimensionSource(index, 'manual');
+        }
+      }
+
       global.saveFormState?.();
     });
 
@@ -225,7 +326,12 @@
 
     if (isCustom && customLabel) {
       customLabel.addEventListener('input', () => {
-        applyAutoDimensions(index, { shouldSave: false });
+        if (getOriginIndex() === index) {
+          recalculateCollectionDimensions({ shouldSave: false });
+        } else {
+          applyAutoDimensions(index, { shouldSave: false, force: true });
+        }
+
         global.saveFormState?.();
       });
     }
@@ -271,7 +377,12 @@
 
   function toggleEch(index, options = {}) {
     const { shouldSave = true, autoFill = true } = options;
-    const { checkbox, dimInput, row, originRadio } = getRowEls(index);
+    const {
+      checkbox,
+      dimInput,
+      row,
+      originRadio,
+    } = getRowEls(index);
 
     if (!checkbox || !dimInput || !row) return;
 
@@ -287,13 +398,28 @@
     }
 
     if (isCollectionMode()) {
+      if (!isEnabled) {
+        setRowDimensionSource(index);
+      }
+
       if (isEnabled && getOriginIndex() === null && originRadio) {
         originRadio.checked = true;
-      } else if (isEnabled && autoFill && !originRadio?.checked) {
-        applyAutoDimensions(index, { shouldSave: false });
+      }
+
+      if (getOriginIndex() === null) {
+        const fallbackOriginIndex = getFirstCheckedIndex();
+        if (fallbackOriginIndex !== null) {
+          getRowEls(fallbackOriginIndex).originRadio.checked = true;
+        }
       }
 
       updateOriginState();
+
+      if (isEnabled && autoFill && !originRadio?.checked) {
+        applyAutoDimensions(index, { shouldSave: false, force: true });
+      }
+
+      recalculateCollectionDimensions({ shouldSave: false });
     }
 
     if (shouldSave && typeof global.saveFormState === 'function') {
@@ -355,6 +481,7 @@
     setEchelleOrigin,
     getEchellesSelected,
     getDimsFromEchelles,
+    refreshCollectionAutoDimensions: recalculateCollectionDimensions,
   });
 
   global.buildEchellesUI = buildEchellesUI;
