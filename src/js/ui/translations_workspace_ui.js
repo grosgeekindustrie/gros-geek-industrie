@@ -452,6 +452,8 @@
     const visibleLanguages = getVisibleLanguages(prefix);
     const isEmpty = !hasWorkspaceContent(workspace);
 
+    syncLegacyResultVisibility(prefix, workspace, visibleLanguages);
+
     mount.innerHTML = `
       <div class="translation-workspace ${isEmpty ? 'is-empty' : ''}" data-prefix="${prefix}">
         ${buildToolbarMarkup(prefix, workspace, visibleLanguages)}
