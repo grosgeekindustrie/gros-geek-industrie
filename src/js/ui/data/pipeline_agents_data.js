@@ -18,15 +18,14 @@
     collection: [
       { id:'titre',       title:'🏷️ 01 — Nova · Titres SEO (×5)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
       { id:'tags',        title:'🔖 02 — Axel · Tags (×13)',              usesImages:false, hasSelection:true,  selectionType:'tags' },
-      { id:'marche',      title:'📊 03 — Luna · Analyse de marché',       usesImages:true,  hasSelection:false },
-      { id:'description', title:'📝 04 — Eden · Description',             usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
-      { id:'analyse',     title:'🖼️ 05 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
+      { id:'description', title:'📝 03 — Eden · Description',             usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
+      { id:'analyse',     title:'🖼️ 04 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
     ],
   };
 
   const pipelineRuntimeAgentIds = {
     tabletop: ['titre', 'tags', 'marche', 'description', 'alt'],
-    collection: ['titre', 'tags', 'marche', 'description', 'analyse'],
+    collection: ['titre', 'tags', 'description', 'analyse'],
   };
 
   const pipelineTargetSteps = {
@@ -40,7 +39,6 @@
     collection: [
       { id:'titre',       label:'Nova · Titres SEO (×5)',     stopAfterAgentId:'titre' },
       { id:'tags',        label:'Axel · Tags (×13)',          stopAfterAgentId:'tags' },
-      { id:'marche',      label:'Luna · Analyse de marché',   stopAfterAgentId:'marche' },
       { id:'description', label:'Eden · Description',         stopAfterAgentId:'description' },
       { id:'alt',         label:'Jules · Balise ALT finale',  stopAfterAgentId:'analyse' },
     ],
