@@ -24,6 +24,8 @@
 + Karlach - Baldur's Gate 3 Figurine a peindre en résine 14k HD pour fan de Bg3 et joueur Dnd, RPG, fantasy
 + Nyx - Hades, statue de collection imprimée en 3D à peindre, garage kit pour fans de dark fantasy
 + Nyx - Hades statue de collection à peindre, garage kit pour peintres et fans de sorcière, prêtresse nécromancienne et de jeux vidéo
++ Varang - Avatar, figurine de collection imprimée en 3D à peindre, garage kit 14k hd pour peintres, collectionneurs et fan de sorcière na'vi
++ Xal'Atah - World of warcraft, statue d'elfe à peindre, garage kit de collection imprimée en 3D, sorcière, prêtresse, magicienne WOW
 
 ## BLACKLISTÉS
 

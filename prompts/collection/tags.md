@@ -147,7 +147,7 @@ Respecte les accords en français.
 • Univers : `[[UNIVERS]]`  
 • Finition : `à peindre`  
 • Fabrication : `imprimé en 3d`, `imprimée en 3d`  
-• Intention : `cadeau`, `collection`, `à collectionner`, `de collection`  
+• Intention : `cadeau`, `à collectionner`, `de collection`  
 • Cible : `fan`, `collectionneur`, `peintre`, `geek`  
 • Genres transverses autorisés : termes exacts issus de `[[GENRES_TRANSVERSES]]`  
 • Contexte medium autorisé : termes exacts issus de `[[MEDIUM_CONTEXT]]`  
@@ -169,6 +169,42 @@ Respecte les accords en français.
 • n’utilise jamais un nom de sculpteur ou de studio s’il n’existe pas de champ dédié de sculpteur dans les données fournies  
 • quand un tag utilise des termes exacts issus de `[[GENRES_TRANSVERSES]]` ou de `[[MEDIUM_CONTEXT]]`, il doit garder un ancrage fort avec un produit explicite et, si cela tient naturellement, avec `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact
 
+## Conservation stricte des noms propres
+
+Les noms propres fournis dans le contexte doivent être conservés dans leur graphie utile et leur orthographe exacte.
+
+Les tags peuvent être écrits en minuscules pour rester naturels en SEO Etsy, mais tu ne dois jamais modifier la structure interne d’un nom propre.
+
+Ne supprime jamais :
+• les apostrophes
+• les accents
+• les tirets
+• les caractères internes des noms propres
+
+N’ajoute jamais :
+• de lettres supplémentaires
+• de variantes orthographiques inventées
+• de simplification phonétique
+• de version “nettoyée” du nom
+
+La casse peut être adaptée en minuscules, mais l’orthographe doit rester strictement identique.
+
+Exemples obligatoires :
+• Xal'Atah → xal'atah
+• Na'vi → na'vi
+• Alleria → alleria
+• Baldur's Gate → baldur's gate
+• D&D → d&d
+• World of Warcraft → world of warcraft ou wow selon la logique SEO
+
+Interdit :
+• xalatah
+• xal'atath
+• navi
+• baldurs gate
+• dd
+
+
 ## Connexes
 
 Utilise uniquement les mots exacts fournis dans `[[CONNEXES_PRIORITAIRES]]`.
@@ -186,13 +222,26 @@ Règles :
 
 ## Expressions naturelles obligatoires
 
-• Quand un tag contient `collection`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
-• une formule avec `collection` doit commencer par un produit explicite si un produit tient naturellement dans le tag
+• Quand un tag contient `collection`, `de collection`, `à collectionner`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
+• une formule d’intention collection doit commencer par un produit explicite si un produit tient naturellement dans le tag.
+• utilise les mots de liaison nécessaires en français : `de`, `à`, `pour`, `en`, `des`, `du`, `d’`, `l’`.
+• ne colle jamais `collection` à un produit, un univers ou un genre comme un mot-clé brut.
+
+Priorité de formulation :
+
+1. Préfère `de collection` quand le tag parle d’un objet destiné aux collectionneurs.
+2. Utilise `à collectionner` seulement si la formule reste plus naturelle et si elle termine le tag.
+3. N’utilise jamais `collection` seul comme adjectif ou suffixe SEO.
+4. Ne propose jamais deux variantes proches avec `collection`, `de collection` et `à collectionner` pour la même intention.
 
 Formes autorisées :
 
 • `figurine [univers] de collection`  
+• `figurine [genre] de collection`  
 • `statue [univers] de collection`  
+• `statue [genre] de collection`  
+• `figurine [personnage] à collectionner`  
+• `statue [univers] à collectionner`  
 • `cadeau fan [univers]`  
 • `cadeau collectionneur [univers]`  
 • `cadeau [produit] [personnage]`
@@ -200,11 +249,28 @@ Formes autorisées :
 Évite les formes mécaniques comme :
 
 • produit + univers + `collection`  
+• produit + `collection` + genre  
+• produit + genre + `collection`  
+• produit + univers + `à collectionner` si `de collection` est plus naturel  
 • produit + `fan` + univers  
 • produit + `collectionneur` + univers  
 • produit ajouté en fin de tag juste pour rallonger une formule déjà naturelle
 
-Si `collection`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
+Exemples à privilégier :
+
+• `figurine fantasy de collection`  
+• `figurine wow de collection`  
+• `statue elfe de collection`  
+• `figurine xal'atah à collectionner`
+
+Exemples interdits :
+
+• `figurine collection fantasy`  
+• `figurine fantasy collection`  
+• `statue collection elfe`  
+• `figurine wow collection`
+
+Si `collection`, `de collection`, `à collectionner`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
 
 ## Usage du mot peintre
 

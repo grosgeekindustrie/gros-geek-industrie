@@ -72,7 +72,7 @@
     media: [
       { value: 'anime', label: '📺 Anime', subcategories: ['shonen', 'seinen', 'shojo', 'josei', 'mecha', 'isekai'] },
       { value: 'manga', label: '📖 Manga', subcategories: ['shonen', 'seinen', 'shojo', 'josei', 'kodomo'] },
-      { value: 'jeux vidéo', label: '🎮 Jeux vidéo', subcategories: ['rpg', 'action-adventure', 'fighting game', 'puzzle game', 'survival horror', 'jrpg'] },
+      { value: 'jeux vidéo', label: '🎮 Jeux vidéo', subcategories: ['rpg', 'action-adventure', 'fighting game', 'puzzle game', 'survival horror', 'jrpg','mmorpg'] },
       { value: 'comics / super-héros', label: '🦸 Comics', subcategories: ['superhero', 'dark fantasy', 'indie comics', 'graphic novel'] },
       { value: 'cinéma', label: '🎬 Cinéma', subcategories: ['action', 'sci-fi', 'fantasy', 'horror', 'thriller'] },
       { value: 'animation occidentale', label: '🎨 Animation', subcategories: ['family', 'fantasy', 'adventure', 'comedy'] },

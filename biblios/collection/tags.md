@@ -28,10 +28,7 @@
 - sculpture personnage gaming
 - figurine héros gaming
 - statue résine gaming
-- figurine résine gaming
-- figurine à peindre
-- statue à peindre
-- sculpture à peindre
+- figurine résine gamingalors
 - figurine collection gaming
 - personnage résine
 - héros résine

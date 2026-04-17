@@ -20,3 +20,7 @@ Connexes prioritaires : [[CONNEXES_PRIORITAIRES]]
 ---
 
 Écris une seule balise image de 400 à 500 caractères espaces comprit à partir des données formulaire et cumulative. Décris clairement ce que montre l’image avec des mots utiles et naturels : personnage, univers, type de figurine, pose, tenue, ambiance, style, matière et éléments visuels marquants. Priorité au visible et au crédible. Aucun bullshit, aucun lore inventé, aucun mot creux, aucune liste. Retourne uniquement la balise finale.
+
+## Sortie 
+
+-Texte brut pas de balises alt au sens premier du termes avec du code HTML. Seulement le contenu pas le contenant.
