@@ -124,8 +124,6 @@ La description principale doit rester ancrée dans la réalité de l’objet.
 Tu dois y intégrer naturellement quelques termes produit utiles quand cela s’y prête :
 - figurine
 - statue
-- figurine 3d
-- statue 3d
 - garage kit
 - résine
 - à peindre
@@ -268,6 +266,13 @@ Elles doivent être :
 - plus proches du lore émotionnel
 - sélectionnables
 - non commerciales
+- précédées d’un emoji pertinent
+
+Règle emoji :
+- chaque accroche doit commencer par un seul emoji cohérent avec l’ambiance de la pièce
+- l’emoji fait partie intégrante de l’accroche sélectionnable
+- ne réutilise pas systématiquement le même emoji sur les 5 accroches
+- évite les emojis trop commerciaux ou trop agressifs
 
 Une bonne accroche :
 - convoque une ambiance ou une image
@@ -312,6 +317,13 @@ Ils doivent :
 - clôturer proprement
 - relancer l’imaginaire hobby
 - aider le lecteur à se projeter positivement dans la pièce
+- être précédés d’un emoji pertinent
+
+Règle emoji :
+- chaque CTA doit commencer par un seul emoji cohérent avec peinture, vitrine, collection ou projet hobby
+- l’emoji fait partie intégrante du CTA sélectionnable
+- ne réutilise pas systématiquement le même emoji sur les 5 CTA
+- évite les emojis trop agressifs, trop commerciaux ou hors sujet
 
 Ils ne doivent jamais parler :
 - d’échelles
@@ -353,14 +365,15 @@ Règles :
 ### 2) 5 ACCROCHES
 
 Format obligatoire :
-A1→ ...
-A2→ ...
-A3→ ...
-A4→ ...
-A5→ ...
+A1→ [emoji] ...
+A2→ [emoji] ...
+A3→ [emoji] ...
+A4→ [emoji] ...
+A5→ [emoji] ...
 
 Règles :
 - 1 ligne chacune
+- chaque ligne commence par un emoji pertinent
 - plus proches du lore émotionnel que d’un argument commercial
 - pas de phrase wiki
 - pas de mini résumé de lore
@@ -399,16 +412,17 @@ Règles :
 ### 5) 5 CTA
 
 Format obligatoire :
-C1→ ...
-C2→ ...
-C3→ ...
-C4→ ...
-C5→ ...
+C1→ [emoji] ...
+C2→ [emoji] ...
+C3→ [emoji] ...
+C4→ [emoji] ...
+C5→ [emoji] ...
 
 Règles :
 - doux
 - désirables
 - non pressants
+- chaque ligne commence par un emoji pertinent
 - orientés peinture / vitrine / collection / projet hobby
 - doivent bien clôturer la description
 - ne doivent pas parler d’échelles, de compatibilité, de consultation externe ou de vérification logistique
@@ -416,7 +430,7 @@ Règles :
 ### 6) FAN ART ET ARTISTE
 
 Titre exact :
-**🎭 Fan Art et artiste :**
+🎭 Fan Art et artiste :
 
 Puis exactement :
 Cette figurine est un fan art original inspiré de [[UNIVERS]].  
@@ -434,7 +448,9 @@ Avant de répondre, vérifie que :
 - la description n’évoque pas le nombre de pièces
 - la description n’évoque pas les échelles
 - les CTA donnent envie au lieu de donner des consignes
+- les CTA commencent tous par un emoji pertinent
 - les CTA ne parlent pas des échelles
+- les accroches commencent toutes par un emoji pertinent
 - les accroches restent émotionnelles sans devenir du lore décoratif
 - aucune invention visuelle ne vient du lore seul
 - quelques termes produit utiles apparaissent naturellement dans la description

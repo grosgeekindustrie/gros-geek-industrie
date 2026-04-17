@@ -13,6 +13,7 @@
   const ECHELLES_COLLECTION = echellesData.ECHELLES_BY_MODE?.collection || ["Buste", "75mm", '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'];
   const CUSTOM_COLLECTION_COUNT = Number.isInteger(echellesData.CUSTOM_COLLECTION_COUNT) ? echellesData.CUSTOM_COLLECTION_COUNT : 3;
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
+  const MANUAL_COLLECTION_SCALE_LABELS = new Set(['buste', '75mm']);
 
   const getPfx = () => (
     global.PipelineUIShell?.pfx
@@ -37,6 +38,9 @@
   };
 
   const normalizeScaleLabel = (value = '') => String(value || '').replace(/\s+/g, '');
+  const normalizeManualScaleLabel = (value = '') => normalizeScaleLabel(value).toLowerCase();
+  const isManualCollectionScaleLabel = (label = '') => MANUAL_COLLECTION_SCALE_LABELS.has(normalizeManualScaleLabel(label));
+  const isManualCollectionScale = (index) => isCollectionMode() && isManualCollectionScaleLabel(getCollectionScaleLabel(index));
 
   const parseScaleDescriptor = (label = '') => {
     const normalizedLabel = normalizeScaleLabel(label);
@@ -125,7 +129,8 @@
     if (!isCollectionMode()) return null;
 
     for (let index = 0; index < getCollectionRowCount(); index += 1) {
-      if (getRowEls(index).checkbox?.checked) {
+      const { checkbox, originRadio } = getRowEls(index);
+      if (checkbox?.checked && originRadio && !isManualCollectionScale(index)) {
         return index;
       }
     }
@@ -142,7 +147,10 @@
       const { row, originRadio, checkbox } = getRowEls(index);
       if (!row) continue;
 
-      const isOrigin = originIndex === index;
+      const isManualScale = isManualCollectionScale(index);
+      row.classList.toggle('is-manual-scale', isManualScale);
+
+      const isOrigin = !isManualScale && originIndex === index;
       row.classList.toggle('is-origin', isOrigin);
       row.dataset.origin = isOrigin ? 'true' : 'false';
 
@@ -159,6 +167,8 @@
   };
 
   const isAutoManagedRow = (index) => {
+    if (isManualCollectionScale(index)) return false;
+
     const { dimInput } = getRowEls(index);
     const source = getRowDimensionSource(index);
 
@@ -169,7 +179,7 @@
     if (!isCollectionMode()) return false;
 
     const originIndex = getOriginIndex();
-    if (originIndex === null || originIndex === index) return false;
+    if (originIndex === null || originIndex === index || isManualCollectionScale(index)) return false;
 
     const {
       row,
@@ -233,7 +243,8 @@
 
   const buildStandardRow = ({ index, label, isCollection }) => {
     const p = getPfx();
-    const originControl = isCollection
+    const isManualScale = isCollection && isManualCollectionScaleLabel(label);
+    const originControl = isCollection && !isManualScale
       ? `
       <label class="ech-origin-toggle" for="${p}-eo${index}">
         <input
@@ -247,9 +258,10 @@
         <span class="ech-origin-text">Origine</span>
       </label>`
       : '';
+    const manualClass = isManualScale ? ' is-manual-scale' : '';
 
     return `
-    <div class="ech-item" id="${p}-ei${index}" data-origin="false">
+    <div class="ech-item${manualClass}" id="${p}-ei${index}" data-origin="false">
       <input type="checkbox" id="${p}-ec${index}" />
       <span class="ech-label">${label}</span>
       ${originControl}
@@ -409,13 +421,16 @@
       if (getOriginIndex() === null) {
         const fallbackOriginIndex = getFirstCheckedIndex();
         if (fallbackOriginIndex !== null) {
-          getRowEls(fallbackOriginIndex).originRadio.checked = true;
+          const fallbackOriginRadio = getRowEls(fallbackOriginIndex).originRadio;
+          if (fallbackOriginRadio) {
+            fallbackOriginRadio.checked = true;
+          }
         }
       }
 
       updateOriginState();
 
-      if (isEnabled && autoFill && !originRadio?.checked) {
+      if (isEnabled && autoFill && !originRadio?.checked && !isManualCollectionScale(index)) {
         applyAutoDimensions(index, { shouldSave: false, force: true });
       }
 

@@ -12,13 +12,18 @@
     'tt-fNomCourt',
     'tt-fUnivers',
     'tt-fSculpteur',
-    'tt-fPieces',
-    'tt-fNotes',
-    'tt-fPose',
     'tt-fType',
     'tt-fVersion',
-    'tt-fArchPrincipal',
+    'tt-fPieces',
+    'tt-fPose',
+    'tt-fArchetypes',
     'tt-fArchSeo',
+    'tt-fParticularites',
+    'tt-fResumePersonnage',
+    'tt-fConnexesPrioritaires',
+    'tt-fLienPerso',
+    'tt-fDescriptionFigurine',
+    'tt-fNotes',
   ];
 
   const collectionFormFields = [

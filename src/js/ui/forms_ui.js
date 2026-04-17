@@ -14,13 +14,18 @@
     'tt-fNomCourt',
     'tt-fUnivers',
     'tt-fSculpteur',
-    'tt-fPieces',
-    'tt-fNotes',
-    'tt-fPose',
     'tt-fType',
     'tt-fVersion',
-    'tt-fArchPrincipal',
+    'tt-fPieces',
+    'tt-fPose',
+    'tt-fArchetypes',
     'tt-fArchSeo',
+    'tt-fParticularites',
+    'tt-fResumePersonnage',
+    'tt-fConnexesPrioritaires',
+    'tt-fLienPerso',
+    'tt-fDescriptionFigurine',
+    'tt-fNotes',
   ];
 
   const COLLECTION_FORM_FIELDS = formFieldsData.COLLECTION_FORM_FIELDS || [
@@ -36,6 +41,10 @@
 
   const TABLETOP_FORM_CATALOGS = formCatalogsData.TABLETOP_FORM_CATALOGS || {};
   const COLLECTION_FORM_CATALOGS = formCatalogsData.COLLECTION_FORM_CATALOGS || {};
+
+  const TABLETOP_DYNAMIC_IDS = {
+    genreGroup: 'tt-fGenreGroup',
+  };
 
   const COLLECTION_DYNAMIC_IDS = {
     mediumGroup: 'col-fMediumGroup',
@@ -140,6 +149,7 @@
     });
   };
 
+  const getTabletopGenreValues = () => getCheckedValues(`#${TABLETOP_DYNAMIC_IDS.genreGroup} input:checked`);
   const getCollectionMediumValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.mediumGroup} input:checked`);
   const getCollectionMediumSubcategoryValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.mediumSubcategoriesGroup} input:checked`);
   const getCollectionGenreValues = () => getCheckedValues(`#${COLLECTION_DYNAMIC_IDS.genreGroup} input:checked`);
@@ -178,15 +188,14 @@
   };
 
   const renderTabletopCatalogs = () => {
-    renderSelectOptions('tt-fArchPrincipal', TABLETOP_FORM_CATALOGS.archetypes?.primaryOptions || []);
-    renderCheckboxGroup({
-      rootId: 'tt-archSecondaires',
-      options: TABLETOP_FORM_CATALOGS.archetypes?.secondaryOptions || [],
-      selectedValues: getCheckedValues('#tt-archSecondaires input:checked'),
-      onChange: () => saveFormState(),
-    });
     renderSelectOptions('tt-fType', TABLETOP_FORM_CATALOGS.typeOptions || []);
     renderSelectOptions('tt-fVersion', TABLETOP_FORM_CATALOGS.versionOptions || []);
+    renderCheckboxGroup({
+      rootId: TABLETOP_DYNAMIC_IDS.genreGroup,
+      options: COLLECTION_FORM_CATALOGS.sharedGenres || [],
+      selectedValues: getTabletopGenreValues(),
+      onChange: () => saveFormState(),
+    });
   };
 
   const renderCollectionCatalogs = () => {
@@ -241,13 +250,17 @@
   function getArchetypes() {
     if (getCurrentMode() !== 'tabletop') return '';
 
-    const principal = document.getElementById('tt-fArchPrincipal')?.value || '';
-    const secondaires = getCheckedValues('#tt-archSecondaires input:checked');
-    const seo = (document.getElementById('tt-fArchSeo')?.value || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const archetypes = (document.getElementById('tt-fArchetypes')?.value || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const seo = (document.getElementById('tt-fArchSeo')?.value || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
     const parts = [];
 
-    if (principal) parts.push(`Principal: ${principal}`);
-    if (secondaires.length) parts.push(`Secondaires: ${secondaires.join(', ')}`);
+    if (archetypes.length) parts.push(`Archétypes: ${archetypes.join(', ')}`);
     if (seo.length) parts.push(`SEO élargi: ${seo.join(', ')}`);
 
     return parts.join(' | ') || '';
@@ -270,6 +283,25 @@
       genres_transverses: genres,
       mediumContext,
       medium_context: mediumContext,
+    };
+  };
+
+  const getTabletopData = () => {
+    const genres = formatCommaList(getTabletopGenreValues());
+
+    return {
+      type: document.getElementById('tt-fType')?.value || 'SOLO',
+      version: document.getElementById('tt-fVersion')?.value || 'FIGURINE',
+      buzz: document.getElementById('tt-fBuzz')?.checked || false,
+      buzzNote: document.getElementById('tt-fBuzzNote')?.value || '',
+      genres,
+      genresTransverses: genres,
+      genres_transverses: genres,
+      particularites: document.getElementById('tt-fParticularites')?.value || '',
+      descriptionFigurine: document.getElementById('tt-fDescriptionFigurine')?.value || '',
+      resumePersonnage: document.getElementById('tt-fResumePersonnage')?.value || '',
+      connexesPrioritaires: document.getElementById('tt-fConnexesPrioritaires')?.value || '',
+      lienPerso: document.getElementById('tt-fLienPerso')?.value || '',
     };
   };
 
@@ -396,10 +428,7 @@
     };
 
     if (currentMode === 'tabletop') {
-      base.type = document.getElementById('tt-fType')?.value || 'SOLO';
-      base.version = document.getElementById('tt-fVersion')?.value || 'FIGURINE';
-      base.buzz = document.getElementById('tt-fBuzz')?.checked || false;
-      base.buzzNote = document.getElementById('tt-fBuzzNote')?.value || '';
+      Object.assign(base, getTabletopData());
     } else {
       Object.assign(base, getCollectionData());
     }
@@ -421,7 +450,7 @@
         checked: document.getElementById(`tt-ec${i}`)?.checked || false,
         dim: document.getElementById(`tt-ed${i}`)?.value || '',
       }));
-      data._archSec = getCheckedValues('#tt-archSecondaires input:checked');
+      data._genres = getTabletopGenreValues();
       data._buzz = document.getElementById('tt-fBuzz')?.checked || false;
       data._buzzNote = document.getElementById('tt-fBuzzNote')?.value || '';
     } else {
@@ -486,10 +515,20 @@
             if (dim && entry.dim) dim.value = entry.dim;
           }
         });
-        if (data._archSec) {
-          document.querySelectorAll('#tt-archSecondaires input').forEach((input) => {
-            input.checked = data._archSec.includes(input.value);
+        if (data._genres) {
+          document.querySelectorAll(`#${TABLETOP_DYNAMIC_IDS.genreGroup} input`).forEach((input) => {
+            input.checked = data._genres.includes(input.value);
           });
+        }
+        const archetypesEl = document.getElementById('tt-fArchetypes');
+        if (archetypesEl && !archetypesEl.value) {
+          const legacyArchetypes = [
+            data.tt-fArchPrincipal,
+            ...(Array.isArray(data._archSec) ? data._archSec : []),
+          ]
+            .map((value) => String(value || '').trim())
+            .filter(Boolean);
+          archetypesEl.value = [...new Set(legacyArchetypes)].join(', ');
         }
         if (data._buzz !== undefined) {
           const el = document.getElementById('tt-fBuzz');

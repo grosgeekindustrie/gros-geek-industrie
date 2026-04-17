@@ -27,6 +27,7 @@
 + Varang - Avatar, figurine de collection imprimée en 3D à peindre, garage kit 14k hd pour peintres, collectionneurs et fan de sorcière na'vi
 + Xal'Atah - World of warcraft, statue d'elfe à peindre, garage kit de collection imprimée en 3D, sorcière, prêtresse, magicienne WOW
 + Xal'Atah - World of warcraft, Figurine de collection à peindre, garage kit imprimée en 3D pour fans de magicienne dark fantasy et de WOW
++ Spawn - Spawn, figurine et miniature de collection à peindre, garage kit imprimée en 3D pour fans de dark fantasy
 
 ## BLACKLISTÉS
 

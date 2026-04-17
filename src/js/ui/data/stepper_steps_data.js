@@ -15,8 +15,8 @@
         footerLabel: 'Étape 1 sur 5 · Visuels de référence',
       },
       {
-        title: 'Identité & archétypes',
-        subtitle: 'Cadre la miniature, son univers, le sculpteur et les archétypes utiles aux agents.',
+        title: 'Identité',
+        subtitle: 'Cadre la miniature, son univers, le sculpteur et les signaux produit de base.',
         footerLabel: 'Étape 2 sur 5 · Identité de la fiche',
       },
       {
@@ -25,9 +25,9 @@
         footerLabel: 'Étape 3 sur 5 · Offre produit',
       },
       {
-        title: 'Paramètres & options',
-        subtitle: 'Finalise la pose, le type produit, la version et les options avancées.',
-        footerLabel: 'Étape 4 sur 5 · Réglages produit',
+        title: 'Détails & contexte',
+        subtitle: 'Ajoute les détails produit, les archétypes et les signaux de contexte utiles aux agents.',
+        footerLabel: 'Étape 4 sur 5 · Contexte métier',
       },
       {
         title: 'Lancement',
