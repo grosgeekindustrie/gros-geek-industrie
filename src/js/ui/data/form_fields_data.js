@@ -14,6 +14,8 @@
     'tt-fSculpteur',
     'tt-fType',
     'tt-fVersion',
+    'tt-fPresentationVisuelle',
+    'tt-fNatureSujet',
     'tt-fPieces',
     'tt-fPose',
     'tt-fArchetypes',

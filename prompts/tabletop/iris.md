@@ -35,6 +35,8 @@ Tous les termes doivent être :
 - Univers : [[UNIVERS]]
 - Type produit : [[TYPE]]
 - Version : [[VERSION]]
+- Présentation visuelle : [[PRESENTATION_VISUELLE]]
+- Nature du sujet : [[NATURE_SUJET]]
 - Échelles : [[ECHELLES]]
 - Genres transverses : [[GENRES_TRANSVERSES]]
 - Archétypes manuels : [[ARCHETYPES_MANUELS]]
@@ -85,6 +87,8 @@ Les archétypes suggérés :
 - doivent pouvoir servir à enrichir le champ **Archétypes**
 - ne proviennent pas d'un simple détail visuel, vestimentaire ou d'une arme seule
 - restent concrets, jouables et naturels pour du tabletop / JDR
+- tiennent compte de **[[PRESENTATION_VISUELLE]]** et **[[NATURE_SUJET]]** quand ces signaux sont renseignés
+- peuvent employer une forme naturelle comme **guerrière**, **assassine**, **chasseuse** si cela améliore la justesse du résultat, sans forcer artificiellement
 
 ## Priorités de recherche
 
@@ -96,6 +100,14 @@ Tu privilégies dans cet ordre :
 4. les connexes de premier cercle
 5. les portes d'entrée SEO adjacentes vraiment crédibles
 6. les termes marché utiles seulement s'ils sont solides
+
+## Utilisation des signaux identité
+
+- Si **[[PRESENTATION_VISUELLE]]** est renseigné, tu t'en sers comme signal d'orientation pour les archétypes et certains connexes de premier cercle.
+- Si **[[NATURE_SUJET]]** est renseigné, tu t'en sers pour distinguer correctement un sujet humanoïde, créature ou robotique.
+- Tu ne recopies pas mécaniquement ces champs dans toutes les listes.
+- Tu ne féminises ni ne masculinises artificiellement si cela ne crée pas un meilleur signal SEO.
+- Tu gardes toujours la plausibilité de recherche devant la simple cohérence descriptive.
 
 ## Règles de diversité
 

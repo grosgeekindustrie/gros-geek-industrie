@@ -267,6 +267,23 @@
                       <option value="LES_DEUX">Figurine et Miniatures</option>
                     </select>
                   </div>
+                  <div class="fg">
+                    <label>Présentation visuelle</label>
+                    <select id="tt-fPresentationVisuelle">
+                      <option value="">Non précisé</option>
+                      <option value="MASCULIN">Masculin</option>
+                      <option value="FEMININ">Féminin</option>
+                      <option value="ANDROGYNE">Androgyne</option>
+                    </select>
+                  </div>
+                  <div class="fg">
+                    <label>Nature du sujet</label>
+                    <select id="tt-fNatureSujet">
+                      <option value="HUMANOIDE">Humanoïde</option>
+                      <option value="CREATURE">Créature</option>
+                      <option value="ROBOTIQUE">Robotique</option>
+                    </select>
+                  </div>
                   <div class="fg full">
                     <label>Genres transverses <span class="fg-hint">→ ambiance, tonalité, sous-genre</span></label>
                     <div id="tt-fGenreGroup" class="option-chip-group"></div>
@@ -1172,7 +1189,7 @@ Cache : —</pre>
     </div>
     <div class="lb-body">
       <textarea id="lbTextarea" spellcheck="false"></textarea>
-      <p class="lb-info">💡 Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[DESCRIPTION_FIGURINE]], [[RESUME_PERSONNAGE]], [[NOTES]], [[BUZZ_COLLECTION]]</p>
+      <p class="lb-info">💡 Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[PRESENTATION_VISUELLE]], [[NATURE_SUJET]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[DESCRIPTION_FIGURINE]], [[RESUME_PERSONNAGE]], [[NOTES]], [[BUZZ_COLLECTION]]</p>
     </div>
     <div class="lb-footer">
       <button class="btn btn-success" onclick="saveLbPrompt()">💾 Sauvegarder</button>

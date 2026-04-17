@@ -292,6 +292,8 @@
     return {
       type: document.getElementById('tt-fType')?.value || 'SOLO',
       version: document.getElementById('tt-fVersion')?.value || 'FIGURINE',
+      presentationVisuelle: document.getElementById('tt-fPresentationVisuelle')?.value || '',
+      natureSujet: document.getElementById('tt-fNatureSujet')?.value || 'HUMANOIDE',
       buzz: document.getElementById('tt-fBuzz')?.checked || false,
       buzzNote: document.getElementById('tt-fBuzzNote')?.value || '',
       genres,
