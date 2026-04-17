@@ -223,6 +223,8 @@
       .replace(/\[\[TITRE_VALIDE\]\]/g, ctx.outputs.titre_valide || '')
       .replace(/\[\[DESCRIPTION\]\]/g, ctx.outputs.description_assembled || ctx.outputs.description || '')
       .replace(/\[\[ARCHETYPES\]\]/g, ctx.archetypes || '')
+      .replace(/\[\[ARCHETYPES_MANUELS\]\]/g, ctx.archetypesManuels || '')
+      .replace(/\[\[SEO_ELARGIES\]\]/g, ctx.seoElargies || '')
       .replace(/\[\[OBJECTIF\]\]/g, getOptionalBiblio('objectif'))
       .replace(/\[\[PSYCHO\]\]/g, getOptionalBiblio('psycho'))
       .replace(/\[\[BIBLIO_SEMANTIQUE\]\]/g, getBiblio('bibliotheque-semantique'))

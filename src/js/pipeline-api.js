@@ -1699,9 +1699,9 @@ function extractMarkdownSectionValue(rawText, sectionTitle) {
 }
 
 
-async function runCollectionIrisSemanticSearch() {
-  const button = document.getElementById('runIrisBtn-col');
-  const output = document.getElementById('out-iris-col');
+async function runIrisSemanticSearch(prefix = 'col') {
+  const button = document.getElementById(`runIrisBtn-${prefix}`);
+  const output = document.getElementById(`out-iris-${prefix}`);
 
   if (button) {
     button.disabled = true;
@@ -1716,12 +1716,16 @@ async function runCollectionIrisSemanticSearch() {
   try {
     const ctx = buildCtx('iris');
     const prompt = buildPrompt('iris', ctx);
-    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
+    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──
+${prompt.fixedContent}
+
+── VARIABLE ──
+` : '';
     state.inputs.iris = rawFixed + prompt.filled;
 
     const response = await callClaude('iris', prompt, false);
     state.outputs.iris = response.text;
-    showAgentCost('iris', response.usage || null, { prefix: 'col', source: 'iris' });
+    showAgentCost('iris', response.usage || null, { prefix, source: 'iris' });
     syncCacheIndicator(response.usage || null);
 
     if (output) output.textContent = response.text;
@@ -1735,6 +1739,14 @@ async function runCollectionIrisSemanticSearch() {
       button.textContent = '▶ Lancer Iris';
     }
   }
+}
+
+async function runCollectionIrisSemanticSearch() {
+  return runIrisSemanticSearch('col');
+}
+
+async function runTabletopIrisSemanticSearch() {
+  return runIrisSemanticSearch('tt');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2536,6 +2548,7 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       alt: '05 Nadia',
       social: '06 Léo',
       camille: '07 Camille',
+      iris: 'Iris',
       orchestrateur: 'QA Felix',
       cache_aware: '00 Cache-aware',
     },

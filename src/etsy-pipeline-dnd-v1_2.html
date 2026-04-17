@@ -198,7 +198,7 @@
           </button>
           <button class="collection-stepper-pill" type="button" data-js="dnd-stepper-jump" data-step-index="3">
             <span class="collection-stepper-pill-index">04</span>
-            <span class="collection-stepper-pill-label">Paramètres</span>
+            <span class="collection-stepper-pill-label">Détails &amp; contexte</span>
           </button>
           <button class="collection-stepper-pill" type="button" data-js="dnd-stepper-jump" data-step-index="4">
             <span class="collection-stepper-pill-index">05</span>
@@ -286,67 +286,88 @@
 
         <section class="collection-step" data-js="dnd-step" data-step-index="3">
           <div class="collection-step-stack">
-            <div class="form-section">
-              <h2>Détails &amp; contexte</h2>
-              <div class="form-grid">
-                <div class="fg">
-                  <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
-                  <div class="buzz-row">
-                    <input type="checkbox" id="tt-fBuzz" onchange="toggleBuzz('tt')"/>
-                    <span>Ce sculpteur/personnage buzz en ce moment</span>
+            <div class="form-2col collection-step-grid">
+              <div class="form-col-left">
+                <div class="form-section">
+                  <h2>Détails &amp; contexte</h2>
+                  <div class="form-grid">
+                    <div class="fg">
+                      <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
+                      <div class="buzz-row">
+                        <input type="checkbox" id="tt-fBuzz" onchange="toggleBuzz('tt')"/>
+                        <span>Ce sculpteur/personnage buzz en ce moment</span>
+                      </div>
+                      <textarea id="tt-fBuzzNote" class="buzz-note" placeholder="Précise le contexte buzz..."></textarea>
+                    </div>
+                    <div class="fg">
+                      <label>Nb pièces</label>
+                      <input type="text" id="tt-fPieces" placeholder="ex: 10 pcs 140mm / 2 autres"/>
+                    </div>
+                    <div class="fg">
+                      <label>Pose</label>
+                      <select id="tt-fPose">
+                        <option value="MUSEUM">Museum</option>
+                        <option value="DYNAMIQUE">Dynamique</option>
+                      </select>
+                    </div>
+                    <div class="fg full">
+                      <label>Archétypes <span class="fg-hint">→ classes, rôles, fonctions</span></label>
+                      <input type="text" id="tt-fArchetypes" placeholder="ex: monk, warrior, fighter"/>
+                    </div>
+                    <div class="fg full">
+                      <label>SEO élargies <span class="fg-hint">→ connexes plus larges, séparés par virgules</span></label>
+                      <input type="text" id="tt-fArchSeo" placeholder="ex: tabletop rpg, dark fantasy, painting challenge"/>
+                    </div>
+                    <div class="fg full">
+                      <label>Particularités <span class="fg-hint">→ variantes, options, socle, FX</span></label>
+                      <textarea id="tt-fParticularites" class="textarea-md" placeholder="ex: 2 armes au choix, socle rocheux, version casque ou tête nue"></textarea>
+                    </div>
+                    <div class="fg full">
+                      <label>Notes libres</label>
+                      <textarea id="tt-fNotes" placeholder="Infos supplémentaires..."></textarea>
+                    </div>
                   </div>
-                  <textarea id="tt-fBuzzNote" class="buzz-note" placeholder="Précise le contexte buzz..."></textarea>
                 </div>
-                <div class="fg">
-                  <label>Nb pièces</label>
-                  <input type="text" id="tt-fPieces" placeholder="ex: 10 pcs 140mm / 2 autres"/>
-                </div>
-                <div class="fg">
-                  <label>Pose</label>
-                  <select id="tt-fPose">
-                    <option value="MUSEUM">Museum</option>
-                    <option value="DYNAMIQUE">Dynamique</option>
-                  </select>
-                </div>
-                <div class="fg full">
-                  <label>Archétypes <span class="fg-hint">→ classes, rôles, fonctions</span></label>
-                  <input type="text" id="tt-fArchetypes" placeholder="ex: monk, warrior, fighter"/>
-                </div>
-                <div class="fg full">
-                  <label>SEO élargies <span class="fg-hint">→ connexes plus larges, séparés par virgules</span></label>
-                  <input type="text" id="tt-fArchSeo" placeholder="ex: tabletop rpg, dark fantasy, painting challenge"/>
-                </div>
-                <div class="fg full">
-                  <label>Particularités <span class="fg-hint">→ variantes, options, socle, FX</span></label>
-                  <textarea id="tt-fParticularites" class="textarea-md" placeholder="ex: 2 armes au choix, socle rocheux, version casque ou tête nue"></textarea>
-                </div>
-                <div class="fg full">
-                  <label>Notes libres</label>
-                  <textarea id="tt-fNotes" placeholder="Infos supplémentaires..."></textarea>
+              </div>
+
+              <div class="form-col-right">
+                <div class="form-section">
+                  <h2>Résumé personnage</h2>
+                  <div class="form-grid">
+                    <div class="fg full">
+                      <label>Résumé personnage <span class="fg-hint">→ lore court, rôle, identité, univers</span></label>
+                      <textarea id="tt-fResumePersonnage" class="textarea-lg" placeholder="Résumé court du personnage, rôle dans l'univers, tonalité générale..."></textarea>
+                    </div>
+                    <div class="fg full">
+                      <label>Connexes prioritaires <span class="fg-hint">→ termes prioritaires pour les agents</span></label>
+                      <textarea id="tt-fConnexesPrioritaires" class="textarea-md" placeholder="ex: monk miniature, martial artist, fantasy warrior"></textarea>
+                    </div>
+                    <div class="fg full">
+                      <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
+                      <input type="url" id="tt-fLienPerso" placeholder="https://..."/>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="form-section">
-              <h2>Résumé personnage &amp; connexes</h2>
+            <div class="form-section collection-stepper-notes-section">
+              <h2>IRIS · recherche sémantique</h2>
               <div class="form-grid">
                 <div class="fg full">
-                  <label>Résumé personnage <span class="fg-hint">→ lore court, rôle, identité, univers</span></label>
-                  <textarea id="tt-fResumePersonnage" class="textarea-lg" placeholder="Résumé court du personnage, rôle dans l'univers, tonalité générale..."></textarea>
-                </div>
-                <div class="fg full">
-                  <label>Connexes prioritaires <span class="fg-hint">→ termes prioritaires pour les agents</span></label>
-                  <textarea id="tt-fConnexesPrioritaires" class="textarea-md" placeholder="ex: monk miniature, martial artist, fantasy warrior"></textarea>
-                </div>
-                <div class="fg full">
-                  <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
-                  <input type="url" id="tt-fLienPerso" placeholder="https://..."/>
+                  <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
+                  <div class="field-action-row iris-action-row">
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-tt" onclick="runTabletopIrisSemanticSearch()">▶ Lancer Iris</button>
+                    <button class="btn btn-muted" type="button" onclick="openPromptLightbox('iris')">⚙️ Prompt</button>
+                    <button class="btn btn-muted" type="button" onclick="copySection('iris')">📋 Copier</button>
+                  </div>
+                  <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
                 </div>
               </div>
             </div>
 
-            <div class="form-section">
-              <h2>Description figurine</h2>
+            <div class="form-section collection-stepper-notes-section">
+              <h2>Détails de la figurine</h2>
               <div class="form-grid">
                 <div class="fg full">
                   <label>Description figurine <span class="fg-hint">→ pièce vendue, options, variantes, socle, FX</span></label>

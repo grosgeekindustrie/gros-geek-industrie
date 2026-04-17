@@ -298,6 +298,8 @@
       genresTransverses: genres,
       genres_transverses: genres,
       particularites: document.getElementById('tt-fParticularites')?.value || '',
+      archetypesManuels: document.getElementById('tt-fArchetypes')?.value || '',
+      seoElargies: document.getElementById('tt-fArchSeo')?.value || '',
       descriptionFigurine: document.getElementById('tt-fDescriptionFigurine')?.value || '',
       resumePersonnage: document.getElementById('tt-fResumePersonnage')?.value || '',
       connexesPrioritaires: document.getElementById('tt-fConnexesPrioritaires')?.value || '',
