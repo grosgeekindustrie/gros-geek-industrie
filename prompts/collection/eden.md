@@ -124,6 +124,8 @@ La description principale doit rester ancrée dans la réalité de l’objet.
 Tu dois y intégrer naturellement quelques termes produit utiles quand cela s’y prête :
 - figurine
 - statue
+- figurine 3d
+- statue 3d
 - garage kit
 - résine
 - à peindre

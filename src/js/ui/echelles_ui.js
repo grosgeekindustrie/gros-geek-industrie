@@ -10,7 +10,7 @@
 
   const echellesData = global.PipelineUIDataEchelles || {};
   const ECHELLES = echellesData.ECHELLES_BY_MODE?.tabletop || ['28mm', '32mm', '50mm', '54mm', '75mm', '90mm', '120mm', '140mm', '1/10', '1/8', '1/6'];
-  const ECHELLES_COLLECTION = echellesData.ECHELLES_BY_MODE?.collection || ['140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'];
+  const ECHELLES_COLLECTION = echellesData.ECHELLES_BY_MODE?.collection || ["Buste", "75mm", '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'];
   const CUSTOM_COLLECTION_COUNT = Number.isInteger(echellesData.CUSTOM_COLLECTION_COUNT) ? echellesData.CUSTOM_COLLECTION_COUNT : 3;
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
 

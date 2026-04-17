@@ -66,6 +66,7 @@
     typeOptions: [
       { value: 'FIGURINE', label: 'Figurine' },
       { value: 'FIGURINE ou MINIATURE', label: 'Figurine ou miniature' },
+      { value: 'FIGURINE ou MINIATURE ou Buste', label: 'Figurine ou miniature ou Buste' },
       { value: 'STATUE', label: 'Statue' },
       { value: 'BUSTE', label: 'Buste' },
     ],

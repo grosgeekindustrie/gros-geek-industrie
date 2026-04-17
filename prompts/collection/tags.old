@@ -78,15 +78,14 @@ produire des tags entre 24 et 30 caractères espaces compris dès que possible,
 sans dépasser 30 caractères.
 
 Règle de construction :
-1. choisis d’abord l’ancre de recherche la plus naturelle pour le tag : produit, personnage, univers, connexe exact ou intention d’achat
-2. ajoute ensuite un produit explicite si le tag ne commence pas déjà par un produit, sauf pour les tags commençant par `cadeau`
-3. complète avec `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact selon ce qui forme la recherche la plus crédible
-4. si le tag reste trop court, ajoute ensuite des termes exacts issus de `[[MEDIUM_CONTEXT]]` ou/et de `[[GENRES_TRANSVERSES]]`
-5. si le tag atteint une forme naturelle entre 24 et 30 caractères, garde-le
-6. si l’ajout d’un terme dépasse 30 caractères ou rend le tag mécanique, n’utilise pas ce terme
+1. construis d’abord un tag avec un produit explicite
+2. ajoute ensuite `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact selon ce qui est pertinent
+3. si le tag reste trop court, ajoute ensuite des termes exacts issus de `[[MEDIUM_CONTEXT]]` ou/et de `[[GENRES_TRANSVERSES]]`
+4. si le tag atteint une forme naturelle entre 24 et 30 caractères, garde-le
+5. si l’ajout d’un terme dépasse 30 caractères, n’utilise pas ce terme
 
 Règles absolues :
-• hors tags commençant par `cadeau`, chaque tag doit contenir un produit explicite, même si le produit n’ouvre pas le tag
+• hors tags commençant par `cadeau`, chaque tag doit contenir un produit explicite
 • les termes exacts issus de `[[MEDIUM_CONTEXT]]` et de `[[GENRES_TRANSVERSES]]` ont le même statut
 • utilise ceux qui tiennent naturellement dans le tag, sans priorité systématique de l’un sur l’autre
 • quand plusieurs termes exacts fournis tiennent naturellement dans le tag, tu peux en utiliser plusieurs
@@ -99,70 +98,36 @@ Règles absolues :
 • 20 à 23 caractères = acceptable seulement si aucun enrichissement exact fourni ne tient naturellement
 • 24 à 30 caractères = zone cible
 
-## Ancre de recherche et ordre naturel des mots
+## Ordre naturel des mots
 
 Construis les tags comme de petites requêtes françaises naturelles.
 
-Le produit doit être présent dans la majorité des tags, et dans tous les tags hors `cadeau`, mais il ne doit pas ouvrir automatiquement chaque tag.
+Quand un tag contient un produit, le produit doit ouvrir le tag, sauf si le tag commence par `cadeau`.
 
-Choisis l’ouverture du tag selon l’intention de recherche la plus crédible :
-• produit en premier quand l’acheteur cherche d’abord un type d’objet
-• personnage en premier quand le nom est une requête forte ou utile
-• univers en premier quand l’univers ou son abréviation est l’ancre naturelle
-• connexe exact en premier quand le connexe est une recherche transverse crédible
-• cadeau en premier pour les intentions d’achat cadeau
+Priorité d’ordre :
 
-Schémas autorisés :
-
-### Produit en premier
 • produit + personnage + univers  
 • produit + personnage + finition  
 • produit + univers + finition  
 • produit + univers + fabrication  
 • produit + univers + intention  
 • produit + connexe + univers  
-• produit + connexe + finition  
-• produit + connexe + fabrication
-
-### Personnage en premier
+• produit + connexe + fabrication  
+• connexe + produit + univers  
 • personnage + produit + univers  
-• personnage + produit + finition  
-• personnage + produit + genre exact fourni  
-• personnage + produit + medium exact fourni
-
-### Univers en premier
-• univers + produit + finition  
-• univers + produit + fabrication  
-• univers + produit + intention  
-• univers abrégé + produit + finition
-
-### Connexe en premier
-• connexe exact + produit + univers  
-• connexe exact + produit + finition  
-• connexe exact + produit + genre exact fourni  
-• connexe exact + produit + medium exact fourni
-
-### Intention en premier
 • cadeau + produit + personnage  
 • cadeau + produit + univers  
-• cadeau + fan + univers  
-• cadeau + collectionneur + univers  
-• cadeau + peintre + univers
+• cadeau + intention + univers
 
-Règles :
-• ne varie jamais l’ordre des mots seulement pour créer de la diversité
-• ne garde pas deux tags qui sont une simple inversion du même sens
-• change l’ouverture du tag seulement si cela correspond à une vraie recherche Etsy probable
-• si deux ouvertures sont possibles, garde la plus naturelle en français
-• le produit doit rester visible et utile, même quand il n’ouvre pas le tag
+Quand un tag contient aussi personnage, univers, connexe, fabrication ou intention, l’ordre prioritaire est :
+produit + personnage/univers/connexe + finition/fabrication/intention
 
 Évite :
 • les inversions artificielles  
 • les assemblages mécaniques faibles  
 • les tags où un style, une intention ou un univers flotte sans produit clair  
-• les tags qui commencent par un univers, un style, une cible ou un connexe sans produit explicite ensuite  
+• les tags qui commencent par un univers, un style, une cible ou un connexe si un produit est présent  
 • les tags qui commencent par `collection` si un produit peut ouvrir naturellement le tag
-• les paires du type `figurine xal'atah wow` + `xal'atah figurine wow`, sauf si les deux intentions sont réellement complémentaires
 
 ## Accords grammaticaux
 
@@ -177,7 +142,7 @@ Respecte les accords en français.
 
 ## Éléments autorisés
 
-• Produit : `figurine`, `statue`, `garage kit`, `miniature`, `impression 3d`  
+• Produit : `figurine`, `statue`, `garage kit`, `miniature`, `impression 3d`, `figurine 3d`, `statue 3d` 
 • Personnage : `[[NOM]]` ou `[[NOM_COURT]]`  
 • Univers : `[[UNIVERS]]`  
 • Finition : `à peindre`  
@@ -199,7 +164,7 @@ Respecte les accords en français.
 • Un tag sans `[[NOM]]`, sans `[[UNIVERS]]` et sans connexe exact est à éviter  
 • Un tag générique n’est acceptable que s’il contient un produit explicite et une intention d’achat claire  
 • Les tags style / collection / jeux vidéo doivent rester rattachés à un produit clair quand le personnage ou l’univers n’apparaissent pas  
-• des termes de genre ou de contexte ne doivent pas remplacer un produit explicite : ils peuvent ouvrir le tag seulement si le produit apparaît ensuite naturellement  
+• des termes de genre ou de contexte ne doivent pas remplacer un produit explicite si ce produit tient naturellement dans le tag  
 • des termes de genre ou de contexte peuvent servir d’enrichissement principal s’ils sont textuellement fournis, qu’ils restent naturels en français et qu’un produit explicite est présent dans le tag  
 • n’utilise jamais un nom de sculpteur ou de studio s’il n’existe pas de champ dédié de sculpteur dans les données fournies  
 • quand un tag utilise des termes exacts issus de `[[GENRES_TRANSVERSES]]` ou de `[[MEDIUM_CONTEXT]]`, il doit garder un ancrage fort avec un produit explicite et, si cela tient naturellement, avec `[[UNIVERS]]`, `[[NOM]]`, `[[NOM_COURT]]` ou un connexe exact
@@ -257,13 +222,26 @@ Règles :
 
 ## Expressions naturelles obligatoires
 
-• Quand un tag contient `collection`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
-• une formule avec `collection` doit commencer par un produit explicite si un produit tient naturellement dans le tag
+• Quand un tag contient `collection`, `de collection`, `à collectionner`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
+• une formule d’intention collection doit commencer par un produit explicite si un produit tient naturellement dans le tag.
+• utilise les mots de liaison nécessaires en français : `de`, `à`, `pour`, `en`, `des`, `du`, `d’`, `l’`.
+• ne colle jamais `collection` à un produit, un univers ou un genre comme un mot-clé brut.
+
+Priorité de formulation :
+
+1. Préfère `de collection` quand le tag parle d’un objet destiné aux collectionneurs.
+2. Utilise `à collectionner` seulement si la formule reste plus naturelle et si elle termine le tag.
+3. N’utilise jamais `collection` seul comme adjectif ou suffixe SEO.
+4. Ne propose jamais deux variantes proches avec `collection`, `de collection` et `à collectionner` pour la même intention.
 
 Formes autorisées :
 
 • `figurine [univers] de collection`  
+• `figurine [genre] de collection`  
 • `statue [univers] de collection`  
+• `statue [genre] de collection`  
+• `figurine [personnage] à collectionner`  
+• `statue [univers] à collectionner`  
 • `cadeau fan [univers]`  
 • `cadeau collectionneur [univers]`  
 • `cadeau [produit] [personnage]`
@@ -271,11 +249,28 @@ Formes autorisées :
 Évite les formes mécaniques comme :
 
 • produit + univers + `collection`  
+• produit + `collection` + genre  
+• produit + genre + `collection`  
+• produit + univers + `à collectionner` si `de collection` est plus naturel  
 • produit + `fan` + univers  
 • produit + `collectionneur` + univers  
 • produit ajouté en fin de tag juste pour rallonger une formule déjà naturelle
 
-Si `collection`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
+Exemples à privilégier :
+
+• `figurine fantasy de collection`  
+• `figurine wow de collection`  
+• `statue elfe de collection`  
+• `figurine xal'atah à collectionner`
+
+Exemples interdits :
+
+• `figurine collection fantasy`  
+• `figurine fantasy collection`  
+• `statue collection elfe`  
+• `figurine wow collection`
+
+Si `collection`, `de collection`, `à collectionner`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
 
 ## Usage du mot peintre
 
@@ -340,15 +335,11 @@ Si un tag contient un terme exclu, remplace-le par une formulation plus précise
 
 ## Répartition attendue
 
-La répartition sert à varier les angles de recherche sans forcer des tags mécaniques.
-
-• 6 à 8 tags ancrés sur personnage / univers, avec produit explicite  
-• 4 à 5 tags finition / fabrication  
-• 3 à 4 tags connexes prioritaires  
+• 7 tags produit + personnage + univers  
+• 4 tags finition / fabrication  
+• 4 tags connexes prioritaires  
 • 3 tags cadeau / cible, dont au moins 1 avec produit explicite  
-• 3 à 4 tags medium / genre / style, uniquement avec termes exacts fournis et produit explicite  
-• au moins 4 tags doivent commencer autrement que par un produit si cela reste naturel  
-• aucun changement d’ouverture ne doit créer un doublon proche
+• 3 tags univers / style
 
 ## Auto-contrôle avant sortie
 
@@ -363,8 +354,7 @@ Avant de répondre, vérifie mentalement :
 • les éléments importants du titre sont bien représentés dans les tags  
 • chaque tag utilise au mieux les 30 caractères, espaces compris disponibles quand cela reste naturel  
 • aucun tag n’est raccourci inutilement  
-• le produit est présent dans tous les tags hors `cadeau`, même lorsqu’il n’ouvre pas le tag  
-• l’ouverture du tag varie seulement si elle correspond à une vraie recherche probable  
+• le produit ouvre le tag quand un produit est présent, sauf si le tag commence par `cadeau`  
 • l’ordre des mots est naturel en français  
 • mini phrase avec une syntaxe cohérente en français  
 • aucun tag avec `collection`, `fan` ou `collectionneur` n’a une structure mécanique  
@@ -377,7 +367,6 @@ Avant de répondre, vérifie mentalement :
 • tout mot ajouté vient textuellement des données fournies ou des éléments autorisés  
 • aucun tag ne commence par `collection` si un produit peut ouvrir naturellement le tag  
 • aucun tag hors `cadeau` n’est conservé s’il ne contient pas un produit explicite  
-• aucun tag ne commence par un univers, un connexe ou un genre si le produit n’apparaît pas ensuite naturellement  
 • aucun tag trop générique n’est conservé s’il ne contient qu’un produit + des termes de genre ou de contexte  
 • si un tag reste trop court ou trop nu, utilise des termes exacts utiles issus de `[[MEDIUM_CONTEXT]]` et de `[[GENRES_TRANSVERSES]]` selon ce qui tient naturellement dans le tag
 
@@ -386,16 +375,6 @@ Avant de répondre, vérifie mentalement :
 Ne garde pas deux tags qui expriment la même recherche avec un simple changement d’ordre.
 
 Si deux tags veulent dire la même chose, conserve uniquement la version la plus naturelle en français.
-
-Exemples de doublons proches à éviter :
-• `figurine xal'atah wow` + `xal'atah figurine wow`
-• `figurine fantasy de collection` + `figurine collection fantasy`
-• `statue elfe fantasy` + `elfe statue fantasy`
-
-Tu peux conserver deux tags proches seulement si leur intention change réellement :
-• produit différent : `figurine xal'atah wow` et `garage kit xal'atah wow`
-• angle différent : `figurine xal'atah à peindre` et `figurine xal'atah wow`
-• cible différente : `figurine xal'atah wow` et `cadeau fan world of warcraft`
 
 ## Ordre de sortie
 

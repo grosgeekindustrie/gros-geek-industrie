@@ -554,7 +554,10 @@
 
     const zone = getTagsSelectionZone();
     const status = document.getElementById(`${p}-stat-${agentId}`);
-    if (zone) zone.style.display = 'none';
+    if (zone) {
+      zone.style.display = 'block';
+      zone.classList.add('is-validated');
+    }
     if (status) {
       status.textContent = '✓ sélection validée';
       status.className = 'agent-status s-done';

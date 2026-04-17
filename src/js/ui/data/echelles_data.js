@@ -9,7 +9,7 @@
 
   const echellesByMode = {
     tabletop: ['28mm', '32mm', '50mm', '54mm', '75mm', '90mm', '120mm', '140mm', '1/10', '1/8', '1/6'],
-    collection: ['140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'],
+    collection: ["Buste", "75mm", '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'],
   };
 
   const customCollectionCount = 3;
