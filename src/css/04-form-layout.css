@@ -964,3 +964,16 @@
   min-height: 10rem;
   white-space: pre-wrap;
 }
+
+
+/* ═══ FINAL OUTPUT EDITABLES ═══ */
+.final-editable-output {
+  cursor: text;
+  white-space: pre-wrap;
+}
+
+.final-editable-output:focus {
+  outline: none;
+  border-color: rgba(126, 184, 247, 0.45);
+  box-shadow: 0 0 0 0.125rem rgba(126, 184, 247, 0.10);
+}

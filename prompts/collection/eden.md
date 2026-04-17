@@ -326,7 +326,7 @@ Réponds uniquement avec la structure suivante.
 ### 1) BLOC DÉTAILS TECHNIQUES
 
 Titre exact :
-**🛠️ Détails de ta figurine [[NOM]]**
+🛠️ Détails de ta figurine [[NOM]]:
 
 Puis le bloc doit contenir exactement :
 • Personnage : [[NOM]]  
@@ -383,7 +383,7 @@ Règles :
 ### 4) CONSEILS DE PEINTURE
 
 Titre exact :
-**🎨 Conseils de peinture**
+🎨 Conseils de peinture:
 
 Puis 4 à 5 puces maximum.
 

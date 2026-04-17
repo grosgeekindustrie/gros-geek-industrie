@@ -33,6 +33,58 @@
 
   const TAG_SELECTION_MAX = 13;
 
+  const TAG_SEMANTIC_STOPWORDS = new Set([
+    'de', 'du', 'des', 'd', 'l', 'le', 'la', 'les', 'un', 'une',
+    'a', 'à', 'en', 'et', 'pour', 'of', 'the',
+  ]);
+
+  function normalizeTagSemanticText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[’']/g, ' ')
+      .replace(/\b(a collectionner|de collection|collection)\b/g, ' collection ')
+      .replace(/\b(imprimee en 3d|imprime en 3d|impression 3d)\b/g, ' impression3d ')
+      .replace(/[^a-z0-9&]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getTagSemanticKey(value) {
+    const tokens = normalizeTagSemanticText(value)
+      .split(' ')
+      .filter((token) => token && !TAG_SEMANTIC_STOPWORDS.has(token));
+    return [...new Set(tokens)].sort().join(' ');
+  }
+
+  function getSelectedSemanticDuplicates(rows) {
+    const groups = new Map();
+
+    rows.forEach((row) => {
+      const checkbox = row.querySelector('.tags-selection-checkbox');
+      if (!checkbox?.checked) return;
+
+      const value = getTagsSelectionRowValue(row);
+      const key = getTagSemanticKey(value);
+      if (!key) return;
+
+      const group = groups.get(key) || [];
+      group.push({ row, value });
+      groups.set(key, group);
+    });
+
+    return groups;
+  }
+
+  function getSemanticDuplicatePeer(row, semanticGroups) {
+    const value = getTagsSelectionRowValue(row);
+    const key = getTagSemanticKey(value);
+    const group = key ? semanticGroups.get(key) || [] : [];
+    const peer = group.find((entry) => entry.row !== row);
+    return peer?.value || '';
+  }
+
   function getTagLibraryState() {
     const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : {};
     return {
@@ -201,18 +253,25 @@
     let checkedCount = 0;
     let validSelectedCount = 0;
     let invalidSelectedCount = 0;
+    const semanticGroups = getSelectedSemanticDuplicates(rows);
 
     rows.forEach((row) => {
       const rowState = getTagsSelectionRowState(row, rows, libraryState);
       const checkbox = row.querySelector('.tags-selection-checkbox');
       const lengthNode = row.querySelector('[data-tags-length]');
       const isChecked = Boolean(checkbox?.checked);
+      const semanticDuplicatePeer = isChecked && !rowState.hasDuplicateError
+        ? getSemanticDuplicatePeer(row, semanticGroups)
+        : '';
+      const hasSemanticDuplicate = Boolean(semanticDuplicatePeer);
 
       row.classList.toggle('is-checked', isChecked);
       row.classList.toggle('is-invalid', !rowState.isRowValid);
+      row.classList.toggle('is-semantic-duplicate', hasSemanticDuplicate);
       row.classList.toggle('is-library-validated', rowState.isValidated);
       row.classList.toggle('is-library-blacklisted', rowState.isExactBlacklisted || Boolean(rowState.matchedTerm));
       row.dataset.tagsValid = rowState.isRowValid ? 'true' : 'false';
+      row.dataset.tagsSemanticDuplicate = hasSemanticDuplicate ? 'true' : 'false';
 
       if (lengthNode) {
         lengthNode.textContent = String(rowState.value.length);
@@ -232,6 +291,8 @@
         rowTitle = 'Tag contenant un terme exclu';
       } else if (rowState.isValidated) {
         rowTitle = 'Tag déjà validé en bibliothèque';
+      } else if (hasSemanticDuplicate) {
+        rowTitle = `Tag proche déjà sélectionné : ${semanticDuplicatePeer}`;
       }
       row.title = rowTitle;
 

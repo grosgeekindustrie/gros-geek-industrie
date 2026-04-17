@@ -482,15 +482,19 @@ function assembleFinal() {
   const desc = state.outputs['description_assembled'] || state.outputs.description || '';
   const alt = state.outputs.alt || '';
   if (!titre && !tags && !desc && !alt) return;
-  const show = (sectionId, contentId, content) => {
+  const show = (sectionId, contentId, content, key = '') => {
     if (!content) return;
     document.getElementById(sectionId).style.display = 'block';
-    document.getElementById(contentId).textContent = content;
+    const contentNode = document.getElementById(contentId);
+    if (!contentNode) return;
+    contentNode.textContent = window.PipelineUIRender?.formatFinalOutputText
+      ? window.PipelineUIRender.formatFinalOutputText(key, content)
+      : content;
   };
-  show(`fs-titre-${p}`, `fc-titre-${p}`, titre);
-  show(`fs-tags-${p}`, `fc-tags-${p}`, tags);
-  show(`fs-description-${p}`, `fc-description-${p}`, desc);
-  show(`fs-alt-${p}`, `fc-alt-${p}`, alt);
+  show(`fs-titre-${p}`, `fc-titre-${p}`, titre, 'titre_valide');
+  show(`fs-tags-${p}`, `fc-tags-${p}`, tags, 'tags');
+  show(`fs-description-${p}`, `fc-description-${p}`, desc, 'description_assembled');
+  show(`fs-alt-${p}`, `fc-alt-${p}`, alt, 'alt');
   const fo = document.getElementById(`finalOutput-${p}`);
   fo.style.display = 'flex'; fo.style.flexDirection = 'column';
   if (alt) document.getElementById(`socialSection-${p}`).style.display = 'block';

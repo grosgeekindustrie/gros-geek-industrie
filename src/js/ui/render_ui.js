@@ -6,6 +6,82 @@
   global.PipelineUI = global.PipelineUI || {};
   let lastTagsDuplicateSignature = '';
 
+  const FINAL_OUTPUT_STATE_KEYS = {
+    tags: 'tags',
+    titre_valide: 'titre_valide',
+    description_assembled: 'description_assembled',
+    alt: 'alt',
+  };
+
+  function getRuntimeState() {
+    return global.state || (typeof state !== 'undefined' ? state : null);
+  }
+
+  function splitTagValues(text) {
+    return String(text || '')
+      .split(/[\n,]+/)
+      .map((tag) => (global.PipelineUIHelpers?.normalizeTagValue ? global.PipelineUIHelpers.normalizeTagValue(tag) : String(tag || '').trim()))
+      .filter(Boolean);
+  }
+
+  function formatTagsForDisplay(text) {
+    const tags = splitTagValues(text);
+    return tags.map((tag, index) => `${tag}${index < tags.length - 1 ? ',' : ''}`).join('\n');
+  }
+
+  function formatFinalOutputText(key, text) {
+    return key === 'tags' ? formatTagsForDisplay(text) : String(text || '');
+  }
+
+  function normalizeFinalOutputText(key, text) {
+    if (key !== 'tags') return String(text || '').trim();
+    return splitTagValues(text).join(', ');
+  }
+
+  function syncFinalOutputEdit(node) {
+    const key = node?.dataset?.finalKey || '';
+    const stateKey = FINAL_OUTPUT_STATE_KEYS[key];
+    const runtimeState = getRuntimeState();
+    if (!stateKey || !runtimeState?.outputs) return;
+
+    const value = normalizeFinalOutputText(key, node.textContent || '');
+    runtimeState.outputs[stateKey] = value;
+
+    if (key === 'description_assembled') {
+      runtimeState.outputs.description = value;
+    }
+
+    if (key === 'tags') {
+      runtimeState.selectedTags = splitTagValues(value);
+    }
+  }
+
+  function formatEditableFinalOutput(node) {
+    const key = node?.dataset?.finalKey || '';
+    if (key !== 'tags') return;
+
+    const formatted = formatTagsForDisplay(node.textContent || '');
+    if (node.textContent !== formatted) node.textContent = formatted;
+  }
+
+  function bindFinalOutputEditing() {
+    if (global.__pipelineFinalOutputEditingBound) return;
+    global.__pipelineFinalOutputEditingBound = true;
+
+    document.addEventListener('input', (event) => {
+      const node = event.target.closest?.('.final-editable-output[data-final-key]');
+      if (!node) return;
+      syncFinalOutputEdit(node);
+    });
+
+    document.addEventListener('blur', (event) => {
+      const node = event.target.closest?.('.final-editable-output[data-final-key]');
+      if (!node) return;
+      syncFinalOutputEdit(node);
+      formatEditableFinalOutput(node);
+    }, true);
+  }
+
   function setNodeText(node, text) {
     if (!node) return;
     if ('value' in node) node.value = text;
@@ -55,7 +131,7 @@
     };
 
     const contentNode = document.getElementById(contentIdMap[key] || '');
-    if (contentNode) contentNode.textContent = text;
+    if (contentNode) contentNode.textContent = formatFinalOutputText(key, text);
 
     const sectionNode = document.getElementById(sectionIdMap[key] || '');
     if (sectionNode) sectionNode.style.display = text ? '' : 'none';
@@ -110,14 +186,14 @@
     }, 0);
 
     const normalized = tags.join(', ');
-    const runtimeState = global.state || (typeof state !== 'undefined' ? state : null);
+    const runtimeState = getRuntimeState();
     if (runtimeState?.outputs) {
       runtimeState.outputs.tags = normalized;
     }
 
     const previewNode = document.getElementById(`${p}-tags-final-output`);
     if (previewNode) {
-      previewNode.textContent = normalized || '— aucun tag sélectionné —';
+      previewNode.textContent = normalized ? formatTagsForDisplay(normalized) : '— aucun tag sélectionné —';
     }
 
     syncFinalPre('tags', normalized, p);
@@ -135,10 +211,15 @@
     return normalized;
   }
 
+  bindFinalOutputEditing();
+
   global.PipelineUIRender = {
     syncSelectionField,
     syncFinalPre,
     syncTagsOutputFromUI,
+    formatFinalOutputText,
+    formatTagsForDisplay,
+    normalizeFinalOutputText,
   };
 
   global.PipelineUI.render = global.PipelineUI.render || {};
