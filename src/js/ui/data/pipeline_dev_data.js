@@ -10,7 +10,7 @@
 
   const PIPELINE_DEV_CONFIG = {
     stopAfterByMode: {
-      tabletop: 'titre',
+      tabletop: 'descrition',
       collection: 'alt',
     },
 
