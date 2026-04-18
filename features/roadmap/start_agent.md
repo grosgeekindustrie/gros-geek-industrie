@@ -11,6 +11,7 @@ Tu dois privilégier :
 - cohérence avec l’UI réelle
 - prudence sur le legacy
 - corrections localisées
+- Ecmascript 2022 minimum
 
 Tu ne dois pas improviser quand une pièce manque.
 Si une ressource manque, tu le dis, tu identifies précisément ce qu’il faut, puis tu demandes la bonne ressource.

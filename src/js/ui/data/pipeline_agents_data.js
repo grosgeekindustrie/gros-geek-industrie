@@ -11,9 +11,8 @@
     tabletop: [
       { id:'titre',       title:'🏷️ 01 — Maya · Titres SEO (×5)',         usesImages:false, hasSelection:true,  selectionType:'titre' },
       { id:'tags',        title:'🔖 02 — Karim · Tags (×13)',             usesImages:false, hasSelection:true,  selectionType:'tags' },
-      { id:'marche',      title:'📊 03 — Sophie · Analyse de marché',     usesImages:true,  hasSelection:false },
-      { id:'description', title:'📝 04 — Claire · Description',           usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
-      { id:'alt',         title:'🖼️ 05 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
+      { id:'description', title:'📝 03 — Claire · Description',           usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
+      { id:'alt',         title:'🖼️ 04 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
     ],
     collection: [
       { id:'titre',       title:'🏷️ 01 — Nova · Titres SEO (×5)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
@@ -24,7 +23,7 @@
   };
 
   const pipelineRuntimeAgentIds = {
-    tabletop: ['titre', 'tags', 'marche', 'description', 'alt'],
+    tabletop: ['titre', 'tags', 'description', 'alt'],
     collection: ['titre', 'tags', 'description', 'alt'],
   };
 
@@ -32,7 +31,6 @@
     tabletop: [
       { id:'titre',       label:'Maya · Titres SEO (×5)',     stopAfterAgentId:'titre' },
       { id:'tags',        label:'Karim · Tags (×13)',         stopAfterAgentId:'tags' },
-      { id:'marche',      label:'Sophie · Analyse de marché', stopAfterAgentId:'marche' },
       { id:'description', label:'Claire · Description',       stopAfterAgentId:'description' },
       { id:'alt',         label:'Nadia · Balise ALT finale',  stopAfterAgentId:'alt' },
     ],

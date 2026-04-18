@@ -13,14 +13,10 @@ Pose : [[POSE]]
 Particularités : [[PARTICULARITES]]  
 Description figurine : [[DESCRIPTION_FIGURINE]]  
 Résumé personnage : [[RESUME_PERSONNAGE]]  
-Buzz licence : [[BUZZ_COLLECTION]]  
-Medium : [[MEDIUM]]  
-Sous-catégories medium : [[MEDIUM_SUBCATEGORIES]]  
+Buzz licence : [[BUZZ_COLLECTION]] 
 Genres transverses : [[GENRES_TRANSVERSES]]  
-Contexte medium : [[MEDIUM_CONTEXT]]  
 Connexes prioritaires : [[CONNEXES_PRIORITAIRES]]  
 Positionnement d’usage : [[USAGE_POSITIONING]]
-
 Analyse marché Luna : [[MARCHE]]
 
 ---
@@ -71,8 +67,7 @@ Pour tout ce qui concerne l’apparence visible de la figurine, tu dois suivre c
 1. **Images de la figurine**
 2. **Description figurine**
 3. **Données produit**
-4. **Analyse marché Luna**
-5. **Résumé personnage**
+4. **Résumé personnage**
 
 Règles absolues :
 - les **images priment toujours**
@@ -85,48 +80,102 @@ Règles absolues :
 
 ## POSITIONNEMENT D’USAGE — RÈGLE CENTRALE
 
-Le champ `[[USAGE_POSITIONING]]` est la source de vérité pour l’équilibre rédactionnel de la description.
+Le champ `[[USAGE_POSITIONING]]` pilote l’équilibre rédactionnel de la sortie.
 
 Valeurs possibles :
 - `tabletop`
 - `vitrine`
 - `hybride`
 
-Tu dois adapter :
+Tu adaptes :
 - le bloc **Usage idéal**
 - les **2 paragraphes**
 - les **CTA**
-- l’équilibre entre peinture, exposition et table de jeu
+- l’équilibre entre peinture, exposition et jeu
 
 ### Si `[[USAGE_POSITIONING]] = tabletop`
-Tu privilégies :
-- lisibilité en table
-- présence en partie
-- incarnation d’un archétype ou d’un personnage de JDR
-- peinture orientée jeu / campagne / projet tabletop
-- impact visuel en situation de jeu
+Tu écris une pièce pensée d’abord pour le jeu, la lisibilité en table et l’incarnation d’un personnage ou archétype de JDR.
 
-Tu ne surjoues pas la vitrine.
+Tu privilégies :
+- lisibilité immédiate
+- présence en table
+- impact visuel en partie
+- projet peinture orienté jeu
+- rôle naturel dans un univers JDR / tabletop
+
+Tu peux parler :
+- de table de jeu
+- de campagne
+- de personnage joueur
+- de PNJ
+- d’ennemi marquant
+- de figurine à peindre pour le jeu
+
+Tu évites :
+- de surjouer la vitrine
+- de transformer la pièce en pur objet d’exposition
+- de parler comme s’il s’agissait d’une statue avant tout
 
 ### Si `[[USAGE_POSITIONING]] = vitrine`
-Tu privilégies :
-- présence visuelle
-- composition
-- textures
-- intérêt peinture avancé
-- exposition
-- dimension sculpturale
+Tu écris une pièce pensée d’abord pour l’exposition, la peinture et la présence visuelle.
 
-Tu ne fais pas semblant que la pièce est pensée d’abord pour le jeu si ce n’est pas le cas.
+Tu privilégies :
+- composition
+- silhouette
+- textures
+- volumes
+- intérêt peinture
+- impact visuel en vitrine
+- lecture sculpturale
+
+Tu peux parler :
+- d’exposition
+- de vitrine
+- de projet peinture avancé
+- de présence visuelle
+- de composition narrative
+
+Tu évites :
+- de surjouer l’usage en partie
+- de faire comme si la pièce était d’abord conçue pour le jeu
+- de parler de lisibilité tabletop si ce n’est pas pertinent
 
 ### Si `[[USAGE_POSITIONING]] = hybride`
-Tu dois assumer clairement les deux usages :
-- assez forte visuellement pour la vitrine
-- assez lisible et évocatrice pour la table ou un univers JDR
+Tu écris une pièce qui fonctionne à la fois comme sujet de peinture, pièce d’exposition et figurine de jeu narratif.
 
-Tu ne dois jamais hiérarchiser les deux usages de manière arbitraire.  
-Tu ne présentes ni la vitrine ni le tabletop comme un usage secondaire ou inférieur.  
-Tu écris l’équilibre réel de la pièce.
+Tu dois assumer clairement les deux usages.
+
+Tu privilégies :
+- équilibre entre lisibilité en table et présence en vitrine
+- intérêt peinture
+- lecture claire de la silhouette
+- impact visuel en jeu comme en exposition
+- polyvalence réelle de la pièce
+
+Tu peux parler :
+- de projet hobby complet
+- de figurine qui trouve sa place en vitrine comme en table
+- de pièce assez forte pour l’exposition et assez lisible pour le jeu
+- d’usage mixte peinture / display / JDR
+
+Tu évites absolument :
+- de hiérarchiser les usages sans raison
+- d’écrire comme si la pièce était surtout tabletop
+- d’écrire comme si la pièce était surtout vitrine
+- les formulations du type :
+  - “optimisée pour les parties”
+  - “parfaite pour le tabletop”
+  - “avant tout une pièce de vitrine”
+
+### RÈGLE DE TON
+Quel que soit le mode :
+- tu gardes la même qualité narrative
+- tu n’abandonnes pas la description visuelle
+- tu n’abandonnes pas l’intérêt peinture
+- tu adaptes seulement le centre de gravité du texte
+
+Tu ne changes pas de style.  
+Tu changes seulement le bon équilibre produit.
 
 ---
 
@@ -143,7 +192,6 @@ Le texte doit s’appuyer sur :
 - la lisibilité en table si pertinente
 - l’intérêt peinture
 - le positionnement d’usage réel
-- les signaux utiles donnés par Luna
 
 ### 2) Utiliser l’archétype avec mesure
 La pièce peut évoquer :
@@ -481,7 +529,6 @@ Règles :
 
 Règles :
 - parler de la pièce, de sa peinture, de sa présence, de sa place en vitrine si pertinente, de sa présence en table si pertinente, et de son équilibre réel selon `[[USAGE_POSITIONING]]`
-- réinjecter les signaux utiles de Luna
 - intégrer naturellement quelques termes produit utiles
 - ne pas parler du nombre de pièces
 - ne pas parler des échelles
@@ -566,7 +613,7 @@ Avant de répondre, vérifie que :
 - les accords et articles sont corrects
 - [[UNIVERS]] garde sa majuscule correcte
 - le texte respecte bien `[[USAGE_POSITIONING]]`
-- si `[[USAGE_POSITIONING]] = hybride`, le texte traite vitrine et tabletop sans hiérarchie artificielle
+- si `[[USAGE_POSITIONING]] = hybride`, le texte traite vitrine et tabletop sur un pied d’égalité
 
 ---
 
