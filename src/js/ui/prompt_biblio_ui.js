@@ -35,6 +35,18 @@
     return getBiblioTagsFormatted() || '_(aucun retour enregistré)_';
   };
 
+  const inferUsagePositioningFromScales = (rawScales = '') => {
+    const matches = Array.from(String(rawScales || '').matchAll(/(\d+(?:[.,]\d+)?)\s*mm/gi));
+    const values = matches
+      .map((match) => Number(String(match[1] || '').replace(',', '.')))
+      .filter((value) => Number.isFinite(value));
+
+    if (!values.length) return '';
+    if (values.every((value) => value <= 75)) return 'tabletop';
+    if (values.every((value) => value > 75)) return 'vitrine';
+    return 'hybride';
+  };
+
   const buildPipelineSharedFixedContent = (ctx = {}) => {
     const objectif = getOptionalBiblio('objectif');
     const psycho = getOptionalBiblio('psycho');
@@ -210,6 +222,7 @@
       .replace(/\[\[UNIVERS\]\]/g, ctx.univers)
       .replace(/\[\[SCULPTEUR\]\]/g, ctx.sculpteur)
       .replace(/\[\[ECHELLES\]\]/g, ctx.echelles)
+      .replace(/\[\[POSITIONNEMENT_USAGE\]\]/g, ctx.positionnementUsage || inferUsagePositioningFromScales(ctx.echelles) || '')
       .replace(/\[\[PIECES\]\]/g, ctx.pieces)
       .replace(/\[\[DIMENSIONS\]\]/g, ctx.dimensions || '')
       .replace(/\[\[POSE\]\]/g, ctx.pose)
