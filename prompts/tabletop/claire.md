@@ -481,15 +481,16 @@ Règles :
 - doivent bien clôturer la description
 - ne doivent pas parler d’échelles, de compatibilité, de consultation externe ou de vérification logistique
 
-### 6) FAN ART ET ARTISTE
+### 6) BLOC ARTISTE
 
 Titre exact :
-🎭 Fan Art et artiste :
+🎭 Artiste et création original :
 
 Puis exactement :
-Cette figurine est un fan art original inspiré de [[UNIVERS]].  
+Cette [[TYPE]] est une création original [[SCULPTEUR]].  
 ✔️ Sculpté par : [[SCULPTEUR]]  
 ✔️ Gros Geek Industrie est un revendeur agréé de ses créations.
+
 
 ---
 
