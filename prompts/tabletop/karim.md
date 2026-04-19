@@ -400,7 +400,7 @@ Les 26 tags finaux doivent être triés par ordre alphabétique.
 ---
 
 ## DONNÉES
-- Titre retenu : `[[TITRE_VALIDÉ]]`
+- Titre retenu : `[[TITRE_VALIDE]]`
 - Personnage : `[[NOM]]`
 - Nom court : `[[NOM_COURT]]`
 - Sculpteur : `[[SCULPTEUR]]`
