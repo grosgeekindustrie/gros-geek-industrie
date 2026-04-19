@@ -17,8 +17,6 @@ Genres transverses : [[GENRES_TRANSVERSES]]
 Connexes prioritaires : [[CONNEXES_PRIORITAIRES]]  
 Positionnement d’usage : [[POSITIONNEMENT_USAGE]]
 
-Analyse marché Luna : [[MARCHE]]
-
 ---
 
 ## RÔLE
@@ -65,8 +63,7 @@ Pour tout ce qui concerne l’apparence visible de la figurine, tu dois suivre c
 1. **Images de la figurine**
 2. **Description figurine**
 3. **Données produit**
-4. **Analyse marché Luna**
-5. **Résumé personnage**
+4. **Résumé personnage**
 
 Règles absolues :
 - les **images priment toujours sur le lore**
