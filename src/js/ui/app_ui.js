@@ -251,15 +251,6 @@
     refreshPipelineLaunchPanels();
   }
 
-  function selectModeBatch(mode) {
-    const modalTitle = document.querySelector('#batchModal h2');
-    if (modalTitle) {
-      const modeUiConfig = getModeUiConfig(mode);
-      modalTitle.textContent = modeUiConfig?.batchTitle || (mode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection');
-    }
-
-    global.openBatchModal?.();
-  }
 
   function cancelToHome() {
     const executionRunning = isPipelineExecutionActive();
@@ -351,7 +342,6 @@
     showView,
     updateHeaderContext,
     selectMode,
-    selectModeBatch,
     cancelToHome,
     stopAllAgents,
     setPipelineExecutionActive,

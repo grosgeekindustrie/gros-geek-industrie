@@ -16,7 +16,6 @@
       pageTitle: '🎲 Etsy Pipeline DnD v1.2',
       headerTitle: '🎲 Etsy Pipeline DnD',
       headerModeLabel: 'DnD Tabletop',
-      batchTitle: '⚡ Batch Tabletop',
       uiRootId: 'ui-tt',
       panelIds: ['pipeline-tt', 'finalOutput-tt', 'socialSection-tt', 'socialOutput-tt', 'reseauxOnlySection-tt'],
       tabs: {
@@ -39,7 +38,6 @@
       pageTitle: '🖼️ Etsy Pipeline Collection v1.2',
       headerTitle: '🖼️ Etsy Pipeline Collection',
       headerModeLabel: 'Collection',
-      batchTitle: '⚡ Batch Collection',
       uiRootId: 'ui-col',
       panelIds: ['pipeline-col', 'finalOutput-col', 'socialSection-col', 'socialOutput-col', 'reseauxOnlySection-col'],
       tabs: {
