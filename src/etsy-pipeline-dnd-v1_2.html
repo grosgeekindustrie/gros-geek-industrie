@@ -17,7 +17,7 @@
 <body>
 
 <!-- ═══════════════════════════════════════ COMMUN ═══════════════════════════════════════ -->
-<!-- Shell principal : contient les vues, les lightboxes communes et le runtime batch. -->
+<!-- Shell principal : contient les vues et les lightboxes communes. -->
 
 <div class="app-shell">
 
@@ -103,23 +103,6 @@
           <div class="home-card-title">Collection</div>
           <div class="home-card-desc">Figurines fan art, garage kits,<br>statues résine à peindre.</div>
           <div class="home-card-tag">6 agents · Jules → Eden</div>
-        </div>
-      </div>
-      <div class="home-batch-divider">
-        <div class="home-batch-label">⚡ Mode Batch — plusieurs fiches à la suite</div>
-        <div class="home-cards home-cards-dual">
-          <div class="home-card home-card-batch" onclick="selectModeBatch('tabletop')">
-            <div class="home-card-icon home-card-icon-batch">⚡🎲</div>
-            <div class="home-card-title home-card-title-batch">Batch Tabletop</div>
-            <div class="home-card-desc">Pipeline supervisé sur N fiches DnD.<br>Choix éditoriaux à la volée.</div>
-            <div class="home-card-tag">Min 2 fiches · Supervisé</div>
-          </div>
-          <div class="home-card home-card-batch" onclick="selectModeBatch('collection')">
-            <div class="home-card-icon home-card-icon-batch">⚡🖼️</div>
-            <div class="home-card-title home-card-title-batch">Batch Collection</div>
-            <div class="home-card-desc">Pipeline supervisé sur N fiches Collection.<br>Choix éditoriaux à la volée.</div>
-            <div class="home-card-tag">Min 2 fiches · Supervisé</div>
-          </div>
         </div>
       </div>
     </div>
@@ -1247,7 +1230,6 @@ Cache : —</pre>
 <script src="js/ui/tags_ui.js"></script>
 <script src="js/ui/title_ui.js"></script>
 <script src="js/ui/library_ui.js"></script>
-<script src="js/ui/batch_ui.js"></script>
 <script src="js/ui/data/pipeline_modes_data.js"></script>
 <script src="js/ui/data/pipeline_agents_data.js"></script>
 <script src="js/ui/data/prompt_maps_data.js"></script>
@@ -1276,52 +1258,6 @@ Cache : —</pre>
 <script src="js/pipeline-ui.js"></script>
 <script src="js/pipeline-api.js"></script>
 <script src="js/ui/pipeline_dev_runtime_ui.js"></script>
-
-<!-- ═══════════════════════════════════════ BATCH ═══════════════════════════════════════ -->
-<!-- Runtime batch séparé visuellement mais hébergé dans le même shell pour mutualiser les helpers et l’état courant. -->
-
-<!-- BATCH MODAL -->
-<div class="batch-modal-overlay" id="batchModal" onclick="if(event.target.id==='batchModal')closeBatchModal()">
-  <div class="batch-modal">
-    <h2>⚡ Mode Batch</h2>
-    <p>Pipeline supervisé sur plusieurs figurines. Choix titre/accroche/CTA manuels. Agents sociaux ignorés. Erreur = stop.</p>
-    <div class="batch-count-row">
-      <label>Nombre de fiches (min 2) :</label>
-      <input type="number" id="batchCount" min="2" max="20" value="2"/>
-    </div>
-    <div class="batch-modal-footer">
-      <button class="btn btn-muted" onclick="closeBatchModal()">Annuler</button>
-      <button class="btn btn-success btn-strong" onclick="initBatch()">▶ Créer les fiches</button>
-    </div>
-  </div>
-</div>
-
-<!-- BATCH WRAPPER -->
-<div class="batch-wrapper" id="batchWrapper">
-  <div class="batch-progress" id="batchProgress">
-    <div class="batch-progress-label" id="batchProgressLabel">Initialisation...</div>
-    <div class="batch-progress-bar-wrap">
-      <div class="batch-progress-bar" id="batchProgressBar"></div>
-    </div>
-  </div>
-  <div class="batch-current-pipeline is-hidden" data-js="batch-current-pipeline">
-    <div class="batch-current-pipeline-header">
-      <span class="batch-current-pipeline-title">🧭 Pipeline de la fiche en cours</span>
-      <span class="batch-current-pipeline-meta" data-js="batch-current-meta"></span>
-    </div>
-    <div class="batch-current-pipeline-list" data-js="batch-current-list"></div>
-  </div>
-  <div class="batch-selection is-hidden" data-js="batch-selection">
-    <div class="batch-selection-header">
-      <span class="batch-selection-title" data-js="batch-selection-title"></span>
-      <span class="batch-selection-hint">Choisis puis continue la fiche</span>
-    </div>
-    <div class="batch-selection-body" data-js="batch-selection-body"></div>
-    <div class="batch-selection-actions" data-js="batch-selection-actions"></div>
-  </div>
-  <div id="batchFiches"></div>
-  <button class="batch-export-btn" id="batchExportBtn" onclick="exportBatch()">💾 Exporter le batch</button>
-</div>
 
 </div><!-- /app-shell -->
 </body>
