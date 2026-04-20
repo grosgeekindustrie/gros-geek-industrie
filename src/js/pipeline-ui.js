@@ -75,24 +75,6 @@ const {
 } = window.PipelineUIIndexedDb || {};
 
 const {
-  showBatchCountPicker,
-  initBatchInline,
-  openBatchModal,
-  closeBatchModal,
-  initBatch,
-  buildBatchFiche,
-  batchToggleEch,
-  batchAddImages,
-  stopBatch,
-  startBatch,
-  updateBatchProgress,
-  getBatchCtx,
-  runBatchFiche,
-  runBatchAgent,
-  exportBatch,
-} = window.PipelineUIBatch;
-
-const {
   buildPrompt,
   getBiblio,
   parseBiblioTags,
@@ -607,8 +589,3 @@ if (window._restoreView === 'form' && window._restoreMode) {
 }
 // Reveal body after view is set
 document.body.classList.add('ready');
-
-// ═══════════════════════════════════════════════════════════
-// BATCH
-// ═══════════════════════════════════════════════════════════
-

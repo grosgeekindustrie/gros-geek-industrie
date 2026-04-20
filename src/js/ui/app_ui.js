@@ -32,7 +32,6 @@
   };
 
   let currentView = 'home';
-  let pendingBatchMode = null;
   let pipelineExecutionActive = false;
   let pipelineActionDelegationBound = false;
 
@@ -60,14 +59,6 @@
     pipelineActionDelegationBound = true;
   };
 
-  function getBatchWrapper() {
-    return document.getElementById('batchWrapper');
-  }
-
-  function getBatchHomeHost() {
-    return document.querySelector('.app-shell') || document.body;
-  }
-
   function hasActiveAgentControllers() {
     return Object.values(global.abortControllers || {}).some((controller) => !!controller);
   }
@@ -75,8 +66,7 @@
   function isPipelineExecutionActive() {
     return !!(
       pipelineExecutionActive ||
-      hasActiveAgentControllers() ||
-      global.isBatchRunning?.()
+      hasActiveAgentControllers()
     );
   }
 
@@ -111,42 +101,6 @@
     backBtn.title = isExecuting
       ? 'Annuler l’exécution et revenir à l’accueil'
       : 'Revenir à l’accueil';
-  }
-
-  function isBatchFlowInForm() {
-    const batchWrapper = getBatchWrapper();
-    return !!(batchWrapper && batchWrapper.classList.contains('visible') && batchWrapper.parentNode?.id === 'formViewBody');
-  }
-
-  function isBatchFlowInPipeline() {
-    const batchWrapper = getBatchWrapper();
-    return !!(batchWrapper && batchWrapper.classList.contains('visible') && batchWrapper.parentNode?.id === 'pipelineViewBody');
-  }
-
-  function moveBatchWrapperToForm() {
-    const batchWrapper = getBatchWrapper();
-    const formBody = document.getElementById('formViewBody');
-    if (!batchWrapper || !formBody) return;
-    document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
-    formBody.appendChild(batchWrapper);
-    batchWrapper.classList.add('visible');
-  }
-
-  function moveBatchWrapperToPipeline() {
-    const batchWrapper = getBatchWrapper();
-    const pipelineBody = document.getElementById('pipelineViewBody');
-    if (!batchWrapper || !pipelineBody) return;
-    pipelineBody.classList.add('pipeline-view-body-batch');
-    pipelineBody.appendChild(batchWrapper);
-    batchWrapper.classList.add('visible');
-  }
-
-  function restoreBatchWrapperToShell() {
-    const batchWrapper = getBatchWrapper();
-    if (!batchWrapper) return;
-    document.getElementById('pipelineViewBody')?.classList.remove('pipeline-view-body-batch');
-    getBatchHomeHost().appendChild(batchWrapper);
-    batchWrapper.classList.remove('visible');
   }
 
   function showToast(msg, color = '#4caf7d', duration = 2500) {
@@ -275,11 +229,6 @@
   }
 
   function selectMode(mode) {
-    if (mode === 'batch') {
-      global.openBatchModal?.();
-      return;
-    }
-
     if (mode !== getCurrentMode()) global.switchMode?.(mode);
 
     const modeUiConfig = getModeUiConfig(mode);
@@ -303,13 +252,12 @@
   }
 
   function selectModeBatch(mode) {
-    pendingBatchMode = mode;
-    global._pendingBatchMode = mode;
     const modalTitle = document.querySelector('#batchModal h2');
     if (modalTitle) {
       const modeUiConfig = getModeUiConfig(mode);
       modalTitle.textContent = modeUiConfig?.batchTitle || (mode === 'tabletop' ? '⚡ Batch Tabletop' : '⚡ Batch Collection');
     }
+
     global.openBatchModal?.();
   }
 
@@ -320,8 +268,6 @@
       showToast('⏹ Exécution annulée', '#ff4757');
       return;
     }
-    if (isBatchFlowInForm() || isBatchFlowInPipeline()) restoreBatchWrapperToShell();
-
     const timeline = document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
@@ -330,13 +276,6 @@
 
   function stopAllAgents(options = {}) {
     const { silent = false } = options;
-
-    if (isBatchFlowInPipeline()) {
-      global.stopBatch?.({ silent });
-      setPipelineExecutionActive(false);
-      syncHeaderBackAction();
-      return;
-    }
 
     const agents = getAgents();
     const controllers = global.abortControllers || {};
@@ -413,11 +352,6 @@
     updateHeaderContext,
     selectMode,
     selectModeBatch,
-    moveBatchWrapperToForm,
-    moveBatchWrapperToPipeline,
-    restoreBatchWrapperToShell,
-    isBatchFlowInForm,
-    isBatchFlowInPipeline,
     cancelToHome,
     stopAllAgents,
     setPipelineExecutionActive,
@@ -429,7 +363,6 @@
     closeSettings,
     bindPipelineActionDelegation,
     getCurrentView: () => currentView,
-    getPendingBatchMode: () => pendingBatchMode,
   };
 
   global.PipelineUI.app = global.PipelineUI.app || {};
