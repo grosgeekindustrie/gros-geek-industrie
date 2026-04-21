@@ -3,41 +3,41 @@
  *
  * Phase bootstrap : expose les scripts pipeline dans leur ordre vivant actuel.
  */
-const pipelineSharedPreludePaths = Object.freeze([
+const pipelineSharedPreludePaths = [
   'pipeline/ui/shared/helper_ui.js',
   'pipeline/ui/shared/render_ui.js',
   'pipeline/ui/shared/modals_ui.js',
   'pipeline/ui/shared/tags_ui.js',
   'pipeline/ui/shared/title_ui.js',
   'pipeline/ui/shared/library_ui.js',
-]);
+];
 
-const pipelinePrimaryDataPaths = Object.freeze([
+const pipelinePrimaryDataPaths = [
   'pipeline/data/pipeline_modes_data.js',
   'pipeline/data/pipeline_agents_data.js',
   'pipeline/data/prompt_maps_data.js',
-]);
+];
 
-const pipelineDevPreludePaths = Object.freeze([
+const pipelineDevPreludePaths = [
   'pipeline/dev/pipeline_dev_data.js',
-]);
+];
 
-const pipelineSecondaryDataPaths = Object.freeze([
+const pipelineSecondaryDataPaths = [
   'pipeline/data/form_fields_data.js',
   'pipeline/data/stepper_steps_data.js',
   'pipeline/data/echelles_data.js',
   'pipeline/data/form_catalogs_data.js',
-]);
+];
 
-const pipelineRuntimePreludePaths = Object.freeze([
+const pipelineRuntimePreludePaths = [
   'pipeline/runtime/config_ui.js',
-]);
+];
 
-const pipelinePromptPaths = Object.freeze([
+const pipelinePromptPaths = [
   'pipeline/ui/shared/prompt_biblio_ui.js',
-]);
+];
 
-const pipelineUiNavigationPaths = Object.freeze([
+const pipelineUiNavigationPaths = [
   'pipeline/ui/shared/forms_ui.js',
   'pipeline/ui/shared/stepper_core_ui.js',
   'pipeline/ui/shared/solo_tabs_core_ui.js',
@@ -47,27 +47,15 @@ const pipelineUiNavigationPaths = Object.freeze([
   'pipeline/ui/collection/collection_tabs_ui.js',
   'pipeline/ui/shared/cards_ui.js',
   'pipeline/ui/shared/selections_ui.js',
-]);
+];
 
-const pipelineRuntimePaths = Object.freeze([
+const pipelineRuntimePaths = [
   'pipeline/runtime/pipeline-api.js',
-]);
+];
 
-const pipelineDevRuntimePaths = Object.freeze([
+const pipelineDevRuntimePaths = [
   'pipeline/dev/pipeline_dev_runtime_ui.js',
-]);
-
-const pipelineBootstrapGroups = Object.freeze([
-  Object.freeze({ id: 'pipeline:shared-prelude', paths: pipelineSharedPreludePaths }),
-  Object.freeze({ id: 'pipeline:data-primary', paths: pipelinePrimaryDataPaths }),
-  Object.freeze({ id: 'pipeline:dev-prelude', paths: pipelineDevPreludePaths }),
-  Object.freeze({ id: 'pipeline:data-secondary', paths: pipelineSecondaryDataPaths }),
-  Object.freeze({ id: 'pipeline:runtime-prelude', paths: pipelineRuntimePreludePaths }),
-  Object.freeze({ id: 'pipeline:prompt', paths: pipelinePromptPaths }),
-  Object.freeze({ id: 'pipeline:ui-navigation', paths: pipelineUiNavigationPaths }),
-  Object.freeze({ id: 'pipeline:runtime', paths: pipelineRuntimePaths }),
-  Object.freeze({ id: 'pipeline:dev-runtime', paths: pipelineDevRuntimePaths }),
-]);
+];
 
 export {
   pipelineSharedPreludePaths,
@@ -79,5 +67,4 @@ export {
   pipelineUiNavigationPaths,
   pipelineRuntimePaths,
   pipelineDevRuntimePaths,
-  pipelineBootstrapGroups,
 };
