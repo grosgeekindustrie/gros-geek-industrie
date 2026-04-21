@@ -1,7 +1,10 @@
 /**
  * Frontière du domaine social existant.
  *
- * Phase charpente : placeholder sans branchement actif.
+ * Phase bootstrap : aucun script social autonome à charger ici pour l'instant.
  */
-'use strict';
-// TODO(refonte-archi): brancher runtime / ui / data / publishers ici.
+const socialScriptPaths = [];
+
+export {
+  socialScriptPaths,
+};

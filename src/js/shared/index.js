@@ -1,7 +1,15 @@
 /**
  * Frontière du domaine shared.
  *
- * Phase charpente : placeholder sans branchement actif.
+ * Phase bootstrap : expose les scripts shared encore chargés globalement.
  */
-'use strict';
-// TODO(refonte-archi): brancher utils / storage / media / constants ici.
+const sharedScriptPaths = [
+  'shared/media/echelles_ui.js',
+  'shared/media/image_tools_ui.js',
+  'shared/storage/indexeddb_ui.js',
+  'shared/media/images_ui.js',
+];
+
+export {
+  sharedScriptPaths,
+};
