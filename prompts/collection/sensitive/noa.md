@@ -1,4 +1,4 @@
-# AGENT TAGS — EXPLORE
+# NOA AGENT TAGS — EXPLORE
 
 ## Mission
 
@@ -18,7 +18,7 @@ Univers : `[[UNIVERS]]`
 Medium : `[[MEDIUM]]`  
 Licence protégée : `[[LICENSE]]`  
 Connexes prioritaires : `[[CONNEXES_PRIORITAIRES]]`  
-Titre validé : `[[TITRE_VALIDE]]`
+Titre validé : `[[TITRE_VALIDE]]`  
 Exclusions tags : `[[BIBLIO_TAGS]]`
 
 ## Lien titre → tags
@@ -57,11 +57,18 @@ Transforme ses éléments en tags courts, lisibles et complémentaires.
 • Pas de `fan art`  
 • Tous les tags doivent être directement tapables par un acheteur Etsy
 
-## Longueur utile
+## Longueur utile et densité SEO
 
 Chaque tag peut utiliser jusqu’à 30 caractères, espaces compris.
 
-Ne fais pas des tags trop courts si un ajout cohérent peut renforcer le SEO.
+Objectif prioritaire :
+produire le plus souvent possible des tags utiles et naturels entre 24 et 30 caractères.
+
+Règle pratique :
+
+• 24 à 30 caractères = zone idéale  
+• 20 à 23 = acceptable si le tag est déjà fort  
+• moins de 20 = seulement si la recherche est déjà excellente et impossible à enrichir naturellement
 
 Quand il reste de la place, enrichis le tag avec un élément utile parmi :
 
@@ -73,72 +80,70 @@ Quand il reste de la place, enrichis le tag avec un élément utile parmi :
 • intention d’achat  
 • connexe fourni
 
-Ne rallonge jamais un tag avec un mot faible ou incohérent.
+Ne rallonge jamais un tag avec un mot faible, vague ou mal rattaché.
 
-Objectif :
+Ne laisse pas un tag trop court si une version plus complète, plus naturelle et plus SEO tient sous 30 caractères.
 
-• tag court si la recherche est forte  
-• tag plus long si cela améliore la recherche  
-• toujours 30 caractères maximum
+Avant de valider un tag, demande-toi :
+« Puis-je ajouter un mot utile sans casser la fluidité ? »
 
-## Densité SEO
+## Association naturelle des termes
 
-Quand un tag est trop court ou faible, complète-le avec un produit, un univers ou une intention.
+Un bon tag n’est pas un sac de mots-clés.  
+C’est une mini-requête Etsy courte, plausible, lisible et naturelle.
 
-Ne laisse pas un tag vague si une version plus complète tient sous 30 caractères.
+Associe toujours les termes par blocs cohérents :
 
-Un tag doit exploiter intelligemment l’espace disponible sans dépasser 30 caractères.
+• produit  
+• personnage principal  
+• univers  
+• finition  
+• fabrication  
+• intention  
+• cible  
+• connexe fourni
 
-## Ordre naturel des mots
+Quand un produit est présent, il doit ouvrir le tag sauf si le tag commence par `cadeau`.
 
-Construis les tags comme de petites requêtes françaises naturelles.
-
-Priorité d’ordre :
-
-• produit + personnage + univers  
-• produit + univers + finition  
-• produit + style  
-• produit + fabrication  
-• cadeau + produit + personnage / univers  
-• connexe + produit + univers
-
-Quand un tag contient un produit, le produit doit ouvrir le tag.
-Quand un tag contient aussi personnage, univers, style ou fabrication, l’ordre prioritaire est :
-produit + personnage/univers + style/fabrication/intention
-
-Évite les inversions artificielles.
-
-Évite les tags où un style, une intention ou un univers flotte sans produit clair.
-
-## Grammaire prioritaire
-
-Les tags doivent majoritairement suivre ces formes :
+Ordre prioritaire quand plusieurs constructions sont possibles :
 
 • produit + personnage + univers  
 • produit + personnage + finition  
-• personnage + univers + finition  
 • produit + univers + fabrication  
-• cadeau + produit + personnage  
-• cadeau + produit + univers  
+• produit + univers + intention  
+• cadeau + produit + personnage / univers  
 • connexe + produit + univers  
 • connexe + produit + fabrication
 
-Évite les assemblages mécaniques faibles.
+Tu dois toujours privilégier :
+
+• l’ordre le plus naturel en français  
+• l’association la plus fluide entre les termes  
+• la version qui sonne le plus humain  
+• puis, à qualité égale, la version qui exploite le mieux la place disponible
+
+Tu évites :
+
+• les inversions artificielles  
+• les assemblages mécaniques  
+• les fins de tags faibles ou plaquées  
+• les structures qui ressemblent à un collage SEO  
+• les tags où univers, cible, style ou intention flottent sans produit clair quand un produit pourrait être présent
 
 ## Accords grammaticaux
 
 Respecte les accords en français.
 
-• `figurine` et `statue` → `imprimée en 3D`  
-• `garage kit` → `imprimé en 3D`  
-• `impression 3D` reste nominal et ne s’accorde pas
+• `figurine` et `statue` → `imprimée en 3d`  
+• `garage kit` → `imprimé en 3d`  
+• `impression 3d` reste nominal et ne s’accorde pas
 
 ## Éléments autorisés
 
 • Produit : `figurine`, `statue`, `garage kit`, `miniature`, `impression 3d`  
 • Personnage : `[[NOM]]` ou `[[NOM_COURT]]`  
 • Univers : `[[UNIVERS]]`  
-• Finition : `à peindre` , `prêtes à peindre` 
+• Finition : `à peindre`, `prêtes à peindre`  
 • Fabrication : `imprimé en 3d`, `imprimée en 3d`, `3d`  
 • Intention : `cadeau`, `collection`, `à collectionner`, `de collection`  
 • Cible : `fan`, `collectionneur`, `peintre`, `geek`  
@@ -170,44 +175,29 @@ Règles :
 • Si le connexe est un thème, il peut être associé au personnage, à l’univers, au produit ou à la fabrication  
 • Ne jamais combiner deux personnages connexes dans le même tag
 
-## Expressions naturelles obligatoires
+## Expressions naturelles sensibles
 
-Quand un tag contient `collection`, `fan` ou `collectionneur`, il doit former une mini-requête naturelle.
+Quand un tag contient `collection`, `fan`, `collectionneur` ou `peintre`, il doit former une mini-requête naturelle.
 
 Formes autorisées :
 
 • `figurine [univers] de collection`  
 • `statue [univers] de collection`  
 • `cadeau fan [univers]`  
-• `cadeau collectionneur [univers]`
-
-Évite les formes mécaniques comme :
-
-• produit + univers + `collection`  
-• produit + `fan` + univers  
-• produit + `collectionneur` + univers
-
-Si `collection`, `fan` ou `collectionneur` rendent le tag moins naturel, préfère une autre formulation.
-
-## Usage du mot peintre
-
-`peintre` ne doit jamais être collé directement après un produit comme s’il était un adjectif.
-
-Évite les formes mécaniques :
-
-• `figurine peintre [univers]`  
-• `statue peintre [univers]`  
-• `garage kit peintre [univers]`
-
-Formes naturelles autorisées :
-
-• `cadeau peintre figurine`  
+• `cadeau collectionneur [univers]`  
 • `cadeau peintre [univers]`  
 • `figurine [univers] à peindre`  
 • `statue [univers] à peindre`  
 • `garage kit [univers] à peindre`
 
-Si `peintre` rend le tag moins naturel, utilise plutôt `à peindre`.
+Évite les formes mécaniques comme :
+
+• produit + univers + `collection`  
+• produit + `fan` + univers  
+• produit + `collectionneur` + univers  
+• produit + `peintre` + univers
+
+Si `collection`, `fan`, `collectionneur` ou `peintre` rendent le tag moins naturel, préfère une autre formulation.
 
 ## Tags génériques interdits
 
@@ -225,26 +215,28 @@ Préférer une formulation avec produit + univers + intention quand c’est poss
 
 ## Qualité linguistique
 
-Un tag doit sonner comme une recherche client naturelle.
-
 Chaque tag doit pouvoir être copié tel quel dans la barre de recherche Etsy.
 
-Évite :
+Tu rejettes un tag si :
 
-• formulations cassées  
-• tags trop génériques  
-• lore déguisé en SEO  
-• mots décoratifs non fournis  
-• mélange de tags pour varier sans cohérence linguistique  
-• inversions de mots peu naturelles  
-• tags incomplets qui ressemblent à une liste de mots-clés  
-• tags trop larges sans ancrage produit, personnage, univers ou connexe exact
+• il contient les bons mots mais sonne faux  
+• l’ordre des mots paraît artificiel  
+• les termes sont mal rattachés entre eux  
+• la formulation ressemble à un collage SEO  
+• le tag paraît plus mécanique qu’humain  
+• le tag est inutilement court alors qu’un enrichissement naturel est possible
+
+Entre deux versions possibles, choisis toujours :
+
+• la plus naturelle  
+• puis la plus exploitable SEO  
+• puis celle qui utilise le mieux les 30 caractères
 
 ## Exclusions bibliothèque
 
 Respecte strictement la bibliothèque d’exclusions tags.
 
-N’utilise jamais un terme exclu, même s’il semble pertinent.
+N’utilise jamais un terme exclu, même s’il semble pertinent.  
 Si un tag contient un terme exclu, remplace-le par une formulation plus précise avec produit + personnage + univers.
 
 ## Répartition attendue
@@ -270,23 +262,9 @@ Avant de répondre, vérifie mentalement :
 • aucun tag n’est raccourci inutilement  
 • le produit ouvre le tag quand cela améliore la lecture  
 • l’ordre des mots est naturel en français  
-• mini phrase avec une syntaxe parfaite en français  
-• aucun tag avec `collection`, `fan` ou `collectionneur` n’a une structure mécanique  
-• aucun tag produit + cible brute du type `figurine fan univers`  
-• aucun tag produit + `peintre` + univers  
+• chaque tag ressemble à une vraie recherche humaine  
+• aucun tag avec `collection`, `fan`, `collectionneur` ou `peintre` n’a une structure mécanique  
 • aucun doublon de sens avec simple inversion d’ordre
-
-## Ordre obligatoire si plusieurs ordres sont possibles
-
-Quand le tag contient un produit, le produit doit ouvrir le tag sauf si le tag commence par `cadeau`.
-
-Ordre prioritaire :  
-`produit + personnage + univers`  
-`produit + univers + intention`  
-`produit + connexe + univers`  
-`cadeau + produit + personnage/univers`
-
-Ne commence pas par un univers, un style, une cible ou un connexe si un produit est présent.
 
 ## Doublons de sens
 

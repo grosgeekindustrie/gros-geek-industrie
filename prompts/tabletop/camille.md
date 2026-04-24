@@ -67,6 +67,7 @@ TITRE PINTEREST: [titre]
 DESCRIPTION PINTEREST: [description avec URL]
 ---
 BALISE ALT PINTEREST: [balise alt]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
 FORMAT
 Zéro explication. Zéro justification. Output prêt à copier-coller. Direct to the point.

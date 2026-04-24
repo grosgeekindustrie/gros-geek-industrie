@@ -28,6 +28,8 @@
 + Xal'Atah - World of warcraft, statue d'elfe à peindre, garage kit de collection imprimée en 3D, sorcière, prêtresse, magicienne WOW
 + Xal'Atah - World of warcraft, Figurine de collection à peindre, garage kit imprimée en 3D pour fans de magicienne dark fantasy et de WOW
 + Spawn - Spawn, figurine et miniature de collection à peindre, garage kit imprimée en 3D pour fans de dark fantasy
++ Spawn - Spawn, figurine de collection à peindre, garage kit imprimée en 3D pour peintres, buste ou miniature 75mm, dnd, tabletop, ttrpg
++ Dante - Devil May Cry, statue de collection à peindre, garage kit  imprimée en 3D pour fans de dark fantasy et de DMC
 
 ## BLACKLISTÉS
 

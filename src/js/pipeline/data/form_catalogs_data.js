@@ -58,7 +58,8 @@
     versionOptions: [
       { value: 'FIGURINE', label: 'Figurine' },
       { value: 'MINIATURES', label: 'Miniatures' },
-      { value: 'LES_DEUX', label: 'Figurine et Miniatures' },
+      { value: 'Figurines et miniatures', label: 'Figurine et Miniatures' },
+      { value: 'Diorama', label: 'Diorama' },
     ],
   };
 
