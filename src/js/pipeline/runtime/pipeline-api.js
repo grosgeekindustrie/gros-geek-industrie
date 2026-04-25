@@ -28,6 +28,24 @@ const FILES_API_STATUS_CLASSES = Object.freeze([
   'files-api-mixed',
   'files-api-error',
 ]);
+const DEFAULT_FILES_API_DEBUG = Object.freeze({
+  enabled: false,
+  requestedImagesCount: 0,
+  usedFilesCount: 0,
+  localReuseCount: 0,
+  serverCacheHitsCount: 0,
+  filesReusedCount: 0,
+  uploadCandidatesCount: 0,
+  uploadedCount: 0,
+  invalidatedCount: 0,
+  unresolvedCount: 0,
+  workspacePersisted: null,
+  workspacePersistError: '',
+  promptCacheBreakpointApplied: false,
+  promptCacheBreakpointType: 'none',
+  status: 'none',
+  error: '',
+});
 const CACHE_FRESHNESS_CLASSES = Object.freeze([
   'cache-freshness-hot',
   'cache-freshness-gray',
@@ -93,6 +111,64 @@ function clearAnthropicImageFileState(image, { keepContentHash = false } = {}) {
 
 function getFreshAnthropicImageFiles(images = []) {
   return images.filter((image) => hasFreshAnthropicImageFile(image));
+}
+
+function createFilesApiDebug(overrides = {}) {
+  return {
+    ...DEFAULT_FILES_API_DEBUG,
+    ...overrides,
+  };
+}
+
+function buildFilesApiResult({ images = [], debug = {}, error = '' } = {}) {
+  const result = {
+    images,
+    debug: createFilesApiDebug(debug),
+  };
+
+  if (error) {
+    result.error = error;
+  }
+
+  return result;
+}
+
+function getAnthropicImageEntryId(image, index) {
+  return String(image?.id || `image-${index + 1}`);
+}
+
+function buildAnthropicUploadImagePayload(image, index) {
+  const imageId = getAnthropicImageEntryId(image, index);
+
+  return {
+    imageId,
+    name: String(image?.name || imageId),
+    mediaType: String(image?.mediaType || 'image/png'),
+    base64: String(image?.base64 || ''),
+    contentHash: String(image?.contentHash || ''),
+  };
+}
+
+async function persistAnthropicWorkspaceImages(prefix, images, warningContext) {
+  try {
+    const normalized = await window.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, images);
+    if (Array.isArray(normalized) && normalized.length) {
+      state.images[prefix] = normalized;
+    }
+
+    return {
+      images: Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : images,
+      workspacePersisted: true,
+      workspacePersistError: '',
+    };
+  } catch (error) {
+    console.warn(`${warningContext} failed for ${prefix}`, error);
+    return {
+      images: Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : images,
+      workspacePersisted: false,
+      workspacePersistError: error?.message || 'Persistance workspace impossible',
+    };
+  }
 }
 
 function resolveFilesApiStatus(debug = {}) {
@@ -193,24 +269,7 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
   const images = Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : [];
   const requestedImages = images.filter((image) => image?.base64);
   if (!requestedImages.length) {
-    return {
-      images: [],
-      debug: {
-        enabled: false,
-        requestedImagesCount: 0,
-        usedFilesCount: 0,
-        localReuseCount: 0,
-        serverCacheHitsCount: 0,
-        filesReusedCount: 0,
-        uploadCandidatesCount: 0,
-        uploadedCount: 0,
-        invalidatedCount: 0,
-        unresolvedCount: 0,
-        workspacePersisted: null,
-        workspacePersistError: '',
-        status: 'none',
-      },
-    };
+    return buildFilesApiResult();
   }
 
   const readyImagesBefore = getFreshAnthropicImageFiles(requestedImages);
@@ -223,27 +282,21 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
   const invalidatedCount = invalidatedImages.length;
   let workspacePersisted = null;
   let workspacePersistError = '';
+  let runtimeImages = images;
 
   if (invalidatedImages.length) {
     invalidatedImages.forEach((image) => {
       clearAnthropicImageFileState(image, { keepContentHash: Boolean(image?.contentHash) });
     });
 
-    try {
-      const normalized = await window.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, images);
-      if (Array.isArray(normalized) && normalized.length) {
-        state.images[prefix] = normalized;
-      }
-      workspacePersisted = true;
-    } catch (error) {
-      workspacePersisted = false;
-      workspacePersistError = error?.message || 'Persistance workspace impossible';
-      console.warn(`Persist invalidated Anthropic files failed for ${prefix}`, error);
-    }
+    const persistedState = await persistAnthropicWorkspaceImages(prefix, images, 'Persist invalidated Anthropic files');
+    runtimeImages = persistedState.images;
+    workspacePersisted = persistedState.workspacePersisted;
+    workspacePersistError = persistedState.workspacePersistError;
   }
 
   if (!uploadCandidates.length) {
-    return {
+    return buildFilesApiResult({
       images: readyImagesBefore,
       debug: {
         enabled: true,
@@ -263,7 +316,7 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
           filesReusedCount: readyImagesBefore.length,
         }),
       },
-    };
+    });
   }
 
   const response = await fetch('/anthropic/files/upload', {
@@ -271,20 +324,14 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       apiKey,
-      images: uploadCandidates.map(({ image, index }) => ({
-        imageId: String(image.id || `image-${index + 1}`),
-        name: String(image.name || `image-${index + 1}`),
-        mediaType: String(image.mediaType || 'image/png'),
-        base64: String(image.base64 || ''),
-        contentHash: String(image.contentHash || ''),
-      })),
+      images: uploadCandidates.map(({ image, index }) => buildAnthropicUploadImagePayload(image, index)),
     }),
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.ok) {
     const error = data.error || `HTTP ${response.status}`;
-    return {
+    return buildFilesApiResult({
       images: readyImagesBefore,
       debug: {
         enabled: true,
@@ -303,7 +350,7 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
         error,
       },
       error,
-    };
+    });
   }
 
   const uploadedAt = new Date().toISOString();
@@ -312,7 +359,7 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
   const serverCacheHitsCount = uploads.filter((entry) => Boolean(entry?.cached)).length;
   const uploadedCount = uploads.filter((entry) => !entry?.cached).length;
   const missingUploadIds = uploadCandidates
-    .map(({ image, index }) => String(image?.id || `image-${index + 1}`))
+    .map(({ image, index }) => getAnthropicImageEntryId(image, index))
     .filter((imageId) => !uploadsById.has(imageId));
   const invalidUploadIds = uploads
     .filter((entry) => !entry?.fileId || !entry?.contentHash)
@@ -325,7 +372,7 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
     if (invalidUploadIds.length) incompleteReasons.push(`${invalidUploadIds.length} image(s) sans file_id exploitable`);
     const error = `Réponse upload incomplète: ${incompleteReasons.join(' · ')}`;
 
-    return {
+    return buildFilesApiResult({
       images: readyImagesBefore,
       debug: {
         enabled: true,
@@ -344,11 +391,11 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
         error,
       },
       error,
-    };
+    });
   }
 
-  images.forEach((image, index) => {
-    const imageId = String(image?.id || `image-${index + 1}`);
+  runtimeImages.forEach((image, index) => {
+    const imageId = getAnthropicImageEntryId(image, index);
     const uploaded = uploadsById.get(imageId);
     if (!uploaded) return;
 
@@ -360,27 +407,20 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
   });
 
   if (hasMutation) {
-    try {
-      const normalized = await window.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, images);
-      if (Array.isArray(normalized) && normalized.length) {
-        state.images[prefix] = normalized;
-      }
-      workspacePersisted = true;
-    } catch (error) {
-      workspacePersisted = false;
-      workspacePersistError = error?.message || 'Persistance workspace impossible';
-      console.warn(`Persist Anthropic files failed for ${prefix}`, error);
-    }
+    const persistedState = await persistAnthropicWorkspaceImages(prefix, runtimeImages, 'Persist Anthropic files');
+    runtimeImages = persistedState.images;
+    workspacePersisted = persistedState.workspacePersisted;
+    workspacePersistError = persistedState.workspacePersistError;
   }
 
-  const readyImagesAfter = getFreshAnthropicImageFiles(Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : requestedImages);
+  const readyImagesAfter = getFreshAnthropicImageFiles(runtimeImages.filter((image) => image?.base64));
   const filesReusedCount = readyImagesBefore.length + serverCacheHitsCount;
   const unresolvedCount = requestedImages.length - readyImagesAfter.length;
 
   if (unresolvedCount > 0) {
     const error = `Files API incomplète: ${unresolvedCount} image(s) sans file_id exploitable après upload.`;
 
-    return {
+    return buildFilesApiResult({
       images: readyImagesAfter,
       debug: {
         enabled: true,
@@ -399,10 +439,10 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
         error,
       },
       error,
-    };
+    });
   }
 
-  return {
+  return buildFilesApiResult({
     images: readyImagesAfter,
     debug: {
       enabled: true,
@@ -423,27 +463,13 @@ async function ensureAnthropicImageFiles(prefix, apiKey) {
         filesReusedCount,
       }),
     },
-  };
+  });
 }
 
 async function buildRequestImageBlocks(prefix, apiKey) {
   const result = await ensureAnthropicImageFiles(prefix, apiKey);
   const images = Array.isArray(result?.images) ? result.images : [];
-  const debug = result?.debug || {
-    enabled: false,
-    requestedImagesCount: 0,
-    usedFilesCount: 0,
-    localReuseCount: 0,
-    serverCacheHitsCount: 0,
-    filesReusedCount: 0,
-    uploadCandidatesCount: 0,
-    uploadedCount: 0,
-    invalidatedCount: 0,
-    unresolvedCount: 0,
-    workspacePersisted: null,
-    workspacePersistError: '',
-    status: 'none',
-  };
+  const debug = createFilesApiDebug(result?.debug);
 
   if (result?.error) {
     throw new Error(result.error);
@@ -495,21 +521,10 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 
   const hasRequestedImages = Boolean(useImages && state.images[prefix].length > 0);
   let imageContentBlocks = [];
-  let filesApiDebug = {
+  let filesApiDebug = createFilesApiDebug({
     enabled: hasRequestedImages,
     requestedImagesCount: hasRequestedImages ? state.images[prefix].length : 0,
-    usedFilesCount: 0,
-    localReuseCount: 0,
-    serverCacheHitsCount: 0,
-    filesReusedCount: 0,
-    uploadCandidatesCount: 0,
-    uploadedCount: 0,
-    invalidatedCount: 0,
-    unresolvedCount: 0,
-    workspacePersisted: null,
-    workspacePersistError: '',
-    status: 'none',
-  };
+  });
 
   if (hasRequestedImages) {
     const imageRequest = await buildRequestImageBlocks(prefix, apiKey);
