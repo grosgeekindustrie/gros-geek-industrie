@@ -22,6 +22,12 @@ const PROMPT_CACHE_ZONE_GRISE_MS = 2 * 60 * 1000;
 const PROMPT_CACHE_UI_REFRESH_MS = 5 * 1000;
 const CACHE_AWARE_RUNTIME_AGENT_ID = 'cache_aware_prelaunch';
 const CACHE_AWARE_STEP_ID = 'cache_aware';
+const FILES_API_STATUS_CLASSES = Object.freeze([
+  'files-api-hit',
+  'files-api-upload',
+  'files-api-mixed',
+  'files-api-error',
+]);
 
 function getAnthropicBetaHeader({ useFiles = false } = {}) {
   return useFiles
@@ -114,7 +120,7 @@ function getAgentFilesApiElements(prefix, agentId) {
 
 function clearAgentFilesApiVisualState(prefix, agentId) {
   const { badge, card } = getAgentFilesApiElements(prefix, agentId);
-  const states = ['files-api-hit', 'files-api-upload', 'files-api-mixed', 'files-api-error'];
+  const states = FILES_API_STATUS_CLASSES;
 
   if (badge) {
     badge.classList.remove(...states);
