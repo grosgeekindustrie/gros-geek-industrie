@@ -137,6 +137,145 @@ function getAnthropicImageEntryId(image, index) {
   return String(image?.id || `image-${index + 1}`);
 }
 
+function getPromptTextCharCount(promptText = '') {
+  return String(promptText || '').length;
+}
+
+function normalizePromptDataForClaude(agentId, promptData) {
+  const isLegacy = typeof promptData === 'string';
+  const normalizedPromptText = isLegacy ? promptData : String(promptData?.filled || '');
+
+  return {
+    isLegacy,
+    promptText: normalizedPromptText,
+    fixedContent: isLegacy ? null : String(promptData?.fixedContent || ''),
+    fixedContentBlocks: isLegacy
+      ? []
+      : (Array.isArray(promptData?.fixedContentBlocks) ? promptData.fixedContentBlocks : []),
+    promptDebug: isLegacy ? null : (promptData?.promptDebug || null),
+    runtimeAgentId: isLegacy ? agentId : (String(promptData?.runtimeAgentId || '').trim() || agentId),
+  };
+}
+
+function normalizeClaudeFixedContentBlocks(fixedContentBlocks = []) {
+  let fixedPrefixChars = 0;
+
+  return fixedContentBlocks
+    .map((block, index) => {
+      const text = String(block?.text || '').trim();
+      if (!text) return null;
+
+      const chars = text.length;
+      fixedPrefixChars += chars;
+      const cacheable = Boolean(block?.cacheable);
+
+      return {
+        key: block?.key || `block_${index + 1}`,
+        text,
+        chars,
+        prefixChars: fixedPrefixChars,
+        cacheable,
+        cacheApplied: cacheable && fixedPrefixChars >= CACHEABLE_BLOCK_MIN_CHARS,
+        cacheGroup: String(block?.cacheGroup || ''),
+        cacheLabel: String(block?.cacheLabel || ''),
+      };
+    })
+    .filter(Boolean);
+}
+
+function applyImagePromptCacheBreakpoint(imageContentBlocks = [], normalizedFixedBlocks = [], filesApiDebug = {}) {
+  const appliedBreakpointCount = normalizedFixedBlocks.filter((block) => block.cacheApplied).length;
+  const canApplyImageBreakpoint = imageContentBlocks.length > 0
+    && appliedBreakpointCount < 4
+    && normalizedFixedBlocks.some((block) => block.cacheApplied);
+
+  return {
+    imageContentBlocks: imageContentBlocks.map((block, index) => {
+      if (!canApplyImageBreakpoint || index !== imageContentBlocks.length - 1) return block;
+      return {
+        ...block,
+        cache_control: { type: 'ephemeral' },
+      };
+    }),
+    filesApiDebug: createFilesApiDebug({
+      ...filesApiDebug,
+      promptCacheBreakpointApplied: canApplyImageBreakpoint,
+      promptCacheBreakpointType: canApplyImageBreakpoint ? 'last_image' : 'none',
+    }),
+  };
+}
+
+function buildClaudeRuntimePromptDebug(promptDebug, normalizedFixedBlocks, filesApiDebug, promptText = '') {
+  return {
+    ...(promptDebug || {}),
+    promptText: String(promptText || promptDebug?.promptText || ''),
+    promptChars: Number(promptDebug?.promptChars) || getPromptTextCharCount(promptText),
+    fixedBlocks: normalizedFixedBlocks.map((block, index) => ({
+      index,
+      key: block.key,
+      text: block.text,
+      cacheable: block.cacheable,
+      cacheApplied: block.cacheApplied,
+      cacheGroup: block.cacheGroup,
+      cacheLabel: block.cacheLabel,
+      chars: block.chars,
+      prefixChars: block.prefixChars,
+    })),
+    filesApiDebug: createFilesApiDebug(filesApiDebug),
+  };
+}
+
+function buildClaudeMessageContent(promptText, fixedContent, normalizedFixedBlocks, imageContentBlocks = []) {
+  const content = [];
+
+  if (normalizedFixedBlocks.length > 0) {
+    normalizedFixedBlocks.forEach((block) => {
+      const contentBlock = { type: 'text', text: block.text };
+      if (block.cacheApplied) {
+        contentBlock.cache_control = { type: 'ephemeral' };
+      }
+      content.push(contentBlock);
+    });
+    content.push(...imageContentBlocks);
+    content.push({ type: 'text', text: promptText });
+    return content;
+  }
+
+  if (fixedContent && fixedContent.length >= CACHEABLE_BLOCK_MIN_CHARS) {
+    content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
+    content.push(...imageContentBlocks);
+    content.push({ type: 'text', text: promptText });
+    return content;
+  }
+
+  content.push(...imageContentBlocks);
+  content.push({ type: 'text', text: promptText });
+  return content;
+}
+
+function getClaudeRetryDelayMs(attempt) {
+  const baseDelay = Math.min(30000, 3000 * (2 ** Math.max(attempt - 1, 0)));
+  const jitter = Math.floor(Math.random() * 1200);
+  return baseDelay + jitter;
+}
+
+function getClaudeRetryOutputElement(prefix, agentId) {
+  return document.getElementById(`${prefix}-out-${agentId}`) || document.getElementById(`out-${agentId}`);
+}
+
+function updateClaudeRetryMessage(prefix, agentId, attempt, retries, delayMs) {
+  const out = getClaudeRetryOutputElement(prefix, agentId);
+  if (!out) return;
+
+  const nextAttempt = Math.min(attempt + 1, retries);
+  out.textContent = `⏳ Anthropic surchargé · nouvelle tentative ${nextAttempt}/${retries} dans ${(delayMs / 1000).toFixed(1)}s...`;
+}
+
+function isRetryableClaudeOverloadError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('529') || message.includes('overload') || message.includes('surcharg');
+}
+
 function buildAnthropicUploadImagePayload(image, index) {
   const imageId = getAnthropicImageEntryId(image, index);
 
@@ -492,19 +631,16 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
   if (!apiKey) throw new Error('Clé API manquante');
 
   const controller = new AbortController();
-  const isLegacy = typeof promptData === 'string';
-  const promptText = isLegacy ? promptData : promptData.filled;
-  const fixedContent = isLegacy ? null : promptData.fixedContent;
-  const fixedContentBlocks = isLegacy ? [] : (Array.isArray(promptData.fixedContentBlocks) ? promptData.fixedContentBlocks : []);
-  const promptDebug = isLegacy ? null : (promptData.promptDebug || null);
-  const runtimeAgentId = isLegacy ? agentId : (String(promptData.runtimeAgentId || '').trim() || agentId);
+  const normalizedPromptData = normalizePromptDataForClaude(agentId, promptData);
+  const {
+    isLegacy,
+    promptText,
+    fixedContent,
+    fixedContentBlocks,
+    promptDebug,
+    runtimeAgentId,
+  } = normalizedPromptData;
   const prefix = pfx();
-  const content = [];
-  const getRetryDelayMs = (attempt) => {
-    const baseDelay = Math.min(30000, 3000 * (2 ** Math.max(attempt - 1, 0)));
-    const jitter = Math.floor(Math.random() * 1200);
-    return baseDelay + jitter;
-  };
   const updateRetryMessage = (attempt, delayMs) => {
     const out = document.getElementById(`${prefix}-out-${agentId}`) || document.getElementById(`out-${agentId}`);
     if (!out) return;
@@ -532,86 +668,19 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
     filesApiDebug = imageRequest.debug || filesApiDebug;
   }
 
-  let fixedPrefixChars = 0;
-  const normalizedFixedBlocks = fixedContentBlocks
-    .map((block, index) => {
-      const text = String(block?.text || '').trim();
-      if (!text) return null;
-
-      const chars = text.length;
-      fixedPrefixChars += chars;
-      const cacheable = Boolean(block?.cacheable);
-      const cacheApplied = cacheable && fixedPrefixChars >= CACHEABLE_BLOCK_MIN_CHARS;
-
-      return {
-        key: block?.key || `block_${index + 1}`,
-        text,
-        chars,
-        prefixChars: fixedPrefixChars,
-        cacheable,
-        cacheApplied,
-        cacheGroup: String(block?.cacheGroup || ''),
-        cacheLabel: String(block?.cacheLabel || ''),
-      };
-    })
-    .filter(Boolean);
-  const appliedBreakpointCount = normalizedFixedBlocks.filter((block) => block.cacheApplied).length;
-  const canApplyImageBreakpoint = imageContentBlocks.length > 0
-    && appliedBreakpointCount < 4
-    && normalizedFixedBlocks.some((block) => block.cacheApplied);
-
-  if (imageContentBlocks.length > 0) {
-    imageContentBlocks = imageContentBlocks.map((block, index) => {
-      if (!canApplyImageBreakpoint || index !== imageContentBlocks.length - 1) return block;
-      return {
-        ...block,
-        cache_control: { type: 'ephemeral' },
-      };
-    });
-
-    filesApiDebug = {
-      ...filesApiDebug,
-      promptCacheBreakpointApplied: canApplyImageBreakpoint,
-      promptCacheBreakpointType: canApplyImageBreakpoint ? 'last_image' : 'none',
-    };
-  }
+  const normalizedFixedBlocks = normalizeClaudeFixedContentBlocks(fixedContentBlocks);
+  const imageBreakpointState = applyImagePromptCacheBreakpoint(
+    imageContentBlocks,
+    normalizedFixedBlocks,
+    filesApiDebug,
+  );
+  imageContentBlocks = imageBreakpointState.imageContentBlocks;
+  filesApiDebug = imageBreakpointState.filesApiDebug;
 
   const runtimePromptDebug = isLegacy
     ? promptDebug
-    : {
-        ...(promptDebug || {}),
-        fixedBlocks: normalizedFixedBlocks.map((block, index) => ({
-          index,
-          key: block.key,
-          text: block.text,
-          cacheable: block.cacheable,
-          cacheApplied: block.cacheApplied,
-          cacheGroup: block.cacheGroup,
-          cacheLabel: block.cacheLabel,
-          chars: block.chars,
-          prefixChars: block.prefixChars,
-        })),
-        filesApiDebug,
-      };
-
-  if (normalizedFixedBlocks.length > 0) {
-    normalizedFixedBlocks.forEach((block) => {
-      const contentBlock = { type: 'text', text: block.text };
-      if (block.cacheApplied) {
-        contentBlock.cache_control = { type: 'ephemeral' };
-      }
-      content.push(contentBlock);
-    });
-    content.push(...imageContentBlocks);
-    content.push({ type: 'text', text: promptText });
-  } else if (fixedContent && fixedContent.length >= CACHEABLE_BLOCK_MIN_CHARS) {
-    content.push({ type: 'text', text: fixedContent, cache_control: { type: 'ephemeral' } });
-    content.push(...imageContentBlocks);
-    content.push({ type: 'text', text: promptText });
-  } else {
-    content.push(...imageContentBlocks);
-    content.push({ type: 'text', text: promptText });
-  }
+    : buildClaudeRuntimePromptDebug(promptDebug, normalizedFixedBlocks, filesApiDebug, promptText);
+  const content = buildClaudeMessageContent(promptText, fixedContent, normalizedFixedBlocks, imageContentBlocks);
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -655,7 +724,7 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
         throw new Error('Génération stoppée');
       }
 
-      const canRetry = attempt < retries && isRetryableOverloadError(err);
+      const canRetry = attempt < retries && isRetryableClaudeOverloadError(err);
       if (!canRetry) {
         if (filesApiDebug.enabled) {
           applyAgentFilesApiVisualState(prefix, runtimeAgentId, {
@@ -665,14 +734,14 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
           });
         }
         delete abortControllers[agentId];
-        if (isRetryableOverloadError(err)) {
+        if (isRetryableClaudeOverloadError(err)) {
           throw new Error('Serveurs Anthropic surchargés après plusieurs tentatives. Réessaie dans quelques minutes.');
         }
         throw err;
       }
 
-      const delayMs = getRetryDelayMs(attempt);
-      updateRetryMessage(attempt, delayMs);
+      const delayMs = getClaudeRetryDelayMs(attempt);
+      updateClaudeRetryMessage(prefix, agentId, attempt, retries, delayMs);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
@@ -1236,7 +1305,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
   const launchState = getPipelineLaunchState(prefix);
   const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
   const filesApiDebug = promptDebug?.filesApiDebug && typeof promptDebug.filesApiDebug === 'object'
-    ? { ...promptDebug.filesApiDebug }
+    ? createFilesApiDebug(promptDebug.filesApiDebug)
     : null;
   const event = {
     order: activeRun.events.length + 1,
@@ -1246,7 +1315,7 @@ function recordCacheDebugEvent(prefix, agentId, usage = {}, promptDebug = null) 
     cacheWriteTokens: usage.cache_creation_input_tokens || 0,
     inputTokens: usage.input_tokens || 0,
     outputTokens: usage.output_tokens || 0,
-    promptChars: promptDebug?.promptChars || 0,
+    promptChars: Number(promptDebug?.promptChars) || getPromptTextCharCount(promptDebug?.promptText || ''),
     fixedChars: fixedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
     sharedPrefixChars: sharedBlock?.chars || 0,
     cumulativeChars: cumulativeBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
@@ -1630,7 +1699,7 @@ function withPipelineCacheAwarePromptData(prefix, promptData, options = {}) {
 
   const sharedBlocks = buildPipelineCacheAwareSharedBlocks(prefix);
   const runtimeSource = String(options.source || promptData.runtimeSource || 'pipeline');
-  const promptChars = Number(promptData?.promptDebug?.promptChars) || String(promptData.filled || '').length;
+  const promptChars = Number(promptData?.promptDebug?.promptChars) || getPromptTextCharCount(promptData.filled);
 
   return {
     ...promptData,
