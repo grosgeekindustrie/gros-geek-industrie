@@ -51,6 +51,7 @@ const pipelineUiNavigationPaths = Object.freeze([
 
 const pipelineRuntimePaths = Object.freeze([
   'pipeline/runtime/pipeline-api.js',
+  'pipeline/runtime/launch_runtime_ui.js',
 ]);
 
 const pipelineDevRuntimePaths = Object.freeze([
