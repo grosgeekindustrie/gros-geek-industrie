@@ -222,11 +222,13 @@ function stopAgent(agentId) {
 }
 
 const getResumePipelineAgents = (prefix) => {
-  const runtimeAgents = typeof getPipelineRuntimeAgentsForTarget === 'function'
-    ? getPipelineRuntimeAgentsForTarget(prefix)
+  const runtimeAgents = typeof getPipelineRuntimeAgentsForPrefix === 'function'
+    ? getPipelineRuntimeAgentsForPrefix(prefix)
     : [];
 
-  return runtimeAgents.length ? runtimeAgents : getPipelineAgents();
+  if (runtimeAgents.length) return runtimeAgents;
+  if (typeof getPipelineAgentsForPrefix === 'function') return getPipelineAgentsForPrefix(prefix);
+  return getPipelineAgents();
 };
 
 const getDisplayStepIdForAgent = (prefix, agentId) => {
@@ -274,6 +276,14 @@ const syncResumeResultTab = (prefix, lastStatus) => {
   activateSoloTab(prefix, 'pipeline', { force: true });
 };
 
+const getAgentCorrectionInputValue = (prefix, agentId) => (
+  document.getElementById(`${prefix}-cor-${agentId}`)?.value || ''
+);
+
+const setResumePipelineExecutionActive = (isActive) => {
+  window.setPipelineExecutionActive?.(isActive);
+};
+
 const getContinuationAgentsAfterSelection = (prefix, agentId) => {
   const agents = getResumePipelineAgents(prefix);
   const currentIndex = agents.findIndex(({ id }) => id === agentId);
@@ -282,7 +292,7 @@ const getContinuationAgentsAfterSelection = (prefix, agentId) => {
 };
 
 const finalizePipelineContinuation = (prefix, agentId, lastStatus = 'terminé') => {
-  window.setPipelineExecutionActive?.(false);
+  setResumePipelineExecutionActive(false);
   finalizeResumeLaunchState(prefix, agentId, lastStatus);
   assembleFinal();
   syncResumeResultTab(prefix, lastStatus);
@@ -293,6 +303,31 @@ const resolveAgentRunStatus = (ok, agent) => {
   if (agent?.hasSelection) return PIPELINE_STATUS_SELECTION_REQUIRED;
   return PIPELINE_STATUS_DONE;
 };
+
+async function runResumeAgentSequence(prefix, agents, {
+  initialCorrectionByAgentId = {},
+  stopBeforeOptional = false,
+} = {}) {
+  let lastAgentId = '';
+  let lastStatus = PIPELINE_STATUS_DONE;
+
+  for (const agent of agents) {
+    if (stopBeforeOptional && agent.optional) break;
+
+    setResumeLaunchState(prefix, agent.id);
+    const correction = Object.prototype.hasOwnProperty.call(initialCorrectionByAgentId, agent.id)
+      ? initialCorrectionByAgentId[agent.id]
+      : '';
+    const ok = await runAgent(agent, correction);
+
+    lastAgentId = agent.id;
+    lastStatus = resolveAgentRunStatus(ok, agent);
+
+    if (lastStatus !== PIPELINE_STATUS_DONE) break;
+  }
+
+  return { lastAgentId, lastStatus };
+}
 
 async function continuePipelineAfterSelection(agentId) {
   const prefix = pfx();
@@ -306,19 +341,10 @@ async function continuePipelineAfterSelection(agentId) {
   let lastAgentId = agentId;
   let lastStatus = PIPELINE_STATUS_DONE;
 
-  window.setPipelineExecutionActive?.(true);
+  setResumePipelineExecutionActive(true);
 
   try {
-    for (const agent of continuationAgents) {
-      setResumeLaunchState(prefix, agent.id);
-      const ok = await runAgent(agent);
-      lastAgentId = agent.id;
-      lastStatus = resolveAgentRunStatus(ok, agent);
-
-      if (lastStatus !== PIPELINE_STATUS_DONE) {
-        break;
-      }
-    }
+    ({ lastAgentId, lastStatus } = await runResumeAgentSequence(prefix, continuationAgents));
   } catch (error) {
     lastStatus = PIPELINE_STATUS_ERROR;
     console.error('continuePipelineAfterSelection failed', error);
@@ -340,8 +366,8 @@ async function handlePipelineActionRequest(request = {}) {
   const activePrefix = prefix || pfx();
   const actionHandlers = {
     launch: () => (window.runPipelineWithCacheAware ? window.runPipelineWithCacheAware(activePrefix) : startPipeline(activePrefix)),
-    'rerun-agent': () => rerunAgent(agentId),
-    'rerun-suite': () => rerunSuite(agentId),
+    'rerun-agent': () => rerunAgent(agentId, activePrefix),
+    'rerun-suite': () => rerunSuite(agentId, activePrefix),
     'stop-agent': () => stopAgent(agentId, activePrefix),
     'validate-title': () => validateTitre(agentId),
     'validate-tags': () => validateTags(agentId),
@@ -353,14 +379,16 @@ async function handlePipelineActionRequest(request = {}) {
   return actionHandler();
 }
 
-async function rerunAgent(agentId) {
-  const p = pfx();
+async function rerunAgent(agentId, prefix = pfx()) {
+  const p = prefix;
   const agents = getResumePipelineAgents(p);
-  const agent = agents.find(({ id }) => id === agentId) || getPipelineAgents().find(({ id }) => id === agentId);
+  const agent = agents.find(({ id }) => id === agentId)
+    || getPipelineAgentsForPrefix?.(p)?.find(({ id }) => id === agentId)
+    || getPipelineAgents().find(({ id }) => id === agentId);
   if (!agent) return;
 
-  const cor = document.getElementById(`${p}-cor-${agentId}`).value;
-  window.setPipelineExecutionActive?.(true);
+  const cor = getAgentCorrectionInputValue(p, agentId);
+  setResumePipelineExecutionActive(true);
   setResumeLaunchState(p, agent.id);
 
   let lastStatus = PIPELINE_STATUS_DONE;
@@ -373,45 +401,36 @@ async function rerunAgent(agentId) {
     console.error('rerunAgent failed', error);
     showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
   } finally {
-    window.setPipelineExecutionActive?.(false);
+    setResumePipelineExecutionActive(false);
     finalizeResumeLaunchState(p, agent.id, lastStatus);
     assembleFinal();
     syncResumeResultTab(p, lastStatus);
   }
 }
 
-async function rerunSuite(agentId) {
-  const p = pfx();
+async function rerunSuite(agentId, prefix = pfx()) {
+  const p = prefix;
   const agents = getResumePipelineAgents(p);
   const idx = agents.findIndex(({ id }) => id === agentId);
   if (idx === -1) return;
 
-  const cor = document.getElementById(`${p}-cor-${agentId}`).value;
+  const cor = getAgentCorrectionInputValue(p, agentId);
   let lastAgentId = agents[idx].id;
   let lastStatus = PIPELINE_STATUS_DONE;
 
-  window.setPipelineExecutionActive?.(true);
+  setResumePipelineExecutionActive(true);
 
   try {
-    for (let i = idx; i < agents.length; i++) {
-      const agent = agents[i];
-      if (agent.optional) break;
-
-      setResumeLaunchState(p, agent.id);
-      const ok = await runAgent(agent, i === idx ? cor : '');
-      lastAgentId = agent.id;
-      lastStatus = resolveAgentRunStatus(ok, agent);
-
-      if (lastStatus !== PIPELINE_STATUS_DONE) {
-        break;
-      }
-    }
+    ({ lastAgentId, lastStatus } = await runResumeAgentSequence(p, agents.slice(idx), {
+      initialCorrectionByAgentId: { [agentId]: cor },
+      stopBeforeOptional: true,
+    }));
   } catch (error) {
     lastStatus = PIPELINE_STATUS_ERROR;
     console.error('rerunSuite failed', error);
     showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
   } finally {
-    window.setPipelineExecutionActive?.(false);
+    setResumePipelineExecutionActive(false);
     finalizeResumeLaunchState(p, lastAgentId, lastStatus);
     assembleFinal();
     syncResumeResultTab(p, lastStatus);

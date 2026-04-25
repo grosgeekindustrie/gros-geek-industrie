@@ -53,6 +53,9 @@
   );
 
   const getPipelineAgents = () => getPipelineAgentsForMode(global.currentMode);
+  const getPipelineAgentsForPrefix = (prefix = 'tt') => (
+    getPipelineAgentsForMode(getPipelineModeByPrefix(prefix))
+  );
 
   const getPipelineLaunchLabel = (agent) => {
     const title = String(agent?.title || '');
@@ -106,6 +109,16 @@
     return stopAfterAgentIndex === -1 ? runtimeAgentIds : runtimeAgentIds.slice(0, stopAfterAgentIndex + 1);
   };
 
+  const getPipelineRuntimeAgentsForMode = (mode = global.currentMode, stepId = '') => {
+    const runtimeAgentIds = getPipelineRuntimeAgentIdsForTarget(mode, stepId);
+    const agentMap = new Map(getPipelineAgentsForMode(mode).map((agent) => [agent.id, agent]));
+    return runtimeAgentIds.map((agentId) => agentMap.get(agentId)).filter(Boolean);
+  };
+
+  const getPipelineRuntimeAgentsForPrefix = (prefix = 'tt', stepId = '') => (
+    getPipelineRuntimeAgentsForMode(getPipelineModeByPrefix(prefix), stepId)
+  );
+
   const getPipelineWarmupStepId = (mode = global.currentMode) => {
     const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
     return steps[0]?.id || '';
@@ -128,8 +141,11 @@
     getPipelinePrefixes,
     getPipelineAgents,
     getPipelineAgentsForMode,
+    getPipelineAgentsForPrefix,
     getPipelineLaunchLabel,
     getPipelineRuntimeAgentIds,
+    getPipelineRuntimeAgentsForMode,
+    getPipelineRuntimeAgentsForPrefix,
     getPipelineTargetSteps,
     getPipelineTargetStepMeta,
     getPipelineFinalTargetStepId,
@@ -150,8 +166,11 @@
     getPipelinePrefixes,
     getPipelineAgents,
     getPipelineAgentsForMode,
+    getPipelineAgentsForPrefix,
     getPipelineLaunchLabel,
     getPipelineRuntimeAgentIds,
+    getPipelineRuntimeAgentsForMode,
+    getPipelineRuntimeAgentsForPrefix,
     getPipelineTargetSteps,
     getPipelineTargetStepMeta,
     getPipelineFinalTargetStepId,

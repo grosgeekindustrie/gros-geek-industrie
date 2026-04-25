@@ -11,7 +11,13 @@
   if (typeof createSoloTabsController !== 'function') return;
 
   const isVisible = (element) => Boolean(element) && window.getComputedStyle(element).display !== 'none';
-  const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
+  const getAgents = () => (
+    typeof global.getPipelineRuntimeAgentsForPrefix === 'function'
+      ? global.getPipelineRuntimeAgentsForPrefix('tt')
+      : (typeof global.getPipelineAgentsForPrefix === 'function'
+          ? global.getPipelineAgentsForPrefix('tt')
+          : [])
+  );
   const getNameField = () => document.getElementById('tt-fNomCourt') || document.getElementById('tt-fNom');
   const getFullNameField = () => document.getElementById('tt-fNom') || document.getElementById('tt-fNomCourt');
 

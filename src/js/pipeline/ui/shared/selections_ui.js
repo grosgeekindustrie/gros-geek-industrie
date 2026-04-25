@@ -10,7 +10,16 @@
   const tagsApi = () => global.PipelineUITags || {};
   const titlesApi = () => global.PipelineUITitles || {};
   const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt'));
-  const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
+  const getAgents = () => {
+    const prefix = getPfx();
+    if (typeof global.getPipelineRuntimeAgentsForPrefix === 'function') {
+      return global.getPipelineRuntimeAgentsForPrefix(prefix);
+    }
+    if (typeof global.getPipelineAgentsForPrefix === 'function') {
+      return global.getPipelineAgentsForPrefix(prefix);
+    }
+    return typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : [];
+  };
 
   const continueAfterSelection = async (agentId) => {
     if (typeof global.continuePipelineAfterSelection === 'function') {
