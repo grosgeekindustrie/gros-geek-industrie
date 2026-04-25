@@ -36,6 +36,28 @@
   let pipelineActionDelegationBound = false;
 
   const PIPELINE_ACTION_SELECTOR = '[data-pipeline-action]';
+  const BACK_BUTTON_LABELS = {
+    cancel: 'Annuler',
+    back: 'Retour',
+  };
+  const BACK_BUTTON_TITLES = {
+    cancel: 'Annuler execution et revenir a l accueil',
+    back: 'Revenir a l accueil',
+  };
+  const TOAST_CLOSE_LABEL = 'x';
+  const STORAGE_CLEAR_CONFIRM = 'Vider le cache local ?\n(regles persistantes, formulaire)';
+  const STORAGE_CLEAR_SUCCESS = 'Cache vide - rechargement...';
+  const RAW_INPUT_MISSING_MESSAGE = "Pas encore genere - lance d abord cet agent";
+  const RAW_INPUT_COPIED_MESSAGE = 'Input copie';
+  const HOME_HEADER_CONTEXT = 'Etsy Pipeline - Generation de fiches produit IA';
+  const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
+  const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
+  const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
+  const PIPELINE_META_SEPARATOR = '&bull;';
+  const PIPELINE_STEP_SEPARATOR = '&rsaquo;';
+  const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
+  const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
+  const AGENT_TITLE_EMOJI_PATTERN = /[🔍🖼️📊🔖🏷️📝]/gu;
 
   const buildPipelineActionRequest = (trigger) => ({
     action: String(trigger.dataset.pipelineAction || '').trim(),
@@ -97,10 +119,10 @@
 
     const isExecuting = isPipelineExecutionActive();
     backBtn.classList.toggle('is-cancel', isExecuting);
-    backBtn.textContent = isExecuting ? '✕ Annuler' : '↩️ Retour';
+    backBtn.textContent = isExecuting ? BACK_BUTTON_LABELS.cancel : BACK_BUTTON_LABELS.back;
     backBtn.title = isExecuting
-      ? 'Annuler l’exécution et revenir à l’accueil'
-      : 'Revenir à l’accueil';
+      ? BACK_BUTTON_TITLES.cancel
+      : BACK_BUTTON_TITLES.back;
   }
 
   function showToast(msg, color = '#4caf7d', duration = 2500) {
@@ -114,7 +136,7 @@
     text.textContent = msg;
 
     const close = document.createElement('button');
-    close.textContent = '✕';
+    close.textContent = TOAST_CLOSE_LABEL;
     close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:14px;font-weight:700;padding:0;opacity:.7;flex-shrink:0;';
 
     toast.appendChild(text);
@@ -134,24 +156,24 @@
   }
 
   function clearAllStorage() {
-    if (!confirm('Vider le cache local ?\n(règles persistantes, formulaire)')) return;
+    if (!confirm(STORAGE_CLEAR_CONFIRM)) return;
     localStorage.clear();
     getState().persistentRules = {};
     getAgents().forEach((agent) => global.refreshRules?.(agent.id));
-    showToast('Cache vidé ✓ — rechargement...');
+    showToast(STORAGE_CLEAR_SUCCESS);
     setTimeout(() => location.reload(), 800);
   }
 
   function showRawInput(agentId) {
     const raw = getState().inputs[agentId];
     if (!raw) {
-      showToast("Pas encore généré — lance d'abord cet agent", '#e8c547');
+      showToast(RAW_INPUT_MISSING_MESSAGE, '#e8c547');
       return;
     }
 
     const agent = getAgents().find((entry) => entry.id === agentId);
     const label = agent ? agent.title : agentId;
-    document.getElementById('rawInputTitle').textContent = `</> INPUT — ${label}`;
+    document.getElementById('rawInputTitle').textContent = `</> INPUT - ${label}`;
     document.getElementById('rawInputTextarea').value = raw;
     document.getElementById('rawInputCount').textContent = `${raw.length.toLocaleString()} car.`;
     document.getElementById('rawInputLightbox').classList.add('visible');
@@ -163,7 +185,7 @@
 
   function copyRawInput() {
     navigator.clipboard.writeText(document.getElementById('rawInputTextarea').value);
-    showToast('Input copié ✓');
+    showToast(RAW_INPUT_COPIED_MESSAGE);
   }
 
   function showView(name) {
@@ -191,13 +213,13 @@
 
     ctx.className = 'app-context';
     if (viewName === 'home') {
-      ctx.textContent = 'Etsy Pipeline · Génération de fiches produit IA';
+      ctx.textContent = HOME_HEADER_CONTEXT;
     } else if (viewName === 'form') {
       const label = document.getElementById('formModeLabel')?.textContent || '';
       ctx.textContent = label;
       ctx.classList.add(getCurrentMode() === 'tabletop' ? 'mode-tt' : 'mode-col');
     } else if (viewName === 'pipeline') {
-      ctx.textContent = '⟳ Pipeline en cours...';
+      ctx.textContent = PIPELINE_RUNNING_CONTEXT;
       ctx.classList.add('mode-pipeline');
     }
   }
@@ -256,7 +278,7 @@
     const executionRunning = isPipelineExecutionActive();
     if (executionRunning) {
       stopAllAgents({ silent: true });
-      showToast('⏹ Exécution annulée', '#ff4757');
+      showToast(FLOW_CANCELLED_MESSAGE, '#ff4757');
       return;
     }
     const timeline = document.getElementById('pipelineTimeline');
@@ -275,7 +297,7 @@
       if (controller) controller.abort();
       delete controllers[agent.id];
     });
-    if (!silent) showToast('⏹ Pipeline stoppé', '#ff4757');
+    if (!silent) showToast(PIPELINE_STOPPED_MESSAGE, '#ff4757');
     setPipelineExecutionActive(false);
     syncHeaderBackAction();
   }
@@ -288,14 +310,14 @@
 
     const agents = getAgents();
     const meta = metaLabel
-      ? `<span class="pipeline-step active"><span class="pipeline-step-label">${metaLabel}</span></span><span class="pipeline-step-sep">•</span>`
+      ? `<span class="pipeline-step active"><span class="pipeline-step-label">${metaLabel}</span></span><span class="pipeline-step-sep">${PIPELINE_META_SEPARATOR}</span>`
       : '';
 
     timeline.innerHTML = meta + agents.map((agent, i) =>
-      (i > 0 ? '<span class="pipeline-step-sep">›</span>' : '') +
+      (i > 0 ? `<span class="pipeline-step-sep">${PIPELINE_STEP_SEPARATOR}</span>` : '') +
       `<span class="pipeline-step" id="tl-step-${agent.id}">` +
       `<span class="pipeline-step-dot" id="tl-dot-${agent.id}"></span>` +
-      `<span class="pipeline-step-label">${agent.title.replace(/^[^—]+— /, '').split(' · ')[0].replace(/[🔍🖼️📊🔖🏷️📝]/u, '').trim()}</span>` +
+      `<span class="pipeline-step-label">${agent.title.replace(AGENT_TITLE_PREFIX_PATTERN, '').split(AGENT_TITLE_PART_SEPARATOR)[0].replace(AGENT_TITLE_EMOJI_PATTERN, '').trim()}</span>` +
       '</span>'
     ).join('');
   }

@@ -9,6 +9,15 @@ window.PipelineUIShell = window.PipelineUIShell || {};
 
 var currentMode = 'tabletop'; // 'tabletop' | 'collection'
 const FALLBACK_MODE_PREFIX = { tabletop: 'tt', collection: 'col' };
+const MODE_SUCCESS_SUFFIX = 'OK';
+const DEFAULT_MODE_TITLES = {
+  tabletop: 'Etsy Pipeline DnD',
+  collection: 'Etsy Pipeline Collection',
+};
+const DEFAULT_PAGE_TITLES = {
+  tabletop: 'Etsy Pipeline DnD v1.2',
+  collection: 'Etsy Pipeline Collection v1.2',
+};
 const getModeUiConfig = (mode = currentMode) => (
   typeof getPipelineUiConfig === 'function' ? getPipelineUiConfig(mode) : null
 );
@@ -36,8 +45,8 @@ function switchMode(mode) {
 
   document.body.classList.toggle('mode-collection', !isTabletop);
 
-  const modeTitle = modeUiConfig?.headerTitle || (isTabletop ? '🎲 Etsy Pipeline DnD' : '🖼️ Etsy Pipeline Collection');
-  const pageTitle = modeUiConfig?.pageTitle || (isTabletop ? '🎲 Etsy Pipeline DnD v1.2' : '🖼️ Etsy Pipeline Collection v1.2');
+  const modeTitle = modeUiConfig?.headerTitle || DEFAULT_MODE_TITLES[mode] || DEFAULT_MODE_TITLES.tabletop;
+  const pageTitle = modeUiConfig?.pageTitle || DEFAULT_PAGE_TITLES[mode] || DEFAULT_PAGE_TITLES.tabletop;
   const headerModeLabel = modeUiConfig?.headerModeLabel || (isTabletop ? 'DnD Tabletop' : 'Collection');
 
   const headerTitle = document.getElementById('headerTitle');
@@ -65,7 +74,7 @@ function switchMode(mode) {
   buildPipeline();
   loadFormState();
   loadAllFiles(true);
-  showToast(`Mode ${isTabletop ? 'Tabletop DnD' : 'Collection'} ✓`, isTabletop ? '#e8c547' : '#7eb8f7');
+  showToast(`Mode ${isTabletop ? 'Tabletop DnD' : 'Collection'} ${MODE_SUCCESS_SUFFIX}`, isTabletop ? '#e8c547' : '#7eb8f7');
 
   try {
     const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
