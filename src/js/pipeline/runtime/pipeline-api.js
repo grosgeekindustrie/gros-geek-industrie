@@ -28,6 +28,16 @@ const FILES_API_STATUS_CLASSES = Object.freeze([
   'files-api-mixed',
   'files-api-error',
 ]);
+const CACHE_FRESHNESS_CLASSES = Object.freeze([
+  'cache-freshness-hot',
+  'cache-freshness-gray',
+  'cache-freshness-stale',
+]);
+const CACHE_FRESHNESS_CLASS_BY_STATE = Object.freeze({
+  hot: 'cache-freshness-hot',
+  gray: 'cache-freshness-gray',
+  stale: 'cache-freshness-stale',
+});
 
 function getAnthropicBetaHeader({ useFiles = false } = {}) {
   return useFiles
@@ -937,8 +947,7 @@ function renderPromptCacheIndicator(prefix = '') {
 
   const freshness = getPromptCacheFreshnessInfo(resolvedPrefix);
   const status = getLastCacheStatus(resolvedPrefix);
-  const classes = ['cache-freshness-hot', 'cache-freshness-gray', 'cache-freshness-stale'];
-  cacheNode.classList.remove(...classes);
+  cacheNode.classList.remove(...CACHE_FRESHNESS_CLASSES);
   cacheNode.textContent = `🧠 cache ${status}`;
 
   if (!freshness.hasEstimate) {
@@ -946,11 +955,7 @@ function renderPromptCacheIndicator(prefix = '') {
     return;
   }
 
-  const stateClass = freshness.state === 'hot'
-    ? 'cache-freshness-hot'
-    : freshness.state === 'gray'
-      ? 'cache-freshness-gray'
-      : 'cache-freshness-stale';
+  const stateClass = CACHE_FRESHNESS_CLASS_BY_STATE[freshness.state] || 'cache-freshness-stale';
   cacheNode.classList.add(stateClass);
   cacheNode.title = [
     `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`,
