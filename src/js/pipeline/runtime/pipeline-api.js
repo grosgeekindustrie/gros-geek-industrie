@@ -38,6 +38,9 @@ const CACHE_FRESHNESS_CLASS_BY_STATE = Object.freeze({
   gray: 'cache-freshness-gray',
   stale: 'cache-freshness-stale',
 });
+const PIPELINE_LAUNCH_DEFAULT_SCOPE = 'pipeline complet';
+const PIPELINE_LAUNCH_LABEL = 'Lancer le pipeline complet';
+const DEFAULT_PIPELINE_PREFIXES = Object.freeze(['tt', 'col']);
 
 function getAnthropicBetaHeader({ useFiles = false } = {}) {
   return useFiles
@@ -992,7 +995,7 @@ function beginCacheDebugRun(prefix, pipelineAgents = [], options = {}) {
   const runRecord = {
     prefix,
     mode: getPipelineLaunchMode(prefix),
-    launchScope: String(options.launchScope || 'pipeline complet'),
+    launchScope: String(options.launchScope || PIPELINE_LAUNCH_DEFAULT_SCOPE),
     cacheAwareEnabled: Boolean(options.cacheAwareEnabled),
     startedAt: new Date().toISOString(),
     finishedAt: '',
@@ -1406,6 +1409,10 @@ function getPipelineLaunchSummary(prefix) {
   ].join('\n');
 }
 
+function getPipelinePrefixesForLaunchPanels() {
+  return typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : DEFAULT_PIPELINE_PREFIXES;
+}
+
 const syncStandaloneLaunchButtons = (prefix) => {
   const launchState = getPipelineLaunchState(prefix);
   const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
@@ -1413,8 +1420,8 @@ const syncStandaloneLaunchButtons = (prefix) => {
   buttons.forEach((button) => {
     button.disabled = launchState.isRunning;
     if (button.id === `runBtn-${prefix}`) {
-      button.title = 'Lancer le pipeline complet';
-      button.setAttribute('aria-label', 'Lancer le pipeline complet');
+      button.title = PIPELINE_LAUNCH_LABEL;
+      button.setAttribute('aria-label', PIPELINE_LAUNCH_LABEL);
       return;
     }
 
@@ -1436,7 +1443,7 @@ function refreshPipelineLaunchPanelState(prefix) {
 }
 
 function refreshPipelineLaunchPanels() {
-  const prefixes = typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : ['tt', 'col'];
+  const prefixes = getPipelinePrefixesForLaunchPanels();
   prefixes.forEach((prefix) => renderPipelineLaunchPanel(prefix));
 }
 
