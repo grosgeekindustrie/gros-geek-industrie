@@ -106,9 +106,8 @@ const {
 // ═══════════════════════════════════════════════════════════
 // PROMPT BUILDER
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/prompt_biblio_ui.js
-
-// Extracted to src/js/ui/helper_ui.js
+// Extracted to src/js/pipeline/ui/shared/prompt_biblio_ui.js
+// Helpers now live in src/js/pipeline/ui/shared/helper_ui.js
 
 // Flux tags : Collection et Tabletop utilisent désormais le même mono-agent.
 // La future sélection manuelle UI viendra dans un second temps, sans réintroduire
@@ -117,7 +116,7 @@ const {
 // ═══════════════════════════════════════════════════════════
 // BIBLIOTHÈQUES
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/prompt_biblio_ui.js
+// Extracted to src/js/pipeline/ui/shared/prompt_biblio_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // PROMPT LIGHTBOX
@@ -125,52 +124,52 @@ const {
 // ═══════════════════════════════════════════════════════════
 // ÉCHELLES
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/echelles_ui.js
+// Extracted to src/js/shared/media/echelles_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // IMAGES
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/images_ui.js
+// Extracted to src/js/shared/media/images_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // ARCHÉTYPES & CHAMPS FORMULAIRE
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/forms_ui.js
+// Extracted to src/js/pipeline/ui/shared/forms_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // CONTEXT BUILDER
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/forms_ui.js
+// Extracted to src/js/pipeline/ui/shared/forms_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // BUILD PIPELINE UI
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/cards_ui.js
+// Extracted to src/js/pipeline/ui/shared/cards_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // TAGS — VALIDATION / EXPLORER
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/selections_ui.js
+// Extracted to src/js/pipeline/ui/shared/selections_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // TITRE SÉLECTION
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/selections_ui.js
+// Extracted to src/js/pipeline/ui/shared/selections_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // SÉLECTION ACCROCHE / CTA
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/selections_ui.js
+// Extracted to src/js/pipeline/ui/shared/selections_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // API CALL
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/app_ui.js
+// Extracted to src/js/app/shell/app_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // INPUT BRUT LIGHTBOX
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/app_ui.js
+// Extracted to src/js/app/shell/app_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // INIT
@@ -179,22 +178,22 @@ const {
 // ═══════════════════════════════════════════════════════════
 // VIEW SYSTEM
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/app_ui.js
+// Extracted to src/js/app/shell/app_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // SETTINGS PANEL
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/app_ui.js
+// Extracted to src/js/app/shell/app_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // LOAD PERSISTED DATA
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/forms_ui.js
+// Extracted to src/js/pipeline/ui/shared/forms_ui.js
 
 // ═══════════════════════════════════════════════════════════
 // CHARGEMENT FICHIERS MD
 // ═══════════════════════════════════════════════════════════
-// Extracted to src/js/ui/forms_ui.js
+// Extracted to src/js/pipeline/ui/shared/forms_ui.js
 
 // Reliquat runtime déplacé depuis pipeline-api.
 // État actuel : ces helpers ont été ramenés ici pour alléger pipeline-api sans casser le
@@ -214,7 +213,11 @@ const AGENT_MODELS = {
   cache_aware:'claude-sonnet-4-20250514',
 };
 
-function stopAgent(agentId, _p) {
+const PIPELINE_STATUS_DONE = 'terminé';
+const PIPELINE_STATUS_ERROR = 'erreur';
+const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause · sélection requise';
+
+function stopAgent(agentId) {
   if (abortControllers[agentId]) { abortControllers[agentId].abort(); delete abortControllers[agentId]; }
 }
 
@@ -285,40 +288,45 @@ const finalizePipelineContinuation = (prefix, agentId, lastStatus = 'terminé') 
   syncResumeResultTab(prefix, lastStatus);
 };
 
+const resetAgentOrchestratorAttempts = (agentId) => {
+  state.orchAttempts[agentId] = 0;
+};
+
+const resolveAgentRunStatus = (ok, agent) => {
+  if (!ok) return PIPELINE_STATUS_ERROR;
+  if (agent?.hasSelection) return PIPELINE_STATUS_SELECTION_REQUIRED;
+  return PIPELINE_STATUS_DONE;
+};
+
 async function continuePipelineAfterSelection(agentId) {
   const prefix = pfx();
   const continuationAgents = getContinuationAgentsAfterSelection(prefix, agentId);
 
   if (!continuationAgents.length) {
-    finalizePipelineContinuation(prefix, agentId, 'terminé');
+    finalizePipelineContinuation(prefix, agentId, PIPELINE_STATUS_DONE);
     return;
   }
 
   let lastAgentId = agentId;
-  let lastStatus = 'terminé';
+  let lastStatus = PIPELINE_STATUS_DONE;
 
   window.setPipelineExecutionActive?.(true);
 
   try {
     for (const agent of continuationAgents) {
       setResumeLaunchState(prefix, agent.id);
-      state.orchAttempts[agent.id] = 0;
+      resetAgentOrchestratorAttempts(agent.id);
 
       const ok = await runAgent(agent);
       lastAgentId = agent.id;
+      lastStatus = resolveAgentRunStatus(ok, agent);
 
-      if (!ok) {
-        lastStatus = 'erreur';
-        break;
-      }
-
-      if (agent.hasSelection) {
-        lastStatus = 'en pause · sélection requise';
+      if (lastStatus !== PIPELINE_STATUS_DONE) {
         break;
       }
     }
   } catch (error) {
-    lastStatus = 'erreur';
+    lastStatus = PIPELINE_STATUS_ERROR;
     console.error('continuePipelineAfterSelection failed', error);
     showToast(`❌ Suite du pipeline: ${error.message}`, '#ff4757');
   } finally {
@@ -358,21 +366,17 @@ async function rerunAgent(agentId) {
   if (!agent) return;
 
   const cor = document.getElementById(`${p}-cor-${agentId}`).value;
-  state.orchAttempts[agentId] = 0;
+  resetAgentOrchestratorAttempts(agentId);
   window.setPipelineExecutionActive?.(true);
   setResumeLaunchState(p, agent.id);
 
-  let lastStatus = 'terminé';
+  let lastStatus = PIPELINE_STATUS_DONE;
 
   try {
     const ok = await runAgent(agent, cor);
-    if (!ok) {
-      lastStatus = 'erreur';
-    } else if (agent.hasSelection) {
-      lastStatus = 'en pause · sélection requise';
-    }
+    lastStatus = resolveAgentRunStatus(ok, agent);
   } catch (error) {
-    lastStatus = 'erreur';
+    lastStatus = PIPELINE_STATUS_ERROR;
     console.error('rerunAgent failed', error);
     showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
   } finally {
@@ -391,7 +395,7 @@ async function rerunSuite(agentId) {
 
   const cor = document.getElementById(`${p}-cor-${agentId}`).value;
   let lastAgentId = agents[idx].id;
-  let lastStatus = 'terminé';
+  let lastStatus = PIPELINE_STATUS_DONE;
 
   window.setPipelineExecutionActive?.(true);
 
@@ -401,23 +405,18 @@ async function rerunSuite(agentId) {
       if (agent.optional) break;
 
       setResumeLaunchState(p, agent.id);
-      state.orchAttempts[agent.id] = 0;
+      resetAgentOrchestratorAttempts(agent.id);
 
       const ok = await runAgent(agent, i === idx ? cor : '');
       lastAgentId = agent.id;
+      lastStatus = resolveAgentRunStatus(ok, agent);
 
-      if (!ok) {
-        lastStatus = 'erreur';
-        break;
-      }
-
-      if (agent.hasSelection) {
-        lastStatus = 'en pause · sélection requise';
+      if (lastStatus !== PIPELINE_STATUS_DONE) {
         break;
       }
     }
   } catch (error) {
-    lastStatus = 'erreur';
+    lastStatus = PIPELINE_STATUS_ERROR;
     console.error('rerunSuite failed', error);
     showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
   } finally {
@@ -428,6 +427,50 @@ async function rerunSuite(agentId) {
   }
 }
 
+const savePersistentRules = () => {
+  localStorage.setItem('pipeline.rules', JSON.stringify(state.persistentRules));
+};
+
+const getOutputText = (prefix, agentId) => {
+  const outputNode = document.getElementById(`${prefix}-out-${agentId}`);
+  return outputNode?.textContent || state.outputs[agentId] || '';
+};
+
+const getCopyAllOutputAgents = (prefix) => (
+  prefix === 'col'
+    ? [
+        { id:'tags', label:'01 â€” TAGS' },
+        { id:'titre', label:'02 â€” TITRES' },
+        { id:'description', label:'03 â€” DESCRIPTION' },
+        { id:'alt', label:'04 â€” BALISE ALT' },
+      ]
+    : [
+        { id:'marche', label:'01 â€” ANALYSE MARCHÃ‰' },
+        { id:'tags', label:'02 â€” TAGS' },
+        { id:'titre', label:'03 â€” TITRES' },
+        { id:'description', label:'04 â€” DESCRIPTION' },
+        { id:'alt', label:'05 â€” BALISE ALT' },
+      ]
+);
+
+const renderPersistentRules = (agentId, rules) => (
+  'ðŸ“Œ RÃ¨gles permanentes:<br>' + rules.map((rule, index) =>
+    `<span onclick="removeRule('${agentId}',${index})" title="Supprimer">âœ• ${rule}</span>`
+  ).join('')
+);
+
+const setFinalSectionContent = (sectionId, contentId, content, key = '') => {
+  if (!content) return;
+
+  document.getElementById(sectionId).style.display = 'block';
+  const contentNode = document.getElementById(contentId);
+  if (!contentNode) return;
+
+  contentNode.textContent = window.PipelineUIRender?.formatFinalOutputText
+    ? window.PipelineUIRender.formatFinalOutputText(key, content)
+    : content;
+};
+
 function persistRule(agentId) {
   const p = pfx();
   const cor = document.getElementById(`${p}-cor-${agentId}`).value.trim();
@@ -436,12 +479,12 @@ function persistRule(agentId) {
   state.persistentRules[agentId].push(cor);
   document.getElementById(`${p}-cor-${agentId}`).value = '';
   refreshRules(agentId);
-  localStorage.setItem('pipeline.rules', JSON.stringify(state.persistentRules));
+  savePersistentRules();
 }
 function removeRule(agentId, i) {
   state.persistentRules[agentId].splice(i, 1);
   refreshRules(agentId);
-  localStorage.setItem('pipeline.rules', JSON.stringify(state.persistentRules));
+  savePersistentRules();
 }
 function refreshRules(agentId) {
   const p = pfx();
@@ -490,23 +533,17 @@ function assembleFinal() {
   }
 }
 
-function copyOut(agentId) { const p = pfx(); const node = document.getElementById(`${p}-out-${agentId}`); const text = node?.textContent || state.outputs[agentId] || ''; navigator.clipboard.writeText(text); showToast('Copié ✓'); }
+function copyOut(agentId) {
+  const prefix = pfx();
+  const text = getOutputText(prefix, agentId);
+
+  navigator.clipboard.writeText(text);
+  showToast('Copié ✓');
+}
+
 function copyAllOutputs() {
   const p = pfx();
-  const agents = p === 'col'
-    ? [
-        { id:'tags', label:'01 — TAGS' },
-        { id:'titre', label:'02 — TITRES' },
-        { id:'description', label:'03 — DESCRIPTION' },
-        { id:'alt', label:'04 — BALISE ALT' },
-      ]
-    : [
-        { id:'marche', label:'01 — ANALYSE MARCHÉ' },
-        { id:'tags', label:'02 — TAGS' },
-        { id:'titre', label:'03 — TITRES' },
-        { id:'description', label:'04 — DESCRIPTION' },
-        { id:'alt', label:'05 — BALISE ALT' },
-      ];
+  const agents = getCopyAllOutputAgents(p);
   const parts = agents.map((agent) => {
     const out = state.outputs[agent.id] || '';
     return out ? `${'═'.repeat(50)}\n${agent.label}\n${'═'.repeat(50)}\n${out}` : null;

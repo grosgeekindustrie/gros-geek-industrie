@@ -1,7 +1,7 @@
 'use strict';
 
 // Runtime de développement léger.
-// Lit src/js/ui/data/pipeline_dev_data.js et applique les options sans modifier
+// Lit src/js/pipeline/dev/pipeline_dev_data.js et applique les options sans modifier
 // config_ui.js ni le moteur principal. Ce fichier doit rester petit et retirable.
 
 (function initPipelineUIDevRuntime(global) {

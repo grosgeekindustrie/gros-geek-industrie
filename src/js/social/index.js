@@ -3,8 +3,13 @@
  *
  * Phase bootstrap : aucun script social autonome à charger ici pour l'instant.
  */
-const socialScriptPaths = [];
+const socialScriptPaths = Object.freeze([]);
+
+const socialBootstrapManifest = Object.freeze({
+  scripts: socialScriptPaths,
+});
 
 export {
   socialScriptPaths,
+  socialBootstrapManifest,
 };

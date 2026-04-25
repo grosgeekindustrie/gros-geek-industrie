@@ -29,7 +29,6 @@ ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
 ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
 ANTHROPIC_FILES_CACHE_LOCK = Lock()
 SOLO_EXPORT_ROOT = 'export'
-BATCH_EXPORT_ROOT = 'batch'
 
 
 def safe_path(raw: str) -> Path | None:
@@ -379,15 +378,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(e)})
             return
 
-        if path in ('/batch/export', '/solo/export'):
+        if path == '/solo/export':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
-            output_root = BATCH_EXPORT_ROOT if path == '/batch/export' else SOLO_EXPORT_ROOT
 
             try:
                 data = json.loads(body)
                 files = data.get('files', [])
-                saved = self.save_export_files(files, output_root)
+                saved = self.save_export_files(files, SOLO_EXPORT_ROOT)
                 self.send_json(200, {'ok': True, 'saved': saved, 'count': len(saved)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})

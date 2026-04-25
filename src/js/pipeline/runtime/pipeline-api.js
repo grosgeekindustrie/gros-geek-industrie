@@ -1690,15 +1690,6 @@ async function runPipelineWithCacheAware(prefix) {
 
 window.runPipelineWithCacheAware = runPipelineWithCacheAware;
 
-function extractMarkdownSectionValue(rawText, sectionTitle) {
-  const escapedTitle = String(sectionTitle || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const sectionPattern = new RegExp(`^##\\s+${escapedTitle}\\s*$([\\s\\S]*?)(?=^##\\s+|$)`, 'im');
-  const match = String(rawText || '').match(sectionPattern);
-
-  return match ? match[1].trim() : '';
-}
-
-
 async function runIrisSemanticSearch(prefix = 'col') {
   const button = document.getElementById(`runIrisBtn-${prefix}`);
   const output = document.getElementById(`out-iris-${prefix}`);
