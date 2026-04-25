@@ -10,7 +10,7 @@
   const promptFileMaps = {
     tabletop: {
       analyse:'marcus', alt:'nadia', marche:'sophie', tags:'karim',
-      titre:'maya', description:'claire', social:'leo', camille:'camille', iris:'iris', orchestrateur:'felix',
+      titre:'maya', description:'claire', social:'leo', camille:'camille', iris:'iris',
     },
     collection: {
       alt:'jules',
@@ -21,7 +21,6 @@
       description:'eden',
       social:'theo',
       camille:'zoe',
-      orchestrateur:'rex',
     },
   };
 

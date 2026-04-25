@@ -7,7 +7,7 @@
 
 // Runtime réseau + orchestration pipeline.
 // État actuel : ce fichier ne contient pas seulement les appels API. Il regroupe encore
-// l'appel Anthropic, l'orchestrateur QA, l'exécution des agents, une partie du runtime
+// l'appel Anthropic, l'exécution des agents, une partie du runtime
 // pipeline, les agents sociaux, les helpers de copie et le monitoring des coûts.
 // Découpage visé : extraire progressivement les blocs les moins risqués (social / copy /
 // reporting) vers des modules UI dédiés, puis traiter le coeur pipeline en dernier.
@@ -755,59 +755,8 @@ async function callClaude(agentId, promptData, useImages, retries = 3) {
 // QA secondaire optionnelle.
 // Ce bloc reste ici car il est directement branché au runtime d'exécution des agents.
 
-// ORCHESTRATEUR
+// HELPERS UI PIPELINE
 // ═══════════════════════════════════════════════════════════
-function toggleOrchestrator() {
-  state.orchestrateurActif = !state.orchestrateurActif;
-  const btn = document.getElementById('orchToggleBtn');
-  btn.textContent = `🔍 Orchestrateur ${state.orchestrateurActif ? 'ON' : 'OFF'}`;
-  btn.className = `btn ${state.orchestrateurActif ? 'btn-success' : 'btn-muted'}`;
-  showToast(`Orchestrateur ${state.orchestrateurActif ? 'activé' : 'désactivé'}`);
-}
-
-async function runOrchestrator(agentId, output) {
-  const ctx = buildCtx(agentId);
-  const attempt = (state.orchAttempts[agentId] || 0) + 1;
-  state.orchAttempts[agentId] = attempt;
-  const orchCtx = { ...ctx, agent_id: agentId, tentative: attempt, output_to_validate: output };
-  const prompt = buildPrompt('orchestrateur', orchCtx);
-  try {
-    const { text: result, usage } = await callClaude('orchestrateur', prompt.filled, false, 2);
-    showAgentCost('orchestrateur', usage, { prefix: pfx(), source: 'orchestrateur' });
-    syncCacheIndicator(usage);
-    const clean = result.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    return { statut: 'VALIDE', agent: agentId, tentative: attempt, problemes: [], correction: '', score: '?/?' };
-  }
-}
-
-function showOrchestratorBadge(agentId, result) {
-  const existing = document.getElementById(`orch-badge-${agentId}`);
-  if (existing) existing.remove();
-  const badge = document.createElement('div');
-  badge.id = `orch-badge-${agentId}`;
-  badge.style.cssText = 'margin:4px 0 8px;padding:7px 11px;border-radius:6px;font-family:Space Mono,monospace;font-size:11px;line-height:1.6;';
-  const problems = (result.problemes || []).slice(0, 2).join(' • ');
-  if (result.statut === 'VALIDE') {
-    badge.style.cssText += 'background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);color:#4caf7d;';
-    if (result.tentative > 1) {
-      const prev = (state._lastOrchProblems?.[agentId] || []).slice(0,2);
-      badge.innerHTML = `✅ Corrigé après ${result.tentative - 1} relance${prev.length ? `<br><span style="opacity:.6;font-size:10px;">${prev.map(p => `✓ ${p}`).join('<br>')}</span>` : ''}`;
-    } else badge.textContent = `✅ ${currentMode === 'collection' ? 'Rex' : 'Felix'} OK — ${result.score}`;
-  } else if (result.statut === 'RELANCER') {
-    if (!state._lastOrchProblems) state._lastOrchProblems = {};
-    state._lastOrchProblems[agentId] = result.problemes || [];
-    badge.style.cssText += 'background:rgba(232,197,71,.1);border:1px solid rgba(232,197,71,.3);color:#e8c547;';
-    badge.innerHTML = `⟳ Relance ${result.tentative}/2${problems ? `<br><span style="opacity:.7;">${problems}</span>` : ''}`;
-  } else {
-    badge.style.cssText += 'background:rgba(255,71,87,.1);border:1px solid rgba(255,71,87,.3);color:#ff4757;';
-    badge.innerHTML = `❌ ALERTE${problems ? `<br><span style="opacity:.7;">${problems}</span>` : ''}`;
-  }
-  const body = document.getElementById(`${pfx()}-body-${agentId}`);
-  if (body) body.insertBefore(badge, body.firstChild);
-}
-
 function refreshSoloTabs(prefix) {
   const mode = typeof getPipelineModeByPrefix === 'function'
     ? getPipelineModeByPrefix(prefix)
@@ -1844,7 +1793,7 @@ async function runTabletopIrisSemanticSearch() {
 
 // ═══════════════════════════════════════════════════════════
 // Cœur d'exécution agent par agent.
-// Zone à haut risque : couplage fort entre état, prompts, DOM, orchestrateur et cartes UI.
+// Zone à haut risque : couplage fort entre état, prompts, DOM et cartes UI.
 // C'est l'une des dernières parties à découper, pas une cible de nettoyage opportuniste.
 
 // RUN AGENT
@@ -1915,25 +1864,6 @@ async function runAgent(agent, correction = '', isRetry = false) {
     if (out) out.textContent = result;
     showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
     syncCacheIndicator(usage);
-    if (state.orchestrateurActif) {
-      stat.className = 'agent-status s-run'; stat.textContent = '🔍 audit...';
-      const orchResult = await runOrchestrator(agent.id, result);
-      showOrchestratorBadge(agent.id, orchResult);
-      if (orchResult.statut === 'RELANCER' && (state.orchAttempts[agent.id] || 0) < 2) {
-        stat.textContent = '⟳ relance...';
-        const retryResult = await runAgent(agent, orchResult.correction, true);
-        refreshSoloTabs(p);
-        return retryResult;
-      } else if (orchResult.statut === 'ALERTE') {
-        card.className = 'agent-card error';
-        stat.className = 'agent-status s-err'; stat.textContent = '❌ alerte';
-        document.getElementById(`${p}-br-${agent.id}`).disabled = false;
-        if (stopBtn) stopBtn.style.display = 'none';
-        showToast(`❌ Alerte orchestrateur: ${agent.id}`, '#ff4757');
-        refreshSoloTabs(p);
-        return false;
-      }
-    }
     card.className = 'agent-card done';
     updatePipelineTimeline(agent.id, 'done');
     if (agent.hasSelection) {
@@ -2067,7 +1997,6 @@ async function startPipeline(p, _options = {}) {
   state.selectedCTA = null;
   state.selectedTitre = null;
   state.selectedTags = [];
-  Object.keys(state.orchAttempts).forEach((key) => delete state.orchAttempts[key]);
   state.outputs.iris = '';
   if (!preserveRunState) resetPipelineRunState(p);
   if (!skipCacheRunInit) {
@@ -2642,7 +2571,6 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       social: '06 Léo',
       camille: '07 Camille',
       iris: 'Iris',
-      orchestrateur: 'QA Felix',
       cache_aware: '00 Cache-aware',
     },
     col: {
@@ -2654,7 +2582,6 @@ function getCostAgentLabel(prefix = '', agentId = '') {
       social: '05 Theo',
       camille: '06 Zoe',
       iris: 'Iris',
-      orchestrateur: 'QA Rex',
       cache_aware: '00 Cache-aware',
     },
   };
@@ -2675,7 +2602,6 @@ function getCostModelName(agentId = '') {
 function getCostEntryType(entry = {}) {
   if (entry.source === 'cache-aware-prelaunch' || entry.agentId === 'cache_aware') return 'cache_aware_prelaunch';
   if (entry.isWarmupEvent) return 'warmup';
-  if (entry.source === 'orchestrateur' || entry.agentId === 'orchestrateur') return 'orchestrateur';
   if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
   if (entry.source === 'social' || entry.source === 'camille') return 'social';
   if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
@@ -2688,7 +2614,6 @@ function getCostEntryTypeLabel(entry = {}) {
   const labels = {
     pipeline: 'pipeline agent',
     rerun: 'rerun',
-    orchestrateur: 'orchestrateur',
     iris: 'iris',
     social: 'social',
     explorer: 'explorer',
@@ -2711,7 +2636,6 @@ function buildCostTypeTotals(entries = []) {
     iris: { count: 0, costCents: 0 },
     cache_aware_prelaunch: { count: 0, costCents: 0 },
     warmup: { count: 0, costCents: 0 },
-    orchestrateur: { count: 0, costCents: 0 },
     social: { count: 0, costCents: 0 },
     explorer: { count: 0, costCents: 0 },
     other: { count: 0, costCents: 0 },
@@ -2951,10 +2875,6 @@ function copyTokenReport() {
         return `${getCostModeShortLabel(run.prefix)} ${details.enabled ? `ON (#${details.firstWriteOrder} → #${details.firstHitOrder})` : 'OFF'}`;
       }).join(' | ')
     : '—';
-  const orchestrateurState = categoryTotals.orchestrateur.count > 0
-    ? `${categoryTotals.orchestrateur.count} appel(s)`
-    : '0 appel (OFF ou non exécuté)';
-
   const lines = [
     '═══ RAPPORT SESSION COÛTS / TOKENS ═══',
     `Généré: ${new Date().toLocaleString('fr-FR')}`,
@@ -2973,7 +2893,6 @@ function copyTokenReport() {
     `Warmup identifiable: ${categoryTotals.warmup.costCents.toFixed(3)}¢ (${categoryTotals.warmup.count} événement(s), sous-ensemble pipeline)`,
     `Reruns: ${categoryTotals.rerun.costCents.toFixed(3)}¢ (${categoryTotals.rerun.count} événement(s))`,
     `Iris: ${categoryTotals.iris.costCents.toFixed(3)}¢ (${categoryTotals.iris.count} événement(s))`,
-    `Orchestrateur: ${categoryTotals.orchestrateur.costCents.toFixed(3)}¢ (${orchestrateurState})`,
     `Social: ${categoryTotals.social.costCents.toFixed(3)}¢ (${categoryTotals.social.count} événement(s))`,
     `Explorer: ${categoryTotals.explorer.costCents.toFixed(3)}¢ (${categoryTotals.explorer.count} événement(s))`,
     `Autre: ${categoryTotals.other.costCents.toFixed(3)}¢ (${categoryTotals.other.count} événement(s))`,

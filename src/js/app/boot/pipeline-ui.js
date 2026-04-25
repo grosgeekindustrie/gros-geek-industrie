@@ -1,6 +1,6 @@
 'use strict';
 
-// Orchestrateur / bridge UI.
+// Bridge UI.
 // Ce fichier consomme les modules window.PipelineUI* et sert de point d'assemblage.
 // État actuel : la majorité du découpage UI est faite, mais quelques helpers runtime
 // temporaires provenant de l'ancien coeur restent encore ici pour éviter une migration
@@ -209,7 +209,7 @@ const AGENT_MODELS = {
   marche:'claude-sonnet-4-20250514', tags:'claude-sonnet-4-20250514',
   titre:'claude-sonnet-4-20250514', description:'claude-sonnet-4-20250514',
   social:'claude-sonnet-4-20250514', camille:'claude-sonnet-4-20250514',
-  iris:'claude-sonnet-4-20250514', orchestrateur:'claude-sonnet-4-20250514',
+  iris:'claude-sonnet-4-20250514',
   cache_aware:'claude-sonnet-4-20250514',
 };
 
@@ -288,10 +288,6 @@ const finalizePipelineContinuation = (prefix, agentId, lastStatus = 'terminé') 
   syncResumeResultTab(prefix, lastStatus);
 };
 
-const resetAgentOrchestratorAttempts = (agentId) => {
-  state.orchAttempts[agentId] = 0;
-};
-
 const resolveAgentRunStatus = (ok, agent) => {
   if (!ok) return PIPELINE_STATUS_ERROR;
   if (agent?.hasSelection) return PIPELINE_STATUS_SELECTION_REQUIRED;
@@ -315,8 +311,6 @@ async function continuePipelineAfterSelection(agentId) {
   try {
     for (const agent of continuationAgents) {
       setResumeLaunchState(prefix, agent.id);
-      resetAgentOrchestratorAttempts(agent.id);
-
       const ok = await runAgent(agent);
       lastAgentId = agent.id;
       lastStatus = resolveAgentRunStatus(ok, agent);
@@ -366,7 +360,6 @@ async function rerunAgent(agentId) {
   if (!agent) return;
 
   const cor = document.getElementById(`${p}-cor-${agentId}`).value;
-  resetAgentOrchestratorAttempts(agentId);
   window.setPipelineExecutionActive?.(true);
   setResumeLaunchState(p, agent.id);
 
@@ -405,8 +398,6 @@ async function rerunSuite(agentId) {
       if (agent.optional) break;
 
       setResumeLaunchState(p, agent.id);
-      resetAgentOrchestratorAttempts(agent.id);
-
       const ok = await runAgent(agent, i === idx ? cor : '');
       lastAgentId = agent.id;
       lastStatus = resolveAgentRunStatus(ok, agent);
