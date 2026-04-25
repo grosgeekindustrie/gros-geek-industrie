@@ -779,6 +779,208 @@ function activateSoloTab(prefix, tabId, options = {}) {
   activateMethod?.(tabId, options);
 }
 
+function getPipelineAgentDomRefs(prefix, agentId) {
+  return {
+    card: document.getElementById(`${prefix}-card-${agentId}`),
+    stat: document.getElementById(`${prefix}-stat-${agentId}`),
+    out: document.getElementById(`${prefix}-out-${agentId}`),
+    stopBtn: document.getElementById(`${prefix}-bstop-${agentId}`),
+    rerunBtn: document.getElementById(`${prefix}-br-${agentId}`),
+    saveBtn: document.getElementById(`${prefix}-bs-${agentId}`),
+    promptBtn: document.getElementById(`${prefix}-bp-${agentId}`),
+  };
+}
+
+function clearAgentSelectionUi(prefix, agent) {
+  if (!agent?.hasSelection) return;
+
+  state.selectedAccroche = null;
+  state.selectedCTA = null;
+  state.selectedTitre = null;
+  state.selectedTags = [];
+
+  [`${prefix}-sel-${agent.id}`, `${prefix}-sel-accroche-${agent.id}`, `${prefix}-sel-cta-${agent.id}`].forEach((id) => {
+    const container = document.getElementById(id);
+    if (!container) return;
+
+    container.classList.remove('visible');
+    if (agent.selectionType === 'tags' && id === `${prefix}-sel-${agent.id}`) {
+      container.style.display = 'none';
+      const runtimeRoot = document.getElementById(`${prefix}-sel-tags-runtime`);
+      if (runtimeRoot) runtimeRoot.innerHTML = '';
+      const validateBtn = document.getElementById(`${prefix}-validate-tags`);
+      if (validateBtn) validateBtn.disabled = true;
+      return;
+    }
+
+    const contentRoot = container.querySelector('[id]');
+    if (contentRoot) contentRoot.innerHTML = '';
+  });
+}
+
+function setAgentHeaderContext(agent) {
+  const ctxEl = document.getElementById('headerContext');
+  if (!ctxEl || !agent?.title) return;
+
+  ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u, '').trim();
+}
+
+function beginAgentExecution(prefix, agent, { isRetry = false } = {}) {
+  const refs = getPipelineAgentDomRefs(prefix, agent.id);
+
+  if (refs.card) refs.card.className = 'agent-card active';
+  updatePipelineTimeline(agent.id, 'active');
+  refreshSoloTabs(prefix);
+  if (refs.stat) {
+    refs.stat.className = 'agent-status s-run';
+    refs.stat.textContent = '⟳ génération...';
+  }
+
+  setAgentHeaderContext(agent);
+
+  if (refs.out) {
+    refs.out.className = 'output-box';
+    refs.out.textContent = '';
+  }
+
+  if (refs.stopBtn) refs.stopBtn.style.display = 'inline-flex';
+  if (!['alt', 'marche'].includes(agent.id)) openCard(`${prefix}-${agent.id}`);
+  if (!isRetry) clearAgentSelectionUi(prefix, agent);
+
+  return refs;
+}
+
+function enableAgentRuntimeActions(refs = {}, agent) {
+  if (refs.rerunBtn) refs.rerunBtn.disabled = false;
+  if (refs.saveBtn) refs.saveBtn.disabled = false;
+  if (refs.promptBtn) refs.promptBtn.disabled = false;
+
+  if (agent?.id === 'tags') {
+    const exploreBtn = document.getElementById(`${pfx()}-bexplore-tags`);
+    if (exploreBtn) exploreBtn.disabled = false;
+  }
+
+  if (agent?.id === 'titre') {
+    const exploreBtn = document.getElementById(`${pfx()}-bexplore-titre`);
+    if (exploreBtn) exploreBtn.disabled = false;
+  }
+}
+
+function renderAgentSelectionUi(agent, result) {
+  if (!agent?.hasSelection) return false;
+
+  if (agent.selectionType === 'titre') buildTitreSelectionUI(agent.id, result);
+  else if (agent.selectionType === 'tags') buildTagsUI(result);
+  else buildAccrocheCTASelectionUI(agent.id, result);
+  return true;
+}
+
+function finalizeAgentSuccess(prefix, agent, refs, result, usage, { isRetry = false } = {}) {
+  if (refs.out) refs.out.textContent = result;
+  showAgentCost(agent.id, usage, { prefix, source: isRetry ? 'rerun' : 'pipeline' });
+  syncCacheIndicator(usage);
+  if (refs.card) refs.card.className = 'agent-card done';
+  updatePipelineTimeline(agent.id, 'done');
+
+  if (renderAgentSelectionUi(agent, result)) {
+    if (refs.stat) {
+      refs.stat.className = 'agent-status s-run';
+      refs.stat.textContent = '⏳ sélection requise';
+    }
+  } else if (refs.stat) {
+    refs.stat.className = 'agent-status s-done';
+    refs.stat.textContent = '✓ done';
+  }
+
+  enableAgentRuntimeActions(refs, agent);
+  if (refs.stopBtn) refs.stopBtn.style.display = 'none';
+  refreshSoloTabs(prefix);
+}
+
+function finalizeAgentError(prefix, agent, refs, error) {
+  if (refs.out) refs.out.textContent = `❌ ${error.message}`;
+  if (refs.card) refs.card.className = 'agent-card error';
+  updatePipelineTimeline(agent.id, 'error');
+  if (refs.stat) {
+    refs.stat.className = 'agent-status s-err';
+    refs.stat.textContent = error.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
+  }
+  if (refs.rerunBtn) refs.rerunBtn.disabled = false;
+  if (refs.stopBtn) refs.stopBtn.style.display = 'none';
+  refreshSoloTabs(prefix);
+}
+
+function resetPipelineAgentCard(prefix, agentId, runtimeAgentIds) {
+  state.outputs[agentId] = '';
+  const refs = getPipelineAgentDomRefs(prefix, agentId);
+
+  if (refs.card) {
+    refs.card.className = 'agent-card';
+    refs.card.style.display = runtimeAgentIds.has(agentId) ? '' : 'none';
+  }
+
+  if (refs.stat) {
+    refs.stat.className = 'agent-status s-wait';
+    refs.stat.textContent = 'en attente';
+  }
+
+  if (refs.out) {
+    refs.out.className = 'output-box empty';
+    refs.out.textContent = '— pas encore généré —';
+  }
+
+  if (refs.rerunBtn) refs.rerunBtn.disabled = true;
+  if (refs.saveBtn) refs.saveBtn.disabled = true;
+  if (refs.promptBtn) refs.promptBtn.disabled = true;
+
+  clearAgentFilesApiVisualState(prefix, agentId);
+}
+
+function finalizePipelineExecution(prefix, {
+  hasError = false,
+  isSelectionPause = false,
+  lastCompletedAgentId = '',
+  finalAgentId = '',
+  button = null,
+  isSoloTabsFlow = false,
+} = {}) {
+  assembleFinal();
+
+  if (button) {
+    button.disabled = false;
+    button.innerHTML = '▶ Relancer tout';
+  }
+
+  window.setPipelineExecutionActive?.(false);
+
+  const finalStatus = hasError
+    ? 'erreur'
+    : isSelectionPause
+      ? 'en pause · sélection requise'
+      : 'terminé';
+
+  setPipelineLaunchState(prefix, {
+    currentStepId: getPipelineDisplayStepIdForRuntimeAgent(prefix, lastCompletedAgentId || finalAgentId),
+    isRunning: false,
+    lastStatus: finalStatus,
+  });
+  finalizeCacheDebugRun(prefix, finalStatus);
+
+  if (isSoloTabsFlow) {
+    refreshSoloTabs(prefix);
+    const hasResult = prefix === 'tt'
+      ? window.isDndSoloResultAvailable?.()
+      : window.isCollectionSoloResultAvailable?.();
+    if (hasResult) {
+      activateSoloTab(prefix, 'result', { force: true });
+    } else {
+      activateSoloTab(prefix, 'pipeline', { force: true });
+    }
+  }
+
+  return finalStatus;
+}
+
 function getPipelineLaunchMode(prefix) {
   if (typeof getPipelineModeByPrefix === 'function') {
     return getPipelineModeByPrefix(prefix);
@@ -1800,40 +2002,8 @@ async function runTabletopIrisSemanticSearch() {
 // ═══════════════════════════════════════════════════════════
 async function runAgent(agent, correction = '', isRetry = false) {
   const p = pfx();
-  const card = document.getElementById(`${p}-card-${agent.id}`);
-  const stat = document.getElementById(`${p}-stat-${agent.id}`);
-  const out = document.getElementById(`${p}-out-${agent.id}`);
-  const stopBtn = document.getElementById(`${p}-bstop-${agent.id}`);
-  card.className = 'agent-card active';
-  updatePipelineTimeline(agent.id, 'active');
-  refreshSoloTabs(p);
-  stat.className = 'agent-status s-run'; stat.textContent = '⟳ génération...';
-  const ctxEl = document.getElementById('headerContext');
-  if (ctxEl) ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u,'').trim();
-  if (out) {
-    out.className = 'output-box';
-    out.textContent = '';
-  }
-  if (stopBtn) stopBtn.style.display = 'inline-flex';
-  if (!['alt', 'marche'].includes(agent.id)) openCard(`${p}-${agent.id}`);
-  if (agent.hasSelection && !isRetry) {
-    state.selectedAccroche = null; state.selectedCTA = null; state.selectedTitre = null; state.selectedTags = [];
-    [`${p}-sel-${agent.id}`, `${p}-sel-accroche-${agent.id}`, `${p}-sel-cta-${agent.id}`].forEach(id => {
-      const z = document.getElementById(id);
-      if (!z) return;
-      z.classList.remove('visible');
-      if (agent.selectionType === 'tags' && id === `${p}-sel-${agent.id}`) {
-        z.style.display = 'none';
-        const runtimeRoot = document.getElementById(`${p}-sel-tags-runtime`);
-        if (runtimeRoot) runtimeRoot.innerHTML = '';
-        const validateBtn = document.getElementById(`${p}-validate-tags`);
-        if (validateBtn) validateBtn.disabled = true;
-        return;
-      }
-      const d = z.querySelector('[id]');
-      if (d) d.innerHTML = '';
-    });
-  }
+  const refs = beginAgentExecution(p, agent, { isRetry });
+
   try {
     const ctx = buildCtx(agent.id, correction);
     let result = '';
@@ -1860,37 +2030,10 @@ async function runAgent(agent, correction = '', isRetry = false) {
       appendPipelineRunEntry(p, agent.id, result, { quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id });
     }
 
-
-    if (out) out.textContent = result;
-    showAgentCost(agent.id, usage, { prefix: p, source: isRetry ? 'rerun' : 'pipeline' });
-    syncCacheIndicator(usage);
-    card.className = 'agent-card done';
-    updatePipelineTimeline(agent.id, 'done');
-    if (agent.hasSelection) {
-      stat.className = 'agent-status s-run'; stat.textContent = '⏳ sélection requise';
-      if (agent.selectionType === 'titre') buildTitreSelectionUI(agent.id, result);
-      else if (agent.selectionType === 'tags') buildTagsUI(result);
-      else buildAccrocheCTASelectionUI(agent.id, result);
-    } else {
-      stat.className = 'agent-status s-done'; stat.textContent = '✓ done';
-    }
-    document.getElementById(`${p}-br-${agent.id}`).disabled = false;
-    document.getElementById(`${p}-bs-${agent.id}`).disabled = false;
-    document.getElementById(`${p}-bp-${agent.id}`).disabled = false;
-    if (agent.id === 'tags') { const bex = document.getElementById(`${p}-bexplore-tags`); if (bex) bex.disabled = false; }
-    if (agent.id === 'titre') { const bex = document.getElementById(`${p}-bexplore-titre`); if (bex) bex.disabled = false; }
-    if (stopBtn) stopBtn.style.display = 'none';
-    refreshSoloTabs(p);
+    finalizeAgentSuccess(p, agent, refs, result, usage, { isRetry });
     return true;
   } catch (err) {
-    if (out) out.textContent = `❌ ${err.message}`;
-    card.className = 'agent-card error';
-    updatePipelineTimeline(agent.id, 'error');
-    stat.className = 'agent-status s-err';
-    stat.textContent = err.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
-    document.getElementById(`${p}-br-${agent.id}`).disabled = false;
-    if (stopBtn) stopBtn.style.display = 'none';
-    refreshSoloTabs(p);
+    finalizeAgentError(p, agent, refs, err);
     return false;
   }
 }
@@ -2007,32 +2150,7 @@ async function startPipeline(p, _options = {}) {
   }
 
   knownAgentIds.forEach((agentId) => {
-    state.outputs[agentId] = '';
-    const card = document.getElementById(`${p}-card-${agentId}`);
-    const stat = document.getElementById(`${p}-stat-${agentId}`);
-    const out = document.getElementById(`${p}-out-${agentId}`);
-
-    if (card) card.className = 'agent-card';
-    if (card) card.style.display = runtimeAgentIds.has(agentId) ? '' : 'none';
-    if (stat) {
-      stat.className = 'agent-status s-wait';
-      stat.textContent = 'en attente';
-    }
-    if (out) {
-      out.className = 'output-box empty';
-      out.textContent = '— pas encore généré —';
-    }
-
-    const br = document.getElementById(`${p}-br-${agentId}`);
-    if (br) br.disabled = true;
-    const bs = document.getElementById(`${p}-bs-${agentId}`);
-    if (bs) bs.disabled = true;
-    const bp = document.getElementById(`${p}-bp-${agentId}`);
-    if (bp) bp.disabled = true;
-
-    const ob = document.getElementById(`orch-badge-${agentId}`);
-    if (ob) ob.remove();
-    clearAgentFilesApiVisualState(p, agentId);
+    resetPipelineAgentCard(p, agentId, runtimeAgentIds);
   });
 
   refreshSoloTabs(p);
@@ -2064,39 +2182,14 @@ async function startPipeline(p, _options = {}) {
     if (agent.id === finalAgentId) break;
   }
 
-  assembleFinal();
-
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '▶ Relancer tout';
-  }
-
-  window.setPipelineExecutionActive?.(false);
-
-  const finalStatus = hasError
-    ? 'erreur'
-    : isSelectionPause
-      ? 'en pause · sélection requise'
-      : 'terminé';
-
-  setPipelineLaunchState(p, {
-    currentStepId: getPipelineDisplayStepIdForRuntimeAgent(p, lastCompletedAgentId || finalAgentId),
-    isRunning: false,
-    lastStatus: finalStatus,
+  finalizePipelineExecution(p, {
+    hasError,
+    isSelectionPause,
+    lastCompletedAgentId,
+    finalAgentId,
+    button: btn,
+    isSoloTabsFlow,
   });
-  finalizeCacheDebugRun(p, finalStatus);
-
-  if (isSoloTabsFlow) {
-    refreshSoloTabs(p);
-    const hasResult = p === 'tt'
-      ? window.isDndSoloResultAvailable?.()
-      : window.isCollectionSoloResultAvailable?.();
-    if (hasResult) {
-      activateSoloTab(p, 'result', { force: true });
-    } else {
-      activateSoloTab(p, 'pipeline', { force: true });
-    }
-  }
 }
 
 
