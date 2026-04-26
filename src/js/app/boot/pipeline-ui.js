@@ -441,45 +441,12 @@ const savePersistentRules = () => {
   localStorage.setItem('pipeline.rules', JSON.stringify(state.persistentRules));
 };
 
-const getOutputText = (prefix, agentId) => {
-  const outputNode = document.getElementById(`${prefix}-out-${agentId}`);
-  return outputNode?.textContent || state.outputs[agentId] || '';
-};
-
-const getCopyAllOutputAgents = (prefix) => (
-  prefix === 'col'
-    ? [
-        { id:'tags', label:'01 - TAGS' },
-        { id:'titre', label:'02 - TITRES' },
-        { id:'description', label:'03 - DESCRIPTION' },
-        { id:'alt', label:'04 - BALISE ALT' },
-      ]
-    : [
-        { id:'marche', label:'01 - ANALYSE MARCHE' },
-        { id:'tags', label:'02 - TAGS' },
-        { id:'titre', label:'03 - TITRES' },
-        { id:'description', label:'04 - DESCRIPTION' },
-        { id:'alt', label:'05 - BALISE ALT' },
-      ]
-);
 
 const renderPersistentRules = (agentId, rules) => (
   'Regles permanentes:<br>' + rules.map((rule, index) =>
     `<span onclick="removeRule('${agentId}',${index})" title="Supprimer">x ${rule}</span>`
   ).join('')
 );
-
-const setFinalSectionContent = (sectionId, contentId, content, key = '') => {
-  if (!content) return;
-
-  document.getElementById(sectionId).style.display = 'block';
-  const contentNode = document.getElementById(contentId);
-  if (!contentNode) return;
-
-  contentNode.textContent = window.PipelineUIRender?.formatFinalOutputText
-    ? window.PipelineUIRender.formatFinalOutputText(key, content)
-    : content;
-};
 
 function persistRule(agentId) {
   const p = pfx();
@@ -501,77 +468,6 @@ function refreshRules(agentId) {
   const rules = state.persistentRules[agentId] || [];
   const badge = document.getElementById(`${p}-brul-${agentId}`);
   const disp = document.getElementById(`${p}-rd-${agentId}`);
-  if (!badge || !disp) return;
-  if (rules.length === 0) { badge.style.display = 'none'; disp.innerHTML = ''; }
-  else {
-    badge.style.display = 'inline';
-    disp.innerHTML = '📌 Règles permanentes:<br>' + rules.map((r, i) =>
-      `<span onclick="removeRule('${agentId}',${i})" title="Supprimer">✕ ${r}</span>`).join('');
-  }
-}
-
-function assembleFinal() {
-  const p = pfx();
-  const titre = state.outputs.titre_valide || '';
-  const tags = state.outputs.tags || '';
-  const desc = state.outputs['description_assembled'] || state.outputs.description || '';
-  const alt = state.outputs.alt || '';
-  if (!titre && !tags && !desc && !alt) return;
-  const show = (sectionId, contentId, content, key = '') => {
-    if (!content) return;
-    document.getElementById(sectionId).style.display = 'block';
-    const contentNode = document.getElementById(contentId);
-    if (!contentNode) return;
-    contentNode.textContent = window.PipelineUIRender?.formatFinalOutputText
-      ? window.PipelineUIRender.formatFinalOutputText(key, content)
-      : content;
-  };
-  show(`fs-titre-${p}`, `fc-titre-${p}`, titre, 'titre_valide');
-  show(`fs-tags-${p}`, `fc-tags-${p}`, tags, 'tags');
-  show(`fs-description-${p}`, `fc-description-${p}`, desc, 'description_assembled');
-  show(`fs-alt-${p}`, `fc-alt-${p}`, alt, 'alt');
-  const fo = document.getElementById(`finalOutput-${p}`);
-  fo.style.display = 'flex'; fo.style.flexDirection = 'column';
-  if (alt) window.showSocialEntryPanel?.(p);
-  if (p === 'tt') {
-    refreshDndSoloTabs?.();
-    if (!window.isPipelineExecutionActive?.()) activateDndSoloTab?.('result', { force: true });
-  }
-  if (p === 'col') {
-    refreshCollectionSoloTabs?.();
-    if (!window.isPipelineExecutionActive?.()) activateCollectionSoloTab?.('result', { force: true });
-  }
-}
-
-function copyOut(agentId) {
-  const prefix = pfx();
-  const text = getOutputText(prefix, agentId);
-
-  navigator.clipboard.writeText(text);
-  showToast('Copié ✓');
-}
-
-function copyAllOutputs() {
-  const p = pfx();
-  const agents = getCopyAllOutputAgents(p);
-  const parts = agents.map((agent) => {
-    const out = state.outputs[agent.id] || '';
-    return out ? `${'═'.repeat(50)}\n${agent.label}\n${'═'.repeat(50)}\n${out}` : null;
-  }).filter(Boolean);
-  if (!parts.length) { showToast('Aucun output à copier', '#ff4757'); return; }
-  navigator.clipboard.writeText(parts.join('\n\n'));
-  showToast(`Review globale copiée — ${parts.length} blocs ✓`);
-}
-
-const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
-const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
-const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
-
-function refreshRules(agentId) {
-  const p = pfx();
-  const rules = state.persistentRules[agentId] || [];
-  const badge = document.getElementById(`${p}-brul-${agentId}`);
-  const disp = document.getElementById(`${p}-rd-${agentId}`);
 
   if (!badge || !disp) return;
   if (rules.length === 0) {
@@ -582,68 +478,6 @@ function refreshRules(agentId) {
 
   badge.style.display = 'inline';
   disp.innerHTML = renderPersistentRules(agentId, rules);
-}
-
-function assembleFinal() {
-  const p = pfx();
-  const titre = state.outputs.titre_valide || '';
-  const tags = state.outputs.tags || '';
-  const desc = state.outputs['description_assembled'] || state.outputs.description || '';
-  const alt = state.outputs.alt || '';
-
-  if (!titre && !tags && !desc && !alt) return;
-
-  setFinalSectionContent(`fs-titre-${p}`, `fc-titre-${p}`, titre, 'titre_valide');
-  setFinalSectionContent(`fs-tags-${p}`, `fc-tags-${p}`, tags, 'tags');
-  setFinalSectionContent(`fs-description-${p}`, `fc-description-${p}`, desc, 'description_assembled');
-  setFinalSectionContent(`fs-alt-${p}`, `fc-alt-${p}`, alt, 'alt');
-
-  const finalOutput = document.getElementById(`finalOutput-${p}`);
-  if (finalOutput) {
-    finalOutput.style.display = 'flex';
-    finalOutput.style.flexDirection = 'column';
-  }
-
-  if (alt) window.showSocialEntryPanel?.(p);
-
-  if (p === 'tt') {
-    refreshDndSoloTabs?.();
-    if (!window.isPipelineExecutionActive?.()) activateDndSoloTab?.('result', { force: true });
-  }
-
-  if (p === 'col') {
-    refreshCollectionSoloTabs?.();
-    if (!window.isPipelineExecutionActive?.()) activateCollectionSoloTab?.('result', { force: true });
-  }
-}
-
-function copyOut(agentId) {
-  const prefix = pfx();
-  const text = getOutputText(prefix, agentId);
-
-  navigator.clipboard.writeText(text);
-  showToast('Copie OK');
-}
-
-function copyAllOutputs() {
-  const p = pfx();
-  const agents = getCopyAllOutputAgents(p);
-  const parts = agents
-    .map((agent) => {
-      const out = state.outputs[agent.id] || '';
-      return out
-        ? `${COPY_ALL_OUTPUTS_DIVIDER}\n${agent.label}\n${COPY_ALL_OUTPUTS_DIVIDER}\n${out}`
-        : null;
-    })
-    .filter(Boolean);
-
-  if (!parts.length) {
-    showToast(COPY_ALL_OUTPUTS_EMPTY_MESSAGE, '#ff4757');
-    return;
-  }
-
-  navigator.clipboard.writeText(parts.join('\n\n'));
-  showToast(COPY_ALL_OUTPUTS_SUCCESS(parts.length));
 }
 
 async function runTitreExplorer() {
