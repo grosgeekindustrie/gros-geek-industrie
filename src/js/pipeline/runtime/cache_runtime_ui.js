@@ -180,7 +180,7 @@
     const runRecord = {
       prefix,
       mode: global.getPipelineLaunchMode(prefix),
-      launchScope: String(options.launchScope || global.PIPELINE_LAUNCH_DEFAULT_SCOPE || 'pipeline complet'),
+      launchScope: String(options.launchScope || global.PIPELINE_LAUNCH_DEFAULT_SCOPE),
       cacheAwareEnabled: Boolean(options.cacheAwareEnabled),
       startedAt: new Date().toISOString(),
       finishedAt: '',
@@ -447,7 +447,7 @@
       '=== RAPPORT CACHE PIPELINE ===',
       `Mode: ${run.mode}`,
       `Prefixe: ${run.prefix}`,
-      `Lancement: ${run.launchScope || 'pipeline complet'}`,
+      `Lancement: ${run.launchScope || global.PIPELINE_LAUNCH_DEFAULT_SCOPE}`,
       `Ordre: ${run.pipelineAgents.join(' -> ') || '-'}`,
       `Demarre: ${run.startedAt || '-'}`,
       `Termine: ${run.finishedAt || '-'}`,

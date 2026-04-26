@@ -250,12 +250,12 @@
     const tabletopUiConfig = getModeUiConfig('tabletop');
     const collectionUiConfig = getModeUiConfig('collection');
     const label = document.getElementById('formModeLabel');
-    const tabletopRoot = document.getElementById(tabletopUiConfig?.uiRootId || 'ui-tt');
-    const collectionRoot = document.getElementById(collectionUiConfig?.uiRootId || 'ui-col');
+    const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
+    const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
 
     if (tabletopRoot) tabletopRoot.style.display = mode === 'tabletop' ? '' : 'none';
     if (collectionRoot) collectionRoot.style.display = mode === 'collection' ? '' : 'none';
-    if (label) label.textContent = modeUiConfig?.formLabel || (mode === 'tabletop' ? '🎲 Tabletop DnD' : '🖼️ Collection');
+    if (label) label.textContent = modeUiConfig.formLabel;
 
     resetSingleFlowPanels(mode);
     showView('form');
