@@ -870,7 +870,7 @@ function getRuntimeDebugState() {
   if (!state.runtimeDebug.promptCacheTickerId && typeof window !== 'undefined') {
     state.runtimeDebug.promptCacheTickerId = window.setInterval(() => {
       renderPromptCacheIndicator();
-      refreshPipelineLaunchPanels();
+      window.refreshPipelineLaunchPanels?.();
     }, PROMPT_CACHE_UI_REFRESH_MS);
   }
 
@@ -1403,7 +1403,7 @@ function syncCacheIndicator(usage = {}) {
   setLastCacheStatus(cacheStatus, { prefix });
   const activeRun = getActiveCacheDebugRun(prefix);
   if (activeRun) activeRun.lastHeaderStatus = getLastCacheStatus(prefix);
-  refreshPipelineLaunchPanels();
+  window.refreshPipelineLaunchPanels?.();
 }
 
 function getPipelineLaunchSummary(prefix) {

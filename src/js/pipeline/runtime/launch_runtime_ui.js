@@ -233,7 +233,7 @@
     if (!statusNode) return;
 
     statusNode.textContent = global.getPipelineLaunchSummary(prefix);
-    global.syncStandaloneLaunchButtons(prefix);
+    global.syncStandaloneLaunchButtons?.(prefix);
   }
 
   function refreshPipelineLaunchPanelState(prefix) {
