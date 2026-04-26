@@ -47,10 +47,6 @@
     const value = normalizeFinalOutputText(key, node.textContent || '');
     runtimeState.outputs[stateKey] = value;
 
-    if (key === 'description_assembled') {
-      runtimeState.outputs.description = value;
-    }
-
     if (key === 'tags') {
       runtimeState.selectedTags = splitTagValues(value);
     }

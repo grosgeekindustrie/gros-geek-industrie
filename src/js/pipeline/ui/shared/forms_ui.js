@@ -9,6 +9,11 @@
   const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const LEGACY_FORM_STORAGE_KEY_PREFIX = 'pipeline_form_';
+  const LEGACY_FORM_STORAGE_KEYS_BY_MODE = Object.freeze({
+    tabletop: `${LEGACY_FORM_STORAGE_KEY_PREFIX}tabletop`,
+    collection: `${LEGACY_FORM_STORAGE_KEY_PREFIX}collection`,
+  });
+  const LEGACY_RULES_STORAGE_KEYS = Object.freeze(['pipeline_rules']);
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -620,7 +625,7 @@
     try {
       const data = migrateStoredJSON(
         `${FORM_STORAGE_KEY_PREFIX}${currentMode}`,
-        [`${LEGACY_FORM_STORAGE_KEY_PREFIX}${currentMode}`],
+        [LEGACY_FORM_STORAGE_KEYS_BY_MODE[currentMode]],
         null,
       );
       if (!data) return;
@@ -735,7 +740,7 @@
   function loadPersistedData() {
     const state = getState();
     try {
-      const rules = migrateStoredJSON('pipeline.rules', ['pipeline_rules'], null);
+      const rules = migrateStoredJSON('pipeline.rules', LEGACY_RULES_STORAGE_KEYS, null);
       if (rules) {
         state.persistentRules = rules;
         Object.keys(state.persistentRules).forEach((id) => global.refreshRules?.(id));

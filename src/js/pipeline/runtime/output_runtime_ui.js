@@ -6,9 +6,7 @@
   const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
   const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
   const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
-  const getFinalDescriptionOutput = () => (
-    global.state.outputs.description_assembled || global.state.outputs.description || ''
-  );
+  const getFinalDescriptionOutput = () => global.state.outputs.description_assembled || '';
 
   function getOutputText(prefix, agentId) {
     const outputNode = document.getElementById(`${prefix}-out-${agentId}`);

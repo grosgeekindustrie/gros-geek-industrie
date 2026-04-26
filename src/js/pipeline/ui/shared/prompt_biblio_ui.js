@@ -242,7 +242,7 @@
       .replace(/\[\[MARCHE\]\]/g, ctx.outputs.marche || '')
       .replace(/\[\[TAGS\]\]/g, ctx.outputs.tags || '')
       .replace(/\[\[TITRE_VALIDE\]\]/g, ctx.outputs.titre_valide || '')
-      .replace(/\[\[DESCRIPTION\]\]/g, ctx.outputs.description_assembled || ctx.outputs.description || '')
+      .replace(/\[\[DESCRIPTION\]\]/g, ctx.outputs.description_assembled || '')
       .replace(/\[\[ARCHETYPES\]\]/g, ctx.archetypes || '')
       .replace(/\[\[ARCHETYPES_MANUELS\]\]/g, ctx.archetypesManuels || '')
       .replace(/\[\[SEO_ELARGIES\]\]/g, ctx.seoElargies || '')
