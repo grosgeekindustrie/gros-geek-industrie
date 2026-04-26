@@ -767,42 +767,6 @@ body.mode-collection .home-card:hover {
   border-color: var(--accent);
 }
 
-/* ── Batch cards ── */
-
-.batch-fiche {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 24px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.batch-fiche.running {
-  border-color: var(--accent);
-}
-
-.batch-fiche.done {
-  border-color: rgba(62,207,142,.3);
-}
-
-.batch-fiche.error {
-  border-color: rgba(245,66,74,.3);
-}
-
-.batch-fiche-title {
-  font-family: 'Clash Display', 'Syne', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.batch-run-btn, .batch-export-btn {
-  font-family: 'Clash Display', 'Syne', sans-serif;
-  letter-spacing: .3px;
-}
-
 /* ── Mode collection overrides ── */
 
 body.mode-collection .home-card:hover {
@@ -822,8 +786,6 @@ body.mode-collection .form-section {
   border-color: rgba(126,184,247,.12);
 }
 
-/* ── Home batch helpers ── */
-
 .home-view-center {
   display: flex;
   align-items: center;
@@ -834,34 +796,6 @@ body.mode-collection .form-section {
 
 .home-cards-dual {
   grid-template-columns: 1fr 1fr;
-}
-
-.home-batch-divider {
-  border-top: 1px solid var(--border);
-  margin: 20px 0 0;
-  padding-top: 20px;
-}
-
-.home-batch-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  letter-spacing: 1px;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-}
-
-.home-card-batch {
-  padding: 20px 24px;
-}
-
-.home-card-icon-batch {
-  font-size: 24px;
-}
-
-.home-card-title-batch {
-  font-size: 15px;
 }
 
 
