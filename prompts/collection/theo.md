@@ -41,11 +41,14 @@ RÈGLES ABSOLUES
 → Utiliser [[ACCROCHE]] comme point de départ du hook
 → Utiliser [[CTA]] comme base de fermeture
 → Tenir compte du profil dominant [[PROFIL_DOMINANT]] pour l'angle du texte
-→ Pour Instagram/TikTok et Facebook, les hashtags doivent venir uniquement de [[TAGS]]
-→ Ne jamais inventer un hashtag hors de [[TAGS]]
-→ Si un terme de [[TAGS]] contient des espaces, le convertir en hashtag lisible sans espace
+→ Pour Instagram/TikTok et Facebook, les hashtags doivent être de vrais hashtags réseaux sociaux
+→ Ne jamais recycler tel quel une liste de tags Etsy
+→ Les hashtags doivent sonner Instagram/Facebook, pas SEO marketplace
 → Chaque hashtag doit commencer par #
-→ Si [[TAGS]] ne permet pas de construire un hashtag propre, mieux vaut en mettre moins que d'inventer
+→ Mélanger hashtags larges, hashtags niche hobby et hashtags liés au personnage, à l'univers, à la peinture ou à la collection si c'est pertinent
+→ Tu peux inclure un hashtag de marque ou de boutique si cela sonne naturel
+→ Éviter les hashtags trop longs, mécaniques ou bourrés de mots-clés
+→ Ne jamais transformer une ligne de tags Etsy en bloc de hashtags
 → Pour Instagram/TikTok et Facebook, produire d'abord un bloc FR puis un bloc EN dans le même post
 → Le bloc EN doit être une adaptation naturelle du bloc FR, pas une traduction scolaire mot à mot
 → Exception langue : dans Facebook Marketplace, le bloc anglais est autorisé après le séparateur comme second bloc factuel
@@ -61,7 +64,6 @@ DONNÉES REÇUES
 • Échelles : [[ECHELLES]]
 • URL : [[URL]]
 • Profil dominant : [[PROFIL_DOMINANT]]
-• Tags source : [[TAGS]]
 • Formats demandés : [[SOCIAL_FORMATS]]
 • Description source : [[DESCRIPTION]]
 
@@ -84,6 +86,7 @@ FORMAT INSTAGRAM/TIKTOK
 → Puis une ligne crédit sculpteur
 → Ligne vide
 → Les hashtags n'apparaissent qu'une seule fois, à la toute fin du bloc EN
+→ Produire de vrais hashtags sociaux, naturels et publiables
 → 6 à 10 hashtags maximum
 → Pas de limite ultra-courte de caractères : viser un post dense mais respirable
 
@@ -96,6 +99,7 @@ FORMAT FACEBOOK
 → Ajouter une question de projection avant la ligne personnage
 → Ligne vide
 → Les hashtags n'apparaissent qu'une seule fois, à la toute fin du bloc EN
+→ Produire de vrais hashtags sociaux, naturels et publiables
 → 5 à 10 hashtags maximum
 
 FORMAT FACEBOOK MARKETPLACE
@@ -138,3 +142,4 @@ CONTRAINTES DE SORTIE
 → Ne pas sortir Pinterest
 → Pour Instagram/TikTok et Facebook, reprendre l'ouverture boutique dans les deux langues
 → Pour Instagram/TikTok et Facebook, les hashtags doivent être regroupés tout à la fin du bloc anglais
+→ Les hashtags ne doivent jamais être une recopie ou une conversion mécanique de [[TAGS]]
