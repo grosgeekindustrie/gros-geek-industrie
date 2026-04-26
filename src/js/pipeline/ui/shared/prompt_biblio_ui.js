@@ -155,6 +155,12 @@
     alt: (ctx = {}) => ({
       blocks: buildSharedBlocks(ctx, true),
     }),
+    social: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
+    camille: (ctx = {}) => ({
+      blocks: buildSharedBlocks(ctx, true),
+    }),
   };
 
   function parseBiblioTags(raw) {

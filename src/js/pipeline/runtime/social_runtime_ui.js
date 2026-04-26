@@ -326,7 +326,8 @@
     };
     const clean = String(output || '')
       .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/#{1,3}\s*/g, '');
+      // Retire seulement les faux headings markdown, pas les hashtags sociaux.
+      .replace(/^\s{0,3}#{1,3}\s+/gm, '');
     const parts = clean.split(/(?:^|\n)\s*(INSTAGRAM(?:\/TIKTOK)?|TIKTOK|FACEBOOK MARKETPLACE|FACEBOOK|PINTEREST)\s*\n/im);
 
     for (let index = 1; index < parts.length; index += 2) {
