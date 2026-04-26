@@ -843,43 +843,8 @@ function getPipelineDisplayStepIdForRuntimeAgent(prefix, runtimeAgentId = '') {
 
 // RUN AGENT
 // ═══════════════════════════════════════════════════════════
-async function runAgent(agent, correction = '', isRetry = false) {
-  const p = pfx();
-  const refs = beginAgentExecution(p, agent, { isRetry });
+// Moved to pipeline/runtime/agent_runtime_ui.js.
 
-  try {
-    const ctx = buildCtx(agent.id, correction);
-    let result = '';
-    let usage = null;
-
-    const prompt = buildPrompt(agent.id, ctx);
-    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
-    state.inputs[agent.id] = rawFixed + prompt.filled;
-    const runtimePrompt = withPipelineCacheAwarePromptData(p, prompt, {
-      source: isRetry ? 'rerun' : 'pipeline',
-    });
-    const response = await callClaude(agent.id, runtimePrompt, shouldUseImagesForAgent(agent));
-    result = response.text;
-    usage = response.usage || null;
-
-    if (agent.selectionType === 'tags') {
-      state.outputs.tags_raw = result;
-      state.outputs.tags = '';
-    } else {
-      state.outputs[agent.id] = result;
-    }
-
-    if (!agent.hasSelection) {
-      appendPipelineRunEntry(p, agent.id, result, { quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id });
-    }
-
-    finalizeAgentSuccess(p, agent, refs, result, usage, { isRetry });
-    return true;
-  } catch (err) {
-    finalizeAgentError(p, agent, refs, err);
-    return false;
-  }
-}
 
 // ═══════════════════════════════════════════════════════════
 // Contrôle global du pipeline unitaire.
