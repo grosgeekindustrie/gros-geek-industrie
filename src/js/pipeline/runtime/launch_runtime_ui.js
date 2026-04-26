@@ -2,6 +2,8 @@
 
 (function initPipelineUILaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
+  const CACHE_AWARE_PRELAUNCH_SCOPE = `${CACHE_AWARE_PRELAUNCH_LABEL} + pipeline complet`;
 
   function refreshSoloTabs(prefix) {
     const mode = global.getPipelineModeByPrefix(prefix);
@@ -434,7 +436,7 @@
     setPipelineLaunchState(prefix, {
       currentStepId: global.CACHE_AWARE_STEP_ID,
       isRunning: true,
-      lastStatus: 'cache-aware pré-pipeline',
+      lastStatus: CACHE_AWARE_PRELAUNCH_LABEL,
     });
 
     const promptData = buildCacheAwarePrelaunchPromptData(prefix, firstAgent);
@@ -454,7 +456,7 @@
 
     resetPipelineRunState(prefix);
     global.beginCacheDebugRun(prefix, pipelineAgents, {
-      launchScope: 'cache-aware pré-pipeline + pipeline complet',
+      launchScope: CACHE_AWARE_PRELAUNCH_SCOPE,
       cacheAwareEnabled: true,
     });
 
@@ -467,7 +469,7 @@
         isRunning: false,
         lastStatus: 'erreur cache-aware',
       });
-      global.showToast(`❌ Cache-aware pré-pipeline: ${error.message}`, '#ff4757');
+      global.showToast(`❌ ${CACHE_AWARE_PRELAUNCH_LABEL}: ${error.message}`, '#ff4757');
       return false;
     }
 

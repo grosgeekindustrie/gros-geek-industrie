@@ -9,6 +9,11 @@
   const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const LEGACY_FORM_STORAGE_KEY_PREFIX = 'pipeline_form_';
+  const DEFAULT_SUBJECT_NAME = 'Figurine';
+  const DEFAULT_SCULPTOR_NAME = 'Inconnu';
+  const DEFAULT_POSE_NAME = 'MUSEUM';
+  const DEFAULT_PROFILE_NAME = 'hobbyiste';
+  const DEFAULT_VERSION_LABEL = 'FIGURINE';
   const LEGACY_FORM_STORAGE_KEYS_BY_MODE = Object.freeze({
     tabletop: `${LEGACY_FORM_STORAGE_KEY_PREFIX}tabletop`,
     collection: `${LEGACY_FORM_STORAGE_KEY_PREFIX}collection`,
@@ -433,7 +438,7 @@
 
     return {
       type: getElementValue('tt-fType', 'SOLO'),
-      version: getElementValue('tt-fVersion', 'FIGURINE'),
+      version: getElementValue('tt-fVersion', DEFAULT_VERSION_LABEL),
       presentationVisuelle: getElementValue('tt-fPresentationVisuelle'),
       natureSujet: getElementValue('tt-fNatureSujet', 'HUMANOIDE'),
       buzz: isElementChecked('tt-fBuzz'),
@@ -453,7 +458,7 @@
 
   function getCollectionData() {
     return {
-      typePiece: getElementValue('col-fType', 'FIGURINE'),
+      typePiece: getElementValue('col-fType', DEFAULT_VERSION_LABEL),
       medium: getMediums(),
       ...getCollectionMediumMetaData(),
       license: isElementChecked('col-fLicense') ? 'oui' : 'non',
@@ -532,7 +537,7 @@
     const formatName = (value) => value.replace(/\b\w/g, (char) => char.toUpperCase());
     const rawNomField = getFieldValue('fNom');
     const rawNomCourtField = getFieldValue('fNomCourt');
-    const rawNom = rawNomField || rawNomCourtField || 'Figurine';
+    const rawNom = rawNomField || rawNomCourtField || DEFAULT_SUBJECT_NAME;
     const rawNomCourt = rawNomCourtField || rawNom.split(' ')[0];
     const nom = formatName(rawNom);
     const nomCourt = formatName(rawNomCourt);
@@ -545,14 +550,14 @@
       nom,
       nomCourt,
       univers: getElementValue(`${prefix}-fUnivers`),
-      sculpteur: getElementValue(`${prefix}-fSculpteur`, 'Inconnu'),
+      sculpteur: getElementValue(`${prefix}-fSculpteur`, DEFAULT_SCULPTOR_NAME),
       echelles: echellesApi.getEchellesSelected?.() || '',
       pieces: getElementValue(`${prefix}-fPieces`),
       dimensions: echellesApi.getDimsFromEchelles?.() || '',
       notes: currentMode === 'collection' ? collectionDescription : getElementValue(`${prefix}-fNotes`),
       descriptionFigurine: collectionDescription,
       resumePersonnage: collectionResume,
-      pose: getElementValue(`${prefix}-fPose`, 'MUSEUM'),
+      pose: getElementValue(`${prefix}-fPose`, DEFAULT_POSE_NAME),
       imageCount: state.images[prefix].length,
       outputs: normalizedOutputs,
       correction,
@@ -565,7 +570,7 @@
       ...buildPipelinePromptContext(pipelineRun),
       profil_dominant: (() => {
         const match = (state.outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
-        return match ? match[1].trim() : 'hobbyiste';
+        return match ? match[1].trim() : DEFAULT_PROFILE_NAME;
       })(),
     };
 

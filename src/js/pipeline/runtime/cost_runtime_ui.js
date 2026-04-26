@@ -2,6 +2,7 @@
 
 (function initPipelineUICostRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
 
   function getCostRatesForAgent(agentId = '') {
     const model = String(global.AGENT_MODELS[agentId] || '');
@@ -100,7 +101,7 @@
       iris: 'iris',
       social: 'social',
       explorer: 'explorer',
-      cache_aware_prelaunch: 'cache-aware pré-pipeline',
+      cache_aware_prelaunch: CACHE_AWARE_PRELAUNCH_LABEL,
       warmup: 'warmup',
       other: 'autre',
     };
@@ -372,7 +373,7 @@
       `Output: ${totals.outputTok.toLocaleString()} tok`,
       '',
       '── Totaux par périmètre ──',
-      `Cache-aware pré-pipeline: ${categoryTotals.cache_aware_prelaunch.costCents.toFixed(3)}¢ (${categoryTotals.cache_aware_prelaunch.count} événement(s))`,
+      `${CACHE_AWARE_PRELAUNCH_LABEL}: ${categoryTotals.cache_aware_prelaunch.costCents.toFixed(3)}¢ (${categoryTotals.cache_aware_prelaunch.count} événement(s))`,
       `Pipeline standard: ${categoryTotals.pipeline.costCents.toFixed(3)}¢ (${categoryTotals.pipeline.count} événement(s))`,
       `Warmup identifiable: ${categoryTotals.warmup.costCents.toFixed(3)}¢ (${categoryTotals.warmup.count} événement(s), sous-ensemble pipeline)`,
       `Reruns: ${categoryTotals.rerun.costCents.toFixed(3)}¢ (${categoryTotals.rerun.count} événement(s))`,
