@@ -194,7 +194,7 @@
 
     if (button) {
       button.disabled = false;
-      button.innerHTML = '▶ Relancer tout';
+      button.innerHTML = '▶';
     }
 
     global.setPipelineExecutionActive?.(false);
