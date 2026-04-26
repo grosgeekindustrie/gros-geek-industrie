@@ -630,17 +630,6 @@
         restoreScaleEntries(data._echelles, 'tt');
         setCheckedValues(`#${TABLETOP_DYNAMIC_IDS.genreGroup} input`, data._genres);
 
-        const archetypesEl = getElementById('tt-fArchetypes');
-        if (archetypesEl && !archetypesEl.value) {
-          const legacyArchetypes = [
-            data['tt-fArchPrincipal'],
-            ...(Array.isArray(data._archSec) ? data._archSec : []),
-          ]
-            .map((value) => String(value || '').trim())
-            .filter(Boolean);
-          archetypesEl.value = [...new Set(legacyArchetypes)].join(', ');
-        }
-
         if (data._buzz !== undefined) {
           const buzzEl = getElementById('tt-fBuzz');
           if (buzzEl) {
