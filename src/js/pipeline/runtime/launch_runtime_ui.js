@@ -516,14 +516,7 @@
 
     if (warningBox) warningBox.style.display = 'none';
     if (!preserveCacheStatus) global.setLastCacheStatus('—');
-    document.getElementById(`socialSection-${prefix}`).style.display = 'none';
-    document.getElementById(`socialOutput-${prefix}`).style.display = 'none';
-    document.getElementById(`reseauxOnlySection-${prefix}`).style.display = 'none';
-    [`ss-insta-${prefix}`, `ss-fb-${prefix}`, `ss-marketplace-${prefix}`, `ss-pinterest-${prefix}`].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
-    global.state.socialSections = {};
+    global.resetSocialRuntimePanels?.(prefix);
     document.getElementById(`finalOutput-${prefix}`).style.display = 'none';
     [`fs-titre-${prefix}`, `fs-tags-${prefix}`, `fs-description-${prefix}`, `fs-alt-${prefix}`].forEach((id) => {
       const el = document.getElementById(id);
@@ -564,10 +557,7 @@
           pipelineBody.appendChild(pipelineEl);
         }
         if (finalEl) pipelineBody.appendChild(finalEl);
-        const socialSectionEl = document.getElementById(`socialSection-${prefix}`);
-        if (socialSectionEl) pipelineBody.appendChild(socialSectionEl);
-        const socialOutputEl = document.getElementById(`socialOutput-${prefix}`);
-        if (socialOutputEl) pipelineBody.appendChild(socialOutputEl);
+        global.moveSocialPanelsToPipelineBody?.(prefix, pipelineBody);
       }
 
       const titleEl = document.getElementById('pipelineViewTitle');

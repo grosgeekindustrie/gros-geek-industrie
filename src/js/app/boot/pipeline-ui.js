@@ -532,7 +532,7 @@ function assembleFinal() {
   show(`fs-alt-${p}`, `fc-alt-${p}`, alt, 'alt');
   const fo = document.getElementById(`finalOutput-${p}`);
   fo.style.display = 'flex'; fo.style.flexDirection = 'column';
-  if (alt) document.getElementById(`socialSection-${p}`).style.display = 'block';
+  if (alt) window.showSocialEntryPanel?.(p);
   if (p === 'tt') {
     refreshDndSoloTabs?.();
     if (!window.isPipelineExecutionActive?.()) activateDndSoloTab?.('result', { force: true });
@@ -604,9 +604,7 @@ function assembleFinal() {
     finalOutput.style.flexDirection = 'column';
   }
 
-  if (alt) {
-    document.getElementById(`socialSection-${p}`).style.display = 'block';
-  }
+  if (alt) window.showSocialEntryPanel?.(p);
 
   if (p === 'tt') {
     refreshDndSoloTabs?.();
