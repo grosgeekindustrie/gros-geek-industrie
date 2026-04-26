@@ -834,55 +834,7 @@ function getPipelineDisplayStepIdForRuntimeAgent(prefix, runtimeAgentId = '') {
 // Launch state, run-state bridge and cache-aware prelaunch moved to
 // pipeline/runtime/launch_runtime_ui.js.
 
-async function runIrisSemanticSearch(prefix = 'col') {
-  const button = document.getElementById(`runIrisBtn-${prefix}`);
-  const output = document.getElementById(`out-iris-${prefix}`);
-
-  if (button) {
-    button.disabled = true;
-    button.textContent = '⟳ Recherche...';
-  }
-
-  if (output) {
-    output.classList.remove('empty');
-    output.textContent = '';
-  }
-
-  try {
-    const ctx = buildCtx('iris');
-    const prompt = buildPrompt('iris', ctx);
-    const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──
-${prompt.fixedContent}
-
-── VARIABLE ──
-` : '';
-    state.inputs.iris = rawFixed + prompt.filled;
-
-    const response = await callClaude('iris', prompt, false);
-    state.outputs.iris = response.text;
-    showAgentCost('iris', response.usage || null, { prefix, source: 'iris' });
-    syncCacheIndicator(response.usage || null);
-
-    if (output) output.textContent = response.text;
-    showToast('Recherche sémantique Iris générée ✓');
-  } catch (error) {
-    if (output) output.textContent = `❌ ${error.message}`;
-    showToast(`❌ ${error.message}`, '#ff4757');
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = '▶ Lancer Iris';
-    }
-  }
-}
-
-async function runCollectionIrisSemanticSearch() {
-  return runIrisSemanticSearch('col');
-}
-
-async function runTabletopIrisSemanticSearch() {
-  return runIrisSemanticSearch('tt');
-}
+// Moved to pipeline/runtime/iris_runtime_ui.js.
 
 // ═══════════════════════════════════════════════════════════
 // Cœur d'exécution agent par agent.
