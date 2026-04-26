@@ -8,7 +8,7 @@
   global.PipelineUI = global.PipelineUI || {};
 
   function getBootstrapPipelinePrefixes() {
-    return typeof global.getPipelinePrefixes === 'function' ? global.getPipelinePrefixes() : ['tt', 'col'];
+    return global.getPipelinePrefixes();
   }
 
   function restoreBootstrapImages() {

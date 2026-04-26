@@ -229,14 +229,7 @@
   // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
   function resetSingleFlowPanels(mode) {
     const modeUiConfig = getModeUiConfig(mode);
-    const fallbackPrefix = mode === 'collection' ? 'col' : 'tt';
-    const panelIds = modeUiConfig?.panelIds || [
-      `pipeline-${fallbackPrefix}`,
-      `finalOutput-${fallbackPrefix}`,
-      `socialSection-${fallbackPrefix}`,
-      `socialOutput-${fallbackPrefix}`,
-      `reseauxOnlySection-${fallbackPrefix}`,
-    ];
+    const panelIds = modeUiConfig.panelIds;
 
     panelIds.forEach((panelId) => {
       const element = document.getElementById(panelId);

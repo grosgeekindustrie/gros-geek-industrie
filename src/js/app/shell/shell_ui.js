@@ -8,7 +8,6 @@ window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIShell = window.PipelineUIShell || {};
 
 var currentMode = 'tabletop'; // 'tabletop' | 'collection'
-const FALLBACK_MODE_PREFIX = { tabletop: 'tt', collection: 'col' };
 const MODE_SUCCESS_SUFFIX = 'OK';
 const DEFAULT_MODE_TITLES = {
   tabletop: 'Etsy Pipeline DnD',
@@ -19,13 +18,9 @@ const DEFAULT_PAGE_TITLES = {
   collection: 'Etsy Pipeline Collection v1.2',
 };
 const getModeUiConfig = (mode = currentMode) => (
-  typeof getPipelineUiConfig === 'function' ? getPipelineUiConfig(mode) : null
+  getPipelineUiConfig(mode)
 );
-const getModePrefix = (mode = currentMode) => (
-  typeof getPipelinePrefix === 'function'
-    ? getPipelinePrefix(mode)
-    : (FALLBACK_MODE_PREFIX[mode] || FALLBACK_MODE_PREFIX.tabletop)
-);
+const getModePrefix = (mode = currentMode) => getPipelinePrefix(mode);
 
 function pfx() {
   return getModePrefix(currentMode);
