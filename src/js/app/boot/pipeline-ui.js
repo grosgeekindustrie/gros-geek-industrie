@@ -1,12 +1,9 @@
 'use strict';
 
 // Bridge UI.
-// Ce fichier consomme les modules window.PipelineUI* et sert de point d'assemblage.
-// État actuel : la majorité du découpage UI est faite, mais quelques helpers runtime
-// temporaires provenant de l'ancien coeur restent encore ici pour éviter une migration
-// trop risquée en une seule passe.
-// Objectif : garder pipeline-ui.js léger, lisible, et pousser le reliquat vers des
-// modules dédiés quand la zone concernée est vraiment retestée.
+// Ce fichier rebranche les globals historiques attendues par le HTML inline et
+// l'ancien runtime en les lisant depuis les modules window.PipelineUI*.
+// Il ne porte plus le coeur fonctionnel : seulement l'assemblage de surface.
 
 window.PipelineUI = window.PipelineUI || {};
 
@@ -45,6 +42,7 @@ const {
 
 const { autoRegenTag, rerollTag } = window.PipelineUITags;
 const { autoRegenTitre } = window.PipelineUITitles;
+
 const {
   openBiblioLightbox,
   closeBiblioLightbox,
@@ -56,6 +54,7 @@ const {
   saveLbPrompt,
   resetLbPrompt,
 } = window.PipelineUILibrary;
+
 const {
   buildEchellesUI,
   toggleEch,
@@ -80,110 +79,15 @@ const {
   getBiblioTagsFormatted,
 } = window.PipelineUIPromptBiblio;
 
-const {
-  activateDndSoloTab,
-} = window.PipelineUIDndTabs || {};
-const {
-  activateCollectionSoloTab,
-} = window.PipelineUICollectionTabs || {};
+const { activateDndSoloTab } = window.PipelineUIDndTabs || {};
+const { activateCollectionSoloTab } = window.PipelineUICollectionTabs || {};
 
-// ═══════════════════════════════════════════════════════════
-// PROMPT BUILDER
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/prompt_biblio_ui.js
-// Helpers now live in src/js/pipeline/ui/shared/helper_ui.js
-
-// Flux tags : Collection et Tabletop utilisent désormais le même mono-agent.
-// La future sélection manuelle UI viendra dans un second temps, sans réintroduire
-// le trio explore → filter → select.
-
-// ═══════════════════════════════════════════════════════════
-// BIBLIOTHÈQUES
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/prompt_biblio_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// PROMPT LIGHTBOX
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
-// ÉCHELLES
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/shared/media/echelles_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// IMAGES
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/shared/media/images_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// ARCHÉTYPES & CHAMPS FORMULAIRE
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/forms_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// CONTEXT BUILDER
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/forms_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// BUILD PIPELINE UI
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/cards_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// TAGS — VALIDATION / EXPLORER
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/selections_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// TITRE SÉLECTION
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/selections_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// SÉLECTION ACCROCHE / CTA
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/selections_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// API CALL
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/app/shell/app_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// INPUT BRUT LIGHTBOX
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/app/shell/app_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════
-// VIEW SYSTEM
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/app/shell/app_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// SETTINGS PANEL
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/app/shell/app_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// LOAD PERSISTED DATA
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/forms_ui.js
-
-// ═══════════════════════════════════════════════════════════
-// CHARGEMENT FICHIERS MD
-// ═══════════════════════════════════════════════════════════
-// Extracted to src/js/pipeline/ui/shared/forms_ui.js
-
-// Les reliquats runtime historiques ont été redistribués dans les modules UI/runtime
-// dédiés. Ce boot reste un point d’assemblage et d’initialisation.
-
-// ═══════════════════════════════════════════════════════════
+// Bridge surface:
+// - helpers / parsing
+// - rendu / modales / biblios
+// - tags / titres / selections
+// - media et echelles
+// - prompts et tabs solo
+// L'initialisation vivante passe par app/boot/pipeline_bootstrap_ui.js.
 
 initializePipelineUi?.();
-
-
