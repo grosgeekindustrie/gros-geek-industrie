@@ -910,10 +910,13 @@
     const explorerPrompt = `${prompt.filled}\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.`;
 
     try {
-      const { text: result } = await global.callClaude('titre', {
+      const { text: result, usage } = await global.callClaude('titre', {
         filled: explorerPrompt,
         fixedContent: prompt.fixedContent,
       }, false);
+
+      global.showAgentCost?.('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
+      global.syncCacheIndicator?.(usage);
 
       const lines = result.split('\n').filter((line) => line.match(/^\d+\.\s+/));
       const titres = lines.map((line) => {

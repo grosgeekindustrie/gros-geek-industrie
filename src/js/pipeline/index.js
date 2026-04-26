@@ -7,6 +7,7 @@ const pipelineSharedPreludePaths = Object.freeze([
   'pipeline/ui/shared/helper_ui.js',
   'pipeline/ui/shared/render_ui.js',
   'pipeline/ui/shared/modals_ui.js',
+  'pipeline/ui/shared/rules_ui.js',
   'pipeline/ui/shared/tags_ui.js',
   'pipeline/ui/shared/title_ui.js',
   'pipeline/ui/shared/library_ui.js',
@@ -78,6 +79,18 @@ const pipelineBootstrapManifest = Object.freeze({
   devRuntime: pipelineDevRuntimePaths,
 });
 
+const pipelineBootstrapLayerOrder = Object.freeze([
+  'sharedPrelude',
+  'primaryData',
+  'devPrelude',
+  'secondaryData',
+  'runtimePrelude',
+  'prompts',
+  'uiNavigation',
+  'runtime',
+  'devRuntime',
+]);
+
 export {
   pipelineSharedPreludePaths,
   pipelinePrimaryDataPaths,
@@ -89,4 +102,5 @@ export {
   pipelineRuntimePaths,
   pipelineDevRuntimePaths,
   pipelineBootstrapManifest,
+  pipelineBootstrapLayerOrder,
 };
