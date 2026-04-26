@@ -12,11 +12,13 @@
   }
 
   function restoreBootstrapImages() {
-    if (typeof global.setupImageHandlers !== 'function') return;
+    const setupImageHandlers = global.PipelineUIImages?.setupImageHandlers;
+    const restoreWorkspaceImages = global.PipelineUIIndexedDb?.restoreWorkspaceImages;
+    if (typeof setupImageHandlers !== 'function') return;
 
     getBootstrapPipelinePrefixes().forEach((prefix) => {
-      global.setupImageHandlers(prefix);
-      global.restoreWorkspaceImages?.(prefix);
+      setupImageHandlers(prefix);
+      restoreWorkspaceImages?.(prefix);
     });
   }
 
