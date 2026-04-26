@@ -90,5 +90,8 @@
 
   global.PipelineUI.bootstrap = global.PipelineUI.bootstrap || {};
   Object.assign(global.PipelineUI.bootstrap, global.PipelineUIBootstrap);
-  Object.assign(global, global.PipelineUIBootstrap);
+  Object.assign(global, {
+    rebuildModeUi,
+    initializePipelineUi,
+  });
 })(window);
