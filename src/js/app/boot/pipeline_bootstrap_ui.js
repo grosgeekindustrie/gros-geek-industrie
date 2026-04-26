@@ -7,14 +7,14 @@
 // que plusieurs points d'entree rejouent l'init chacun de leur cote.
   global.PipelineUI = global.PipelineUI || {};
 
-  function getPipelinePrefixes() {
+  function getBootstrapPipelinePrefixes() {
     return typeof global.getPipelinePrefixes === 'function' ? global.getPipelinePrefixes() : ['tt', 'col'];
   }
 
   function restoreBootstrapImages() {
     if (typeof global.setupImageHandlers !== 'function') return;
 
-    getPipelinePrefixes().forEach((prefix) => {
+    getBootstrapPipelinePrefixes().forEach((prefix) => {
       global.setupImageHandlers(prefix);
       global.restoreWorkspaceImages?.(prefix);
     });
@@ -80,7 +80,6 @@
   }
 
   global.PipelineUIBootstrap = {
-    getPipelinePrefixes,
     restoreBootstrapImages,
     initializeNavigationUis,
     restoreBootstrapView,
