@@ -64,15 +64,11 @@ const {
 } = window.PipelineUIEchelles;
 
 const {
-  setupImageHandlers,
   processImages,
   renderThumbs,
   resizeImage,
   removeImage,
 } = window.PipelineUIImages;
-const {
-  restoreWorkspaceImages,
-} = window.PipelineUIIndexedDb || {};
 
 const {
   buildPrompt,
@@ -85,21 +81,9 @@ const {
 } = window.PipelineUIPromptBiblio;
 
 const {
-  initDndStepper,
-  refreshDndStepper,
-} = window.PipelineUIDndStepper || {};
-const {
-  initCollectionStepper,
-  refreshCollectionStepper,
-} = window.PipelineUICollectionStepper || {};
-const {
-  initDndSoloTabs,
-  refreshDndSoloTabs,
   activateDndSoloTab,
 } = window.PipelineUIDndTabs || {};
 const {
-  initCollectionSoloTabs,
-  refreshCollectionSoloTabs,
   activateCollectionSoloTab,
 } = window.PipelineUICollectionTabs || {};
 
@@ -200,30 +184,6 @@ const {
 
 // ═══════════════════════════════════════════════════════════
 
-const pipelinePrefixes = typeof getPipelinePrefixes === 'function' ? getPipelinePrefixes() : ['tt', 'col'];
-pipelinePrefixes.forEach((prefix) => {
-  setupImageHandlers(prefix);
-  restoreWorkspaceImages?.(prefix);
-});
-loadPersistedData();
-renderDeclarativeFormCatalogs?.({ shouldSave: false });
-buildPipeline();
-buildEchellesUI();
-loadFormState();
-attachFormPersistence();
-initDndStepper?.();
-refreshDndStepper?.();
-initCollectionStepper?.();
-refreshCollectionStepper?.();
-initDndSoloTabs?.();
-refreshDndSoloTabs?.();
-initCollectionSoloTabs?.();
-refreshCollectionSoloTabs?.();
-loadAllFiles();
-// Restore view after init — immediate, no flash
-if (window._restoreView === 'form' && window._restoreMode) {
-  selectMode(window._restoreMode);
-  window._restoreView = null;
-}
-// Reveal body after view is set
-document.body.classList.add('ready');
+initializePipelineUi?.();
+
+

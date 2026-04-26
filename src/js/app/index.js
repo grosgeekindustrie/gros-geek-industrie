@@ -9,6 +9,7 @@ const appShellPreludePaths = Object.freeze([
 
 const appBootPaths = Object.freeze([
   'app/shell/app_ui.js',
+  'app/boot/pipeline_bootstrap_ui.js',
   'app/boot/pipeline-ui.js',
 ]);
 

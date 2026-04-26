@@ -69,12 +69,16 @@ function switchMode(mode) {
   if (tabletopRoot?.style) tabletopRoot.style.display = isTabletop ? '' : 'none';
   if (collectionRoot?.style) collectionRoot.style.display = isTabletop ? 'none' : '';
 
-  renderDeclarativeFormCatalogs?.({ shouldSave: false });
-  buildEchellesUI();
-  buildPipeline();
-  loadFormState();
-  loadAllFiles(true);
-  showToast(`Mode ${isTabletop ? 'Tabletop DnD' : 'Collection'} ${MODE_SUCCESS_SUFFIX}`, isTabletop ? '#e8c547' : '#7eb8f7');
+  rebuildModeUi?.({
+    silentFileLoad: true,
+    refreshCatalogs: true,
+    rebuildPipeline: true,
+    rebuildEchelles: true,
+    reloadFormState: true,
+    showModeToast: true,
+    modeToastMessage: `Mode ${isTabletop ? 'Tabletop DnD' : 'Collection'} ${MODE_SUCCESS_SUFFIX}`,
+    modeToastColor: isTabletop ? '#e8c547' : '#7eb8f7',
+  });
 
   try {
     const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
