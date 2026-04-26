@@ -38,7 +38,8 @@ RÈGLES ABSOLUES
 → Mystère > exhaustivité
 → Inciter à cliquer, pas tout raconter
 → Michel doit se reconnaître, si ça sonne marketing, c'est raté
-→ Utiliser [[ACCROCHE]] comme point de départ du hook
+→ Reprendre [[ACCROCHE]] comme hook principal, sans en inventer un nouveau
+→ Tu peux au maximum faire une micro adaptation de ponctuation ou de casse, mais pas changer l'idée ni reformuler l'accroche
 → Utiliser [[CTA]] comme base de fermeture
 → Tenir compte du profil dominant [[PROFIL_DOMINANT]] pour l'angle du texte
 → Pour Instagram/TikTok et Facebook, les hashtags doivent être de vrais hashtags réseaux sociaux
@@ -55,6 +56,11 @@ RÈGLES ABSOLUES
 → Tu peux t'appuyer sur [[DESCRIPTION]] pour nourrir l'ambiance, les contrastes visuels et l'intérêt peinture
 → Tu peux mentionner le nombre de pièces, le matériau, le garage kit et l'usage peinture si ces éléments sont présents dans [[DESCRIPTION]]
 → Ne jamais sortir les dimensions détaillées en mm, même si elles sont présentes dans [[DESCRIPTION]]
+→ Faire des phrases complètes, naturelles et fluides
+→ Éviter absolument les formulations bancales ou les fragments du type "Cette [nom du personnage]"
+→ Préférer "Cette figurine", "Cette pièce", "La sculpture", "Le rendu", "La composition" selon le contexte
+→ Paragraphes courts uniquement : 2 phrases maximum par paragraphe descriptif
+→ Chaque phrase doit pouvoir être lue à voix haute sans sonner mécanique
 
 DONNÉES REÇUES
 • Personnage / pièce : [[NOM]]
@@ -73,12 +79,13 @@ FORMAT INSTAGRAM/TIKTOK
 → Ligne 1 : 🛒 Disponible en boutique
 → Ligne 2 : 👉 [[URL]]
 → Ligne vide
-→ Ligne 3 : hook émotionnel fort, dans l'esprit de [[ACCROCHE]]
+→ Ligne 3 : reprendre [[ACCROCHE]] comme hook, sans en inventer un nouveau
 → Puis 2 à 3 courts paragraphes lisibles :
 → 1. ambiance et présence de la pièce
 → 2. lecture visuelle, volumes, contraste, silhouette, intérêt collection
 → 3. mini bloc specs sur lignes séparées si pertinent : échelles, pièces, matériau, garage kit
 → Après le mini bloc specs, ne pas rajouter de paragraphe descriptif supplémentaire
+→ Pas plus de 2 phrases par paragraphe
 → Ligne vide
 → Ajouter ensuite une seule question courte pensée pour déclencher commentaire ou réaction
 → Ligne vide
@@ -95,8 +102,10 @@ FORMAT FACEBOOK
 → Sortir un bloc FR puis un bloc EN
 → Garder exactement les deux premières lignes d'ouverture boutique dans chaque langue
 → Autoriser des paragraphes un peu plus développés que sur Instagram/TikTok
+→ Reprendre [[ACCROCHE]] comme hook, sans en inventer un nouveau
 → Conserver le mini bloc specs sur lignes séparées si pertinent
 → Après le mini bloc specs, ne pas rajouter de paragraphe descriptif supplémentaire
+→ Pas plus de 2 phrases par paragraphe
 → Ajouter ensuite une seule question courte pensée pour déclencher commentaire ou réaction
 → Puis une ligne personnage
 → Puis une ligne crédit sculpteur au format @[[SCULPTEUR]] uniquement, sans phrase autour
@@ -151,3 +160,4 @@ CONTRAINTES DE SORTIE
 → Pour Instagram/TikTok et Facebook, insérer exactement --- sur une ligne seule entre le bloc FR et le bloc EN
 → Pour Instagram/TikTok et Facebook, les hashtags doivent être regroupés tout à la fin du bloc anglais
 → Les hashtags ne doivent jamais être une recopie ou une conversion mécanique de [[TAGS]]
+→ Les hashtags doivent être déjà formatés avec #, jamais sortis comme simples mots nus
