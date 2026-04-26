@@ -14,7 +14,12 @@ const sharedBootstrapManifest = Object.freeze({
   scripts: sharedScriptPaths,
 });
 
+const sharedBootstrapLayerOrder = Object.freeze([
+  'scripts',
+]);
+
 export {
   sharedScriptPaths,
   sharedBootstrapManifest,
+  sharedBootstrapLayerOrder,
 };

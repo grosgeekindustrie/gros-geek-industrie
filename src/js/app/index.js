@@ -18,8 +18,14 @@ const appBootstrapManifest = Object.freeze({
   boot: appBootPaths,
 });
 
+const appBootstrapLayerOrder = Object.freeze([
+  'shellPrelude',
+  'boot',
+]);
+
 export {
   appShellPreludePaths,
   appBootPaths,
   appBootstrapManifest,
+  appBootstrapLayerOrder,
 };

@@ -9,7 +9,12 @@ const socialBootstrapManifest = Object.freeze({
   scripts: socialScriptPaths,
 });
 
+const socialBootstrapLayerOrder = Object.freeze([
+  'scripts',
+]);
+
 export {
   socialScriptPaths,
   socialBootstrapManifest,
+  socialBootstrapLayerOrder,
 };

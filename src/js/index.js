@@ -8,44 +8,52 @@
  */
 import {
   appBootstrapManifest,
-  appBootPaths,
-  appShellPreludePaths,
+  appBootstrapLayerOrder,
 } from './app/index.js';
 import {
   pipelineBootstrapManifest,
-  pipelineDevPreludePaths,
-  pipelineDevRuntimePaths,
-  pipelinePrimaryDataPaths,
-  pipelinePromptPaths,
-  pipelineRuntimePaths,
-  pipelineRuntimePreludePaths,
-  pipelineSecondaryDataPaths,
-  pipelineSharedPreludePaths,
-  pipelineUiNavigationPaths,
+  pipelineBootstrapLayerOrder,
 } from './pipeline/index.js';
 import {
   socialBootstrapManifest,
-  socialScriptPaths,
+  socialBootstrapLayerOrder,
 } from './social/index.js';
 import {
   sharedBootstrapManifest,
-  sharedScriptPaths,
+  sharedBootstrapLayerOrder,
 } from './shared/index.js';
 
+const createDomainBootstrapGroups = (domain, manifest, layerOrder) => layerOrder.map((group) => Object.freeze({
+  domain,
+  group,
+  paths: manifest[group] || Object.freeze([]),
+}));
+
+const pickBootstrapLayers = (layerOrder, allowedGroups) => layerOrder.filter((group) => allowedGroups.includes(group));
+
 const BOOTSTRAP_GROUPS = Object.freeze([
-  Object.freeze({ domain: 'pipeline', group: 'sharedPrelude', paths: pipelineSharedPreludePaths }),
-  Object.freeze({ domain: 'pipeline', group: 'primaryData', paths: pipelinePrimaryDataPaths }),
-  Object.freeze({ domain: 'pipeline', group: 'devPrelude', paths: pipelineDevPreludePaths }),
-  Object.freeze({ domain: 'pipeline', group: 'secondaryData', paths: pipelineSecondaryDataPaths }),
-  Object.freeze({ domain: 'pipeline', group: 'runtimePrelude', paths: pipelineRuntimePreludePaths }),
-  Object.freeze({ domain: 'app', group: 'shellPrelude', paths: appShellPreludePaths }),
-  Object.freeze({ domain: 'pipeline', group: 'prompts', paths: pipelinePromptPaths }),
-  Object.freeze({ domain: 'shared', group: 'scripts', paths: sharedScriptPaths }),
-  Object.freeze({ domain: 'pipeline', group: 'uiNavigation', paths: pipelineUiNavigationPaths }),
-  Object.freeze({ domain: 'app', group: 'boot', paths: appBootPaths }),
-  Object.freeze({ domain: 'pipeline', group: 'runtime', paths: pipelineRuntimePaths }),
-  Object.freeze({ domain: 'pipeline', group: 'devRuntime', paths: pipelineDevRuntimePaths }),
-  Object.freeze({ domain: 'social', group: 'scripts', paths: socialScriptPaths }),
+  ...createDomainBootstrapGroups('pipeline', pipelineBootstrapManifest, pickBootstrapLayers(
+    pipelineBootstrapLayerOrder,
+    ['sharedPrelude', 'primaryData', 'devPrelude', 'secondaryData', 'runtimePrelude']
+  )),
+  ...createDomainBootstrapGroups('app', appBootstrapManifest, pickBootstrapLayers(
+    appBootstrapLayerOrder,
+    ['shellPrelude']
+  )),
+  ...createDomainBootstrapGroups('pipeline', pipelineBootstrapManifest, pickBootstrapLayers(
+    pipelineBootstrapLayerOrder,
+    ['prompts', 'uiNavigation']
+  )),
+  ...createDomainBootstrapGroups('shared', sharedBootstrapManifest, sharedBootstrapLayerOrder),
+  ...createDomainBootstrapGroups('app', appBootstrapManifest, pickBootstrapLayers(
+    appBootstrapLayerOrder,
+    ['boot']
+  )),
+  ...createDomainBootstrapGroups('pipeline', pipelineBootstrapManifest, pickBootstrapLayers(
+    pipelineBootstrapLayerOrder,
+    ['runtime', 'devRuntime']
+  )),
+  ...createDomainBootstrapGroups('social', socialBootstrapManifest, socialBootstrapLayerOrder),
 ]);
 
 const SCRIPT_PATHS = Object.freeze(
