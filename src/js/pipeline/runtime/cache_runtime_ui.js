@@ -595,7 +595,7 @@
   }
 
   function getPipelinePrefixesForLaunchPanels() {
-    return typeof global.getPipelinePrefixes === 'function' ? global.getPipelinePrefixes() : (global.DEFAULT_PIPELINE_PREFIXES || ['tt', 'col']);
+    return global.getPipelinePrefixes();
   }
 
   function syncStandaloneLaunchButtons(prefix) {
@@ -605,8 +605,8 @@
     buttons.forEach((button) => {
       button.disabled = launchState.isRunning;
       if (button.id === `runBtn-${prefix}`) {
-        button.title = global.PIPELINE_LAUNCH_LABEL || 'Lancer le pipeline complet';
-        button.setAttribute('aria-label', global.PIPELINE_LAUNCH_LABEL || 'Lancer le pipeline complet');
+        button.title = global.PIPELINE_LAUNCH_LABEL;
+        button.setAttribute('aria-label', global.PIPELINE_LAUNCH_LABEL);
         return;
       }
 
