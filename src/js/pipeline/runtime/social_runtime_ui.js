@@ -2,6 +2,20 @@
 
 (function initPipelineUISocialRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const SOCIAL_FORMAT_LABELS = Object.freeze({
+    instagram: 'INSTAGRAM/TIKTOK',
+    facebook: 'FACEBOOK',
+    marketplace: 'FACEBOOK MARKETPLACE',
+  });
+  const SOCIAL_SECTION_KEY_MAP = Object.freeze({
+    insta: 'insta',
+    fb: 'fb',
+    marketplace: 'marketplace',
+    pinterest: 'pinterest',
+    pinterestTitre: 'pinterestTitre',
+    pinterestDesc: 'pinterestDesc',
+    pinterestAlt: 'pinterestAlt',
+  });
 
   function refreshSocialTabs(prefix, { activate = false } = {}) {
     if (prefix !== 'tt' && prefix !== 'col') return;
@@ -61,9 +75,9 @@
 
   function getSocialSelectedFormats(prefix) {
     const formats = [];
-    if (document.getElementById(`soc-insta-${prefix}`)?.checked) formats.push('INSTAGRAM/TIKTOK');
-    if (document.getElementById(`soc-fb-${prefix}`)?.checked) formats.push('FACEBOOK');
-    if (document.getElementById(`soc-marketplace-${prefix}`)?.checked) formats.push('FACEBOOK MARKETPLACE');
+    if (document.getElementById(`soc-insta-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.instagram);
+    if (document.getElementById(`soc-fb-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.facebook);
+    if (document.getElementById(`soc-marketplace-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.marketplace);
     return formats;
   }
 
@@ -117,7 +131,21 @@
     refreshSocialTabs(prefix);
   }
 
-  async function runLeoAgent(prefix) {
+  function buildSocialAgentContext(agentId, formats = [], correction = '', overrides = {}) {
+    const ctx = global.buildCtx(agentId);
+    if (formats.length > 0) ctx.social_formats = formats.join(', ');
+    if (correction) ctx.correction = correction;
+    if (overrides.nom) {
+      ctx.nom = overrides.nom;
+      ctx.nomCourt = overrides.nom;
+    }
+    if (overrides.sculpteur) ctx.sculpteur = overrides.sculpteur;
+    if (overrides.echelles) ctx.echelles = overrides.echelles;
+    if (overrides.url) ctx.url_boutique = overrides.url;
+    return ctx;
+  }
+
+  async function runLeoAgent(prefix, options = {}) {
     const formats = getSocialSelectedFormats(prefix);
     if (formats.length === 0) {
       global.showToast('Coche au moins un réseau !', '#ff4757');
@@ -126,9 +154,7 @@
 
     const { refs, button } = beginSocialAgentRun(prefix, 'social', `runLeoBtn-${prefix}`);
     const correction = document.getElementById(`cor-social-${prefix}`)?.value || '';
-    const ctx = global.buildCtx('social');
-    ctx.social_formats = formats.join(', ');
-    ctx.correction = correction;
+    const ctx = buildSocialAgentContext('social', formats, correction, options);
     const prompt = global.buildPrompt('social', ctx);
     global.state.inputs.social = prompt.filled;
 
@@ -151,7 +177,7 @@
     }
   }
 
-  async function runCamilleAgent(prefix) {
+  async function runCamilleAgent(prefix, options = {}) {
     if (!document.getElementById(`soc-pinterest-${prefix}`)?.checked) {
       global.showToast(`Active Pinterest pour ${global.currentMode === 'collection' ? 'Zoe' : 'Camille'} !`, '#ff4757');
       return;
@@ -159,8 +185,7 @@
 
     const { refs, button } = beginSocialAgentRun(prefix, 'camille', `runCamilleBtn-${prefix}`);
     const correction = document.getElementById(`cor-camille-${prefix}`)?.value || '';
-    const ctx = global.buildCtx('camille');
-    ctx.correction = correction;
+    const ctx = buildSocialAgentContext('camille', [], correction, options);
     const prompt = global.buildPrompt('camille', ctx);
     global.state.inputs.camille = prompt.filled;
 
@@ -261,6 +286,7 @@
     const nom = document.getElementById(`ro-nom-${prefix}`)?.value || '';
     const sculpteur = document.getElementById(`ro-sculpteur-${prefix}`)?.value || '';
     const url = document.getElementById(`ro-url-${prefix}`)?.value || '';
+    const echelles = document.getElementById(`ro-echelles-${prefix}`)?.value || '';
     const accroche = document.getElementById(`ro-accroche-${prefix}`)?.value || '';
     const cta = document.getElementById(`ro-cta-${prefix}`)?.value || '';
     const titre = document.getElementById(`ro-titre-${prefix}`)?.value || '';
@@ -294,8 +320,9 @@
     }
 
     try {
-      if (type === 'leo' || type === 'both') await runLeoAgent(prefix);
-      if (type === 'camille' || type === 'both') await runCamilleAgent(prefix);
+      const socialOverrides = { nom, sculpteur, echelles, url };
+      if (type === 'leo' || type === 'both') await runLeoAgent(prefix, socialOverrides);
+      if (type === 'camille' || type === 'both') await runCamilleAgent(prefix, socialOverrides);
     } finally {
       global.state.selectedAccroche = previousAccroche;
       global.state.selectedCTA = previousCTA;
@@ -351,15 +378,7 @@
   }
 
   function copySocialSection(id) {
-    const keyMap = {
-      insta: 'insta',
-      fb: 'fb',
-      pinterest: 'pinterest',
-      pinterestTitre: 'pinterestTitre',
-      pinterestDesc: 'pinterestDesc',
-      pinterestAlt: 'pinterestAlt',
-    };
-    navigator.clipboard.writeText(global.state.socialSections?.[keyMap[id]] || '');
+    navigator.clipboard.writeText(global.state.socialSections?.[SOCIAL_SECTION_KEY_MAP[id]] || '');
     global.showToast('Copié ✓');
   }
 
@@ -373,6 +392,7 @@
     resetSocialRuntimePanels,
     showSocialEntryPanel,
     moveSocialPanelsToPipelineBody,
+    buildSocialAgentContext,
     getSocialSelectedFormats,
     runLeoAgent,
     runCamilleAgent,
