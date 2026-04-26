@@ -305,11 +305,11 @@
 
   function resetPipelineRunState(prefix) {
     const runState = getPipelineRunState(prefix);
-    const warmupStepId = global.getPipelineWarmupStepId?.(global.getPipelineLaunchMode(prefix)) || 'marche';
+    const warmupStepId = global.getPipelineWarmupStepId(global.getPipelineLaunchMode(prefix));
     const formSnapshot = buildPipelineFormSnapshot(prefix);
 
     runState.formSnapshot = formSnapshot;
-    runState.warmupHint = `Warmup compatible: préfixe stable avant ${warmupStepId}`;
+    runState.warmupHint = `Warmup stable avant ${warmupStepId}`;
     runState.cumulativeEntries = [];
     runState.cumulativeText = '';
 

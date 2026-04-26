@@ -6,6 +6,11 @@
   const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
   const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
   const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
+  const SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX = Object.freeze({
+    tt: 'tabletop',
+    col: 'collection',
+  });
+  const SOLO_EXPORT_FALLBACK_AUTHOR = 'unknown_sculptor';
   const getFinalDescriptionOutput = () => global.state.outputs.description_assembled || '';
 
   function getOutputText(prefix, agentId) {
@@ -154,9 +159,9 @@
     const nomCourt = document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || '';
     const nomComplet = document.getElementById(`${prefix}-fNom`)?.value?.trim() || '';
     const sculpteur = document.getElementById(`${prefix}-fSculpteur`)?.value?.trim() || '';
-    const fallbackNom = prefix === 'tt' ? 'tabletop_dnd' : 'collection';
+    const fallbackNom = SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX[prefix] || 'pipeline';
     const rawNom = nomCourt || nomComplet || global.state.outputs.titre_valide || fallbackNom;
-    const rawSculpteur = sculpteur || 'sculpteur';
+    const rawSculpteur = sculpteur || SOLO_EXPORT_FALLBACK_AUTHOR;
     const now = new Date();
     const pad = (value) => String(value).padStart(2, '0');
     const dateFR = `${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}`;
@@ -166,7 +171,7 @@
       return sanitized || fallback;
     };
     const nom = sanitizeSegment(rawNom, fallbackNom);
-    const auteur = sanitizeSegment(rawSculpteur, 'sculpteur');
+    const auteur = sanitizeSegment(rawSculpteur, SOLO_EXPORT_FALLBACK_AUTHOR);
     const folder = prefix === 'tt' ? 'export/solo/dnd/' : 'export/solo/collection/';
 
     return {

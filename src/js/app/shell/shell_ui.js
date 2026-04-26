@@ -1,8 +1,8 @@
 'use strict';
 
-// Shell global legacy contrôlé.
+// Shell global contrôlé.
 // Contient le mode courant, le state runtime principal et les helpers de préfixe.
-// Tant que la migration complète n'est pas faite, cette zone reste la source de vérité.
+// Cette zone reste la source de vérité du shell partagé tant que le runtime window existe.
 
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIShell = window.PipelineUIShell || {};
