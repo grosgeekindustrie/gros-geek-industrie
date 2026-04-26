@@ -166,6 +166,12 @@
     return data;
   }, {});
 
+  const buildPipelinePromptContext = (pipelineRun = {}) => ({
+    pipeline_form_snapshot: pipelineRun.formSnapshot || '',
+    pipeline_cumulatif: pipelineRun.cumulativeText || '',
+    pipeline_warmup_hint: pipelineRun.warmupHint || '',
+  });
+
   const restoreFieldValues = (fieldIds, data) => {
     fieldIds.forEach((id) => {
       if (data[id] !== undefined) setElementValue(id, data[id]);
@@ -556,9 +562,7 @@
       social_formats: state._leoFormats || '',
       selectedAccrocheText: state.selectedAccroche?.text || '',
       selectedCTAText: state.selectedCTA?.text || '',
-      pipeline_form_snapshot: pipelineRun.formSnapshot || '',
-      pipeline_cumulatif: pipelineRun.cumulativeText || '',
-      pipeline_warmup_hint: pipelineRun.warmupHint || '',
+      ...buildPipelinePromptContext(pipelineRun),
       profil_dominant: (() => {
         const match = (state.outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
         return match ? match[1].trim() : 'hobbyiste';

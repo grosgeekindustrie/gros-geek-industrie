@@ -330,7 +330,7 @@
     const normalizedMeta = global.normalizePipelineRunEntryMeta({
       agentId,
       ...meta,
-    }, agentId);
+    });
     runState.cumulativeEntries.push({
       agentId,
       content: trimmed,
@@ -354,7 +354,7 @@
         validation: previousEntry.validation || 'valide',
         origin: previousEntry.origin || 'manuel',
         ...meta,
-      }, agentId);
+      });
 
       runState.cumulativeEntries.push({
         agentId,

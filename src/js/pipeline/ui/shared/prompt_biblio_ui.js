@@ -47,12 +47,16 @@
     return 'hybride';
   };
 
+  const getPipelineFormSnapshotText = (ctx = {}) => (
+    String(ctx.pipeline_form_snapshot || '').trim() || 'Aucun snapshot disponible'
+  );
+
   const buildPipelineSharedFixedContent = (ctx = {}) => {
     const objectif = getOptionalBiblio('objectif');
     const psycho = getOptionalBiblio('psycho');
 
     const sections = [
-      `SNAPSHOT FORMULAIRE:\n${ctx.pipeline_form_snapshot || 'Aucun snapshot disponible'}`,
+      `SNAPSHOT FORMULAIRE:\n${getPipelineFormSnapshotText(ctx)}`,
       objectif ? `CONTEXTE GLOBAL:\n${objectif}` : '',
       psycho ? `PSYCHOLOGIE CLIENT:\n${psycho}` : '',
       // `BIBLIOTHÈQUE TITRES:\n${getOptionalBiblio('titres')}`,
@@ -274,7 +278,7 @@
       .replace(/\[\[AGENT_ID\]\]/g, ctx.agent_id || agentId)
       .replace(/\[\[TENTATIVE\]\]/g, String(ctx.tentative || 1))
       .replace(/\[\[OUTPUT\]\]/g, (ctx.output_to_validate || '').substring(0, 3000))
-      .replace(/\[\[PIPELINE_FORM_SNAPSHOT\]\]/g, ctx.pipeline_form_snapshot || '')
+      .replace(/\[\[PIPELINE_FORM_SNAPSHOT\]\]/g, getPipelineFormSnapshotText(ctx))
       .replace(/\[\[PIPELINE_CUMULATIF\]\]/g, ctx.pipeline_cumulatif || '')
       .replace(/\[\[PIPELINE_WARMUP_HINT\]\]/g, ctx.pipeline_warmup_hint || '')
       + (ctx.rules ? `\nRègles permanentes:\n${ctx.rules}` : '')

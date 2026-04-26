@@ -253,9 +253,9 @@
     };
   }
 
-  function normalizePipelineRunEntryMeta(entry = {}, fallbackAgentId = '') {
+  function normalizePipelineRunEntryMeta(entry = {}) {
     return {
-      sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || fallbackAgentId || '').trim(),
+      sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || '').trim(),
       quality: String(entry?.quality || 'brut').trim(),
       validation: String(entry?.validation || 'non_valide').trim(),
       origin: String(entry?.origin || 'auto').trim(),
