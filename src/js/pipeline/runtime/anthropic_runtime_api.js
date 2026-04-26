@@ -129,18 +129,12 @@
   }
 
   function normalizePromptDataForClaude(agentId, promptData) {
-    const isLegacy = typeof promptData === 'string';
-    const normalizedPromptText = isLegacy ? promptData : String(promptData?.filled || '');
-
     return {
-      isLegacy,
-      promptText: normalizedPromptText,
-      fixedContent: isLegacy ? null : String(promptData?.fixedContent || ''),
-      fixedContentBlocks: isLegacy
-        ? []
-        : (Array.isArray(promptData?.fixedContentBlocks) ? promptData.fixedContentBlocks : []),
-      promptDebug: isLegacy ? null : (promptData?.promptDebug || null),
-      runtimeAgentId: isLegacy ? agentId : (String(promptData?.runtimeAgentId || '').trim() || agentId),
+      promptText: String(promptData?.filled || ''),
+      fixedContent: String(promptData?.fixedContent || ''),
+      fixedContentBlocks: Array.isArray(promptData?.fixedContentBlocks) ? promptData.fixedContentBlocks : [],
+      promptDebug: promptData?.promptDebug || null,
+      runtimeAgentId: String(promptData?.runtimeAgentId || '').trim() || agentId,
     };
   }
 
@@ -604,7 +598,6 @@
     const controller = new AbortController();
     const normalizedPromptData = normalizePromptDataForClaude(agentId, promptData);
     const {
-      isLegacy,
       promptText,
       fixedContent,
       fixedContentBlocks,
@@ -637,9 +630,7 @@
     imageContentBlocks = imageBreakpointState.imageContentBlocks;
     filesApiDebug = imageBreakpointState.filesApiDebug;
 
-    const runtimePromptDebug = isLegacy
-      ? promptDebug
-      : buildClaudeRuntimePromptDebug(promptDebug, normalizedFixedBlocks, filesApiDebug, promptText);
+    const runtimePromptDebug = buildClaudeRuntimePromptDebug(promptDebug, normalizedFixedBlocks, filesApiDebug, promptText);
     const content = buildClaudeMessageContent(promptText, fixedContent, normalizedFixedBlocks, imageContentBlocks);
 
     for (let attempt = 1; attempt <= retries; attempt += 1) {
