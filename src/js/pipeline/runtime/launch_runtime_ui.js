@@ -4,23 +4,15 @@
   global.PipelineUI = global.PipelineUI || {};
 
   function refreshSoloTabs(prefix) {
-    const mode = typeof global.getPipelineModeByPrefix === 'function'
-      ? global.getPipelineModeByPrefix(prefix)
-      : (prefix === 'col' ? 'collection' : 'tabletop');
-    const refreshMethodName = typeof global.getPipelineUiConfig === 'function'
-      ? global.getPipelineUiConfig(mode)?.tabs?.refreshMethod
-      : (prefix === 'col' ? 'refreshCollectionSoloTabs' : 'refreshDndSoloTabs');
+    const mode = global.getPipelineModeByPrefix(prefix);
+    const refreshMethodName = global.getPipelineUiConfig(mode)?.tabs?.refreshMethod;
     const refreshMethod = refreshMethodName ? global[refreshMethodName] : null;
     refreshMethod?.();
   }
 
   function activateSoloTab(prefix, tabId, options = {}) {
-    const mode = typeof global.getPipelineModeByPrefix === 'function'
-      ? global.getPipelineModeByPrefix(prefix)
-      : (prefix === 'col' ? 'collection' : 'tabletop');
-    const activateMethodName = typeof global.getPipelineUiConfig === 'function'
-      ? global.getPipelineUiConfig(mode)?.tabs?.activateMethod
-      : (prefix === 'col' ? 'activateCollectionSoloTab' : 'activateDndSoloTab');
+    const mode = global.getPipelineModeByPrefix(prefix);
+    const activateMethodName = global.getPipelineUiConfig(mode)?.tabs?.activateMethod;
     const activateMethod = activateMethodName ? global[activateMethodName] : null;
     activateMethod?.(tabId, options);
   }
@@ -376,16 +368,7 @@
 
   function getResolvedTargetStep(prefix) {
     const mode = global.getPipelineLaunchMode(prefix);
-
-    if (typeof global.normalizePipelineTargetStepId === 'function') {
-      return global.normalizePipelineTargetStepId(mode);
-    }
-
-    if (typeof global.getPipelineFinalTargetStepId === 'function') {
-      return global.getPipelineFinalTargetStepId(mode);
-    }
-
-    return '';
+    return global.normalizePipelineTargetStepId(mode);
   }
 
   function buildPipelineCacheAwareSharedBlocks(prefix) {
@@ -436,7 +419,7 @@
       filled: prelaunchFilled,
       fixedContent: basePrompt.fixedContent,
       fixedContentBlocks: Array.isArray(basePrompt.fixedContentBlocks) ? basePrompt.fixedContentBlocks : [],
-      runtimeAgentId: global.CACHE_AWARE_RUNTIME_AGENT_ID || 'cache_aware_prelaunch',
+      runtimeAgentId: global.CACHE_AWARE_RUNTIME_AGENT_ID,
       promptDebug: {
         ...(basePrompt.promptDebug || {}),
         promptChars: prelaunchFilled.length,
@@ -449,7 +432,7 @@
     if (!firstAgent) return null;
 
     setPipelineLaunchState(prefix, {
-      currentStepId: global.CACHE_AWARE_STEP_ID || 'cache_aware',
+      currentStepId: global.CACHE_AWARE_STEP_ID,
       isRunning: true,
       lastStatus: 'cache-aware pré-pipeline',
     });
@@ -480,7 +463,7 @@
     } catch (error) {
       global.finalizeCacheDebugRun(prefix, 'erreur cache-aware');
       setPipelineLaunchState(prefix, {
-        currentStepId: global.CACHE_AWARE_STEP_ID || 'cache_aware',
+        currentStepId: global.CACHE_AWARE_STEP_ID,
         isRunning: false,
         lastStatus: 'erreur cache-aware',
       });
@@ -579,7 +562,7 @@
     if (!preserveRunState) resetPipelineRunState(prefix);
     if (!skipCacheRunInit) {
       global.beginCacheDebugRun(prefix, pipelineAgents, {
-        launchScope: 'pipeline complet',
+        launchScope: global.PIPELINE_LAUNCH_DEFAULT_SCOPE,
         cacheAwareEnabled: false,
       });
     }
@@ -628,7 +611,7 @@
   }
 
   if (typeof global.state !== 'undefined') {
-    const prefixes = typeof global.getPipelinePrefixes === 'function' ? global.getPipelinePrefixes() : ['tt', 'col'];
+    const prefixes = global.getPipelinePrefixes();
     prefixes.forEach((prefix) => getPipelineRunState(prefix));
     refreshPipelineLaunchPanels();
   }

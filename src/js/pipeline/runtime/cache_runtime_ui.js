@@ -15,9 +15,7 @@
 
   function getPromptCachePrefix(prefix = '') {
     if (prefix) return prefix;
-    if (typeof global.pfx === 'function') return global.pfx();
-    if (typeof global.getPipelinePrefix === 'function') return global.getPipelinePrefix(global.currentMode);
-    return global.currentMode === 'collection' ? 'col' : 'tt';
+    return global.pfx();
   }
 
   function formatPromptCacheTime(value) {
@@ -601,6 +599,7 @@
   function syncStandaloneLaunchButtons(prefix) {
     const launchState = getPipelineLaunchState(prefix);
     const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
+    const launchButtonLabel = `▶ ${global.PIPELINE_LAUNCH_LABEL}`;
 
     buttons.forEach((button) => {
       button.disabled = launchState.isRunning;
@@ -610,7 +609,7 @@
         return;
       }
 
-      button.textContent = '▶ Lancer le pipeline complet';
+      button.textContent = launchButtonLabel;
     });
   }
 

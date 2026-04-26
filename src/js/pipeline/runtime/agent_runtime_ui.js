@@ -28,23 +28,17 @@
   }
 
   function getResumePipelineAgents(prefix) {
-    const runtimeAgents = typeof global.getPipelineRuntimeAgentsForPrefix === 'function'
-      ? global.getPipelineRuntimeAgentsForPrefix(prefix)
-      : [];
-
+    const runtimeAgents = global.getPipelineRuntimeAgentsForPrefix(prefix);
     if (runtimeAgents.length) return runtimeAgents;
-    if (typeof global.getPipelineAgentsForPrefix === 'function') return global.getPipelineAgentsForPrefix(prefix);
+    if (global.getPipelineAgentsForPrefix(prefix).length) return global.getPipelineAgentsForPrefix(prefix);
     return global.getPipelineAgents();
   }
 
   function getDisplayStepIdForAgent(prefix, agentId) {
-    if (typeof global.getPipelineDisplayStepIdForRuntimeAgent !== 'function') return agentId;
     return global.getPipelineDisplayStepIdForRuntimeAgent(prefix, agentId);
   }
 
   function setResumeLaunchState(prefix, agentId, nextState = {}) {
-    if (typeof global.setPipelineLaunchState !== 'function') return;
-
     const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
     global.setPipelineLaunchState(prefix, {
       currentStepId: displayStepId,
@@ -55,8 +49,6 @@
   }
 
   function finalizeResumeLaunchState(prefix, agentId, lastStatus) {
-    if (typeof global.setPipelineLaunchState !== 'function') return;
-
     const displayStepId = getDisplayStepIdForAgent(prefix, agentId);
     global.setPipelineLaunchState(prefix, {
       currentStepId: displayStepId,
