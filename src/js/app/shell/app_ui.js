@@ -379,5 +379,21 @@
 
   global.PipelineUI.app = global.PipelineUI.app || {};
   Object.assign(global.PipelineUI.app, global.PipelineUIApp);
-  Object.assign(global, global.PipelineUIApp);
+  Object.assign(global, {
+    showToast,
+    clearAllStorage,
+    showRawInput,
+    closeRawInput,
+    copyRawInput,
+    showView,
+    selectMode,
+    cancelToHome,
+    stopAllAgents,
+    setPipelineExecutionActive,
+    isPipelineExecutionActive,
+    buildPipelineTimeline,
+    updatePipelineTimeline,
+    openSettings,
+    closeSettings,
+  });
 })(window);
