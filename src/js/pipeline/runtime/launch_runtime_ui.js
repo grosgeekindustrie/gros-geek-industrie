@@ -2,6 +2,15 @@
 
 (function initPipelineUILaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const PIPELINE_STATUS_DONE = 'terminÃ©';
+  const PIPELINE_STATUS_ERROR = 'erreur';
+  const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause Â· sÃ©lection requise';
+  const PIPELINE_STATUS_RUNNING = 'en cours';
+  const PIPELINE_RUN_ENTRY_DEFAULTS = Object.freeze({
+    quality: 'net',
+    validation: 'valide',
+    origin: 'manuel',
+  });
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
   const CACHE_AWARE_PRELAUNCH_SCOPE = `${CACHE_AWARE_PRELAUNCH_LABEL} + pipeline complet`;
 
@@ -352,9 +361,9 @@
       const normalizedMeta = global.normalizePipelineRunEntryMeta({
         agentId,
         sourceAgentId: previousEntry.sourceAgentId || agentId,
-        quality: previousEntry.quality || 'net',
-        validation: previousEntry.validation || 'valide',
-        origin: previousEntry.origin || 'manuel',
+        quality: previousEntry.quality || PIPELINE_RUN_ENTRY_DEFAULTS.quality,
+        validation: previousEntry.validation || PIPELINE_RUN_ENTRY_DEFAULTS.validation,
+        origin: previousEntry.origin || PIPELINE_RUN_ENTRY_DEFAULTS.origin,
         ...meta,
       });
 
@@ -463,11 +472,11 @@
     try {
       await runCacheAwarePrelaunch(prefix, pipelineAgents);
     } catch (error) {
-      global.finalizeCacheDebugRun(prefix, 'erreur cache-aware');
+      global.finalizeCacheDebugRun(prefix, `${PIPELINE_STATUS_ERROR} cache-aware`);
       setPipelineLaunchState(prefix, {
         currentStepId: global.CACHE_AWARE_STEP_ID,
         isRunning: false,
-        lastStatus: 'erreur cache-aware',
+        lastStatus: `${PIPELINE_STATUS_ERROR} cache-aware`,
       });
       global.showToast(`❌ ${CACHE_AWARE_PRELAUNCH_LABEL}: ${error.message}`, '#ff4757');
       return false;
@@ -516,7 +525,7 @@
     setPipelineLaunchState(prefix, {
       currentStepId: '',
       isRunning: true,
-      lastStatus: 'en cours',
+      lastStatus: PIPELINE_STATUS_RUNNING,
     });
 
     const isSoloTabsFlow = prefix === 'tt' || prefix === 'col';
@@ -583,7 +592,7 @@
       setPipelineLaunchState(prefix, {
         currentStepId: global.getPipelineDisplayStepIdForRuntimeAgent(prefix, agent.id),
         isRunning: true,
-        lastStatus: `en cours · ${global.getPipelineDisplayStepIdForRuntimeAgent(prefix, agent.id)}`,
+        lastStatus: `${PIPELINE_STATUS_RUNNING} · ${global.getPipelineDisplayStepIdForRuntimeAgent(prefix, agent.id)}`,
       });
 
       const ok = await global.runAgent(agent);

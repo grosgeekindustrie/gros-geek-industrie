@@ -19,6 +19,11 @@
   const PIPELINE_STATUS_DONE = 'terminé';
   const PIPELINE_STATUS_ERROR = 'erreur';
   const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause · sélection requise';
+  const PIPELINE_RUN_AUTO_ENTRY_DEFAULTS = Object.freeze({
+    quality: 'brut',
+    validation: 'non_valide',
+    origin: 'auto',
+  });
 
   function stopAgent(agentId) {
     if (abortControllers[agentId]) {
@@ -258,9 +263,9 @@
 
       if (!agent.hasSelection) {
         global.appendPipelineRunEntry(prefix, agent.id, result, {
-          quality: 'brut',
-          validation: 'non_valide',
-          origin: 'auto',
+          quality: PIPELINE_RUN_AUTO_ENTRY_DEFAULTS.quality,
+          validation: PIPELINE_RUN_AUTO_ENTRY_DEFAULTS.validation,
+          origin: PIPELINE_RUN_AUTO_ENTRY_DEFAULTS.origin,
           sourceAgentId: agent.id,
         });
       }

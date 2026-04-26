@@ -2,13 +2,19 @@
 
 (function initPipelineUICacheRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const PIPELINE_LAUNCH_STATUS_IDLE = 'pret';
+  const PIPELINE_RUN_META_DEFAULTS = Object.freeze({
+    quality: 'brut',
+    validation: 'non_valide',
+    origin: 'auto',
+  });
 
   function getPipelineLaunchState(prefix) {
     global.state.pipelineLaunch = global.state.pipelineLaunch || {};
     global.state.pipelineLaunch[prefix] = global.state.pipelineLaunch[prefix] || {
       currentStepId: '',
       isRunning: false,
-      lastStatus: 'pret',
+      lastStatus: PIPELINE_LAUNCH_STATUS_IDLE,
     };
     return global.state.pipelineLaunch[prefix];
   }
@@ -186,7 +192,7 @@
       pipelineAgents: pipelineAgents.map((agent) => agent.id),
       events: [],
       lastHeaderStatus: runtimeDebug.lastCacheStatus || '-',
-      launchStatus: launchState.lastStatus || 'pret',
+      launchStatus: launchState.lastStatus || PIPELINE_LAUNCH_STATUS_IDLE,
       warmupEnabled: false,
       warmupHint: pipelineRunState.warmupHint || 'Warmup non defini',
     };
@@ -204,7 +210,7 @@
     activeRun.finishedAt = new Date().toISOString();
     activeRun.finalStatus = finalStatus || activeRun.finalStatus || 'done';
     activeRun.lastHeaderStatus = runtimeDebug.lastCacheStatus || '-';
-    activeRun.launchStatus = getPipelineLaunchState(prefix).lastStatus || activeRun.launchStatus || 'pret';
+    activeRun.launchStatus = getPipelineLaunchState(prefix).lastStatus || activeRun.launchStatus || PIPELINE_LAUNCH_STATUS_IDLE;
     activeRun.warmupHint = pipelineRunState.warmupHint || activeRun.warmupHint || 'Warmup non defini';
 
     const warmupDetails = getCacheWarmupDetails(activeRun.events);
@@ -256,9 +262,9 @@
   function normalizePipelineRunEntryMeta(entry = {}) {
     return {
       sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || '').trim(),
-      quality: String(entry?.quality || 'brut').trim(),
-      validation: String(entry?.validation || 'non_valide').trim(),
-      origin: String(entry?.origin || 'auto').trim(),
+      quality: String(entry?.quality || PIPELINE_RUN_META_DEFAULTS.quality).trim(),
+      validation: String(entry?.validation || PIPELINE_RUN_META_DEFAULTS.validation).trim(),
+      origin: String(entry?.origin || PIPELINE_RUN_META_DEFAULTS.origin).trim(),
     };
   }
 
@@ -339,10 +345,13 @@
     const cacheableBlocks = fixedBlocks.filter((block) => block.cacheable);
     const cacheAppliedBlocks = fixedBlocks.filter((block) => block.cacheApplied);
     const cumulativeNetBlocks = cumulativeBlocks.filter((block) => String(block?.validation || '') === 'valide');
-    const cumulativeBrutBlocks = cumulativeBlocks.filter((block) => String(block?.quality || '') === 'brut' || String(block?.validation || '') === 'non_valide');
+    const cumulativeBrutBlocks = cumulativeBlocks.filter((block) => (
+      String(block?.quality || '') === PIPELINE_RUN_META_DEFAULTS.quality
+      || String(block?.validation || '') === PIPELINE_RUN_META_DEFAULTS.validation
+    ));
     const cumulativeDerivedBlocks = cumulativeBlocks.filter((block) => String(block?.quality || '') === 'derive');
     const cumulativeManualBlocks = cumulativeBlocks.filter((block) => String(block?.origin || '') === 'manuel');
-    const cumulativeAutoBlocks = cumulativeBlocks.filter((block) => String(block?.origin || '') === 'auto');
+    const cumulativeAutoBlocks = cumulativeBlocks.filter((block) => String(block?.origin || '') === PIPELINE_RUN_META_DEFAULTS.origin);
 
     return {
       fixedTotal: buildSectionTextFromBlocks(fixedBlocks),
@@ -544,7 +553,7 @@
         const metaParts = [];
         if (block.validation) metaParts.push(block.validation);
         if (block.origin) metaParts.push(block.origin);
-        if (block.quality && block.quality !== 'brut') metaParts.push(block.quality);
+        if (block.quality && block.quality !== PIPELINE_RUN_META_DEFAULTS.quality) metaParts.push(block.quality);
         const metaLabel = metaParts.length ? ` · ${metaParts.join(' / ')}` : '';
         lines.push(`  * ${block.key}${blockLabel}: ${block.chars.toLocaleString()} chars${cacheLabel}${metaLabel}`);
       });
@@ -587,7 +596,7 @@
     return [
       'Pipeline : complet',
       `Etape courante : ${currentStepLabel}`,
-      `Etat : ${launchState.lastStatus || 'pret'}`,
+      `Etat : ${launchState.lastStatus || PIPELINE_LAUNCH_STATUS_IDLE}`,
       `Cache : ${getLastCacheStatus()}`,
     ].join('\n');
   }
