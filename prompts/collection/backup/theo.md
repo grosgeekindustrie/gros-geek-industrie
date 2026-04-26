@@ -74,16 +74,16 @@ FORMAT INSTAGRAM/TIKTOK
 → Ligne 2 : 👉 [[URL]]
 → Ligne vide
 → Ligne 3 : hook émotionnel fort, dans l'esprit de [[ACCROCHE]]
-→ Puis 2 à 4 courts paragraphes lisibles :
+→ Puis 2 à 3 courts paragraphes lisibles :
 → 1. ambiance et présence de la pièce
 → 2. lecture visuelle, volumes, contraste, silhouette, intérêt collection
-→ 3. mini bloc infos produit sur lignes séparées si pertinent : échelles, pièces, matériau, garage kit
-→ 4. angle peinture ou projection hobby
+→ 3. mini bloc specs sur lignes séparées si pertinent : échelles, pièces, matériau, garage kit
+→ Après le mini bloc specs, ne pas rajouter de paragraphe descriptif supplémentaire
 → Ligne vide
-→ Avant la fermeture, ajouter une question courte qui invite à se projeter
+→ Ajouter ensuite une seule question courte pensée pour déclencher commentaire ou réaction
 → Ligne vide
 → Puis une ligne personnage, courte et marquante
-→ Puis une ligne crédit sculpteur
+→ Puis une ligne crédit sculpteur au format @[[SCULPTEUR]] uniquement, sans phrase autour
 → Ligne vide
 → Les hashtags n'apparaissent qu'une seule fois, à la toute fin du bloc EN
 → Produire de vrais hashtags sociaux, naturels et publiables
@@ -95,8 +95,11 @@ FORMAT FACEBOOK
 → Sortir un bloc FR puis un bloc EN
 → Garder exactement les deux premières lignes d'ouverture boutique dans chaque langue
 → Autoriser des paragraphes un peu plus développés que sur Instagram/TikTok
-→ Conserver le mini bloc infos produit sur lignes séparées si pertinent
-→ Ajouter une question de projection avant la ligne personnage
+→ Conserver le mini bloc specs sur lignes séparées si pertinent
+→ Après le mini bloc specs, ne pas rajouter de paragraphe descriptif supplémentaire
+→ Ajouter ensuite une seule question courte pensée pour déclencher commentaire ou réaction
+→ Puis une ligne personnage
+→ Puis une ligne crédit sculpteur au format @[[SCULPTEUR]] uniquement, sans phrase autour
 → Ligne vide
 → Les hashtags n'apparaissent qu'une seule fois, à la toute fin du bloc EN
 → Produire de vrais hashtags sociaux, naturels et publiables
@@ -121,11 +124,15 @@ Si INSTAGRAM/TIKTOK est demandé :
 INSTAGRAM/TIKTOK
 [bloc FR]
 
+---
+
 [bloc EN]
 
 Si FACEBOOK est demandé :
 FACEBOOK
 [bloc FR]
+
+---
 
 [bloc EN]
 
@@ -141,5 +148,6 @@ CONTRAINTES DE SORTIE
 → Respecter exactement les titres de section
 → Ne pas sortir Pinterest
 → Pour Instagram/TikTok et Facebook, reprendre l'ouverture boutique dans les deux langues
+→ Pour Instagram/TikTok et Facebook, insérer exactement --- sur une ligne seule entre le bloc FR et le bloc EN
 → Pour Instagram/TikTok et Facebook, les hashtags doivent être regroupés tout à la fin du bloc anglais
 → Les hashtags ne doivent jamais être une recopie ou une conversion mécanique de [[TAGS]]
