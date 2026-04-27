@@ -79,12 +79,6 @@
   }
 
   global.PipelineUIIrisRuntime = {
-    getIrisRuntimeRefs,
-    beginIrisSemanticSearch,
-    finalizeIrisSemanticSearch,
-    finalizeIrisSemanticSearchError,
-    endIrisSemanticSearch,
-    runIrisSemanticSearch,
     runCollectionIrisSemanticSearch,
     runTabletopIrisSemanticSearch,
   };

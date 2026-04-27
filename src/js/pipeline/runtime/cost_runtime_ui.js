@@ -445,25 +445,6 @@
   }
 
   global.PipelineUICostRuntime = {
-    getCostRatesForAgent,
-    toSafeTokenCount,
-    getCostTrackingState,
-    getCostModeLabel,
-    getCostModeShortLabel,
-    getCostAgentLabel,
-    getCostModelAgentId,
-    getCostModelName,
-    getCostEntryType,
-    getCostEntryTypeLabel,
-    getCostEntryTotalTokens,
-    buildCostTypeTotals,
-    buildUsageCostSnapshot,
-    getAgentCostAggregateKey,
-    recomputeCostTracking,
-    refreshSessionCostDisplay,
-    getAgentCostBodyElement,
-    renderAgentCostBadge,
-    recordSessionCostEvent,
     showAgentCost,
     copyTokenReport,
   };
