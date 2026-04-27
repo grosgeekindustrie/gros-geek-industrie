@@ -11,13 +11,7 @@
   if (typeof createSoloTabsController !== 'function') return;
 
   const isVisible = (element) => Boolean(element) && window.getComputedStyle(element).display !== 'none';
-  const getAgents = () => (
-    typeof global.getPipelineRuntimeAgentsForPrefix === 'function'
-      ? global.getPipelineRuntimeAgentsForPrefix('col')
-      : (typeof global.getPipelineAgentsForPrefix === 'function'
-          ? global.getPipelineAgentsForPrefix('col')
-          : [])
-  );
+  const getAgents = () => global.getPipelineRuntimeAgentsForPrefix('col');
   const getNameField = () => document.getElementById('col-fNomCourt') || document.getElementById('col-fNom');
   const getFullNameField = () => document.getElementById('col-fNom') || document.getElementById('col-fNomCourt');
 

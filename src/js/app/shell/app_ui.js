@@ -6,11 +6,11 @@
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;
-  const getCurrentMode = () => global.currentMode || 'tabletop';
-  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.getPipelinePrefix?.(getCurrentMode()) || (getCurrentMode() === 'collection' ? 'col' : 'tt')));
-  const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
-  const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig?.(mode) || null;
-  const getModes = () => global.getPipelineModes?.() || ['tabletop', 'collection'];
+  const getCurrentMode = () => global.currentMode;
+  const getPfx = () => global.pfx();
+  const getAgents = () => global.getPipelineAgents();
+  const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig(mode);
+  const getModes = () => global.getPipelineModes();
 
   const callModeUiMethod = (mode, section, action, ...args) => {
     const methodName = getModeUiConfig(mode)?.[section]?.[`${action}Method`];

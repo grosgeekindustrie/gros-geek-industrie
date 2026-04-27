@@ -33,10 +33,7 @@
   }
 
   function getResumePipelineAgents(prefix) {
-    const runtimeAgents = global.getPipelineRuntimeAgentsForPrefix(prefix);
-    if (runtimeAgents.length) return runtimeAgents;
-    if (global.getPipelineAgentsForPrefix(prefix).length) return global.getPipelineAgentsForPrefix(prefix);
-    return global.getPipelineAgents();
+    return global.getPipelineRuntimeAgentsForPrefix(prefix);
   }
 
   function getDisplayStepIdForAgent(prefix, agentId) {
@@ -183,9 +180,7 @@
 
   async function rerunAgent(agentId, prefix = global.pfx()) {
     const agents = getResumePipelineAgents(prefix);
-    const agent = agents.find(({ id }) => id === agentId)
-      || global.getPipelineAgentsForPrefix?.(prefix)?.find(({ id }) => id === agentId)
-      || global.getPipelineAgents().find(({ id }) => id === agentId);
+    const agent = agents.find(({ id }) => id === agentId);
     if (!agent) return;
 
     const correction = getAgentCorrectionInputValue(prefix, agentId);
