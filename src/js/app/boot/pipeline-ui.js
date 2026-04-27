@@ -90,4 +90,4 @@ const { activateCollectionSoloTab } = window.PipelineUICollectionTabs || {};
 // - prompts et tabs solo
 // L'initialisation vivante passe par app/boot/pipeline_bootstrap_ui.js.
 
-initializePipelineUi?.();
+initializePipelineUi();

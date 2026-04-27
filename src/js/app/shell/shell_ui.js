@@ -40,12 +40,12 @@ function switchMode(mode) {
 
   document.body.classList.toggle('mode-collection', !isTabletop);
 
-  const modeTitle = modeUiConfig?.headerTitle || DEFAULT_MODE_TITLES[mode] || DEFAULT_MODE_TITLES.tabletop;
-  const pageTitle = modeUiConfig?.pageTitle || DEFAULT_PAGE_TITLES[mode] || DEFAULT_PAGE_TITLES.tabletop;
-  const headerModeLabel = modeUiConfig?.headerModeLabel || (isTabletop ? 'DnD Tabletop' : 'Collection');
+  const modeTitle = modeUiConfig.headerTitle || DEFAULT_MODE_TITLES[mode] || DEFAULT_MODE_TITLES.tabletop;
+  const pageTitle = modeUiConfig.pageTitle || DEFAULT_PAGE_TITLES[mode] || DEFAULT_PAGE_TITLES.tabletop;
+  const headerModeLabel = modeUiConfig.headerModeLabel || (isTabletop ? 'DnD Tabletop' : 'Collection');
 
   const headerTitle = document.getElementById('headerTitle');
-  if (headerTitle?.textContent !== undefined) {
+  if (headerTitle) {
     headerTitle.textContent = modeTitle;
   }
 
@@ -58,13 +58,13 @@ function switchMode(mode) {
   document.getElementById('modeTabletop')?.classList.toggle('active', isTabletop);
   document.getElementById('modeCollection')?.classList.toggle('active', !isTabletop);
 
-  const tabletopRoot = document.getElementById(tabletopUiConfig?.uiRootId || 'ui-tt');
-  const collectionRoot = document.getElementById(collectionUiConfig?.uiRootId || 'ui-col');
+  const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
+  const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
 
-  if (tabletopRoot?.style) tabletopRoot.style.display = isTabletop ? '' : 'none';
-  if (collectionRoot?.style) collectionRoot.style.display = isTabletop ? 'none' : '';
+  if (tabletopRoot) tabletopRoot.style.display = isTabletop ? '' : 'none';
+  if (collectionRoot) collectionRoot.style.display = isTabletop ? 'none' : '';
 
-  rebuildModeUi?.({
+  rebuildModeUi({
     silentFileLoad: true,
     refreshCatalogs: true,
     rebuildPipeline: true,

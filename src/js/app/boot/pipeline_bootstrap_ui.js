@@ -12,25 +12,24 @@
   }
 
   function restoreBootstrapImages() {
-    const setupImageHandlers = global.PipelineUIImages?.setupImageHandlers;
-    const restoreWorkspaceImages = global.PipelineUIIndexedDb?.restoreWorkspaceImages;
-    if (typeof setupImageHandlers !== 'function') return;
+    const { setupImageHandlers } = global.PipelineUIImages;
+    const { restoreWorkspaceImages } = global.PipelineUIIndexedDb;
 
     getBootstrapPipelinePrefixes().forEach((prefix) => {
       setupImageHandlers(prefix);
-      restoreWorkspaceImages?.(prefix);
+      restoreWorkspaceImages(prefix);
     });
   }
 
   function initializeNavigationUis() {
-    global.initDndStepper?.();
-    global.refreshDndStepper?.();
-    global.initCollectionStepper?.();
-    global.refreshCollectionStepper?.();
-    global.initDndSoloTabs?.();
-    global.refreshDndSoloTabs?.();
-    global.initCollectionSoloTabs?.();
-    global.refreshCollectionSoloTabs?.();
+    global.initDndStepper();
+    global.refreshDndStepper();
+    global.initCollectionStepper();
+    global.refreshCollectionStepper();
+    global.initDndSoloTabs();
+    global.refreshDndSoloTabs();
+    global.initCollectionSoloTabs();
+    global.refreshCollectionSoloTabs();
   }
 
   function restoreBootstrapView() {
@@ -56,27 +55,27 @@
       modeToastColor = '#4caf7d',
     } = options;
 
-    if (refreshCatalogs) global.renderDeclarativeFormCatalogs?.({ shouldSave: false });
-    if (rebuildPipeline) global.buildPipeline?.();
-    if (rebuildEchelles) global.buildEchellesUI?.();
-    if (reloadFormState) global.loadFormState?.();
-    global.loadAllFiles?.(silentFileLoad);
+    if (refreshCatalogs) global.renderDeclarativeFormCatalogs({ shouldSave: false });
+    if (rebuildPipeline) global.buildPipeline();
+    if (rebuildEchelles) global.buildEchellesUI();
+    if (reloadFormState) global.loadFormState();
+    global.loadAllFiles(silentFileLoad);
 
     if (showModeToast && modeToastMessage) {
-      global.showToast?.(modeToastMessage, modeToastColor);
+      global.showToast(modeToastMessage, modeToastColor);
     }
   }
 
   function initializePipelineUi() {
     restoreBootstrapImages();
-    global.loadPersistedData?.();
-    global.renderDeclarativeFormCatalogs?.({ shouldSave: false });
-    global.buildPipeline?.();
-    global.buildEchellesUI?.();
-    global.loadFormState?.();
-    global.attachFormPersistence?.();
+    global.loadPersistedData();
+    global.renderDeclarativeFormCatalogs({ shouldSave: false });
+    global.buildPipeline();
+    global.buildEchellesUI();
+    global.loadFormState();
+    global.attachFormPersistence();
     initializeNavigationUis();
-    global.loadAllFiles?.();
+    global.loadAllFiles();
     restoreBootstrapView();
     revealBootstrapUi();
   }

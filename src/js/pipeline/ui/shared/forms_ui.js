@@ -191,7 +191,7 @@
       const checkbox = getElementById(`${prefix}-ec${index}`);
       if (checkbox && entry.checked) {
         checkbox.checked = true;
-        global.toggleEch?.(index, { shouldSave: false });
+        global.toggleEch(index, { shouldSave: false });
       }
       if (entry.dim) setElementValue(`${prefix}-ed${index}`, entry.dim);
     });
@@ -490,7 +490,7 @@
   async function fetchPersonnage() {
     const url = getTrimmedElementValue('col-fLienPerso');
     if (!url) {
-      global.showToast?.('Saisis un lien avant de fetcher', FETCH_STATUS.errorColor, 4000);
+      global.showToast('Saisis un lien avant de fetcher', FETCH_STATUS.errorColor, 4000);
       return;
     }
 
@@ -513,11 +513,11 @@
       status.style.color = 'var(--success)';
       status.textContent = `${FETCH_STATUS.successTextPrefix} ${data.chars} ${FETCH_STATUS.successTextSuffix}`;
       saveFormState();
-      global.showToast?.(FETCH_STATUS.successToast, FETCH_STATUS.successColor, 3000);
+      global.showToast(FETCH_STATUS.successToast, FETCH_STATUS.successColor, 3000);
     } catch (error) {
       status.style.color = 'var(--error)';
       status.textContent = `${FETCH_STATUS.errorTextPrefix} ${error.message}`;
-      global.showToast?.(`${FETCH_STATUS.errorToastPrefix}${error.message}`, FETCH_STATUS.errorColor, 10000);
+      global.showToast(`${FETCH_STATUS.errorToastPrefix}${error.message}`, FETCH_STATUS.errorColor, 10000);
     } finally {
       btn.disabled = false;
       btn.textContent = FETCH_STATUS.idleLabel;
@@ -547,9 +547,9 @@
       nomCourt,
       univers: getElementValue(`${prefix}-fUnivers`),
       sculpteur: getElementValue(`${prefix}-fSculpteur`, DEFAULT_SCULPTOR_NAME),
-      echelles: echellesApi.getEchellesSelected?.() || '',
+      echelles: echellesApi.getEchellesSelected(),
       pieces: getElementValue(`${prefix}-fPieces`),
-      dimensions: echellesApi.getDimsFromEchelles?.() || '',
+      dimensions: echellesApi.getDimsFromEchelles(),
       notes: currentMode === 'collection' ? collectionDescription : getElementValue(`${prefix}-fNotes`),
       descriptionFigurine: collectionDescription,
       resumePersonnage: collectionResume,
@@ -711,14 +711,14 @@
             if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
             if (checkbox && entry.checked) {
               checkbox.checked = true;
-              global.toggleEch?.(scaleIndex, { shouldSave: false });
+              global.toggleEch(scaleIndex, { shouldSave: false });
             }
             if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
           });
         }
 
         if (Number.isInteger(data._originEchelleIndex)) {
-          global.setEchelleOrigin?.(data._originEchelleIndex, { shouldSave: false, recalculate: false });
+          global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
         }
       }
     } catch (error) {}
@@ -748,7 +748,7 @@
       const rules = migrateStoredJSON('pipeline.rules', LEGACY_RULES_STORAGE_KEYS, null);
       if (rules) {
         state.persistentRules = rules;
-        Object.keys(state.persistentRules).forEach((id) => global.refreshRules?.(id));
+        Object.keys(state.persistentRules).forEach((id) => global.refreshRules(id));
       }
     } catch (error) {}
 
@@ -768,7 +768,7 @@
 
       if (settings.view && settings.view === 'form') {
         global._restoreView = settings.view;
-        global._restoreMode = settings.mode || 'tabletop';
+        global._restoreMode = settings.mode;
       }
     } catch (error) {}
   }
@@ -779,8 +779,8 @@
     const prefix = getPfx();
     const config = getConfig();
     const promptFileMap = currentMode === 'collection'
-      ? (config.PROMPT_FILE_MAP_COLLECTION || global.PROMPT_FILE_MAP_COLLECTION || {})
-      : (config.PROMPT_FILE_MAP || global.PROMPT_FILE_MAP || {});
+      ? config.PROMPT_FILE_MAP_COLLECTION
+      : config.PROMPT_FILE_MAP;
     const promptFiles = Object.entries(promptFileMap);
     const missing = [];
     const mode = currentMode;
@@ -820,7 +820,7 @@
         const list = missing.map((file) => `  \u2022 ${file}`).join('\n');
         alert(`${MISSING_FILES_MESSAGES.title}\n\n${list}\n\n${MISSING_FILES_MESSAGES.serverHint}`);
       } else {
-        global.showToast?.(`${missing.length} ${MISSING_FILES_MESSAGES.toastPrefix} ${mode}`, FETCH_STATUS.errorColor, 10000);
+        global.showToast(`${missing.length} ${MISSING_FILES_MESSAGES.toastPrefix} ${mode}`, FETCH_STATUS.errorColor, 10000);
       }
 
       if (btn) {

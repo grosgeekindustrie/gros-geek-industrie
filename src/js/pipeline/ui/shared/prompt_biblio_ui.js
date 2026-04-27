@@ -12,7 +12,7 @@
     return getState().bibliosByMode[getCurrentMode()][key] || '';
   }
 
-  const getPromptBiblioDevConfig = () => global.PIPELINE_DEV_CONFIG?.promptBiblio || {};
+  const getPromptBiblioDevConfig = () => global.PipelineUIDataDev.PIPELINE_DEV_CONFIG.promptBiblio;
 
   const isPromptBiblioEnabled = (key) => {
     const config = getPromptBiblioDevConfig();

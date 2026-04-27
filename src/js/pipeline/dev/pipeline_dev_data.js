@@ -29,8 +29,4 @@
   Object.assign(global.PipelineUIDataDev, {
     PIPELINE_DEV_CONFIG,
   });
-
-  Object.assign(global, {
-    PIPELINE_DEV_CONFIG,
-  });
 })(window);
