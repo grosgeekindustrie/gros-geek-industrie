@@ -4,7 +4,22 @@
 // Même rôle que tags_ui.js mais pour les titres, avec contraintes longueur / blacklist.
   global.PipelineUI = global.PipelineUI || {};
   const dom = global.PipelineUIDom || {};
+  const runtimeCache = global.PipelineUIRuntimeCache || {};
   const helpers = () => global.PipelineUIHelpers || {};
+  const AUXILIARY_RETRY_COUNT = 1;
+
+  function buildTitreRegenCacheKey(promptData, agentId, text, matchedTerm) {
+    return runtimeCache.buildCacheKey?.(
+      global.currentMode,
+      global.pfx(),
+      'titre-regen',
+      agentId,
+      text,
+      matchedTerm,
+      promptData.fixedContent || '',
+      promptData.filled || ''
+    ) || promptData.filled;
+  }
 
   async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
     if (itemEl.classList.contains('regen-pending')) return;
@@ -23,7 +38,11 @@
         fixedContent: prompt.fixedContent,
       };
 
-      const { text: result } = await global.callClaude('titre', regenPrompt, false, 2);
+      const cacheKey = buildTitreRegenCacheKey(regenPrompt, agentId, text, matchedTerm);
+      const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
+        global.callClaude('titre', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+      ));
+      const result = response.text;
       const newTitre = result
         .trim()
         .replace(/^\d+\.\s*/, '')
@@ -74,3 +93,4 @@
   global.PipelineUI.title = global.PipelineUI.title || {};
   Object.assign(global.PipelineUI.title, global.PipelineUITitles);
 })(window);
+

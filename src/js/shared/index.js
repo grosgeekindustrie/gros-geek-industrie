@@ -8,6 +8,7 @@ const sharedBootstrapManifest = Object.freeze({
     'shared/constants/pipeline_constants.js',
     'shared/utils/dom.js',
     'shared/utils/logger.js',
+    'shared/utils/runtime_cache.js',
   ]),
   scripts: Object.freeze([
     'shared/media/echelles_ui.js',

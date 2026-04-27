@@ -5,6 +5,7 @@
 // Zone sensible car fortement couplée au DOM des cartes pipeline.
   global.PipelineUI = global.PipelineUI || {};
   const dom = global.PipelineUIDom || {};
+  const runtimeCache = global.PipelineUIRuntimeCache || {};
 
   const helpers = () => global.PipelineUIHelpers || {};
   const modals = () => global.PipelineUIModals || {};
@@ -17,6 +18,7 @@
   };
 
   const TAG_SELECTION_MAX = 13;
+  const AUXILIARY_RETRY_COUNT = 1;
 
   function escapeAttr(value) {
     return String(value || '')
@@ -32,6 +34,26 @@
 
   function getSelectionItem(trigger) {
     return dom.getClosestByData?.(trigger, 'selectionItem');
+  }
+
+  function buildAuxiliaryPromptKey(kind, filled, fixedContent = '') {
+    return runtimeCache.buildCacheKey?.(
+      global.currentMode,
+      getPfx(),
+      kind,
+      fixedContent,
+      filled
+    ) || `${kind}:${filled}`;
+  }
+
+  async function runCachedAuxiliaryPrompt(scope, key, factory) {
+    const cachedValue = runtimeCache.readCacheValue?.(scope, key);
+    if (typeof cachedValue !== 'undefined') {
+      return { ...cachedValue, cached: true };
+    }
+
+    const value = await runtimeCache.runWithSharedRequest?.(scope, key, factory);
+    return { ...value, cached: false };
   }
 
   const TAG_SEMANTIC_STOPWORDS = new Set([
@@ -719,12 +741,16 @@
 
     const ctx = global.buildCtx('tags');
     const prompt = global.buildPrompt('tags', ctx);
+    const cacheKey = buildAuxiliaryPromptKey('tags-explorer', prompt.filled, prompt.fixedContent);
 
     try {
-      const { text: result } = await global.callClaude('tags', {
-        filled: prompt.filled,
-        fixedContent: prompt.fixedContent,
-      }, false);
+      const { text: result, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
+        const response = await global.callClaude('tags', {
+          filled: prompt.filled,
+          fixedContent: prompt.fixedContent,
+        }, false, AUXILIARY_RETRY_COUNT);
+        return { text: response.text };
+      });
 
       const tags = helpers().parseTagOutput ? helpers().parseTagOutput(result) : [];
       const libraryState = getTagLibraryState();
@@ -1023,15 +1049,24 @@
     const ctx = global.buildCtx('titre');
     const prompt = global.buildPrompt('titre', ctx);
     const explorerPrompt = `${prompt.filled}\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.`;
+    const cacheKey = buildAuxiliaryPromptKey('titre-explorer', explorerPrompt, prompt.fixedContent);
 
     try {
-      const { text: result, usage } = await global.callClaude('titre', {
-        filled: explorerPrompt,
-        fixedContent: prompt.fixedContent,
-      }, false);
+      const { text: result, usage, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
+        const response = await global.callClaude('titre', {
+          filled: explorerPrompt,
+          fixedContent: prompt.fixedContent,
+        }, false, AUXILIARY_RETRY_COUNT);
+        return {
+          text: response.text,
+          usage: response.usage || null,
+        };
+      });
 
-      global.showAgentCost('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
-      global.syncCacheIndicator(usage);
+      if (usage) {
+        global.showAgentCost('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
+        global.syncCacheIndicator(usage);
+      }
 
       const lines = result.split('\n').filter((line) => line.match(/^\d+\.\s+/));
       const titres = lines.map((line) => {
@@ -1053,7 +1088,7 @@
       list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
       document.getElementById('explorerLightbox').classList.add('visible');
-      global.showToast('Exploration terminée ✓', '#e8c547');
+      global.showToast(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
@@ -1092,6 +1127,9 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
+
+
+
 
 
 

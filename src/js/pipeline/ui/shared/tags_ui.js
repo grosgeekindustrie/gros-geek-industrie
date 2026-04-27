@@ -4,9 +4,11 @@
 // Module spécialisé dans le reroll / regen de tags après blacklist ou action manuelle.
   global.PipelineUI = global.PipelineUI || {};
   const dom = global.PipelineUIDom || {};
+  const runtimeCache = global.PipelineUIRuntimeCache || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};
   const AUTO_REGEN_MAX_ATTEMPTS = 3;
+  const AUXILIARY_RETRY_COUNT = 1;
 
   function extractGeneratedTag(result) {
     return String(result || '')
@@ -80,6 +82,17 @@
     };
   }
 
+  function buildTagRegenCacheKey(promptData, siblingTags = []) {
+    return runtimeCache.buildCacheKey?.(
+      global.currentMode,
+      global.pfx(),
+      'tag-regen',
+      promptData.fixedContent || '',
+      promptData.filled || '',
+      siblingTags.join('|')
+    ) || promptData.filled;
+  }
+
   async function autoRegenTag(tag, matchedTerm, itemEl) {
     if (!itemEl || itemEl.classList.contains('regen-pending')) return;
 
@@ -93,12 +106,17 @@
       const prompt = global.buildPrompt('tags', ctx);
       const { blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
       const rejectedTags = [originalText];
+      const siblingTags = collectSiblingTags(itemEl);
       let replacementTag = '';
       let replacementReason = '';
 
       for (let attempt = 0; attempt < AUTO_REGEN_MAX_ATTEMPTS; attempt += 1) {
         const regenPrompt = buildReplacementPrompt(prompt, tag, matchedTerm, rejectedTags);
-        const { text: result } = await global.callClaude('tags', regenPrompt, false, 2);
+        const cacheKey = buildTagRegenCacheKey(regenPrompt, siblingTags.concat(rejectedTags));
+        const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
+          global.callClaude('tags', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+        ));
+        const result = response.text;
         const candidateTag = extractGeneratedTag(result);
 
         if (!candidateTag) {
