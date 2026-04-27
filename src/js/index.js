@@ -15,10 +15,6 @@ import {
   pipelineBootstrapLayerOrder,
 } from './pipeline/index.js';
 import {
-  socialBootstrapManifest,
-  socialBootstrapLayerOrder,
-} from './social/index.js';
-import {
   sharedBootstrapManifest,
   sharedBootstrapLayerOrder,
 } from './shared/index.js';
@@ -53,7 +49,6 @@ const BOOTSTRAP_GROUPS = Object.freeze([
     pipelineBootstrapLayerOrder,
     ['runtime', 'devRuntime']
   )),
-  ...createDomainBootstrapGroups('social', socialBootstrapManifest, socialBootstrapLayerOrder),
 ]);
 
 const SCRIPT_PATHS = Object.freeze(
@@ -88,7 +83,6 @@ const bootstrapDebugManifest = Object.freeze({
     app: appBootstrapManifest,
     pipeline: pipelineBootstrapManifest,
     shared: sharedBootstrapManifest,
-    social: socialBootstrapManifest,
   }),
   groups: Object.freeze(
     BOOTSTRAP_GROUPS.map(({ domain, group, paths }) => Object.freeze({
