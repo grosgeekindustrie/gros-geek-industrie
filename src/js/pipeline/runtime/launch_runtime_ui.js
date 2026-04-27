@@ -42,6 +42,8 @@
   });
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pr√©-pipeline';
   const CACHE_AWARE_PRELAUNCH_SCOPE = `${CACHE_AWARE_PRELAUNCH_LABEL} + pipeline complet`;
+  const CACHE_AWARE_SKIPPED_STATUS = 'cache-aware saute';
+  const CACHE_AWARE_DIRECT_FALLBACK_STATUS = 'cache-aware indisponible';
 
   function refreshSoloTabs(prefix) {
     const mode = global.getPipelineModeByPrefix(prefix);
@@ -331,6 +333,7 @@
     global.state.pipelineRun[prefix] = global.state.pipelineRun[prefix] || {
       formSnapshot: '',
       warmupHint: '',
+      lastCacheAwareSignature: '',
       cumulativeEntries: [],
       cumulativeText: '',
     };
@@ -418,6 +421,32 @@
     }];
   }
 
+  function buildCacheAwareSignature(prefix, pipelineAgents = []) {
+    const firstAgentId = pipelineAgents.find(Boolean)?.id || '';
+    const resolvedStepId = getResolvedTargetStep(prefix);
+    const runState = getPipelineRunState(prefix);
+    const formSnapshot = String(runState.formSnapshot || buildPipelineFormSnapshot(prefix) || '').trim();
+    return [resolvedStepId, firstAgentId, formSnapshot].join('\n---\n').trim();
+  }
+
+  function markCacheAwarePrelaunchSuccess(prefix, pipelineAgents = []) {
+    const runState = getPipelineRunState(prefix);
+    runState.lastCacheAwareSignature = buildCacheAwareSignature(prefix, pipelineAgents);
+  }
+
+  function shouldSkipCacheAwarePrelaunch(prefix, pipelineAgents = []) {
+    const freshness = global.getPromptCacheFreshnessInfo?.(prefix);
+    const runState = getPipelineRunState(prefix);
+    const currentSignature = buildCacheAwareSignature(prefix, pipelineAgents);
+
+    return Boolean(
+      currentSignature &&
+      runState.lastCacheAwareSignature &&
+      currentSignature === runState.lastCacheAwareSignature &&
+      freshness?.state === 'hot'
+    );
+  }
+
   function withPipelineCacheAwarePromptData(prefix, promptData, options = {}) {
     if (!promptData || typeof promptData === 'string') return promptData;
 
@@ -478,6 +507,7 @@
       source: 'cache-aware-prelaunch',
     });
     global.syncCacheIndicator(response.usage || null);
+    markCacheAwarePrelaunchSuccess(prefix, pipelineAgents);
 
     return response;
   }
@@ -492,17 +522,50 @@
       cacheAwareEnabled: true,
     });
 
-    try {
-      await runCacheAwarePrelaunch(prefix, pipelineAgents);
-    } catch (error) {
-      global.finalizeCacheDebugRun(prefix, `${PIPELINE_STATUS_ERROR} cache-aware`);
+    if (shouldSkipCacheAwarePrelaunch(prefix, pipelineAgents)) {
+      const activeRun = global.getActiveCacheDebugRun?.(prefix);
+      if (activeRun) {
+        activeRun.cacheAwareSkipped = true;
+        activeRun.cacheAwareSkipReason = 'cache chaud';
+        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} ∑ cache chaud`;
+      }
+
       setPipelineLaunchState(prefix, {
         currentStepId: global.CACHE_AWARE_STEP_ID,
         isRunning: false,
-        lastStatus: `${PIPELINE_STATUS_ERROR} cache-aware`,
+        lastStatus: `${CACHE_AWARE_SKIPPED_STATUS} ∑ cache chaud`,
       });
-      global.showToast(`‚ùå ${CACHE_AWARE_PRELAUNCH_LABEL}: ${error.message}`, '#ff4757');
-      return false;
+      global.showToast('Cache chaud detecte - prechauffage saute', '#7eb8f7', 1800);
+
+      return startPipeline(prefix, {
+        skipCacheRunInit: true,
+        preserveRunState: true,
+        preserveCacheStatus: true,
+      });
+    }
+
+    try {
+      await runCacheAwarePrelaunch(prefix, pipelineAgents);
+    } catch (error) {
+      const activeRun = global.getActiveCacheDebugRun?.(prefix);
+      if (activeRun) {
+        activeRun.cacheAwareSkipped = true;
+        activeRun.cacheAwareSkipReason = error.message;
+        activeRun.cacheAwareEnabled = false;
+        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} ∑ fallback direct`;
+      }
+
+      setPipelineLaunchState(prefix, {
+        currentStepId: global.CACHE_AWARE_STEP_ID,
+        isRunning: false,
+        lastStatus: `${CACHE_AWARE_DIRECT_FALLBACK_STATUS} ∑ lancement direct`,
+      });
+      global.showToast(`Warmup indisponible - lancement direct (${error.message})`, '#e8c547', 2600);
+
+      return startPipeline(prefix, {
+        skipCacheRunInit: true,
+        preserveRunState: true,
+      });
     }
 
     return startPipeline(prefix, {
@@ -677,3 +740,4 @@
   Object.assign(global.PipelineUI.runtimeLaunch, global.PipelineUILaunchRuntime);
   Object.assign(global, global.PipelineUILaunchRuntime);
 })(window);
+

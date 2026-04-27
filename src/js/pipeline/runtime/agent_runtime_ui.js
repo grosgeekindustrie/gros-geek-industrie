@@ -83,6 +83,12 @@
     return document.getElementById(`${prefix}-cor-${agentId}`)?.value || '';
   }
 
+  function hasReusableAgentOutput(prefix, agentId) {
+    const runState = global.getPipelineRunState?.(prefix);
+    const entry = runState?.cumulativeEntries?.find?.((item) => item.agentId === agentId);
+    return Boolean(String(entry?.content || '').trim());
+  }
+
   function setResumePipelineExecutionActive(isActive) {
     global.setPipelineExecutionActive(isActive);
   }
@@ -215,13 +221,26 @@
     if (index === -1) return;
 
     const correction = getAgentCorrectionInputValue(prefix, agentId);
+    const reuseCurrentAgent = !String(correction || '').trim() && hasReusableAgentOutput(prefix, agentId);
+    const agentsToRun = agents.slice(reuseCurrentAgent ? index + 1 : index);
     let lastAgentId = agents[index].id;
     let lastStatus = PIPELINE_STATUS_DONE;
+
+    if (!agentsToRun.length) {
+      global.assembleFinal();
+      syncResumeResultTab(prefix, PIPELINE_STATUS_DONE);
+      global.showToast('Aucune relance utile: sortie courante deja reutilisable', '#7eb8f7', 1800);
+      return;
+    }
 
     setResumePipelineExecutionActive(true);
 
     try {
-      ({ lastAgentId, lastStatus } = await runResumeAgentSequence(prefix, agents.slice(index), {
+      if (reuseCurrentAgent) {
+        global.showToast(`Suite reprise apres ${agentId} sans relance`, '#7eb8f7', 1800);
+      }
+
+      ({ lastAgentId, lastStatus } = await runResumeAgentSequence(prefix, agentsToRun, {
         initialCorrectionByAgentId: { [agentId]: correction },
         stopBeforeOptional: true,
       }));
