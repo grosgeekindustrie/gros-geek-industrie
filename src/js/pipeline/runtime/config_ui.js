@@ -7,43 +7,23 @@
   global.PipelineUI = global.PipelineUI || {};
   global.PipelineUIConfig = global.PipelineUIConfig || {};
 
-  const modeData = global.PipelineUIDataModes || {};
-  const agentsData = global.PipelineUIDataAgents || {};
-  const promptMapsData = global.PipelineUIDataPromptMaps || {};
-  const devData = global.PipelineUIDataDev || {};
+  const modeData = global.PipelineUIDataModes;
+  const agentsData = global.PipelineUIDataAgents;
+  const promptMapsData = global.PipelineUIDataPromptMaps;
+  const devData = global.PipelineUIDataDev;
 
-  const pipelineModeUi = modeData.PIPELINE_MODE_UI || {};
-  const pipelineDevConfig = devData.PIPELINE_DEV_CONFIG || global.PIPELINE_DEV_CONFIG || {};
+  const pipelineModeUi = modeData.PIPELINE_MODE_UI;
+  const pipelineDevConfig = devData.PIPELINE_DEV_CONFIG;
   const pipelineAgents = agentsData.PIPELINE_AGENTS_BY_MODE?.tabletop || [];
   const pipelineAgentsCollection = agentsData.PIPELINE_AGENTS_BY_MODE?.collection || [];
   const pipelineRuntimeAgentIds = agentsData.PIPELINE_RUNTIME_AGENT_IDS || {};
   const pipelineTargetSteps = agentsData.PIPELINE_TARGET_STEPS || {};
 
-  const getPipelineModeKey = (mode = global.currentMode) => (
-    typeof modeData.getPipelineModeKeyFromData === 'function'
-      ? modeData.getPipelineModeKeyFromData(mode)
-      : (mode === 'collection' ? 'collection' : 'tabletop')
-  );
-  const getPipelineModes = () => (
-    typeof modeData.getPipelineModesFromData === 'function'
-      ? modeData.getPipelineModesFromData()
-      : Object.keys(pipelineModeUi)
-  );
-  const getPipelineUiConfig = (mode = global.currentMode) => (
-    typeof modeData.getPipelineModeUiConfigFromData === 'function'
-      ? modeData.getPipelineModeUiConfigFromData(mode)
-      : pipelineModeUi[getPipelineModeKey(mode)] || pipelineModeUi.tabletop
-  );
-  const getPipelinePrefix = (mode = global.currentMode) => (
-    typeof modeData.getPipelineModePrefixFromData === 'function'
-      ? modeData.getPipelineModePrefixFromData(mode)
-      : getPipelineUiConfig(mode).prefix
-  );
-  const getPipelineModeByPrefix = (prefix = 'tt') => (
-    typeof modeData.getPipelineModeByPrefixFromData === 'function'
-      ? modeData.getPipelineModeByPrefixFromData(prefix)
-      : (getPipelineModes().find((mode) => getPipelineUiConfig(mode).prefix === prefix) || 'tabletop')
-  );
+  const getPipelineModeKey = (mode = global.currentMode) => modeData.getPipelineModeKeyFromData(mode);
+  const getPipelineModes = () => modeData.getPipelineModesFromData();
+  const getPipelineUiConfig = (mode = global.currentMode) => modeData.getPipelineModeUiConfigFromData(mode);
+  const getPipelinePrefix = (mode = global.currentMode) => modeData.getPipelineModePrefixFromData(mode);
+  const getPipelineModeByPrefix = (prefix = 'tt') => modeData.getPipelineModeByPrefixFromData(prefix);
   const getPipelinePrefixes = () => getPipelineModes().map((mode) => getPipelinePrefix(mode));
 
   const getPipelineAgentsForMode = (mode = global.currentMode) => (

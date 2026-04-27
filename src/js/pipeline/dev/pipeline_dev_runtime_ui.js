@@ -5,19 +5,15 @@
 // config_ui.js ni le moteur principal. Ce fichier doit rester petit et retirable.
 
 (function initPipelineUIDevRuntime(global) {
-  const getDevConfig = () => global.PipelineUIDataDev?.PIPELINE_DEV_CONFIG || global.PIPELINE_DEV_CONFIG || {};
-  const getModeKey = (mode = global.currentMode) => (
-    typeof global.getPipelineModeKey === 'function'
-      ? global.getPipelineModeKey(mode)
-      : (mode === 'collection' ? 'collection' : 'tabletop')
-  );
+  const getDevConfig = () => global.PipelineUIDataDev.PIPELINE_DEV_CONFIG;
+  const getModeKey = (mode = global.currentMode) => global.getPipelineModeKey(mode);
   const getConfiguredStopAfter = (mode = global.currentMode) => {
     const config = getDevConfig();
     const modeKey = getModeKey(mode);
     return String(config.stopAfterByMode?.[modeKey] || '').trim();
   };
   const hasTargetStep = (mode, stepId) => {
-    if (!stepId || typeof global.getPipelineTargetSteps !== 'function') return false;
+    if (!stepId) return false;
 
     return global.getPipelineTargetSteps(mode).some((step) => step.id === stepId);
   };
@@ -33,9 +29,7 @@
       return configuredStopAfter;
     }
 
-    return typeof originalGetPipelineFinalTargetStepId === 'function'
-      ? originalGetPipelineFinalTargetStepId(mode)
-      : '';
+    return originalGetPipelineFinalTargetStepId(mode);
   };
 
   const normalizePipelineTargetStepIdDev = (mode = global.currentMode, stepId = '') => {
@@ -45,15 +39,13 @@
       return configuredStopAfter;
     }
 
-    return typeof originalNormalizePipelineTargetStepId === 'function'
-      ? originalNormalizePipelineTargetStepId(mode, stepId)
-      : getPipelineFinalTargetStepIdDev(mode);
+    return originalNormalizePipelineTargetStepId(mode, stepId);
   };
 
   const runPipelineWithCacheAwareDev = (prefix) => {
     const config = getDevConfig();
 
-    if (config.cacheAwarePrelaunch === false && typeof global.startPipeline === 'function') {
+    if (config.cacheAwarePrelaunch === false) {
       return global.startPipeline(prefix, {
         skipCacheRunInit: false,
         preserveRunState: false,
@@ -61,9 +53,7 @@
       });
     }
 
-    return typeof originalRunPipelineWithCacheAware === 'function'
-      ? originalRunPipelineWithCacheAware(prefix)
-      : global.startPipeline?.(prefix);
+    return originalRunPipelineWithCacheAware(prefix);
   };
 
   Object.assign(global, {
