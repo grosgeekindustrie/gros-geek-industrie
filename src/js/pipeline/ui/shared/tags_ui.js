@@ -3,6 +3,7 @@
 // Remplacement automatique des tags invalides.
 // Module spécialisé dans le reroll / regen de tags après blacklist ou action manuelle.
   global.PipelineUI = global.PipelineUI || {};
+  const dom = global.PipelineUIDom || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};
   const AUTO_REGEN_MAX_ATTEMPTS = 3;
@@ -20,9 +21,9 @@
     const container = itemEl?.parentElement;
     if (!container) return [];
 
-    return [...container.querySelectorAll('.titre-item')]
+    return [...container.querySelectorAll('[data-selection-item]')]
       .filter((node) => node !== itemEl)
-      .map((node) => node.querySelector('.titre-text')?.textContent || '')
+      .map((node) => (dom.getByData?.('selection-text-node', null, node) || node.querySelector('.titre-text'))?.textContent || '')
       .map((value) => helpers().normalizeTagValue ? helpers().normalizeTagValue(value) : String(value || '').trim())
       .filter(Boolean);
   }
@@ -39,22 +40,30 @@
   }
 
   function updateTagItemUI(itemEl, newTag) {
-    const textSpan = itemEl.querySelector('.titre-text');
-    const lenSpan = itemEl.querySelector('.titre-char');
-    const safe = helpers().escapeForInlineSingleQuote(newTag);
+    const textSpan = dom.getByData?.('selection-text-node', null, itemEl) || itemEl.querySelector('.titre-text');
+    const lenSpan = dom.getByData?.('selection-char', null, itemEl) || itemEl.querySelector('.titre-char');
     const itemId = itemEl.id;
     const source = itemId.startsWith('exp-') ? 'explorer' : 'main';
-    const buttons = itemEl.querySelectorAll('.titre-thumb');
+    const validateButton = dom.getByData?.('selection-role', 'validate', itemEl);
+    const blacklistButton = dom.getByData?.('selection-role', 'blacklist', itemEl);
+    const rerollButton = dom.getByData?.('selection-role', 'reroll', itemEl);
 
     if (textSpan) textSpan.textContent = newTag;
     if (lenSpan) {
       lenSpan.textContent = newTag.length;
-      lenSpan.style.color = newTag.length > 30 ? 'var(--error)' : 'var(--success)';
+      lenSpan.dataset.charTone = newTag.length > 30 ? 'danger' : 'success';
     }
 
-    if (buttons[0]) buttons[0].setAttribute('onclick', `event.stopPropagation();validateTag('${safe}')`);
-    if (buttons[1]) buttons[1].setAttribute('onclick', `event.stopPropagation();invalidateTag('${safe}','${itemId}','${source}')`);
-    if (buttons[2]) buttons[2].setAttribute('onclick', `event.stopPropagation();rerollTag('${safe}','${itemId}')`);
+    if (validateButton) validateButton.dataset.selectionText = newTag;
+    if (blacklistButton) {
+      blacklistButton.dataset.selectionText = newTag;
+      blacklistButton.dataset.itemId = itemId;
+      blacklistButton.dataset.selectionSource = source;
+    }
+    if (rerollButton) {
+      rerollButton.dataset.selectionText = newTag;
+      rerollButton.dataset.itemId = itemId;
+    }
   }
 
   function buildReplacementPrompt(basePrompt, tag, matchedTerm, excludedTags) {

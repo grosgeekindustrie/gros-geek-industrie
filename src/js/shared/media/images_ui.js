@@ -117,6 +117,10 @@
     });
 
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('click', (event) => {
+      if (event.target === input) return;
+      input.click();
+    });
 
     dropZone.addEventListener('drop', async (event) => {
       event.preventDefault();

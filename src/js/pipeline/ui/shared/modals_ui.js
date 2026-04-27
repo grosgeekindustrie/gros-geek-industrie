@@ -6,7 +6,9 @@
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
   const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.UI || 'ui');
+  const dom = global.PipelineUIDom || {};
   const helpers = () => global.PipelineUIHelpers || {};
+  let modalDelegationBound = false;
 
   function ensureLibraryModals() {
     if (document.getElementById('libraryBlacklistModal')) return;
@@ -29,8 +31,8 @@
     </div>
     <div id="libraryBlacklistFeedback" class="library-modal-feedback"></div>
     <div class="library-modal-actions">
-      <button type="button" class="library-modal-btn" onclick="closeLibraryBlacklistModal()">Annuler</button>
-      <button type="button" class="library-modal-btn primary" onclick="confirmLibraryBlacklistModal()">OK</button>
+      <button type="button" class="library-modal-btn" data-modal-action="close-blacklist">Annuler</button>
+      <button type="button" class="library-modal-btn primary" data-modal-action="confirm-blacklist">OK</button>
     </div>
   </div>
 </div>
@@ -51,14 +53,15 @@
     </div>
     <div id="libraryValidatedFeedback" class="library-modal-feedback"></div>
     <div class="library-modal-actions">
-      <button type="button" class="library-modal-btn" onclick="closeLibraryValidatedModal()">Annuler</button>
-      <button type="button" class="library-modal-btn primary" onclick="confirmLibraryValidatedModal()">OK</button>
+      <button type="button" class="library-modal-btn" data-modal-action="close-validated">Annuler</button>
+      <button type="button" class="library-modal-btn primary" data-modal-action="confirm-validated">OK</button>
     </div>
   </div>
 </div>
 `;
 
     document.body.appendChild(host);
+    bindModalActionsDelegation();
 
     document.getElementById('libraryBlacklistModal').addEventListener('click', (event) => {
       if (event.target.id === 'libraryBlacklistModal') closeLibraryBlacklistModal();
@@ -71,6 +74,30 @@
       closeLibraryBlacklistModal();
       closeLibraryValidatedModal();
     });
+  }
+
+  function bindModalActionsDelegation() {
+    if (modalDelegationBound) return;
+
+    document.addEventListener('click', (event) => {
+      const trigger = dom.getClosestByData?.(event.target, 'modalAction');
+      if (!trigger || trigger.disabled) return;
+
+      const action = String(trigger.dataset.modalAction || '').trim();
+      if (action === 'close-blacklist') closeLibraryBlacklistModal();
+      if (action === 'confirm-blacklist') confirmLibraryBlacklistModal();
+      if (action === 'close-validated') closeLibraryValidatedModal();
+      if (action === 'confirm-validated') confirmLibraryValidatedModal();
+      if (action === 'open-validated') {
+        openLibraryValidatedModal({
+          kind: trigger.dataset.modalKind || 'titres',
+          source: trigger.dataset.modalSource || 'main',
+          agentId: trigger.dataset.agentId || 'titre',
+        });
+      }
+    });
+
+    modalDelegationBound = true;
   }
 
   function setLibraryModalFeedback(modalType, text = '', tone = '') {
@@ -305,27 +332,32 @@
     }
   }
 
-  function ensureZoneLibraryActionButton(zoneEl, buttonId, label, onClick) {
+  function ensureZoneLibraryActionButton(zoneEl, buttonId, label, options = {}) {
     if (!zoneEl) return;
 
-    let bar = zoneEl.querySelector('.library-actions-bar');
+    let bar = dom.getByData?.('js', 'library-actions-bar', zoneEl);
     if (!bar) {
       bar = document.createElement('div');
       bar.className = 'library-actions-bar';
+      bar.dataset.js = 'library-actions-bar';
       zoneEl.prepend(bar);
     }
 
-    let button = document.getElementById(buttonId);
+    let button = dom.getByData?.('js', buttonId, bar);
     if (!button) {
       button = document.createElement('button');
       button.type = 'button';
       button.id = buttonId;
       button.className = 'library-action-btn';
+      button.dataset.js = buttonId;
       bar.appendChild(button);
     }
 
     button.textContent = label;
-    button.onclick = onClick;
+    button.dataset.modalAction = options.action || 'open-validated';
+    button.dataset.modalKind = options.kind || 'titres';
+    button.dataset.modalSource = options.source || 'main';
+    button.dataset.agentId = options.agentId || 'titre';
   }
 
   function ensureTagsManualAddButton() {
@@ -334,7 +366,7 @@
       zone,
       `${global.pfx()}-manual-valid-tags`,
       '➕ Ajouter des tags validés',
-      () => openLibraryValidatedModal({ kind: 'tags', source: 'main' })
+      { action: 'open-validated', kind: 'tags', source: 'main' }
     );
   }
 
@@ -344,7 +376,7 @@
       zone,
       `${global.pfx()}-manual-valid-${agentId}`,
       '➕ Ajouter des titres validés',
-      () => openLibraryValidatedModal({ kind: 'titres', source: 'main', agentId })
+      { action: 'open-validated', kind: 'titres', source: 'main', agentId }
     );
   }
 
@@ -352,7 +384,7 @@
     const label = document.getElementById('explorerListLabel');
     if (!label) return;
 
-    let bar = document.getElementById('explorerLibraryActions');
+    let bar = dom.getByData?.('js', 'explorer-library-actions');
     if (!bar) {
       bar = document.createElement('div');
       bar.id = 'explorerLibraryActions';
@@ -360,7 +392,7 @@
       label.insertAdjacentElement('afterend', bar);
     }
 
-    let button = document.getElementById('explorerManualValidBtn');
+    let button = dom.getByData?.('js', 'explorer-manual-valid-btn', bar);
     if (!button) {
       button = document.createElement('button');
       button.type = 'button';
@@ -372,7 +404,10 @@
     button.textContent = kind === 'tags'
       ? '➕ Ajouter des tags validés'
       : '➕ Ajouter des titres validés';
-    button.onclick = () => openLibraryValidatedModal({ kind, source: 'explorer', agentId });
+    button.dataset.modalAction = 'open-validated';
+    button.dataset.modalKind = kind;
+    button.dataset.modalSource = 'explorer';
+    button.dataset.agentId = agentId;
   }
 
   global.PipelineUIModals = {
@@ -391,3 +426,4 @@
   global.PipelineUI.modals = global.PipelineUI.modals || {};
   Object.assign(global.PipelineUI.modals, global.PipelineUIModals);
 })(window);
+

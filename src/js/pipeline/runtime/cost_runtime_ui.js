@@ -278,7 +278,7 @@
     if (lastEntry.cacheWrite > 0) parts.push(`✍️ ${lastEntry.cacheWrite.toLocaleString()} tok`);
     if (lastEntry.cacheRead > 0) parts.push(`⚡ ${lastEntry.cacheRead.toLocaleString()} tok`);
 
-    badge.innerHTML = parts.join('<span style="opacity:.3;">|</span>');
+    badge.innerHTML = parts.join('<span class="cost-badge-separator">|</span>');
     badge.title = [
       `${getCostAgentLabel(prefix, agentId)} · ${getCostModeLabel(prefix)}`,
       `Cumul session agent: ${aggregate.costCents.toFixed(3)}¢`,

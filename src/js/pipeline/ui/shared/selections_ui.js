@@ -4,17 +4,35 @@
 // Regroupe les flows de validation utilisateur, explorers et assemblage des sorties.
 // Zone sensible car fortement couplée au DOM des cartes pipeline.
   global.PipelineUI = global.PipelineUI || {};
+  const dom = global.PipelineUIDom || {};
 
   const helpers = () => global.PipelineUIHelpers || {};
   const modals = () => global.PipelineUIModals || {};
   const titlesApi = () => global.PipelineUITitles || {};
   const getPfx = () => global.pfx();
+  let selectionDelegationBound = false;
 
   const continueAfterSelection = async (agentId) => {
     await global.continuePipelineAfterSelection(agentId);
   };
 
   const TAG_SELECTION_MAX = 13;
+
+  function escapeAttr(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function getSelectionText(trigger) {
+    return String(trigger?.dataset.selectionText || '').trim();
+  }
+
+  function getSelectionItem(trigger) {
+    return dom.getClosestByData?.(trigger, 'selectionItem');
+  }
 
   const TAG_SEMANTIC_STOPWORDS = new Set([
     'de', 'du', 'des', 'd', 'l', 'le', 'la', 'les', 'un', 'une',
@@ -45,7 +63,7 @@
     const groups = new Map();
 
     rows.forEach((row) => {
-      const checkbox = row.querySelector('.tags-selection-checkbox');
+      const checkbox = dom.getByData?.('tags-checkbox', null, row);
       if (!checkbox?.checked) return;
 
       const value = getTagsSelectionRowValue(row);
@@ -129,7 +147,7 @@
   }
 
   function getTagsSelectionRowValue(row) {
-    const input = row?.querySelector('.tags-selection-input');
+    const input = dom.getByData?.('tags-input', null, row);
     return normalizeTagInputValue(input?.value || '');
   }
 
@@ -162,9 +180,9 @@
     return `
       <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item>
         <label class="tags-selection-checkbox-wrap">
-          <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" />
+          <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" data-tags-checkbox />
         </label>
-        <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" />
+        <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" data-tags-input />
         <span class="tags-selection-length" data-tags-length>0</span>
         <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">✓</button>
         <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">✕</button>
@@ -207,7 +225,7 @@
     const column = document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
     if (!column) return;
 
-    const values = [...column.querySelectorAll('.tags-selection-input')]
+    const values = (dom.getAllByData?.('tags-input', null, column) || [])
       .map((input) => normalizeTagInputValue(input.value))
       .filter(Boolean);
 
@@ -240,7 +258,7 @@
 
     rows.forEach((row) => {
       const rowState = getTagsSelectionRowState(row, rows, libraryState);
-      const checkbox = row.querySelector('.tags-selection-checkbox');
+      const checkbox = dom.getByData?.('tags-checkbox', null, row);
       const lengthNode = row.querySelector('[data-tags-length]');
       const isChecked = Boolean(checkbox?.checked);
       const semanticDuplicatePeer = isChecked && !rowState.hasDuplicateError
@@ -315,10 +333,11 @@
     zone.dataset.tagsUiBound = 'true';
 
     zone.addEventListener('change', (event) => {
-      if (!event.target.classList.contains('tags-selection-checkbox')) return;
+      const checkbox = dom.getClosestByData?.(event.target, 'tags-checkbox');
+      if (!checkbox || checkbox !== event.target) return;
 
       if (event.target.checked) {
-        const checkedCount = getTagsSelectionRows().filter((row) => row.querySelector('.tags-selection-checkbox')?.checked).length;
+        const checkedCount = getTagsSelectionRows().filter((row) => dom.getByData?.('tags-checkbox', null, row)?.checked).length;
         if (checkedCount > TAG_SELECTION_MAX) {
           event.target.checked = false;
           global.showToast(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
@@ -329,7 +348,8 @@
     });
 
     zone.addEventListener('input', (event) => {
-      if (!event.target.classList.contains('tags-selection-input')) return;
+      const input = dom.getClosestByData?.(event.target, 'tags-input');
+      if (!input || input !== event.target) return;
       updateTagsSelectionSummary();
     });
 
@@ -346,7 +366,7 @@
         return;
       }
 
-      const row = button.closest('.tags-selection-item');
+      const row = dom.getClosestByData?.(button, 'tags-item');
       const rowValue = getTagsSelectionRowValue(row);
       if (!rowValue) {
         global.showToast('Tag vide : impossible de lancer cette action', '#ff4757');
@@ -508,7 +528,7 @@
     const p = getPfx();
     const selectedTags = getTagsSelectedValues({ onlyValid: true });
     const invalidSelectedCount = getTagsSelectionRows().filter((row) => {
-      const checkbox = row.querySelector('.tags-selection-checkbox');
+      const checkbox = dom.getByData?.('tags-checkbox', null, row);
       if (!checkbox?.checked) return false;
       return row.dataset.tagsValid !== 'true';
     }).length;
@@ -549,6 +569,146 @@
     await continueAfterSelection(agentId);
   }
 
+  function getCharTone(chars, thresholds = {}) {
+    const {
+      danger = 140,
+      success = 128,
+      accent = 110,
+    } = thresholds;
+
+    if (chars > danger) return 'danger';
+    if (chars >= success) return 'success';
+    if (chars >= accent) return 'accent';
+    return 'muted';
+  }
+
+  function buildExplorerTagMarkup(tag, index) {
+    const itemId = `exp-tag-${index}`;
+    const safeTag = escapeAttr(tag);
+    return `<div class="titre-item" id="${itemId}" data-selection-item="tag-explorer">
+        <span class="titre-text" data-selection-text-node>${tag}</span>
+        <span class="titre-char" data-selection-char data-char-tone="${tag.length > 30 ? 'danger' : 'success'}">${tag.length}</span>
+        <div class="titre-actions">
+          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘</button>
+          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘Ž</button>
+          <button class="titre-thumb" type="button" data-selection-role="reroll" data-selection-action="reroll-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ”„</button>
+        </div>
+      </div>`;
+  }
+
+  function buildTitreSelectionItemMarkup(text, chars, agentId, index) {
+    const itemId = `${getPfx()}-ti-${agentId}-${index}`;
+    const safeText = escapeAttr(text);
+    return `<div class="titre-item" id="${itemId}" data-selection-item="titre" data-selection-action="select-titre" data-selection-index="${index}" data-agent-id="${agentId}">
+      <input class="titre-radio-input" type="radio" name="titre-${agentId}" />
+      <span class="titre-text" data-selection-text-node>${text}</span>
+      <span class="titre-char" data-selection-char data-char-tone="${getCharTone(chars)}">${chars}</span>
+      <div class="titre-actions">
+        <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}">ðŸ‘</button>
+        <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" data-selection-source="main">ðŸ‘Ž</button>
+        <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}">ðŸ“‹</button>
+      </div></div>`;
+  }
+
+  function buildChoiceItemMarkup(type, agentId, choice) {
+    return `<div class="choice-item" data-selection-item="choice" data-selection-action="select-choice" data-selection-type="${type}" data-agent-id="${agentId}" data-selection-num="${choice.num}">
+      <input type="radio" name="${type === 'accroche' ? 'acc' : 'cta'}-${agentId}"/>
+      <label>${choice.text}</label>
+    </div>`;
+  }
+
+  function buildExplorerTitreMarkup(titre, index) {
+    const itemId = `exp-titre-${index}`;
+    const safeText = escapeAttr(titre.text);
+    return `<div class="titre-item" id="${itemId}" data-selection-item="titre-explorer">
+        <span class="titre-text" data-selection-text-node>${titre.text}</span>
+        <span class="titre-char" data-selection-char data-char-tone="${getCharTone(titre.chars)}">${titre.chars}</span>
+        <div class="titre-actions">
+          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}">ðŸ‘</button>
+          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" data-selection-source="explorer">ðŸ‘Ž</button>
+          <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}">ðŸ“‹</button>
+        </div>
+      </div>`;
+  }
+
+  function bindSelectionDelegation() {
+    if (selectionDelegationBound) return;
+
+    document.addEventListener('click', async (event) => {
+      const trigger = dom.getClosestByData?.(event.target, 'selectionAction');
+      if (!trigger || trigger.disabled) return;
+
+      const action = String(trigger.dataset.selectionAction || '').trim();
+      const item = getSelectionItem(trigger);
+
+      if (action === 'validate-tag-explorer') {
+        await validateTag(getSelectionText(trigger));
+        item?.classList.add('validated');
+        return;
+      }
+      if (action === 'blacklist-tag-explorer') {
+        item?.classList.add('invalidated');
+        await invalidateTag(getSelectionText(trigger), trigger.dataset.itemId || null, 'explorer');
+        return;
+      }
+      if (action === 'reroll-tag-explorer') {
+        global.PipelineUITags?.rerollTag?.(getSelectionText(trigger), trigger.dataset.itemId || '');
+        return;
+      }
+      if (action === 'select-titre') {
+        selectTitre(Number(trigger.dataset.selectionIndex || 0), trigger.dataset.agentId || 'titre', trigger);
+        return;
+      }
+      if (action === 'validate-titre-segment' || action === 'validate-titre-explorer') {
+        await validateTitreSegment(getSelectionText(trigger));
+        item?.classList.add('validated');
+        return;
+      }
+      if (action === 'blacklist-titre-segment' || action === 'blacklist-titre-explorer') {
+        item?.classList.add('invalidated');
+        await invalidateTitreSegment(
+          getSelectionText(trigger),
+          trigger.dataset.itemId || null,
+          trigger.dataset.agentId || 'titre',
+          trigger.dataset.selectionSource || 'main'
+        );
+        return;
+      }
+      if (action === 'copy-titre-line') {
+        copyTitreLine(getSelectionText(trigger));
+        return;
+      }
+      if (action === 'paste-selected-titre') {
+        pasteSelectedTitre(trigger.dataset.agentId || 'titre');
+        return;
+      }
+      if (action === 'select-choice') {
+        selectChoice(
+          trigger.dataset.selectionType || 'accroche',
+          trigger.dataset.agentId || '',
+          trigger.dataset.selectionNum || '',
+          trigger
+        );
+        return;
+      }
+      if (action === 'run-tag-explorer') {
+        runTagExplorer();
+        return;
+      }
+      if (action === 'run-titre-explorer') {
+        runTitreExplorer();
+      }
+    });
+
+    document.addEventListener('input', (event) => {
+      const trigger = dom.getClosestByData?.(event.target, 'selectionInput', 'titre-counter');
+      if (!trigger || trigger !== event.target) return;
+      updateTitreCounter(trigger.dataset.agentId || 'titre');
+    });
+
+    selectionDelegationBound = true;
+  }
+
   async function runTagExplorer() {
     const p = getPfx();
     const btn = document.getElementById(`${p}-bexplore-tags`);
@@ -580,20 +740,9 @@
       modals().ensureExplorerManualAddButton('tags');
 
       const list = document.getElementById('explorerList');
-      list.innerHTML = filteredTags.length ? filteredTags.map((tag, i) => {
-        const len = tag.length;
-        const lenColor = len > 30 ? 'var(--error)' : 'var(--success)';
-        const safe = tag.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<div class="titre-item" id="exp-tag-${i}">
-        <span class="titre-text">${tag}</span>
-        <span class="titre-char" style="color:${lenColor};">${len}</span>
-        <div class="titre-actions">
-          <button class="titre-thumb" onclick="event.stopPropagation();validateTag('${safe}');document.getElementById('exp-tag-${i}').classList.add('validated')">👍</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTag('${safe}','exp-tag-${i}','explorer');document.getElementById('exp-tag-${i}').classList.add('invalidated')">👎</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();rerollTag('${safe}','exp-tag-${i}')">🔄</button>
-        </div>
-      </div>`;
-      }).join('') : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
+      list.innerHTML = filteredTags.length
+        ? filteredTags.map((tag, i) => buildExplorerTagMarkup(tag, i)).join('')
+        : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       document.getElementById('explorerLightbox').classList.add('visible');
       global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
@@ -626,17 +775,7 @@
       const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
       const charMatch = line.match(/\((\d+)\s*car/i);
       const chars = charMatch ? parseInt(charMatch[1], 10) : text.length;
-      const charColor = chars > 140 ? 'var(--error)' : chars >= 128 ? 'var(--success)' : chars >= 110 ? 'var(--accent)' : 'var(--muted)';
-      const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-      return `<div class="titre-item" id="ti-${i}" onclick="selectTitre(${i},'${agentId}',this)">
-      <input type="radio" name="titre-${agentId}" style="flex-shrink:0;margin-top:3px;accent-color:var(--accent);"/>
-      <span class="titre-text">${text}</span>
-      <span class="titre-char" style="color:${charColor};">${chars}</span>
-      <div class="titre-actions">
-        <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safeText}','valid')">👍</button>
-        <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safeText}','ti-${i}','${agentId}','main')">👎</button>
-        <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safeText}')">📋</button>
-      </div></div>`;
+      return buildTitreSelectionItemMarkup(text, chars, agentId, i);
     }).join('');
 
     const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
@@ -646,7 +785,7 @@
         const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
         const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(text, blacklisted) : null;
         if (term) {
-          const el = document.getElementById(`ti-${i}`);
+          const el = document.getElementById(`${p}-ti-${agentId}-${i}`);
           if (el) setTimeout(() => titlesApi().autoRegenTitre(text, term, el, agentId), i * 300);
         }
       });
@@ -654,10 +793,11 @@
   }
 
   function selectTitre(i, agentId, el) {
-    el.parentElement.querySelectorAll('.titre-item').forEach((node) => node.classList.remove('selected'));
+    el.parentElement.querySelectorAll('[data-selection-item="titre"]').forEach((node) => node.classList.remove('selected'));
     el.classList.add('selected');
-    el.querySelector('input').checked = true;
-    const selectedTitre = el.querySelector('.titre-text').textContent.trim();
+    const radio = el.querySelector('input');
+    if (radio) radio.checked = true;
+    const selectedTitre = (dom.getByData?.('selection-text-node', null, el) || el.querySelector('.titre-text'))?.textContent.trim();
     global.state.selectedTitre = selectedTitre;
     const p = getPfx();
     const input = document.getElementById(`${p}-titre-manual-${agentId}`);
@@ -800,7 +940,7 @@
       const list = document.getElementById(`${p}-sel-list-accroche-${agentId}`);
       if (zone && list) {
         zone.classList.add('visible');
-        list.innerHTML = accroches.map((choice) => `<div class="choice-item" onclick="selectChoice('accroche','${agentId}','${choice.num}',this)"><input type="radio" name="acc-${agentId}"/><label>${choice.text}</label></div>`).join('');
+        list.innerHTML = accroches.map((choice) => buildChoiceItemMarkup('accroche', agentId, choice)).join('');
       }
     }
 
@@ -809,15 +949,16 @@
       const list = document.getElementById(`${p}-sel-list-cta-${agentId}`);
       if (zone && list) {
         zone.classList.add('visible');
-        list.innerHTML = ctas.map((choice) => `<div class="choice-item" onclick="selectChoice('cta','${agentId}','${choice.num}',this)"><input type="radio" name="cta-${agentId}"/><label>${choice.text}</label></div>`).join('');
+        list.innerHTML = ctas.map((choice) => buildChoiceItemMarkup('cta', agentId, choice)).join('');
       }
     }
   }
 
   function selectChoice(type, agentId, num, el) {
-    el.parentElement.querySelectorAll('.choice-item').forEach((node) => node.classList.remove('selected'));
+    el.parentElement.querySelectorAll('[data-selection-item="choice"]').forEach((node) => node.classList.remove('selected'));
     el.classList.add('selected');
-    el.querySelector('input').checked = true;
+    const radio = el.querySelector('input');
+    if (radio) radio.checked = true;
     const text = el.querySelector('label').textContent.trim();
     if (type === 'accroche') global.state.selectedAccroche = { num, text };
     if (type === 'cta') global.state.selectedCTA = { num, text };
@@ -909,19 +1050,7 @@
       modals().ensureExplorerManualAddButton('titres', 'titre');
 
       const list = document.getElementById('explorerList');
-      list.innerHTML = titres.map((titre, i) => {
-        const charColor = titre.chars > 140 ? 'var(--error)' : titre.chars >= 128 ? 'var(--success)' : titre.chars >= 110 ? 'var(--accent)' : 'var(--muted)';
-        const safe = titre.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        return `<div class="titre-item" id="exp-titre-${i}">
-        <span class="titre-text">${titre.text}</span>
-        <span class="titre-char" style="color:${charColor};">${titre.chars}</span>
-        <div class="titre-actions">
-          <button class="titre-thumb" onclick="event.stopPropagation();validateTitreSegment('${safe}');document.getElementById('exp-titre-${i}').classList.add('validated')">👍</button>
-          <button class="titre-thumb" onclick="event.stopPropagation();invalidateTitreSegment('${safe}','exp-titre-${i}','titre','explorer');document.getElementById('exp-titre-${i}').classList.add('invalidated')">👎</button>
-          <button class="titre-copy" onclick="event.stopPropagation();copyTitreLine('${safe}')">📋</button>
-        </div>
-      </div>`;
-      }).join('');
+      list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
       document.getElementById('explorerLightbox').classList.add('visible');
       global.showToast('Exploration terminée ✓', '#e8c547');
@@ -934,6 +1063,8 @@
       }
     }
   }
+
+  bindSelectionDelegation();
 
   global.PipelineUISelections = {
     buildTagsUI,
@@ -961,3 +1092,12 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
+
+
+
+
+
+
+
+
+

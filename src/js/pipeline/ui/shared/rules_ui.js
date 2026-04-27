@@ -4,6 +4,7 @@
 // Petit bridge DOM/localStorage volontairement isole pour eviter de laisser ce reliquat
 // dans le boot principal.
   global.PipelineUI = global.PipelineUI || {};
+  let rulesDelegationBound = false;
 
   function savePersistentRules() {
     localStorage.setItem('pipeline.rules', JSON.stringify(global.state.persistentRules));
@@ -11,7 +12,7 @@
 
   function renderPersistentRules(agentId, rules) {
     return 'Regles permanentes:<br>' + rules.map((rule, index) =>
-      `<span onclick="removeRule('${agentId}',${index})" title="Supprimer">x ${rule}</span>`
+      `<button type="button" data-rule-action="remove" data-agent-id="${agentId}" data-rule-index="${index}" title="Supprimer">x ${rule}</button>`
     ).join('');
   }
 
@@ -64,4 +65,22 @@
   global.PipelineUI.rules = global.PipelineUI.rules || {};
   Object.assign(global.PipelineUI.rules, global.PipelineUIRules);
   Object.assign(global, global.PipelineUIRules);
+
+  if (!rulesDelegationBound) {
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('[data-rule-action]');
+      if (!trigger || trigger.disabled) return;
+
+      const action = trigger.dataset.ruleAction;
+      const agentId = trigger.dataset.agentId;
+      if (action === 'persist') {
+        persistRule(agentId);
+        return;
+      }
+      if (action === 'remove') {
+        removeRule(agentId, Number(trigger.dataset.ruleIndex || -1));
+      }
+    });
+    rulesDelegationBound = true;
+  }
 })(window);

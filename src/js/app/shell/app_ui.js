@@ -5,6 +5,7 @@
 // À garder orienté shell / UX, sans réembarquer le coeur pipeline.
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const dom = global.PipelineUIDom || {};
   const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
     TABLETOP: 'tabletop',
     COLLECTION: 'collection',
@@ -40,6 +41,7 @@
   let currentView = 'home';
   let pipelineExecutionActive = false;
   let pipelineActionDelegationBound = false;
+  let uiActionDelegationBound = false;
 
   const PIPELINE_ACTION_SELECTOR = '[data-pipeline-action]';
   const BACK_BUTTON_LABELS = {
@@ -87,6 +89,101 @@
     pipelineActionDelegationBound = true;
   };
 
+  const readActionArgs = (trigger) => ([
+    trigger.dataset.actionArg,
+    trigger.dataset.actionArg2,
+    trigger.dataset.actionArg3,
+  ].filter((value) => typeof value !== 'undefined'));
+
+  const getUiActionHandlers = () => ({
+    'cancel-to-home': () => cancelToHome(),
+    'copy-token-report': () => global.copyTokenReport?.(),
+    'copy-cache-debug-report': () => global.copyCacheDebugReport?.(),
+    'open-settings': () => openSettings(),
+    'close-settings': () => closeSettings(),
+    'open-biblio-from-settings': () => {
+      global.openBiblioLightbox?.();
+      closeSettings();
+    },
+    'copy-token-report-from-settings': () => {
+      global.copyTokenReport?.();
+      closeSettings();
+    },
+    'clear-storage': () => clearAllStorage(),
+    'select-mode': (mode) => selectMode(mode),
+    'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
+    'copy-section': (key) => global.copySection?.(key),
+    'copy-all-outputs': () => global.copyAllOutputs?.(),
+    'export-final-outputs': (prefix) => global.exportFinalOutputs?.(prefix),
+    'copy-all-final': () => global.copyAll?.(),
+    'toggle-reseaux-only': (prefix) => global.toggleReseauxOnly?.(prefix),
+    'run-leo-agent': (prefix) => global.runLeoAgent?.(prefix),
+    'run-camille-agent': (prefix) => global.runCamilleAgent?.(prefix),
+    'run-reseaux-only': (type, prefix) => global.runReseauxOnly?.(type, prefix),
+    'copy-social': () => global.copySocial?.(),
+    'copy-social-section': (sectionId) => global.copySocialSection?.(sectionId),
+    'open-biblio-lightbox': () => global.openBiblioLightbox?.(),
+    'close-biblio-lightbox': () => global.closeBiblioLightbox?.(),
+    'switch-biblio-tab': (tabId) => global.switchBiblioTab?.(tabId),
+    'save-biblio': () => global.saveBiblio?.(),
+    'reset-biblio': () => global.resetBiblio?.(),
+    'close-prompt-lightbox': () => global.closePromptLightbox?.(),
+    'save-prompt-lightbox': () => global.saveLbPrompt?.(),
+    'reset-prompt-lightbox': () => global.resetLbPrompt?.(),
+    'close-raw-input': () => closeRawInput(),
+    'copy-raw-input': () => copyRawInput(),
+    'close-explorer': () => global.closeExplorer?.(),
+    'run-iris': (prefix) => (
+      prefix === 'col'
+        ? global.runCollectionIrisSemanticSearch?.()
+        : global.runTabletopIrisSemanticSearch?.()
+    ),
+    'fetch-personnage': () => global.fetchPersonnage?.(),
+  });
+
+  const getUiChangeHandlers = () => ({
+    'toggle-dynamic-echelles': (prefix) => global.toggleDynamicEchelles?.(prefix),
+    'toggle-buzz': (prefix) => global.toggleBuzz?.(prefix),
+    'toggle-buzz-collection': () => global.toggleBuzzCollection?.(),
+    'toggle-license': () => global.toggleLicense?.(),
+  });
+
+  const handleDelegatedUiActionClick = (event) => {
+    const overlay = dom.getClosestByData?.(event.target, 'overlayClose');
+    if (overlay && event.target === overlay) {
+      const closeAction = overlay.dataset.overlayClose;
+      getUiActionHandlers()[closeAction]?.();
+      return;
+    }
+
+    const trigger = dom.getClosestByData?.(event.target, 'uiAction');
+    if (!trigger || trigger.disabled) return;
+
+    event.preventDefault();
+    const action = String(trigger.dataset.uiAction || '').trim();
+    const handler = getUiActionHandlers()[action];
+    if (!handler) return;
+    handler(...readActionArgs(trigger));
+  };
+
+  const handleDelegatedUiActionChange = (event) => {
+    const trigger = dom.getClosestByData?.(event.target, 'uiChange');
+    if (!trigger || trigger !== event.target) return;
+
+    const action = String(trigger.dataset.uiChange || '').trim();
+    const handler = getUiChangeHandlers()[action];
+    if (!handler) return;
+    handler(...readActionArgs(trigger));
+  };
+
+  const bindUiActionDelegation = () => {
+    if (uiActionDelegationBound) return;
+
+    document.addEventListener('click', handleDelegatedUiActionClick);
+    document.addEventListener('change', handleDelegatedUiActionChange);
+    uiActionDelegationBound = true;
+  };
+
   function hasActiveAgentControllers() {
     return Object.values(global.abortControllers || {}).some((controller) => !!controller);
   }
@@ -111,7 +208,7 @@
     refreshPipelineLaunchPanels();
   }
   function syncHeaderBackAction() {
-    const backBtn = document.getElementById('appBackBtn');
+    const backBtn = dom.getByData?.('js', 'app-back-btn') || document.getElementById('appBackBtn');
     if (!backBtn) return;
 
     const stopBtn = document.getElementById('btnStopGlobal');
@@ -134,10 +231,11 @@
   }
 
   function showToast(msg, color = '#4caf7d', duration = 2500) {
-    const existing = document.querySelectorAll('.toast-item');
+    const existing = dom.getAllByData?.('js', 'toast-item') || document.querySelectorAll('.toast-item');
     const offset = 20 + existing.length * 56;
     const toast = document.createElement('div');
     toast.className = 'toast-item';
+    toast.dataset.js = 'toast-item';
     toast.style.cssText = `position:fixed;bottom:${offset}px;right:20px;background:${color};color:#0f0f0f;padding:10px 14px 10px 16px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;z-index:9999;display:flex;align-items:center;gap:10px;max-width:420px;transition:bottom .2s;`;
 
     const text = document.createElement('span');
@@ -154,7 +252,7 @@
     const remove = () => {
       clearTimeout(timer);
       toast.remove();
-      document.querySelectorAll('.toast-item').forEach((el, i) => {
+      (dom.getAllByData?.('js', 'toast-item') || document.querySelectorAll('.toast-item')).forEach((el, i) => {
         el.style.bottom = `${20 + i * 56}px`;
       });
     };
@@ -181,26 +279,26 @@
 
     const agent = getAgents().find((entry) => entry.id === agentId);
     const label = agent ? agent.title : agentId;
-    document.getElementById('rawInputTitle').textContent = `</> INPUT - ${label}`;
-    document.getElementById('rawInputTextarea').value = raw;
-    document.getElementById('rawInputCount').textContent = `${raw.length.toLocaleString()} car.`;
-    document.getElementById('rawInputLightbox').classList.add('visible');
+    (dom.getByData?.('js', 'raw-input-title') || document.getElementById('rawInputTitle')).textContent = `</> INPUT - ${label}`;
+    (dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value = raw;
+    (dom.getByData?.('js', 'raw-input-count') || document.getElementById('rawInputCount')).textContent = `${raw.length.toLocaleString()} car.`;
+    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.add('visible');
   }
 
   function closeRawInput() {
-    document.getElementById('rawInputLightbox').classList.remove('visible');
+    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.remove('visible');
   }
 
   function copyRawInput() {
-    navigator.clipboard.writeText(document.getElementById('rawInputTextarea').value);
+    navigator.clipboard.writeText((dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value);
     showToast(RAW_INPUT_COPIED_MESSAGE);
   }
 
   function showView(name) {
     currentView = name;
-    document.querySelectorAll('.view').forEach((view) => view.classList.remove('active'));
+    (dom.getAllByData?.('js', 'view') || document.querySelectorAll('.view')).forEach((view) => view.classList.remove('active'));
 
-    const view = document.getElementById(`view-${name}`);
+    const view = dom.getByData?.('view', name) || document.getElementById(`view-${name}`);
     if (view) view.classList.add('active');
 
     updateHeaderContext(name);
@@ -216,14 +314,14 @@
   }
 
   function updateHeaderContext(viewName) {
-    const ctx = document.getElementById('headerContext');
+    const ctx = dom.getByData?.('js', 'header-context') || document.getElementById('headerContext');
     if (!ctx) return;
 
     ctx.className = 'app-context';
     if (viewName === 'home') {
       ctx.textContent = HOME_HEADER_CONTEXT;
     } else if (viewName === 'form') {
-      const label = document.getElementById('formModeLabel')?.textContent || '';
+      const label = (dom.getByData?.('js', 'form-mode-label') || document.getElementById('formModeLabel'))?.textContent || '';
       ctx.textContent = label;
       ctx.classList.add(getCurrentMode() === PIPELINE_MODES.TABLETOP ? 'mode-tt' : 'mode-col');
     } else if (viewName === 'pipeline') {
@@ -257,7 +355,7 @@
     const modeUiConfig = getModeUiConfig(mode);
     const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
     const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
-    const label = document.getElementById('formModeLabel');
+    const label = dom.getByData?.('js', 'form-mode-label') || document.getElementById('formModeLabel');
     const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
     const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
 
@@ -282,7 +380,7 @@
       showToast(FLOW_CANCELLED_MESSAGE, '#ff4757');
       return;
     }
-    const timeline = document.getElementById('pipelineTimeline');
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
     showView('home');
@@ -306,7 +404,7 @@
   function buildPipelineTimeline(metaLabel = '') {
     if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
 
-    const timeline = document.getElementById('pipelineTimeline');
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
     if (!timeline) return;
 
     const agents = getAgents();
@@ -335,15 +433,15 @@
   }
 
   function openSettings() {
-    document.getElementById('settingsOverlay').classList.add('visible');
-    document.getElementById('settingsPanel').classList.add('visible');
+    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.add('visible');
+    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.add('visible');
   }
 
   function closeSettings() {
-    document.getElementById('settingsOverlay').classList.remove('visible');
-    document.getElementById('settingsPanel').classList.remove('visible');
+    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
+    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
 
-    const apiKey = document.getElementById('apiKey')?.value;
+    const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
     if (!apiKey) return;
 
     try {
@@ -355,6 +453,7 @@
 
 
   bindPipelineActionDelegation();
+  bindUiActionDelegation();
 
   global.PipelineUIApp = {
     showToast,
@@ -375,6 +474,7 @@
     openSettings,
     closeSettings,
     bindPipelineActionDelegation,
+    bindUiActionDelegation,
     getCurrentView: () => currentView,
   };
 

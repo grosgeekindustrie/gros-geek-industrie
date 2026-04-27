@@ -22,36 +22,36 @@
 <div class="app-shell">
 
 <!-- APP HEADER — visible partout sauf home -->
-<header class="app-header" id="appHeader">
+<header class="app-header" id="appHeader" data-js="app-header">
   <!-- LEFT -->
   <div class="app-header-left">
-    <span class="app-logo" title="Annuler et revenir à l'accueil" onclick="cancelToHome()">🎲</span>
+    <span class="app-logo" title="Annuler et revenir à l'accueil" data-ui-action="cancel-to-home">🎲</span>
     <span class="hbadge">v1.2</span>
-    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" title="Cliquer pour copier le rapport coûts/tokens session" onclick="copyTokenReport()" aria-label="Copier le rapport coûts/tokens session">💰 0.00¢</button>
-    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" title="Cliquer pour copier le rapport cache complet" onclick="copyCacheDebugReport()" aria-label="Copier le rapport cache complet">🧠 cache —</button>
+    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cost" title="Cliquer pour copier le rapport coûts/tokens session" data-ui-action="copy-token-report" aria-label="Copier le rapport coûts/tokens session">💰 0.00¢</button>
+    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cache" title="Cliquer pour copier le rapport cache complet" data-ui-action="copy-cache-debug-report" aria-label="Copier le rapport cache complet">🧠 cache —</button>
   </div>
   <!-- CENTER -->
   <div class="app-header-center">
-    <span id="headerContext" class="app-context">Etsy Pipeline · Génération de fiches produit IA</span>
+    <span id="headerContext" class="app-context" data-js="header-context">Etsy Pipeline · Génération de fiches produit IA</span>
   </div>
   <!-- RIGHT -->
   <div class="app-header-right">
-    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" onclick="cancelToHome()">↩️ Retour</button>
-    <button class="app-settings-btn" onclick="openSettings()" title="Paramètres">⚙</button>
+    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home">↩️ Retour</button>
+    <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres">⚙</button>
   </div>
 </header>
 
 <!-- SETTINGS PANEL -->
-<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()"></div>
-<div class="settings-panel" id="settingsPanel">
+<div class="settings-overlay" id="settingsOverlay" data-js="settings-overlay" data-overlay-close="close-settings"></div>
+<div class="settings-panel" id="settingsPanel" data-js="settings-panel">
   <div class="settings-header">
     <span class="settings-title">Paramètres</span>
-    <button class="lb-close" onclick="closeSettings()">✕</button>
+    <button class="lb-close" type="button" data-ui-action="close-settings">✕</button>
   </div>
   <div class="settings-body">
     <div class="settings-section">
       <label class="settings-label">Clé API Anthropic</label>
-      <input type="password" id="apiKey" class="settings-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
+      <input type="password" id="apiKey" class="settings-input" data-js="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
     </div>
     <div class="settings-section">
       <label class="settings-label">URL boutique Etsy</label>
@@ -60,22 +60,22 @@
     <div class="settings-sep"></div>
     <div class="settings-section">
       <label class="settings-label">Bibliothèques sémantiques</label>
-      <button class="settings-action" onclick="openBiblioLightbox();closeSettings()">Éditer ↗</button>
+      <button class="settings-action" type="button" data-ui-action="open-biblio-from-settings">Éditer ↗</button>
     </div>
     <div class="settings-section">
       <label class="settings-label">Rapport tokens session</label>
-      <button class="settings-action" onclick="copyTokenReport();closeSettings()">Copier ↗</button>
+      <button class="settings-action" type="button" data-ui-action="copy-token-report-from-settings">Copier ↗</button>
     </div>
     <div class="settings-sep"></div>
     <div class="settings-section">
       <label class="settings-label settings-label-danger">Vider le cache local</label>
-      <button class="settings-action settings-action-danger" onclick="clearAllStorage()">Reset ↗</button>
+      <button class="settings-action settings-action-danger" type="button" data-ui-action="clear-storage">Reset ↗</button>
     </div>
   </div>
 </div>
 
 <!-- VIEW HOME -->
-<div class="view active" id="view-home">
+<div class="view active" id="view-home" data-js="view" data-view="home">
   <div id="view-home-inner" class="home-view-center">
     <div class="home-inner">
       <div class="home-headline">
@@ -83,13 +83,13 @@
         <p>Génération de fiches produit IA — Tabletop &amp; Collection</p>
       </div>
       <div class="home-cards home-cards-dual">
-        <div class="home-card" onclick="selectMode('tabletop')">
+        <div class="home-card" data-ui-action="select-mode" data-action-arg="tabletop">
           <div class="home-card-icon">🎲</div>
           <div class="home-card-title">Tabletop DnD</div>
           <div class="home-card-desc">Miniatures RPG, D&amp;D, TTRPG.<br>Pipeline Marcus → Claire.</div>
           <div class="home-card-tag">6 agents · Nerikson · Rescale</div>
         </div>
-        <div class="home-card" onclick="selectMode('collection')">
+        <div class="home-card" data-ui-action="select-mode" data-action-arg="collection">
           <div class="home-card-icon">🖼️</div>
           <div class="home-card-title">Collection</div>
           <div class="home-card-desc">Figurines fan art, garage kits,<br>statues résine à peindre.</div>
@@ -102,9 +102,9 @@
 
 <!-- VIEW FORM -->
 <!-- Vue de saisie : les blocs Tabletop et Collection restent volontairement séparés tant qu’aucune abstraction stable n’est validée. -->
-<div class="view" id="view-form">
+<div class="view" id="view-form" data-js="view" data-view="form">
 
-  <span id="formModeLabel" class="is-hidden">🎲 Tabletop DnD</span>
+  <span id="formModeLabel" class="is-hidden" data-js="form-mode-label">🎲 Tabletop DnD</span>
   <div class="form-view-body" id="formViewBody">
 
 <!-- ═══════════════════════════════════════ BLOC TABLETOP ═══════════════════════════════════════ -->
@@ -184,7 +184,7 @@
       <div class="collection-stepper-body">
         <section class="collection-step is-active" data-js="dnd-step" data-step-index="0">
           <div class="form-full-row">
-            <div class="drop-zone collection-stepper-drop-zone" id="dropZone-tt" onclick="document.getElementById('imgInput-tt').click()">
+            <div class="drop-zone collection-stepper-drop-zone" id="dropZone-tt" data-js="image-drop-zone" data-prefix="tt">
               <div class="dz-placeholder" id="dzPlaceholder-tt">
                 <div class="di">🖼️</div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
@@ -275,7 +275,7 @@
               <div class="collection-stepper-inline-field">
                 <span class="collection-stepper-inline-label">Calcul dynamique <span class="fg-hint">→ déduire les dimensions à partir d'une échelle d'origine</span></span>
                 <label class="social-check social-check-offset collection-inline-toggle">
-                  <input type="checkbox" id="tt-fDynamicEchelles" onchange="toggleDynamicEchelles('tt')"/>
+                  <input type="checkbox" id="tt-fDynamicEchelles" data-ui-change="toggle-dynamic-echelles" data-action-arg="tt"/>
                   <span>Activer le calcul auto</span>
                 </label>
               </div>
@@ -294,7 +294,7 @@
                     <div class="fg">
                       <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
                       <div class="buzz-row">
-                        <input type="checkbox" id="tt-fBuzz" onchange="toggleBuzz('tt')"/>
+                        <input type="checkbox" id="tt-fBuzz" data-ui-change="toggle-buzz" data-action-arg="tt"/>
                         <span>Ce sculpteur/personnage buzz en ce moment</span>
                       </div>
                       <textarea id="tt-fBuzzNote" class="buzz-note" placeholder="Précise le contexte buzz..."></textarea>
@@ -357,9 +357,9 @@
                 <div class="fg full">
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
-                    <button class="btn btn-accent" type="button" id="runIrisBtn-tt" onclick="runTabletopIrisSemanticSearch()">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" onclick="openPromptLightbox('iris')">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" onclick="copySection('iris')">📋 Copier</button>
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-tt" data-ui-action="run-iris" data-action-arg="tt">▶ Lancer Iris</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
                   </div>
                   <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
                 </div>
@@ -417,36 +417,36 @@ Cache : —</pre>
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Etsy — Output final</span>
       <div class="toolbar-actions">
-        <button class="btn btn-muted btn-compact-text" onclick="copyAllOutputs()">🔍 Review globale</button>
-        <button class="btn btn-muted btn-compact-text" onclick="exportFinalOutputs('tt')">💾 Export</button>
-        <button class="copy-all-btn copy-all-btn-compact" onclick="copyAll()">📋 Tout copier</button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs">🔍 Review globale</button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="export-final-outputs" data-action-arg="tt">💾 Export</button>
+        <button class="copy-all-btn copy-all-btn-compact" type="button" data-ui-action="copy-all-final">📋 Tout copier</button>
       </div>
     </div>
     <div class="final-section is-hidden" id="fs-titre-tt">
       <div class="fs-header">
         <span>🏷️ Titre validé</span>
-        <button onclick="copySection('titre_valide')">📋</button>
+        <button type="button" data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-titre-tt" data-final-prefix="tt" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-tags-tt">
       <div class="fs-header">
         <span>🔖 Tags</span>
-        <button onclick="copySection('tags')">📋</button>
+        <button type="button" data-ui-action="copy-section" data-action-arg="tags">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-tags-tt" data-final-prefix="tt" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-description-tt">
       <div class="fs-header">
         <span>📝 Description</span>
-        <button onclick="copySection('description_assembled')">📋</button>
+        <button type="button" data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-description-tt" data-final-prefix="tt" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-alt-tt">
       <div class="fs-header">
         <span>🖼️ Balise ALT</span>
-        <button onclick="copySection('alt')">📋</button>
+        <button type="button" data-ui-action="copy-section" data-action-arg="alt">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-alt-tt" data-final-prefix="tt" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
     </div>
@@ -459,11 +459,11 @@ Cache : —</pre>
   <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt">
     <div class="section-header-inline">
       <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" onclick="toggleReseauxOnly('tt')" id="toggleReseauxOnlyBtn-tt">📋 Fiche déjà publiée</button>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="tt" id="toggleReseauxOnlyBtn-tt">📋 Fiche déjà publiée</button>
     </div>
     <div class="section-stack-md">
       <div class="agent-card" id="card-social-tt">
-        <div class="agent-header" onclick="toggleCard('social-tt')">
+        <div class="agent-header" data-card-toggle="social-tt">
           <span class="agent-num">○</span>
           <span class="agent-title">📸 Léo · Réseaux sociaux</span>
           <span class="badge-rules is-hidden" id="brul-social-tt">📌</span>
@@ -491,16 +491,16 @@ Cache : —</pre>
             <textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runLeoBtn-tt" onclick="runLeoAgent('tt')">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" onclick="stopAgent('social','tt')">⏹</button>
-            <button class="btn btn-muted" onclick="openPromptLightbox('social')">⚙️</button>
-            <button class="btn btn-muted" onclick="copyOut('social')">📋</button>
-            <button class="btn btn-muted" onclick="showRawInput('social')">&lt;/&gt;</button>
+            <button class="btn btn-accent" id="runLeoBtn-tt" type="button" data-ui-action="run-leo-agent" data-action-arg="tt">▶ Générer</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="tt">⏹</button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
+            <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
       <div class="agent-card" id="card-camille-tt">
-        <div class="agent-header" onclick="toggleCard('camille-tt')">
+        <div class="agent-header" data-card-toggle="camille-tt">
           <span class="agent-num">○</span>
           <span class="agent-title">📌 Camille · Pinterest</span>
           <span class="badge-rules is-hidden" id="brul-camille-tt">📌</span>
@@ -520,11 +520,11 @@ Cache : —</pre>
             <textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runCamilleBtn-tt" onclick="runCamilleAgent('tt')">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" onclick="stopAgent('camille','tt')">⏹</button>
-            <button class="btn btn-muted" onclick="openPromptLightbox('camille')">⚙️</button>
-            <button class="btn btn-muted" onclick="copyOut('camille')">📋</button>
-            <button class="btn btn-muted" onclick="showRawInput('camille')">&lt;/&gt;</button>
+            <button class="btn btn-accent" id="runCamilleBtn-tt" type="button" data-ui-action="run-camille-agent" data-action-arg="tt">▶ Générer</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="tt">⏹</button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
+            <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
           </div>
         </div>
       </div>
@@ -564,61 +564,61 @@ Cache : —</pre>
       </div>
     </div>
     <div class="reseaux-only-actions">
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" onclick="runReseauxOnly('leo','tt')">📸 Léo</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" onclick="runReseauxOnly('camille','tt')">📌 Camille</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" onclick="runReseauxOnly('both','tt')">📱 Les deux</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="tt">📸 Léo</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="tt">📌 Camille</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="tt">📱 Les deux</button>
     </div>
   </div>
 
   <div id="socialOutput-tt" class="social-output-panel is-hidden">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
-      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" onclick="copySocial()">📋 Tout copier</button>
+      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" type="button" data-ui-action="copy-social">📋 Tout copier</button>
     </div>
     <div class="final-section is-hidden" id="ss-insta-tt">
       <div class="fs-header">
         <span>📸 Instagram / TikTok</span>
-        <button onclick="copySocialSection('insta')">📋</button>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
       </div>
       <pre class="fs-content" id="sc-insta-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-fb-tt">
       <div class="fs-header">
         <span>👥 Facebook</span>
-        <button onclick="copySocialSection('fb')">📋</button>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
       </div>
       <pre class="fs-content" id="sc-fb-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-marketplace-tt">
       <div class="fs-header">
         <span>🛍️ Facebook Marketplace</span>
-        <button onclick="copySocialSection('marketplace')">📋</button>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
       </div>
       <pre class="fs-content" id="sc-marketplace-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-pinterest-tt">
       <div class="fs-header">
         <span>📌 Pinterest</span>
-        <button onclick="copySocialSection('pinterest')">📋 Tout</button>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
       </div>
       <div id="sc-pinterest-titre-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Titre Pinterest</span>
-          <button onclick="copySocialSection('pinterestTitre')">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-t-tt"></pre>
       </div>
       <div id="sc-pinterest-desc-wrap-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Description Pinterest</span>
-          <button onclick="copySocialSection('pinterestDesc')">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-d-tt"></pre>
       </div>
       <div id="sc-pinterest-alt-wrap-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
-          <button onclick="copySocialSection('pinterestAlt')">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-a-tt"></pre>
       </div>
@@ -707,7 +707,7 @@ Cache : —</pre>
       <div class="collection-stepper-body">
         <section class="collection-step is-active" data-js="collection-step" data-step-index="0">
           <div class="form-full-row">
-            <div class="drop-zone collection-stepper-drop-zone" id="dropZone-col" onclick="document.getElementById('imgInput-col').click()">
+            <div class="drop-zone collection-stepper-drop-zone" id="dropZone-col" data-js="image-drop-zone" data-prefix="col">
               <div class="dz-placeholder" id="dzPlaceholder-col">
                 <div class="di">🖼️</div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
@@ -725,7 +725,7 @@ Cache : —</pre>
               <div class="collection-stepper-inline-field">
                 <span class="collection-stepper-inline-label">Licence sensible <span class="fg-hint">→ ne pas transmettre nom &amp; univers</span></span>
                 <label class="social-check social-check-offset collection-inline-toggle">
-                  <input type="checkbox" id="col-fLicense" onchange="toggleLicense()"/>
+                  <input type="checkbox" id="col-fLicense" data-ui-change="toggle-license"/>
                   <span id="col-licenseLabel">Non — les agents peuvent citer le personnage et l'univers</span>
                 </label>
               </div>
@@ -780,7 +780,7 @@ Cache : —</pre>
               <div class="collection-stepper-inline-field">
                 <span class="collection-stepper-inline-label">Calcul dynamique <span class="fg-hint">→ déduire les dimensions à partir d'une échelle d'origine</span></span>
                 <label class="social-check social-check-offset collection-inline-toggle">
-                  <input type="checkbox" id="col-fDynamicEchelles" onchange="toggleDynamicEchelles('col')" checked/>
+                  <input type="checkbox" id="col-fDynamicEchelles" data-ui-change="toggle-dynamic-echelles" data-action-arg="col" checked/>
                   <span>Activer le calcul auto</span>
                 </label>
               </div>
@@ -799,7 +799,7 @@ Cache : —</pre>
                     <div class="fg full">
                       <label>Buzz marché <span class="fg-hint">→ signal analyse marché</span></label>
                       <label class="social-check social-check-offset collection-inline-toggle">
-                        <input type="checkbox" id="col-fBuzzCollection" onchange="toggleBuzzCollection()"/>
+                        <input type="checkbox" id="col-fBuzzCollection" data-ui-change="toggle-buzz-collection"/>
                         <span>Licence ou univers récent, potentiel sous-évalué</span>
                       </label>
                       <textarea id="col-fBuzzCollectionNote" class="buzz-note" placeholder="Sortie récente, film/série/jeu qui buzz, communauté en croissance..."></textarea>
@@ -844,7 +844,7 @@ Cache : —</pre>
                       <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
                       <div class="field-action-row">
                         <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
-                        <button class="btn btn-accent" id="fetchBtn-col" onclick="fetchPersonnage()">🔍 Fetch</button>
+                        <button class="btn btn-accent" id="fetchBtn-col" type="button" data-ui-action="fetch-personnage">🔍 Fetch</button>
                       </div>
                       <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
                     </div>
@@ -859,9 +859,9 @@ Cache : —</pre>
                 <div class="fg full">
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
-                    <button class="btn btn-accent" type="button" id="runIrisBtn-col" onclick="runCollectionIrisSemanticSearch()">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" onclick="openPromptLightbox('iris')">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" onclick="copySection('iris')">📋 Copier</button>
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-col" data-ui-action="run-iris" data-action-arg="col">▶ Lancer Iris</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
                   </div>
                   <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
                 </div>
@@ -913,36 +913,36 @@ Cache : —</pre>
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Collection — Output final</span>
       <div class="toolbar-actions">
-        <button class="btn btn-muted btn-compact-text" onclick="copyAllOutputs()">🔍 Review globale</button>
-        <button class="btn btn-muted btn-compact-text" onclick="exportFinalOutputs('col')">💾 Export</button>
-        <button class="copy-all-btn copy-all-btn-compact" onclick="copyAll()">📋 Tout copier</button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs">🔍 Review globale</button>
+        <button class="btn btn-muted btn-compact-text" data-ui-action="export-final-outputs" data-action-arg="col">💾 Export</button>
+        <button class="copy-all-btn copy-all-btn-compact" data-ui-action="copy-all-final">📋 Tout copier</button>
       </div>
     </div>
     <div class="final-section is-hidden" id="fs-titre-col">
       <div class="fs-header">
         <span>🏷️ Titre validé</span>
-        <button onclick="copySection('titre_valide')">📋</button>
+        <button data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-titre-col" data-final-prefix="col" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-tags-col">
       <div class="fs-header">
         <span>🔖 Tags</span>
-        <button onclick="copySection('tags')">📋</button>
+        <button data-ui-action="copy-section" data-action-arg="tags">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-tags-col" data-final-prefix="col" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-description-col">
       <div class="fs-header">
         <span>📝 Description</span>
-        <button onclick="copySection('description_assembled')">📋</button>
+        <button data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-description-col" data-final-prefix="col" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
     </div>
     <div class="final-section is-hidden" id="fs-alt-col">
       <div class="fs-header">
         <span>🖼️ Balise ALT</span>
-        <button onclick="copySection('alt')">📋</button>
+        <button data-ui-action="copy-section" data-action-arg="alt">📋</button>
       </div>
       <pre class="fs-content final-editable-output" id="fc-alt-col" data-final-prefix="col" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
     </div>
@@ -955,11 +955,11 @@ Cache : —</pre>
   <div class="form-section social-section social-section-col is-hidden" id="socialSection-col">
     <div class="section-header-inline">
       <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" onclick="toggleReseauxOnly('col')" id="toggleReseauxOnlyBtn-col">📋 Fiche déjà publiée</button>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="col" id="toggleReseauxOnlyBtn-col">📋 Fiche déjà publiée</button>
     </div>
     <div class="section-stack-md">
       <div class="agent-card" id="card-social-col">
-        <div class="agent-header" onclick="toggleCard('social-col')">
+        <div class="agent-header" data-card-toggle="social-col">
           <span class="agent-num">○</span>
           <span class="agent-title">📸 Theo · Réseaux sociaux</span>
           <span class="badge-rules is-hidden" id="brul-social-col">📌</span>
@@ -987,16 +987,16 @@ Cache : —</pre>
             <textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runLeoBtn-col" onclick="runLeoAgent('col')">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" onclick="stopAgent('social','col')">⏹</button>
-            <button class="btn btn-muted" onclick="openPromptLightbox('social')">⚙️</button>
-            <button class="btn btn-muted" onclick="copyOut('social')">📋</button>
-            <button class="btn btn-muted" onclick="showRawInput('social')">&lt;/&gt;</button>
+            <button class="btn btn-accent" id="runLeoBtn-col" type="button" data-ui-action="run-leo-agent" data-action-arg="col">▶ Générer</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="col">⏹</button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
+            <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
       <div class="agent-card" id="card-camille-col">
-        <div class="agent-header" onclick="toggleCard('camille-col')">
+        <div class="agent-header" data-card-toggle="camille-col">
           <span class="agent-num">○</span>
           <span class="agent-title">📌 Zoe · Pinterest</span>
           <span class="badge-rules is-hidden" id="brul-camille-col">📌</span>
@@ -1016,11 +1016,11 @@ Cache : —</pre>
             <textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runCamilleBtn-col" onclick="runCamilleAgent('col')">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" onclick="stopAgent('camille','col')">⏹</button>
-            <button class="btn btn-muted" onclick="openPromptLightbox('camille')">⚙️</button>
-            <button class="btn btn-muted" onclick="copyOut('camille')">📋</button>
-            <button class="btn btn-muted" onclick="showRawInput('camille')">&lt;/&gt;</button>
+            <button class="btn btn-accent" id="runCamilleBtn-col" type="button" data-ui-action="run-camille-agent" data-action-arg="col">▶ Générer</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="col">⏹</button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
+            <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
           </div>
         </div>
       </div>
@@ -1060,61 +1060,61 @@ Cache : —</pre>
       </div>
     </div>
     <div class="reseaux-only-actions">
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" onclick="runReseauxOnly('leo','col')">📸 Theo</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" onclick="runReseauxOnly('camille','col')">📌 Zoe</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" onclick="runReseauxOnly('both','col')">📱 Les deux</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="col">📸 Theo</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="col">📌 Zoe</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="col">📱 Les deux</button>
     </div>
   </div>
 
   <div id="socialOutput-col" class="social-output-panel is-hidden">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
-      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" onclick="copySocial()">📋 Tout copier</button>
+      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" data-ui-action="copy-social">📋 Tout copier</button>
     </div>
     <div class="final-section is-hidden" id="ss-insta-col">
       <div class="fs-header">
         <span>📸 Instagram / TikTok</span>
-        <button onclick="copySocialSection('insta')">📋</button>
+        <button data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
       </div>
       <pre class="fs-content" id="sc-insta-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-fb-col">
       <div class="fs-header">
         <span>👥 Facebook</span>
-        <button onclick="copySocialSection('fb')">📋</button>
+        <button data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
       </div>
       <pre class="fs-content" id="sc-fb-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-marketplace-col">
       <div class="fs-header">
         <span>🛍️ Facebook Marketplace</span>
-        <button onclick="copySocialSection('marketplace')">📋</button>
+        <button data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
       </div>
       <pre class="fs-content" id="sc-marketplace-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-pinterest-col">
       <div class="fs-header">
         <span>📌 Pinterest</span>
-        <button onclick="copySocialSection('pinterest')">📋 Tout</button>
+        <button data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
       </div>
       <div id="sc-pinterest-titre-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Titre Pinterest</span>
-          <button onclick="copySocialSection('pinterestTitre')">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-t-col"></pre>
       </div>
       <div id="sc-pinterest-desc-wrap-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Description Pinterest</span>
-          <button onclick="copySocialSection('pinterestDesc')">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-d-col"></pre>
       </div>
       <div id="sc-pinterest-alt-wrap-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
-          <button onclick="copySocialSection('pinterestAlt')">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
         </div>
         <pre class="fs-content" id="sc-pinterest-a-col"></pre>
       </div>
@@ -1131,10 +1131,10 @@ Cache : —</pre>
 
 <!-- VIEW PIPELINE -->
 <!-- Vue d’exécution : certains blocs de formulaire sont déplacés ici dynamiquement par JS pendant le pipeline. -->
-<div class="view" id="view-pipeline">
+<div class="view" id="view-pipeline" data-js="view" data-view="pipeline">
   <div class="pipeline-view-header" id="pipelineViewHeader">
     <span id="pipelineViewTitle" class="pipeline-view-title">🎲 Pipeline en cours...</span>
-    <div class="pipeline-timeline" id="pipelineTimeline"></div>
+    <div class="pipeline-timeline" id="pipelineTimeline" data-js="pipeline-timeline"></div>
   </div>
   <div class="pipeline-view-body" id="pipelineViewBody">
     <!-- pipeline-tt et finalOutput-tt / pipeline-col et finalOutput-col seront déplacés ici via JS -->
@@ -1146,75 +1146,75 @@ Cache : —</pre>
 <!-- Lightboxes globales partagées entre les deux modes ; leur structure DOM est consommée par plusieurs helpers JS. -->
 
 <!-- BIBLIO LIGHTBOX -->
-<div class="lb-overlay" id="biblioLightbox" onclick="if(event.target.id==='biblioLightbox')closeBiblioLightbox()">
+<div class="lb-overlay" id="biblioLightbox" data-overlay-close="close-biblio-lightbox">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
       <h3>📚 BIBLIOTHÈQUES SÉMANTIQUES</h3>
-      <button class="lb-close" onclick="closeBiblioLightbox()">✕</button>
+      <button class="lb-close" type="button" data-ui-action="close-biblio-lightbox">✕</button>
     </div>
     <div class="lb-body lb-body-flush">
       <div class="lb-tabs-row">
-        <button class="biblio-tab active" id="btab-tags" onclick="switchBiblioTab('tags')">🔖 Tags</button>
-        <button class="biblio-tab" id="btab-accroches" onclick="switchBiblioTab('accroches')">🎯 Accroches</button>
-        <button class="biblio-tab" id="btab-objectif" onclick="switchBiblioTab('objectif')">🎯 Objectif</button>
-        <button class="biblio-tab" id="btab-psycho" onclick="switchBiblioTab('psycho')">🧠 Psychologie</button>
-        <button class="biblio-tab" id="btab-titres" onclick="switchBiblioTab('titres')">🏷️ Titres validés</button>
-        <button class="biblio-tab" id="btab-bibliotheque-semantique" onclick="switchBiblioTab('bibliotheque-semantique')">📚 Sémantique</button>
+        <button class="biblio-tab active" id="btab-tags" type="button" data-ui-action="switch-biblio-tab" data-action-arg="tags">🔖 Tags</button>
+        <button class="biblio-tab" id="btab-accroches" type="button" data-ui-action="switch-biblio-tab" data-action-arg="accroches">🎯 Accroches</button>
+        <button class="biblio-tab" id="btab-objectif" type="button" data-ui-action="switch-biblio-tab" data-action-arg="objectif">🎯 Objectif</button>
+        <button class="biblio-tab" id="btab-psycho" type="button" data-ui-action="switch-biblio-tab" data-action-arg="psycho">🧠 Psychologie</button>
+        <button class="biblio-tab" id="btab-titres" type="button" data-ui-action="switch-biblio-tab" data-action-arg="titres">🏷️ Titres validés</button>
+        <button class="biblio-tab" id="btab-bibliotheque-semantique" type="button" data-ui-action="switch-biblio-tab" data-action-arg="bibliotheque-semantique">📚 Sémantique</button>
       </div>
       <div class="lb-body-block">
         <textarea id="biblio-textarea" spellcheck="false"></textarea>
       </div>
     </div>
     <div class="lb-footer">
-      <button class="btn btn-success" onclick="saveBiblio()">💾 Sauvegarder</button>
-      <button class="btn btn-error" onclick="resetBiblio()">↺ Reset</button>
+      <button class="btn btn-success" type="button" data-ui-action="save-biblio">💾 Sauvegarder</button>
+      <button class="btn btn-error" type="button" data-ui-action="reset-biblio">↺ Reset</button>
     </div>
   </div>
 </div>
 
 <!-- PROMPT LIGHTBOX -->
-<div class="lb-overlay" id="promptLightbox" onclick="if(event.target.id==='promptLightbox')closePromptLightbox()">
+<div class="lb-overlay" id="promptLightbox" data-overlay-close="close-prompt-lightbox">
   <div class="lb-box">
     <div class="lb-header">
       <h3 id="lbTitle">⚙️ PROMPT AGENT</h3>
-      <button class="lb-close" onclick="closePromptLightbox()">✕</button>
+      <button class="lb-close" type="button" data-ui-action="close-prompt-lightbox">✕</button>
     </div>
     <div class="lb-body">
       <textarea id="lbTextarea" spellcheck="false"></textarea>
       <p class="lb-info">💡 Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[PRESENTATION_VISUELLE]], [[NATURE_SUJET]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[DESCRIPTION]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[DESCRIPTION_FIGURINE]], [[RESUME_PERSONNAGE]], [[NOTES]], [[BUZZ_COLLECTION]], [[ACCROCHE]], [[CTA]], [[URL]], [[PROFIL_DOMINANT]], [[SOCIAL_FORMATS]]</p>
     </div>
     <div class="lb-footer">
-      <button class="btn btn-success" onclick="saveLbPrompt()">💾 Sauvegarder</button>
-      <button class="btn btn-error" onclick="resetLbPrompt()">↺ Reset</button>
+      <button class="btn btn-success" type="button" data-ui-action="save-prompt-lightbox">💾 Sauvegarder</button>
+      <button class="btn btn-error" type="button" data-ui-action="reset-prompt-lightbox">↺ Reset</button>
     </div>
   </div>
 </div>
 
 <!-- INPUT BRUT LIGHTBOX -->
-<div class="lb-overlay" id="rawInputLightbox" onclick="if(event.target.id==='rawInputLightbox')closeRawInput()">
+<div class="lb-overlay" id="rawInputLightbox" data-js="raw-input-lightbox" data-overlay-close="close-raw-input">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
-      <h3 id="rawInputTitle">&lt;/&gt; INPUT BRUT</h3>
+      <h3 id="rawInputTitle" data-js="raw-input-title">&lt;/&gt; INPUT BRUT</h3>
       <div class="modal-meta-row">
-        <span id="rawInputCount" class="modal-meta-count"></span>
-        <button class="btn btn-muted btn-xs-inline" onclick="copyRawInput()">📋</button>
-        <button class="lb-close" onclick="closeRawInput()">✕</button>
+        <span id="rawInputCount" class="modal-meta-count" data-js="raw-input-count"></span>
+        <button class="btn btn-muted btn-xs-inline" type="button" data-ui-action="copy-raw-input">📋</button>
+        <button class="lb-close" type="button" data-ui-action="close-raw-input">✕</button>
       </div>
     </div>
     <div class="lb-body">
-      <textarea id="rawInputTextarea" class="readonly-textarea" spellcheck="false" readonly></textarea>
+      <textarea id="rawInputTextarea" class="readonly-textarea" data-js="raw-input-textarea" spellcheck="false" readonly></textarea>
     </div>
   </div>
 </div>
 
 <!-- EXPLORER LIGHTBOX -->
-<div class="lb-overlay" id="explorerLightbox" onclick="if(event.target.id==='explorerLightbox')closeExplorer()">
+<div class="lb-overlay" id="explorerLightbox" data-overlay-close="close-explorer">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
       <h3 id="explorerTitle">🔭 EXPLORATION</h3>
       <div class="modal-meta-row">
         <span id="explorerCount" class="modal-meta-count"></span>
-        <button class="lb-close" onclick="closeExplorer()">✕</button>
+        <button class="lb-close" type="button" data-ui-action="close-explorer">✕</button>
       </div>
     </div>
     <div class="lb-body explorer-body">

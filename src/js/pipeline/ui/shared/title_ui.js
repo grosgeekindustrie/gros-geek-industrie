@@ -3,14 +3,15 @@
 // Remplacement automatique des titres invalides.
 // Même rôle que tags_ui.js mais pour les titres, avec contraintes longueur / blacklist.
   global.PipelineUI = global.PipelineUI || {};
+  const dom = global.PipelineUIDom || {};
   const helpers = () => global.PipelineUIHelpers || {};
 
   async function autoRegenTitre(text, matchedTerm, itemEl, agentId) {
     if (itemEl.classList.contains('regen-pending')) return;
 
     itemEl.classList.add('regen-pending');
-    const textSpan = itemEl.querySelector('.titre-text');
-    const charSpan = itemEl.querySelector('.titre-char');
+    const textSpan = dom.getByData?.('selection-text-node', null, itemEl) || itemEl.querySelector('.titre-text');
+    const charSpan = dom.getByData?.('selection-char', null, itemEl) || itemEl.querySelector('.titre-char');
     const originalText = textSpan.textContent;
     textSpan.textContent = '⟳ remplacement…';
 
@@ -35,23 +36,26 @@
 
       textSpan.textContent = newTitre;
       const chars = newTitre.length;
-      const charColor = chars > 140
-        ? 'var(--error)'
-        : chars >= 128
-          ? 'var(--success)'
-          : chars >= 110
-            ? 'var(--accent)'
-            : 'var(--muted)';
       if (charSpan) {
         charSpan.textContent = chars;
-        charSpan.style.color = charColor;
+        charSpan.dataset.charTone = chars > 140
+          ? 'danger'
+          : chars >= 128
+            ? 'success'
+            : chars >= 110
+              ? 'accent'
+              : 'muted';
       }
 
-      const safe = helpers().escapeForInlineSingleQuote(newTitre);
       const itemId = itemEl.id;
-      const buttons = itemEl.querySelectorAll('.titre-thumb');
-      if (buttons[0]) buttons[0].setAttribute('onclick', `event.stopPropagation();validateTitreSegment('${safe}','valid')`);
-      if (buttons[1]) buttons[1].setAttribute('onclick', `event.stopPropagation();invalidateTitreSegment('${safe}','${itemId}','${agentId}')`);
+      const validateButton = dom.getByData?.('selection-role', 'validate', itemEl);
+      const blacklistButton = dom.getByData?.('selection-role', 'blacklist', itemEl);
+      if (validateButton) validateButton.dataset.selectionText = newTitre;
+      if (blacklistButton) {
+        blacklistButton.dataset.selectionText = newTitre;
+        blacklistButton.dataset.itemId = itemId;
+        blacklistButton.dataset.agentId = agentId;
+      }
 
       itemEl.classList.remove('regen-pending');
       if (stillBad) {
