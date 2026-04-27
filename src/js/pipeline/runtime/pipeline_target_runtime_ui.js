@@ -42,7 +42,6 @@
     getPipelineLaunchMode,
     getPipelineTargetStepsForPrefix,
     getPipelineTargetStepMetaForPrefix,
-    getPipelineRuntimeAgentIdsForPrefix,
     getPipelineRuntimeAgentsForTarget,
     getPipelineDisplayStepIdForRuntimeAgent,
   };
