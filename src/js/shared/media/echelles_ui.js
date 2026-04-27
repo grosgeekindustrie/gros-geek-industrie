@@ -15,13 +15,9 @@
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
   const MANUAL_COLLECTION_SCALE_LABELS = new Set(['buste', '75mm']);
 
-  const getPfx = () => (
-    global.PipelineUIShell?.pfx
-      ? global.PipelineUIShell.pfx()
-      : (global.currentMode === 'collection' ? 'col' : 'tt')
-  );
+  const getPfx = () => global.PipelineUIShell.pfx();
 
-  const getCurrentMode = () => global.currentMode || global.PipelineUIShell?.currentMode || 'tabletop';
+  const getCurrentMode = () => global.currentMode;
   const isCollectionMode = () => getCurrentMode() === 'collection';
   const getCollectionRowCount = () => ECHELLES_COLLECTION.length + CUSTOM_COLLECTION_COUNT;
 

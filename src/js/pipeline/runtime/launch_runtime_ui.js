@@ -256,13 +256,9 @@
 
   function buildPipelineFormSnapshot(prefix) {
     const mode = global.getPipelineLaunchMode(prefix);
-    const echelles = typeof global.PipelineUIEchelles?.getEchellesSelected === 'function'
-      ? global.PipelineUIEchelles.getEchellesSelected()
-      : '';
-    const dimensions = typeof global.PipelineUIEchelles?.getDimsFromEchelles === 'function'
-      ? global.PipelineUIEchelles.getDimsFromEchelles()
-      : '';
-    const collectionData = mode === 'collection' && typeof global.getCollectionData === 'function'
+    const echelles = global.PipelineUIEchelles.getEchellesSelected();
+    const dimensions = global.PipelineUIEchelles.getDimsFromEchelles();
+    const collectionData = mode === 'collection'
       ? global.getCollectionData()
       : {};
     const lines = [];
@@ -285,10 +281,10 @@
     if (mode === 'tabletop') {
       pushSnapshotLine('Type', document.getElementById('tt-fType')?.value);
       pushSnapshotLine('Version', document.getElementById('tt-fVersion')?.value);
-      pushSnapshotLine('Archétypes', typeof global.getArchetypes === 'function' ? global.getArchetypes() : '');
+      pushSnapshotLine('Archétypes', global.getArchetypes());
       pushSnapshotLine('Notes', document.getElementById('tt-fNotes')?.value);
     } else {
-      pushSnapshotLine('Medium', collectionData.medium || (typeof global.getMediums === 'function' ? global.getMediums() : ''));
+      pushSnapshotLine('Medium', collectionData.medium || global.getMediums());
       pushSnapshotLine('Sous-catégories medium', collectionData.mediumSubcategories || collectionData.medium_subcategories || '');
       pushSnapshotLine('Genres transverses', collectionData.genresTransverses || collectionData.genres_transverses || collectionData.genres || '');
       pushSnapshotLine('Contexte medium', collectionData.mediumContext || collectionData.medium_context || '');
