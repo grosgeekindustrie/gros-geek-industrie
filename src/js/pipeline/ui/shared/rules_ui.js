@@ -56,8 +56,6 @@
   }
 
   global.PipelineUIRules = {
-    savePersistentRules,
-    renderPersistentRules,
     persistRule,
     removeRule,
     refreshRules,

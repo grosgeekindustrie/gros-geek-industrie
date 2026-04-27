@@ -30,19 +30,12 @@
   const {
     init: initCollectionStepper,
     refresh: refreshCollectionStepper,
-    goToStep: goToCollectionStep,
-    goToNextStep: goToNextCollectionStep,
-    goToPreviousStep: goToPreviousCollectionStep,
     reset: resetCollectionStepper,
   } = controller;
 
   global.PipelineUICollectionStepper = {
-    STEP_DEFINITIONS,
     initCollectionStepper,
     refreshCollectionStepper,
-    goToCollectionStep,
-    goToNextCollectionStep,
-    goToPreviousCollectionStep,
     resetCollectionStepper,
   };
 

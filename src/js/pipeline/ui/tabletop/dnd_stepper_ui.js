@@ -30,19 +30,12 @@
   const {
     init: initDndStepper,
     refresh: refreshDndStepper,
-    goToStep: goToDndStep,
-    goToNextStep: goToNextDndStep,
-    goToPreviousStep: goToPreviousDndStep,
     reset: resetDndStepper,
   } = controller;
 
   global.PipelineUIDndStepper = {
-    STEP_DEFINITIONS,
     initDndStepper,
     refreshDndStepper,
-    goToDndStep,
-    goToNextDndStep,
-    goToPreviousDndStep,
     resetDndStepper,
   };
 
