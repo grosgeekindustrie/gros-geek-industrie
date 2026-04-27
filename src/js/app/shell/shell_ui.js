@@ -93,7 +93,6 @@ var state = {
   agentUsage: {},
 };
 
-window.PipelineUI = window.PipelineUI || {};
 window.state = state;
 window.currentMode = currentMode;
 
