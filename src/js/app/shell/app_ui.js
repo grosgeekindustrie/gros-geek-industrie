@@ -93,7 +93,9 @@
   }
 
   function refreshPipelineLaunchPanels() {
-    global.refreshPipelineLaunchPanels();
+    if (typeof global.refreshPipelineLaunchPanels === 'function') {
+      global.refreshPipelineLaunchPanels();
+    }
   }
 
   function setPipelineExecutionActive(isActive) {
