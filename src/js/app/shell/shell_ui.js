@@ -47,8 +47,10 @@ function switchMode(mode) {
   }
 
   document.title = pageTitle;
-  document.getElementById('modeTabletop').classList.toggle('active', isTabletop);
-  document.getElementById('modeCollection').classList.toggle('active', !isTabletop);
+  const modeTabletop = document.getElementById('modeTabletop');
+  const modeCollection = document.getElementById('modeCollection');
+  if (modeTabletop) modeTabletop.classList.toggle('active', isTabletop);
+  if (modeCollection) modeCollection.classList.toggle('active', !isTabletop);
 
   const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
   const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
