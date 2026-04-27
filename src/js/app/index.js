@@ -3,19 +3,15 @@
  *
  * Phase bootstrap : expose les scripts app dans leur ordre vivant actuel.
  */
-const appShellPreludePaths = Object.freeze([
-  'app/shell/shell_ui.js',
-]);
-
-const appBootPaths = Object.freeze([
-  'app/shell/app_ui.js',
-  'app/boot/pipeline_bootstrap_ui.js',
-  'app/boot/pipeline-ui.js',
-]);
-
 const appBootstrapManifest = Object.freeze({
-  shellPrelude: appShellPreludePaths,
-  boot: appBootPaths,
+  shellPrelude: Object.freeze([
+    'app/shell/shell_ui.js',
+  ]),
+  boot: Object.freeze([
+    'app/shell/app_ui.js',
+    'app/boot/pipeline_bootstrap_ui.js',
+    'app/boot/pipeline-ui.js',
+  ]),
 });
 
 const appBootstrapLayerOrder = Object.freeze([
@@ -24,8 +20,6 @@ const appBootstrapLayerOrder = Object.freeze([
 ]);
 
 export {
-  appShellPreludePaths,
-  appBootPaths,
   appBootstrapManifest,
   appBootstrapLayerOrder,
 };
