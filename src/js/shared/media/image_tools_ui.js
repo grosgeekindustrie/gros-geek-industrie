@@ -535,13 +535,9 @@
     splitDataUrl,
     loadImageFromDataUrl,
     getDefaultExportMediaType,
-    estimateBase64Bytes,
-    formatBytes,
     exportVariantFromSource,
     openImageCropModal,
-    closeImageCropModal,
     openImagePayloadDebugModal,
-    closeImagePayloadDebugModal,
   };
 
   global.PipelineUI.imageTools = global.PipelineUI.imageTools || {};

@@ -214,12 +214,9 @@
   };
 
   global.PipelineUIIndexedDb = {
-    supportsIndexedDb,
     createImageId,
     normalizeImageRecord,
-    serializeImages,
     saveWorkspaceImages,
-    loadWorkspaceImages,
     restoreWorkspaceImages,
     clearWorkspaceImages,
   };
