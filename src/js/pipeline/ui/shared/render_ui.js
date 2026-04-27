@@ -214,8 +214,6 @@
     syncFinalPre,
     syncTagsOutputFromUI,
     formatFinalOutputText,
-    formatTagsForDisplay,
-    normalizeFinalOutputText,
   };
 
   global.PipelineUI.render = global.PipelineUI.render || {};

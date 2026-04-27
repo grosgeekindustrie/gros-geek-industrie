@@ -375,16 +375,12 @@
 
   global.PipelineUIModals = {
     ensureLibraryModals,
-    setLibraryModalFeedback,
     openLibraryBlacklistModal,
     closeLibraryBlacklistModal,
     openLibraryValidatedModal,
     closeLibraryValidatedModal,
     confirmLibraryBlacklistModal,
     confirmLibraryValidatedModal,
-    saveTagsLibrary,
-    saveTitresLibrary,
-    ensureZoneLibraryActionButton,
     ensureTagsManualAddButton,
     ensureTitresManualAddButton,
     ensureExplorerManualAddButton,

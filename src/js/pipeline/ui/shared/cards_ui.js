@@ -120,7 +120,6 @@
 
   global.PipelineUICards = {
     buildPipeline,
-    buildSelectionHTML,
     toggleCard,
     openCard,
   };
