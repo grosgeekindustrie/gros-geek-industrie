@@ -1208,23 +1208,23 @@ Cache : —</pre>
 </div>
 
 <!-- EXPLORER LIGHTBOX -->
-<div class="lb-overlay" id="explorerLightbox" data-overlay-close="close-explorer">
+<div class="lb-overlay" id="explorerLightbox" data-js="explorer-lightbox" data-overlay-close="close-explorer">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
-      <h3 id="explorerTitle">🔭 EXPLORATION</h3>
+      <h3 id="explorerTitle" data-js="explorer-title">🔭 EXPLORATION</h3>
       <div class="modal-meta-row">
-        <span id="explorerCount" class="modal-meta-count"></span>
+        <span id="explorerCount" class="modal-meta-count" data-js="explorer-count"></span>
         <button class="lb-close" type="button" data-ui-action="close-explorer">✕</button>
       </div>
     </div>
     <div class="lb-body explorer-body">
       <div class="explorer-pane explorer-pane-top">
         <div class="explorer-label">💬 Conversation agents</div>
-        <textarea id="explorerConversation" class="explorer-conversation" spellcheck="false" readonly></textarea>
+        <textarea id="explorerConversation" class="explorer-conversation" data-js="explorer-conversation" spellcheck="false" readonly></textarea>
       </div>
       <div class="explorer-pane explorer-pane-bottom">
-        <div class="explorer-label explorer-label-list" id="explorerListLabel">Items générés</div>
-        <div id="explorerList" class="explorer-list"></div>
+        <div class="explorer-label explorer-label-list" id="explorerListLabel" data-js="explorer-list-label">Items générés</div>
+        <div id="explorerList" class="explorer-list" data-js="explorer-list"></div>
       </div>
     </div>
   </div>

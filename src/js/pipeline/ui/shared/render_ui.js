@@ -4,6 +4,7 @@
 // Ce module recopie les valeurs sélectionnées vers les sorties visibles sans porter la
 // logique métier complète. Il sert de colle légère entre état runtime et DOM final.
   global.PipelineUI = global.PipelineUI || {};
+  const dom = global.PipelineUIDom || {};
   let lastTagsDuplicateSignature = '';
 
   const FINAL_OUTPUT_STATE_KEYS = {
@@ -86,6 +87,9 @@
 
   function syncSelectionField(agentId, text, modePrefix) {
     const p = modePrefix || global.pfx();
+    const selectionZone = dom.getAllByData?.('selectionZone', 'titre', document)
+      ?.find((node) => node.dataset.prefix === p && node.dataset.agentId === agentId)
+      || document.getElementById(`${p}-sel-${agentId}`);
     const directIds = [
       `${p}-out-${agentId}`,
       `${p}-raw-${agentId}`,
@@ -101,7 +105,7 @@
       }
     }
 
-    const zone = document.getElementById(`${p}-sel-${agentId}`);
+    const zone = selectionZone;
     if (!zone) return null;
 
     const candidate = zone.querySelector(
@@ -140,12 +144,15 @@
 
   function collectTagsFromSelection(modePrefix) {
     const p = modePrefix || global.pfx();
-    const tagRows = [...document.querySelectorAll(`#${p}-sel-tags .tags-selection-item`)];
+    const selectionZone = dom.getAllByData?.('selectionZone', 'tags', document)
+      ?.find((node) => node.dataset.prefix === p)
+      || document.getElementById(`${p}-sel-tags`);
+    const tagRows = dom.getAllByData?.('tagsItem', null, selectionZone) || [];
 
     if (tagRows.length) {
       return tagRows
-        .filter((row) => row.querySelector('.tags-selection-checkbox')?.checked)
-        .map((row) => row.querySelector('.tags-selection-input')?.value || '')
+        .filter((row) => dom.getByData?.('tagsCheckbox', null, row)?.checked)
+        .map((row) => dom.getByData?.('tagsInput', null, row)?.value || '')
         .map((tag) => (global.PipelineUIHelpers?.normalizeTagValue ? global.PipelineUIHelpers.normalizeTagValue(tag) : String(tag || '').trim()))
         .filter(Boolean);
     }
@@ -169,6 +176,9 @@
   function syncTagsOutputFromUI() {
     const helpers = global.PipelineUIHelpers || {};
     const p = global.pfx();
+    const selectionZone = dom.getAllByData?.('selectionZone', 'tags', document)
+      ?.find((node) => node.dataset.prefix === p)
+      || document.getElementById(`${p}-sel-tags`);
     const tags = collectTagsFromSelection(p)
       .map((tag) => (helpers.normalizeTagValue ? helpers.normalizeTagValue(tag) : String(tag || '').trim()))
       .filter(Boolean);
@@ -187,7 +197,7 @@
       runtimeState.outputs.tags = normalized;
     }
 
-    const previewNode = document.getElementById(`${p}-tags-final-output`);
+    const previewNode = dom.getByData?.('tagsPreview', null, selectionZone) || document.getElementById(`${p}-tags-final-output`);
     if (previewNode) {
       previewNode.textContent = normalized ? formatTagsForDisplay(normalized) : '— aucun tag sélectionné —';
     }

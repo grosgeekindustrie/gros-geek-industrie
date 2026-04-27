@@ -414,8 +414,8 @@
 
     timeline.innerHTML = meta + agents.map((agent, i) =>
       (i > 0 ? `<span class="pipeline-step-sep">${PIPELINE_STEP_SEPARATOR}</span>` : '') +
-      `<span class="pipeline-step" id="tl-step-${agent.id}">` +
-      `<span class="pipeline-step-dot" id="tl-dot-${agent.id}"></span>` +
+      `<span class="pipeline-step" id="tl-step-${agent.id}" data-timeline-step="${agent.id}">` +
+      `<span class="pipeline-step-dot" id="tl-dot-${agent.id}" data-timeline-dot="${agent.id}"></span>` +
       `<span class="pipeline-step-label">${agent.title.replace(AGENT_TITLE_PREFIX_PATTERN, '').split(AGENT_TITLE_PART_SEPARATOR)[0].replace(AGENT_TITLE_EMOJI_PATTERN, '').trim()}</span>` +
       '</span>'
     ).join('');
@@ -424,8 +424,9 @@
   function updatePipelineTimeline(agentId, status) {
     if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
 
-    const dot = document.getElementById(`tl-dot-${agentId}`);
-    const step = document.getElementById(`tl-step-${agentId}`);
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
+    const dot = dom.getByData?.('timelineDot', agentId, timeline) || document.getElementById(`tl-dot-${agentId}`);
+    const step = dom.getByData?.('timelineStep', agentId, timeline) || document.getElementById(`tl-step-${agentId}`);
     if (!dot || !step) return;
 
     dot.className = `pipeline-step-dot${status !== PIPELINE_TIMELINE_STATUS.WAIT ? ` ${status}` : ''}`;

@@ -1,4 +1,4 @@
-(function initPipelineUISelections(global) {
+﻿(function initPipelineUISelections(global) {
 
 // Sélections tags / titres / accroches / CTA.
 // Regroupe les flows de validation utilisateur, explorers et assemblage des sorties.
@@ -39,6 +39,44 @@
   function getSelectionItemById(itemId) {
     if (!itemId) return null;
     return dom.getByData?.('itemId', itemId) || document.getElementById(itemId);
+  }
+
+  function getScopedSelectionZone(kind, agentId = '') {
+    return dom.getAllByData?.('selectionZone', kind, document)
+      ?.find((node) => node.dataset.prefix === getPfx() && (!agentId || node.dataset.agentId === agentId))
+      || null;
+  }
+
+  function getSelectionList(kind, agentId = '') {
+    return dom.getByData?.('selectionList', kind, getScopedSelectionZone(kind, agentId)) || null;
+  }
+
+  function getTitreManualInput(agentId) {
+    return dom.getByData?.('selectionManualInput', 'titre', getScopedSelectionZone('titre', agentId))
+      || document.getElementById(`${getPfx()}-titre-manual-${agentId}`);
+  }
+
+  function getTitreCounter(agentId) {
+    return dom.getByData?.('selectionCounter', 'titre', getScopedSelectionZone('titre', agentId))
+      || document.getElementById(`${getPfx()}-titre-counter-${agentId}`);
+  }
+
+  function getSelectionExplorerButton(kind) {
+    return dom.getAllByData?.('selectionExplore', kind, document)
+      ?.find((node) => node.dataset.prefix === getPfx())
+      || null;
+  }
+
+  function getExplorerNodes() {
+    const root = dom.getByData?.('js', 'explorer-lightbox') || document.getElementById('explorerLightbox');
+    return {
+      root,
+      title: dom.getByData?.('js', 'explorer-title', root) || document.getElementById('explorerTitle'),
+      count: dom.getByData?.('js', 'explorer-count', root) || document.getElementById('explorerCount'),
+      conversation: dom.getByData?.('js', 'explorer-conversation', root) || document.getElementById('explorerConversation'),
+      listLabel: dom.getByData?.('js', 'explorer-list-label', root) || document.getElementById('explorerListLabel'),
+      list: dom.getByData?.('js', 'explorer-list', root) || document.getElementById('explorerList'),
+    };
   }
 
   function buildAuxiliaryPromptKey(kind, filled, fixedContent = '') {
@@ -156,15 +194,15 @@
   }
 
   function getTagsSelectionZone() {
-    return document.getElementById(`${getPfx()}-sel-tags`);
+    return getScopedSelectionZone('tags', 'tags') || document.getElementById(`${getPfx()}-sel-tags`);
   }
 
   function getTagsSelectionRuntimeRoot() {
-    return document.getElementById(`${getPfx()}-sel-tags-runtime`);
+    return dom.getByData?.('tagsRuntimeRoot', null, getTagsSelectionZone()) || document.getElementById(`${getPfx()}-sel-tags-runtime`);
   }
 
   function getTagsSelectionRows() {
-    return [...document.querySelectorAll(`#${getPfx()}-sel-tags .tags-selection-item`)];
+    return dom.getAllByData?.('tagsItem', null, getTagsSelectionZone()) || [];
   }
 
   function normalizeTagInputValue(value) {
@@ -236,7 +274,7 @@
     const libraryState = getTagLibraryState();
 
     return rows
-      .filter((row) => row.querySelector('.tags-selection-checkbox')?.checked)
+      .filter((row) => dom.getByData?.('tagsCheckbox', null, row)?.checked)
       .map((row) => ({ row, state: getTagsSelectionRowState(row, rows, libraryState) }))
       .filter(({ state }) => (onlyValid ? state.isRowValid : true))
       .map(({ state }) => state.value)
@@ -249,7 +287,7 @@
   }
 
   function copyTagsSelectionColumn(columnIndex) {
-    const column = document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
+    const column = dom.getByData?.('tagsColumn', String(columnIndex), getTagsSelectionRuntimeRoot()) || document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
     if (!column) return;
 
     const values = (dom.getAllByData?.('tags-input', null, column) || [])
@@ -286,7 +324,7 @@
     rows.forEach((row) => {
       const rowState = getTagsSelectionRowState(row, rows, libraryState);
       const checkbox = dom.getByData?.('tags-checkbox', null, row);
-      const lengthNode = row.querySelector('[data-tags-length]');
+      const lengthNode = dom.getByData?.('tagsLength', null, row);
       const isChecked = Boolean(checkbox?.checked);
       const semanticDuplicatePeer = isChecked && !rowState.hasDuplicateError
         ? getSemanticDuplicatePeer(row, semanticGroups)
@@ -331,12 +369,13 @@
       }
     });
 
+    const runtimeRoot = getTagsSelectionRuntimeRoot();
     const summaryNodes = {
-      total: document.getElementById(`${p}-tags-stat-total`),
-      selected: document.getElementById(`${p}-tags-stat-selected`),
-      valid: document.getElementById(`${p}-tags-stat-valid`),
-      invalid: document.getElementById(`${p}-tags-stat-invalid`),
-      counter: document.getElementById(`${p}-tags-selected-counter`),
+      total: dom.getByData?.('tagsStat', 'total', runtimeRoot) || document.getElementById(`${p}-tags-stat-total`),
+      selected: dom.getByData?.('tagsStat', 'selected', runtimeRoot) || document.getElementById(`${p}-tags-stat-selected`),
+      valid: dom.getByData?.('tagsStat', 'valid', runtimeRoot) || document.getElementById(`${p}-tags-stat-valid`),
+      invalid: dom.getByData?.('tagsStat', 'invalid', runtimeRoot) || document.getElementById(`${p}-tags-stat-invalid`),
+      counter: dom.getByData?.('tagsSelectedCounter', null, runtimeRoot) || document.getElementById(`${p}-tags-selected-counter`),
     };
 
     if (summaryNodes.total) summaryNodes.total.textContent = String(rows.length);
@@ -345,7 +384,7 @@
     if (summaryNodes.invalid) summaryNodes.invalid.textContent = String(invalidSelectedCount);
     if (summaryNodes.counter) summaryNodes.counter.textContent = `${checkedCount} sélectionné(s)`;
 
-    const validateButton = document.getElementById(`${p}-validate-tags`);
+    const validateButton = dom.getByData?.('tagsValidateButton', null, getTagsSelectionZone()) || document.getElementById(`${p}-validate-tags`);
     if (validateButton) {
       validateButton.disabled = checkedCount === 0 || checkedCount > TAG_SELECTION_MAX || invalidSelectedCount > 0;
     }
@@ -430,7 +469,7 @@
     if (!tags.length) {
       runtimeRoot.innerHTML = '<div class="tags-selection-empty">Aucun tag généré.</div>';
       zone.style.display = 'block';
-      const validateButton = document.getElementById(`${p}-validate-tags`);
+      const validateButton = dom.getByData?.('tagsValidateButton', null, zone) || document.getElementById(`${p}-validate-tags`);
       if (validateButton) validateButton.disabled = true;
       return;
     }
@@ -453,23 +492,23 @@
         <div class="tags-selection-stats">
           <div class="tags-selection-stat">
             <span class="tags-selection-stat-label">Candidats</span>
-            <span class="tags-selection-stat-value" id="${p}-tags-stat-total">0</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-total" data-tags-stat="total">0</span>
           </div>
           <div class="tags-selection-stat">
             <span class="tags-selection-stat-label">Sélection</span>
-            <span class="tags-selection-stat-value" id="${p}-tags-stat-selected">0 / ${TAG_SELECTION_MAX}</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-selected" data-tags-stat="selected">0 / ${TAG_SELECTION_MAX}</span>
           </div>
           <div class="tags-selection-stat">
             <span class="tags-selection-stat-label">Valides</span>
-            <span class="tags-selection-stat-value" id="${p}-tags-stat-valid">0</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-valid" data-tags-stat="valid">0</span>
           </div>
           <div class="tags-selection-stat">
             <span class="tags-selection-stat-label">Invalides</span>
-            <span class="tags-selection-stat-value" id="${p}-tags-stat-invalid">0</span>
+            <span class="tags-selection-stat-value" id="${p}-tags-stat-invalid" data-tags-stat="invalid">0</span>
           </div>
         </div>
         <div class="tags-selection-columns">
-          <section class="tags-selection-column" id="${p}-tags-column-1">
+          <section class="tags-selection-column" id="${p}-tags-column-1" data-tags-column="1">
             <div class="tags-selection-column-head">
               <span class="tags-selection-column-title">Liste 1</span>
               <span class="tags-selection-column-meta" id="${p}-tags-selected-counter">0 sélectionné(s)</span>
@@ -483,7 +522,7 @@
             </div>
             <div class="tags-selection-list">${leftColumn.map(buildTagsSelectionRowMarkup).join('')}</div>
           </section>
-          <section class="tags-selection-column" id="${p}-tags-column-2">
+          <section class="tags-selection-column" id="${p}-tags-column-2" data-tags-column="2">
             <div class="tags-selection-column-head">
               <span class="tags-selection-column-title">Liste 2</span>
               <span class="tags-selection-column-meta">Édition live</span>
@@ -512,7 +551,7 @@
     bindTagsSelectionEvents();
     updateTagsSelectionSummary();
 
-    const exploreBtn = document.getElementById(`${p}-bexplore-tags`);
+    const exploreBtn = getSelectionExplorerButton('tags');
     if (exploreBtn) exploreBtn.disabled = false;
   }
 
@@ -748,7 +787,7 @@
 
   async function runTagExplorer() {
     const p = getPfx();
-    const btn = document.getElementById(`${p}-bexplore-tags`);
+    const btn = getSelectionExplorerButton('tags');
     if (btn) {
       btn.disabled = true;
       btn.textContent = '⟳ Exploration...';
@@ -772,20 +811,21 @@
       const filteredTags = filterExplorerTags(tags, libraryState);
       const excludedCount = tags.length - filteredTags.length;
 
-      document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TAGS';
-      document.getElementById('explorerCount').textContent = `${filteredTags.length} tags`;
-      document.getElementById('explorerListLabel').textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
-      document.getElementById('explorerConversation').value = result;
+      const explorerNodes = getExplorerNodes();
+      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TAGS';
+      if (explorerNodes.count) explorerNodes.count.textContent = `${filteredTags.length} tags`;
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
+      if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
       modals().ensureExplorerManualAddButton('tags');
 
-      const list = document.getElementById('explorerList');
-      list.innerHTML = filteredTags.length
+      const list = explorerNodes.list;
+      if (list) list.innerHTML = filteredTags.length
         ? filteredTags.map((tag, i) => buildExplorerTagMarkup(tag, i)).join('')
         : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
-      document.getElementById('explorerLightbox').classList.add('visible');
+      explorerNodes.root?.classList.add('visible');
       global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
@@ -798,14 +838,14 @@
   }
 
   function closeExplorer() {
-    document.getElementById('explorerLightbox').classList.remove('visible');
+    getExplorerNodes().root?.classList.remove('visible');
   }
 
   function buildTitreSelectionUI(agentId, output) {
     const p = getPfx();
     const lines = output.split('\n').filter((line) => line.match(/^\d+\.\s+/));
-    const zone = document.getElementById(`${p}-sel-${agentId}`);
-    const list = document.getElementById(`${p}-sel-list-${agentId}`);
+    const zone = getScopedSelectionZone('titre', agentId) || document.getElementById(`${p}-sel-${agentId}`);
+    const list = getSelectionList('titre', agentId) || document.getElementById(`${p}-sel-list-${agentId}`);
     if (!zone || !list) return;
 
     zone.classList.add('visible');
@@ -841,7 +881,7 @@
     const selectedTitre = (dom.getByData?.('selection-text-node', null, el) || el.querySelector('.titre-text'))?.textContent.trim();
     global.state.selectedTitre = selectedTitre;
     const p = getPfx();
-    const input = document.getElementById(`${p}-titre-manual-${agentId}`);
+    const input = getTitreManualInput(agentId);
     if (input) {
       input.value = selectedTitre;
       updateTitreCounter(agentId);
@@ -850,8 +890,8 @@
 
   function updateTitreCounter(agentId) {
     const p = getPfx();
-    const input = document.getElementById(`${p}-titre-manual-${agentId}`);
-    const counter = document.getElementById(`${p}-titre-counter-${agentId}`);
+    const input = getTitreManualInput(agentId);
+    const counter = getTitreCounter(agentId);
     if (!input || !counter) return;
 
     const len = input.value.length;
@@ -863,7 +903,8 @@
   function pasteSelectedTitre(agentId) {
     const p = getPfx();
     if (global.state.selectedTitre) {
-      document.getElementById(`${p}-titre-manual-${agentId}`).value = global.state.selectedTitre;
+      const input = getTitreManualInput(agentId);
+      if (input) input.value = global.state.selectedTitre;
       updateTitreCounter(agentId);
     }
   }
@@ -903,7 +944,7 @@
 
   async function validateTitre(agentId) {
     const p = getPfx();
-    const input = document.getElementById(`${p}-titre-manual-${agentId}`);
+    const input = getTitreManualInput(agentId);
     const titre = input?.value.trim() || '';
     const selectedTitre = String(global.state.selectedTitre || '').trim();
     if (!titre) {
@@ -977,8 +1018,8 @@
     const ctas = parseChoices(output, 'C');
 
     if (accroches.length > 0) {
-      const zone = document.getElementById(`${p}-sel-accroche-${agentId}`);
-      const list = document.getElementById(`${p}-sel-list-accroche-${agentId}`);
+      const zone = getScopedSelectionZone('accroche', agentId) || document.getElementById(`${p}-sel-accroche-${agentId}`);
+      const list = getSelectionList('accroche', agentId) || document.getElementById(`${p}-sel-list-accroche-${agentId}`);
       if (zone && list) {
         zone.classList.add('visible');
         list.innerHTML = accroches.map((choice) => buildChoiceItemMarkup('accroche', agentId, choice)).join('');
@@ -986,8 +1027,8 @@
     }
 
     if (ctas.length > 0) {
-      const zone = document.getElementById(`${p}-sel-cta-${agentId}`);
-      const list = document.getElementById(`${p}-sel-list-cta-${agentId}`);
+      const zone = getScopedSelectionZone('cta', agentId) || document.getElementById(`${p}-sel-cta-${agentId}`);
+      const list = getSelectionList('cta', agentId) || document.getElementById(`${p}-sel-list-cta-${agentId}`);
       if (zone && list) {
         zone.classList.add('visible');
         list.innerHTML = ctas.map((choice) => buildChoiceItemMarkup('cta', agentId, choice)).join('');
@@ -1055,7 +1096,7 @@
 
   async function runTitreExplorer() {
     const p = getPfx();
-    const btn = document.getElementById(`${p}-bexplore-titre`);
+    const btn = getSelectionExplorerButton('titre');
     if (btn) {
       btn.disabled = true;
       btn.textContent = '⟳ Exploration...';
@@ -1091,18 +1132,19 @@
         return { text, chars };
       });
 
-      document.getElementById('explorerTitle').textContent = '🔭 EXPLORATION TITRES';
-      document.getElementById('explorerCount').textContent = `${titres.length} titres`;
-      document.getElementById('explorerListLabel').textContent = 'Titres générés — 👍 valider · 👎 blacklister';
-      document.getElementById('explorerConversation').value = result;
+      const explorerNodes = getExplorerNodes();
+      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TITRES';
+      if (explorerNodes.count) explorerNodes.count.textContent = `${titres.length} titres`;
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — 👍 valider · 👎 blacklister';
+      if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
       modals().ensureExplorerManualAddButton('titres', 'titre');
 
-      const list = document.getElementById('explorerList');
-      list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
+      const list = explorerNodes.list;
+      if (list) list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
-      document.getElementById('explorerLightbox').classList.add('visible');
+      explorerNodes.root?.classList.add('visible');
       global.showToast(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
@@ -1142,6 +1184,7 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
+
 
 
 
