@@ -190,8 +190,7 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            const autoRegenTagFn =
-              global.PipelineUITags?.autoRegenTag || global.autoRegenTag;
+            const autoRegenTagFn = global.PipelineUITags.autoRegenTag;
 
             if (typeof autoRegenTagFn === 'function') {
               setTimeout(() => autoRegenTagFn(
@@ -229,8 +228,7 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            const autoRegenTitreFn =
-              global.PipelineUITitles?.autoRegenTitre || global.autoRegenTitre;
+            const autoRegenTitreFn = global.PipelineUITitles.autoRegenTitre;
 
             if (typeof autoRegenTitreFn === 'function') {
               setTimeout(() => autoRegenTitreFn(

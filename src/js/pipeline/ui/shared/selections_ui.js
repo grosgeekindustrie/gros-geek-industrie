@@ -7,13 +7,8 @@
 
   const helpers = () => global.PipelineUIHelpers || {};
   const modals = () => global.PipelineUIModals || {};
-  const tagsApi = () => global.PipelineUITags || {};
   const titlesApi = () => global.PipelineUITitles || {};
   const getPfx = () => global.pfx();
-  const getAgents = () => {
-    const prefix = getPfx();
-    return global.getPipelineRuntimeAgentsForPrefix(prefix);
-  };
 
   const continueAfterSelection = async (agentId) => {
     await global.continuePipelineAfterSelection(agentId);
