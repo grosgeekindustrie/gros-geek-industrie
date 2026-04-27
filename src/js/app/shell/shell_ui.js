@@ -9,14 +9,6 @@ window.PipelineUIShell = window.PipelineUIShell || {};
 
 var currentMode = 'tabletop'; // 'tabletop' | 'collection'
 const MODE_SUCCESS_SUFFIX = 'OK';
-const DEFAULT_MODE_TITLES = {
-  tabletop: 'Etsy Pipeline DnD',
-  collection: 'Etsy Pipeline Collection',
-};
-const DEFAULT_PAGE_TITLES = {
-  tabletop: 'Etsy Pipeline DnD v1.2',
-  collection: 'Etsy Pipeline Collection v1.2',
-};
 const getModeUiConfig = (mode = currentMode) => (
   getPipelineUiConfig(mode)
 );
@@ -40,8 +32,8 @@ function switchMode(mode) {
 
   document.body.classList.toggle('mode-collection', !isTabletop);
 
-  const modeTitle = modeUiConfig.headerTitle || DEFAULT_MODE_TITLES[mode] || DEFAULT_MODE_TITLES.tabletop;
-  const pageTitle = modeUiConfig.pageTitle || DEFAULT_PAGE_TITLES[mode] || DEFAULT_PAGE_TITLES.tabletop;
+  const modeTitle = modeUiConfig.headerTitle;
+  const pageTitle = modeUiConfig.pageTitle;
   const headerModeLabel = modeUiConfig.headerModeLabel || (isTabletop ? 'DnD Tabletop' : 'Collection');
 
   const headerTitle = document.getElementById('headerTitle');
@@ -55,8 +47,8 @@ function switchMode(mode) {
   }
 
   document.title = pageTitle;
-  document.getElementById('modeTabletop')?.classList.toggle('active', isTabletop);
-  document.getElementById('modeCollection')?.classList.toggle('active', !isTabletop);
+  document.getElementById('modeTabletop').classList.toggle('active', isTabletop);
+  document.getElementById('modeCollection').classList.toggle('active', !isTabletop);
 
   const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
   const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);

@@ -13,10 +13,8 @@
   const getModes = () => global.getPipelineModes();
 
   const callModeUiMethod = (mode, section, action, ...args) => {
-    const methodName = getModeUiConfig(mode)?.[section]?.[`${action}Method`];
-    const method = methodName ? global[methodName] : null;
-    if (typeof method !== 'function') return undefined;
-    return method(...args);
+    const methodName = getModeUiConfig(mode)[section][`${action}Method`];
+    return global[methodName](...args);
   };
 
   const refreshModeStepper = (mode) => {
