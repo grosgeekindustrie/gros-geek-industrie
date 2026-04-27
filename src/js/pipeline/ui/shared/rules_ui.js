@@ -16,7 +16,7 @@
   }
 
   function persistRule(agentId) {
-    const prefix = typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt');
+    const prefix = global.pfx();
     const input = document.getElementById(`${prefix}-cor-${agentId}`);
     const value = String(input?.value || '').trim();
     if (!value) return;
@@ -39,7 +39,7 @@
   }
 
   function refreshRules(agentId) {
-    const prefix = typeof global.pfx === 'function' ? global.pfx() : (global.currentMode === 'collection' ? 'col' : 'tt');
+    const prefix = global.pfx();
     const rules = global.state.persistentRules[agentId] || [];
     const badge = document.getElementById(`${prefix}-brul-${agentId}`);
     const display = document.getElementById(`${prefix}-rd-${agentId}`);

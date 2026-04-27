@@ -6,7 +6,7 @@
   global.PipelineUI = global.PipelineUI || {};
 
   const getState = () => global.state;
-  const getCurrentMode = () => global.currentMode || 'tabletop';
+  const getCurrentMode = () => global.currentMode;
 
   function getBiblio(key) {
     return getState().bibliosByMode[getCurrentMode()][key] || '';

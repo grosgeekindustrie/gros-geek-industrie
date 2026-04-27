@@ -98,14 +98,10 @@
   };
 
   const getState = () => global.state;
-  const getCurrentMode = () => global.currentMode || 'tabletop';
-  const getPfx = () => (
-    typeof global.pfx === 'function'
-      ? global.pfx()
-      : (global.getPipelinePrefix?.(getCurrentMode()) || (getCurrentMode() === 'collection' ? 'col' : 'tt'))
-  );
+  const getCurrentMode = () => global.currentMode;
+  const getPfx = () => global.pfx();
   const getEchellesApi = () => global.PipelineUIEchelles || {};
-  const getConfig = () => global.PipelineUIConfig || global;
+  const getConfig = () => global.PipelineUIConfig;
   const getElementById = (id) => document.getElementById(id);
   const getElementValue = (id, fallback = '') => getElementById(id)?.value || fallback;
   const getTrimmedElementValue = (id, fallback = '') => getElementById(id)?.value?.trim() || fallback;

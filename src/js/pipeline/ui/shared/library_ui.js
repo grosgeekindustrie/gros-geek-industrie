@@ -16,7 +16,7 @@
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
-  const getConfig = () => global.PipelineUIConfig || {};
+  const getConfig = () => global.PipelineUIConfig;
 
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
@@ -78,7 +78,7 @@
       tags_filter: 'Céline · Filter Tags',
       tags_select: 'Axel · Select Tags',
     };
-    const agents = getConfig().getPipelineAgents ? getConfig().getPipelineAgents() : [];
+    const agents = getConfig().getPipelineAgents();
     const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
 
     document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;

@@ -85,7 +85,7 @@
   }
 
   function syncSelectionField(agentId, text, modePrefix) {
-    const p = modePrefix || (typeof global.pfx === 'function' ? global.pfx() : 'col');
+    const p = modePrefix || global.pfx();
     const directIds = [
       `${p}-out-${agentId}`,
       `${p}-raw-${agentId}`,
@@ -112,7 +112,7 @@
   }
 
   function syncFinalPre(key, text, modePrefix) {
-    const p = modePrefix || (typeof global.pfx === 'function' ? global.pfx() : 'col');
+    const p = modePrefix || global.pfx();
     const contentIdMap = {
       tags: `fc-tags-${p}`,
       titre_valide: `fc-titre-${p}`,
@@ -139,7 +139,7 @@
   }
 
   function collectTagsFromSelection(modePrefix) {
-    const p = modePrefix || (typeof global.pfx === 'function' ? global.pfx() : 'col');
+    const p = modePrefix || global.pfx();
     const tagRows = [...document.querySelectorAll(`#${p}-sel-tags .tags-selection-item`)];
 
     if (tagRows.length) {
@@ -168,7 +168,7 @@
 
   function syncTagsOutputFromUI() {
     const helpers = global.PipelineUIHelpers || {};
-    const p = typeof global.pfx === 'function' ? global.pfx() : 'col';
+    const p = global.pfx();
     const tags = collectTagsFromSelection(p)
       .map((tag) => (helpers.normalizeTagValue ? helpers.normalizeTagValue(tag) : String(tag || '').trim()))
       .filter(Boolean);

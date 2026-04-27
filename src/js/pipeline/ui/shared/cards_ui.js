@@ -5,8 +5,8 @@
 // Dépend de la structure HTML/CSS actuelle : éviter les changements diffus non cadrés.
   global.PipelineUI = global.PipelineUI || {};
 
-  const getPfx = () => (typeof global.pfx === 'function' ? global.pfx() : (global.getPipelinePrefix?.(global.currentMode) || (global.currentMode === 'collection' ? 'col' : 'tt')));
-  const getAgents = () => (typeof global.getPipelineAgents === 'function' ? global.getPipelineAgents() : []);
+  const getPfx = () => global.pfx();
+  const getAgents = () => global.getPipelineAgents();
 
   function buildPipeline() {
     const p = getPfx();
