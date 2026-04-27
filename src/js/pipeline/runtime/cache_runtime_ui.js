@@ -2,8 +2,9 @@
 
 (function initPipelineUICacheRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const runtimeFormats = global.PipelineUIRuntimeFormats || {};
   const PIPELINE_LAUNCH_STATUS_IDLE = 'pret';
-  const PIPELINE_RUN_META_DEFAULTS = Object.freeze({
+  const PIPELINE_RUN_META_DEFAULTS = runtimeFormats.PIPELINE_RUN_META_DEFAULTS || Object.freeze({
     quality: 'brut',
     validation: 'non_valide',
     origin: 'auto',
@@ -260,12 +261,14 @@
   }
 
   function normalizePipelineRunEntryMeta(entry = {}) {
-    return {
-      sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || '').trim(),
-      quality: String(entry?.quality || PIPELINE_RUN_META_DEFAULTS.quality).trim(),
-      validation: String(entry?.validation || PIPELINE_RUN_META_DEFAULTS.validation).trim(),
-      origin: String(entry?.origin || PIPELINE_RUN_META_DEFAULTS.origin).trim(),
-    };
+    return runtimeFormats.normalizePipelineRunEntryMeta
+      ? runtimeFormats.normalizePipelineRunEntryMeta(entry, PIPELINE_RUN_META_DEFAULTS)
+      : {
+        sourceAgentId: String(entry?.sourceAgentId || entry?.agentId || '').trim(),
+        quality: String(entry?.quality || PIPELINE_RUN_META_DEFAULTS.quality).trim(),
+        validation: String(entry?.validation || PIPELINE_RUN_META_DEFAULTS.validation).trim(),
+        origin: String(entry?.origin || PIPELINE_RUN_META_DEFAULTS.origin).trim(),
+      };
   }
 
   function hashTokenCountContent(text = '') {

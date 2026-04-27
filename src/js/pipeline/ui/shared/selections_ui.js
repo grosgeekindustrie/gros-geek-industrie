@@ -36,6 +36,11 @@
     return dom.getClosestByData?.(trigger, 'selectionItem');
   }
 
+  function getSelectionItemById(itemId) {
+    if (!itemId) return null;
+    return dom.getByData?.('itemId', itemId) || document.getElementById(itemId);
+  }
+
   function buildAuxiliaryPromptKey(kind, filled, fixedContent = '') {
     return runtimeCache.buildCacheKey?.(
       global.currentMode,
@@ -621,14 +626,15 @@
   function buildTitreSelectionItemMarkup(text, chars, agentId, index) {
     const itemId = `${getPfx()}-ti-${agentId}-${index}`;
     const safeText = escapeAttr(text);
-    return `<div class="titre-item" id="${itemId}" data-selection-item="titre" data-selection-action="select-titre" data-selection-index="${index}" data-agent-id="${agentId}">
+    return `<div class="titre-item" id="${itemId}" data-selection-item="titre" data-item-id="${itemId}" data-selection-action="select-titre" data-selection-index="${index}" data-agent-id="${agentId}">
       <input class="titre-radio-input" type="radio" name="titre-${agentId}" />
       <span class="titre-text" data-selection-text-node>${text}</span>
       <span class="titre-char" data-selection-char data-char-tone="${getCharTone(chars)}">${chars}</span>
       <div class="titre-actions">
-        <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}">ðŸ‘</button>
-        <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" data-selection-source="main">ðŸ‘Ž</button>
-        <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}">ðŸ“‹</button>
+        <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
+        <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" data-selection-source="main" aria-label="Blacklister ce titre">NO</button>
+        <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
+        <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" aria-label="Regenerer ce titre">Relance</button>
       </div></div>`;
   }
 
@@ -642,13 +648,14 @@
   function buildExplorerTitreMarkup(titre, index) {
     const itemId = `exp-titre-${index}`;
     const safeText = escapeAttr(titre.text);
-    return `<div class="titre-item" id="${itemId}" data-selection-item="titre-explorer">
+    return `<div class="titre-item" id="${itemId}" data-selection-item="titre-explorer" data-item-id="${itemId}">
         <span class="titre-text" data-selection-text-node>${titre.text}</span>
         <span class="titre-char" data-selection-char data-char-tone="${getCharTone(titre.chars)}">${titre.chars}</span>
         <div class="titre-actions">
-          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}">ðŸ‘</button>
-          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" data-selection-source="explorer">ðŸ‘Ž</button>
-          <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}">ðŸ“‹</button>
+          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
+          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" data-selection-source="explorer" aria-label="Blacklister ce titre">NO</button>
+          <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
+          <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" aria-label="Regenerer ce titre">Relance</button>
         </div>
       </div>`;
   }
@@ -693,6 +700,14 @@
           trigger.dataset.itemId || null,
           trigger.dataset.agentId || 'titre',
           trigger.dataset.selectionSource || 'main'
+        );
+        return;
+      }
+      if (action === 'reroll-titre-segment' || action === 'reroll-titre-explorer') {
+        titlesApi().rerollTitre?.(
+          getSelectionText(trigger),
+          trigger.dataset.itemId || '',
+          trigger.dataset.agentId || 'titre'
         );
         return;
       }
@@ -811,7 +826,7 @@
         const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
         const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(text, blacklisted) : null;
         if (term) {
-          const el = document.getElementById(`${p}-ti-${agentId}-${i}`);
+          const el = getSelectionItemById(`${p}-ti-${agentId}-${i}`);
           if (el) setTimeout(() => titlesApi().autoRegenTitre(text, term, el, agentId), i * 300);
         }
       });

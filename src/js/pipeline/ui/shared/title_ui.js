@@ -90,7 +90,7 @@
   }
 
   function rerollTitre(text, itemId, agentId = 'titre') {
-    const itemEl = document.getElementById(itemId);
+    const itemEl = dom.getByData?.('itemId', itemId) || document.getElementById(itemId);
     if (!itemEl) return;
     autoRegenTitre(text, 'remplacement manuel', itemEl, agentId);
   }

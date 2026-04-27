@@ -162,7 +162,7 @@
   }
 
   function rerollTag(tag, itemId) {
-    const itemEl = document.getElementById(itemId);
+    const itemEl = dom.getByData?.('itemId', itemId) || document.getElementById(itemId);
     if (!itemEl) return;
     autoRegenTag(tag, 'remplacement manuel', itemEl);
   }

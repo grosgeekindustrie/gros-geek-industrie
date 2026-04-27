@@ -3,6 +3,7 @@
 (function initPipelineUIAnthropicRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const runtimeFormats = global.PipelineUIRuntimeFormats || {};
   const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.PIPELINE || 'pipeline');
   const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
     TABLETOP: 'tt',
@@ -24,7 +25,7 @@
     'files-api-mixed',
     'files-api-error',
   ]);
-  const DEFAULT_FILES_API_DEBUG = Object.freeze({
+  const DEFAULT_FILES_API_DEBUG = runtimeFormats.DEFAULT_FILES_API_DEBUG || Object.freeze({
     enabled: false,
     requestedImagesCount: 0,
     usedFilesCount: 0,
@@ -113,10 +114,12 @@
   }
 
   function createFilesApiDebug(overrides = {}) {
-    return {
-      ...DEFAULT_FILES_API_DEBUG,
-      ...overrides,
-    };
+    return runtimeFormats.createFilesApiDebug
+      ? runtimeFormats.createFilesApiDebug(overrides)
+      : {
+        ...DEFAULT_FILES_API_DEBUG,
+        ...overrides,
+      };
   }
 
   function buildFilesApiResult({ images = [], debug = {}, error = '' } = {}) {

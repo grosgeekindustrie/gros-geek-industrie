@@ -3,6 +3,7 @@
 (function initPipelineUILaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const runtimeFormats = global.PipelineUIRuntimeFormats || {};
   const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
     TABLETOP: 'tabletop',
     COLLECTION: 'collection',
@@ -35,7 +36,7 @@
   const PIPELINE_STATUS_ERROR = 'erreur';
   const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause Â· sÃ©lection requise';
   const PIPELINE_STATUS_RUNNING = 'en cours';
-  const PIPELINE_RUN_ENTRY_DEFAULTS = Object.freeze({
+  const PIPELINE_RUN_ENTRY_DEFAULTS = runtimeFormats.PIPELINE_RUN_ENTRY_DEFAULTS || Object.freeze({
     quality: 'net',
     validation: 'valide',
     origin: 'manuel',
@@ -330,13 +331,17 @@
 
   function getPipelineRunState(prefix) {
     global.state.pipelineRun = global.state.pipelineRun || {};
-    global.state.pipelineRun[prefix] = global.state.pipelineRun[prefix] || {
-      formSnapshot: '',
-      warmupHint: '',
-      lastCacheAwareSignature: '',
-      cumulativeEntries: [],
-      cumulativeText: '',
-    };
+    global.state.pipelineRun[prefix] = global.state.pipelineRun[prefix] || (
+      runtimeFormats.createPipelineRunState
+        ? runtimeFormats.createPipelineRunState()
+        : {
+          formSnapshot: '',
+          warmupHint: '',
+          lastCacheAwareSignature: '',
+          cumulativeEntries: [],
+          cumulativeText: '',
+        }
+    );
     return global.state.pipelineRun[prefix];
   }
 
@@ -368,11 +373,18 @@
       agentId,
       ...meta,
     });
-    runState.cumulativeEntries.push({
-      agentId,
-      content: trimmed,
-      ...normalizedMeta,
-    });
+    const entry = runtimeFormats.createPipelineRunEntry
+      ? runtimeFormats.createPipelineRunEntry({
+        agentId,
+        content: trimmed,
+        ...normalizedMeta,
+      }, PIPELINE_RUN_ENTRY_DEFAULTS)
+      : {
+        agentId,
+        content: trimmed,
+        ...normalizedMeta,
+      };
+    runState.cumulativeEntries.push(entry);
     refreshPipelineRunCumulativeText(runState);
   }
 
@@ -393,11 +405,19 @@
         ...meta,
       });
 
-      runState.cumulativeEntries.push({
-        agentId,
-        content: trimmed,
-        ...normalizedMeta,
-      });
+      const entry = runtimeFormats.createPipelineRunEntry
+        ? runtimeFormats.createPipelineRunEntry({
+          agentId,
+          content: trimmed,
+          ...normalizedMeta,
+        }, PIPELINE_RUN_ENTRY_DEFAULTS)
+        : {
+          agentId,
+          content: trimmed,
+          ...normalizedMeta,
+        };
+
+      runState.cumulativeEntries.push(entry);
     }
 
     refreshPipelineRunCumulativeText(runState);
