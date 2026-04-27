@@ -340,44 +340,10 @@
     await persistImages(prefix);
   };
 
-  const removeImage = async (base64, prefix) => {
-    const state = getState();
-    if (!state?.images?.[prefix]) return;
-
-    state.images[prefix] = state.images[prefix].filter((image) => image.base64 !== base64);
-    renderThumbs(prefix);
-
-    if (state.images[prefix].length === 0) {
-      await imageDb().clearWorkspaceImages?.(prefix);
-      return;
-    }
-
-    await persistImages(prefix);
-  };
-
-  const resizeImage = async (file, maxPx) => {
-    const record = await buildImageRecordFromFile(file, 'tt');
-    if (!maxPx) return record.base64;
-
-    const targetWidth = Math.min(maxPx, record.originalWidth || maxPx);
-    const variant = await imageTools().exportVariantFromSource?.({
-      sourceBase64: record.originalBase64,
-      sourceMediaType: record.originalMediaType,
-      sourceWidth: record.originalWidth,
-      sourceHeight: record.originalHeight,
-      targetWidth,
-      outputMediaType: imageTools().getDefaultExportMediaType?.(),
-    });
-
-    return variant?.base64 || record.base64;
-  };
-
   global.PipelineUIImages = {
     setupImageHandlers,
     processImages,
     renderThumbs,
-    resizeImage,
-    removeImage,
     removeImageAt,
     duplicateImageAt,
     openCropForImage,

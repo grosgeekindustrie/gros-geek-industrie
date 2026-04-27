@@ -193,7 +193,7 @@
       if (!restoredImages.length) return [];
 
       state.images[prefix] = restoredImages;
-      global.PipelineUIImages?.renderThumbs?.(prefix);
+      global.PipelineUIImages.renderThumbs(prefix);
 
       return restoredImages;
     } catch (error) {
