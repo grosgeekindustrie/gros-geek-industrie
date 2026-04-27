@@ -2,6 +2,12 @@
 
 (function initPipelineUIAnthropicRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.PIPELINE || 'pipeline');
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    TABLETOP: 'tt',
+    COLLECTION: 'col',
+  };
 
   const CACHEABLE_BLOCK_MIN_CHARS = 4096;
   const ANTHROPIC_PROMPT_CACHING_BETA = 'prompt-caching-2024-07-31';
@@ -48,7 +54,10 @@
   });
   const PIPELINE_LAUNCH_DEFAULT_SCOPE = 'pipeline complet';
   const PIPELINE_LAUNCH_LABEL = 'Lancer le pipeline complet';
-  const DEFAULT_PIPELINE_PREFIXES = Object.freeze(['tt', 'col']);
+  const DEFAULT_PIPELINE_PREFIXES = Object.freeze([
+    PIPELINE_PREFIXES.TABLETOP,
+    PIPELINE_PREFIXES.COLLECTION,
+  ]);
 
   function getAnthropicBetaHeader({ useFiles = false } = {}) {
     return useFiles
@@ -279,7 +288,7 @@
         workspacePersistError: '',
       };
     } catch (error) {
-      console.warn(`${warningContext} failed for ${prefix}`, error);
+      logger?.warn?.(`${warningContext} failed for ${prefix}`, error);
       return {
         images: Array.isArray(global.state?.images?.[prefix]) ? global.state.images[prefix] : images,
         workspacePersisted: false,

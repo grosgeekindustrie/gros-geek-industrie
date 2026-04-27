@@ -7,11 +7,20 @@
   global.PipelineUI = global.PipelineUI || {};
   global.PipelineUIData = global.PipelineUIData || {};
   global.PipelineUIDataModes = global.PipelineUIDataModes || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+    TABLETOP: 'tabletop',
+    COLLECTION: 'collection',
+  };
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    TABLETOP: 'tt',
+    COLLECTION: 'col',
+  };
 
   const pipelineModeUi = {
-    tabletop: {
-      mode: 'tabletop',
-      prefix: 'tt',
+    [PIPELINE_MODES.TABLETOP]: {
+      mode: PIPELINE_MODES.TABLETOP,
+      prefix: PIPELINE_PREFIXES.TABLETOP,
       formLabel: '🎲 Tabletop DnD',
       pageTitle: '🎲 Etsy Pipeline DnD v1.2',
       headerTitle: '🎲 Etsy Pipeline DnD',
@@ -31,9 +40,9 @@
         resetMethod: 'resetDndStepper',
       },
     },
-    collection: {
-      mode: 'collection',
-      prefix: 'col',
+    [PIPELINE_MODES.COLLECTION]: {
+      mode: PIPELINE_MODES.COLLECTION,
+      prefix: PIPELINE_PREFIXES.COLLECTION,
       formLabel: '🖼️ Collection',
       pageTitle: '🖼️ Etsy Pipeline Collection v1.2',
       headerTitle: '🖼️ Etsy Pipeline Collection',
@@ -55,12 +64,16 @@
     },
   };
 
-  const getPipelineModeKeyFromData = (mode = 'tabletop') => (mode === 'collection' ? 'collection' : 'tabletop');
+  const getPipelineModeKeyFromData = (mode = PIPELINE_MODES.TABLETOP) => (
+    mode === PIPELINE_MODES.COLLECTION ? PIPELINE_MODES.COLLECTION : PIPELINE_MODES.TABLETOP
+  );
   const getPipelineModesFromData = () => Object.keys(pipelineModeUi);
-  const getPipelineModeUiConfigFromData = (mode = 'tabletop') => pipelineModeUi[getPipelineModeKeyFromData(mode)] || pipelineModeUi.tabletop;
-  const getPipelineModePrefixFromData = (mode = 'tabletop') => getPipelineModeUiConfigFromData(mode).prefix;
-  const getPipelineModeByPrefixFromData = (prefix = 'tt') => (
-    getPipelineModesFromData().find((mode) => getPipelineModeUiConfigFromData(mode).prefix === prefix) || 'tabletop'
+  const getPipelineModeUiConfigFromData = (mode = PIPELINE_MODES.TABLETOP) => (
+    pipelineModeUi[getPipelineModeKeyFromData(mode)] || pipelineModeUi[PIPELINE_MODES.TABLETOP]
+  );
+  const getPipelineModePrefixFromData = (mode = PIPELINE_MODES.TABLETOP) => getPipelineModeUiConfigFromData(mode).prefix;
+  const getPipelineModeByPrefixFromData = (prefix = PIPELINE_PREFIXES.TABLETOP) => (
+    getPipelineModesFromData().find((mode) => getPipelineModeUiConfigFromData(mode).prefix === prefix) || PIPELINE_MODES.TABLETOP
   );
 
   Object.assign(global.PipelineUIDataModes, {

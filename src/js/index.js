@@ -28,6 +28,10 @@ const createDomainBootstrapGroups = (domain, manifest, layerOrder) => layerOrder
 const pickBootstrapLayers = (layerOrder, allowedGroups) => layerOrder.filter((group) => allowedGroups.includes(group));
 
 const BOOTSTRAP_GROUPS = Object.freeze([
+  ...createDomainBootstrapGroups('shared', sharedBootstrapManifest, pickBootstrapLayers(
+    sharedBootstrapLayerOrder,
+    ['prelude']
+  )),
   ...createDomainBootstrapGroups('pipeline', pipelineBootstrapManifest, pickBootstrapLayers(
     pipelineBootstrapLayerOrder,
     ['sharedPrelude', 'primaryData', 'devPrelude', 'secondaryData', 'runtimePrelude']
@@ -40,7 +44,10 @@ const BOOTSTRAP_GROUPS = Object.freeze([
     pipelineBootstrapLayerOrder,
     ['prompts', 'uiNavigation']
   )),
-  ...createDomainBootstrapGroups('shared', sharedBootstrapManifest, sharedBootstrapLayerOrder),
+  ...createDomainBootstrapGroups('shared', sharedBootstrapManifest, pickBootstrapLayers(
+    sharedBootstrapLayerOrder,
+    ['scripts']
+  )),
   ...createDomainBootstrapGroups('app', appBootstrapManifest, pickBootstrapLayers(
     appBootstrapLayerOrder,
     ['boot']

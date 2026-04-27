@@ -4,6 +4,14 @@
 // Navigation des vues, toasts, header context, settings panel et actions globales.
 // À garder orienté shell / UX, sans réembarquer le coeur pipeline.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+    TABLETOP: 'tabletop',
+    COLLECTION: 'collection',
+  };
+  const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
+    WAIT: 'wait',
+  };
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
@@ -217,7 +225,7 @@
     } else if (viewName === 'form') {
       const label = document.getElementById('formModeLabel')?.textContent || '';
       ctx.textContent = label;
-      ctx.classList.add(getCurrentMode() === 'tabletop' ? 'mode-tt' : 'mode-col');
+      ctx.classList.add(getCurrentMode() === PIPELINE_MODES.TABLETOP ? 'mode-tt' : 'mode-col');
     } else if (viewName === 'pipeline') {
       ctx.textContent = PIPELINE_RUNNING_CONTEXT;
       ctx.classList.add('mode-pipeline');
@@ -247,14 +255,14 @@
     if (mode !== getCurrentMode()) global.switchMode(mode);
 
     const modeUiConfig = getModeUiConfig(mode);
-    const tabletopUiConfig = getModeUiConfig('tabletop');
-    const collectionUiConfig = getModeUiConfig('collection');
+    const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
+    const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
     const label = document.getElementById('formModeLabel');
     const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
     const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
 
-    if (tabletopRoot) tabletopRoot.style.display = mode === 'tabletop' ? '' : 'none';
-    if (collectionRoot) collectionRoot.style.display = mode === 'collection' ? '' : 'none';
+    if (tabletopRoot) tabletopRoot.style.display = mode === PIPELINE_MODES.TABLETOP ? '' : 'none';
+    if (collectionRoot) collectionRoot.style.display = mode === PIPELINE_MODES.COLLECTION ? '' : 'none';
     if (label) label.textContent = modeUiConfig.formLabel;
 
     resetSingleFlowPanels(mode);
@@ -296,7 +304,7 @@
   }
 
   function buildPipelineTimeline(metaLabel = '') {
-    if (getCurrentMode() === 'collection' && currentView !== 'pipeline') return;
+    if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
 
     const timeline = document.getElementById('pipelineTimeline');
     if (!timeline) return;
@@ -316,14 +324,14 @@
   }
 
   function updatePipelineTimeline(agentId, status) {
-    if (getCurrentMode() === 'collection' && currentView !== 'pipeline') return;
+    if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
 
     const dot = document.getElementById(`tl-dot-${agentId}`);
     const step = document.getElementById(`tl-step-${agentId}`);
     if (!dot || !step) return;
 
-    dot.className = `pipeline-step-dot${status !== 'wait' ? ` ${status}` : ''}`;
-    step.className = `pipeline-step${status !== 'wait' ? ` ${status}` : ''}`;
+    dot.className = `pipeline-step-dot${status !== PIPELINE_TIMELINE_STATUS.WAIT ? ` ${status}` : ''}`;
+    step.className = `pipeline-step${status !== PIPELINE_TIMELINE_STATUS.WAIT ? ` ${status}` : ''}`;
   }
 
   function openSettings() {

@@ -6,6 +6,15 @@
 (function initPipelineUIConfig(global) {
   global.PipelineUI = global.PipelineUI || {};
   global.PipelineUIConfig = global.PipelineUIConfig || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+    TABLETOP: 'tabletop',
+    COLLECTION: 'collection',
+  };
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    TABLETOP: 'tt',
+    COLLECTION: 'col',
+  };
 
   const modeData = global.PipelineUIDataModes;
   const agentsData = global.PipelineUIDataAgents;
@@ -23,17 +32,17 @@
   const getPipelineModes = () => modeData.getPipelineModesFromData();
   const getPipelineUiConfig = (mode = global.currentMode) => modeData.getPipelineModeUiConfigFromData(mode);
   const getPipelinePrefix = (mode = global.currentMode) => modeData.getPipelineModePrefixFromData(mode);
-  const getPipelineModeByPrefix = (prefix = 'tt') => modeData.getPipelineModeByPrefixFromData(prefix);
+  const getPipelineModeByPrefix = (prefix = PIPELINE_PREFIXES.TABLETOP) => modeData.getPipelineModeByPrefixFromData(prefix);
   const getPipelinePrefixes = () => getPipelineModes().map((mode) => getPipelinePrefix(mode));
 
   const getPipelineAgentsForMode = (mode = global.currentMode) => (
-    getPipelineModeKey(mode) === 'collection'
+    getPipelineModeKey(mode) === PIPELINE_MODES.COLLECTION
       ? pipelineAgentsCollection
       : pipelineAgents
   );
 
   const getPipelineAgents = () => getPipelineAgentsForMode(global.currentMode);
-  const getPipelineAgentsForPrefix = (prefix = 'tt') => (
+  const getPipelineAgentsForPrefix = (prefix = PIPELINE_PREFIXES.TABLETOP) => (
     getPipelineAgentsForMode(getPipelineModeByPrefix(prefix))
   );
 
@@ -95,7 +104,7 @@
     return runtimeAgentIds.map((agentId) => agentMap.get(agentId)).filter(Boolean);
   };
 
-  const getPipelineRuntimeAgentsForPrefix = (prefix = 'tt', stepId = '') => (
+  const getPipelineRuntimeAgentsForPrefix = (prefix = PIPELINE_PREFIXES.TABLETOP, stepId = '') => (
     getPipelineRuntimeAgentsForMode(getPipelineModeByPrefix(prefix), stepId)
   );
 

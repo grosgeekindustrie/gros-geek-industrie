@@ -4,6 +4,8 @@
 // Gère les modals de validation / blacklist et la persistance liée aux bibliothèques.
 // Module DOM-heavy : toute modification doit rester ciblée et retestée visuellement.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.UI || 'ui');
   const helpers = () => global.PipelineUIHelpers || {};
 
   function ensureLibraryModals() {
@@ -199,7 +201,7 @@
                 item
               ), 0);
             } else {
-              console.error('autoRegenTag introuvable');
+              logger?.error?.('autoRegenTag introuvable');
             }
           }
         }
@@ -238,7 +240,7 @@
                 state.agentId || 'titre'
               ), 0);
             } else {
-              console.error('autoRegenTitre introuvable');
+              logger?.error?.('autoRegenTitre introuvable');
             }
           }
         }

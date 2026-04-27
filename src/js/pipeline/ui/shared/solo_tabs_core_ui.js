@@ -6,6 +6,21 @@
 // Mutualise les états, les badges et la logique d'activation sans changer les
 // sélecteurs ni les spécificités DOM propres à chaque mode.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const PIPELINE_RUN_STATUS = sharedConstants.PIPELINE_RUN_STATUS || {
+    ERROR: 'erreur',
+    STOPPED: 'interrompu',
+  };
+  const PIPELINE_AGENT_STATUS_TEXT = sharedConstants.PIPELINE_AGENT_STATUS_TEXT || {
+    GENERATING: 'generation...',
+    SELECTION_REQUIRED: 'selection requise',
+    STOPPED: 'stoppe',
+    ERROR: 'erreur',
+    DONE: 'done',
+  };
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    COLLECTION: 'col',
+  };
 
   const TAB_IDS = ['form', 'pipeline', 'result', 'social'];
   const TAB_STATE_CLASSNAMES = [
@@ -54,8 +69,8 @@
 
     const hasPipelineError = () => {
       const launchStatus = getLaunchStatus();
-      if (launchStatus) return launchStatus.includes('erreur');
-      return getAgentStatusEntries().some(({ text }) => text.includes('erreur') || text.includes('alerte'));
+      if (launchStatus) return launchStatus.includes(PIPELINE_RUN_STATUS.ERROR);
+      return getAgentStatusEntries().some(({ text }) => text.includes(PIPELINE_AGENT_STATUS_TEXT.ERROR) || text.includes('alerte'));
     };
 
     const hasPipelinePause = () => {
@@ -67,7 +82,7 @@
 
     const hasPipelineStopped = () => {
       const launchStatus = getLaunchStatus();
-      if (launchStatus) return launchStatus.includes('interrompu') || launchStatus.includes('stopp');
+      if (launchStatus) return launchStatus.includes(PIPELINE_RUN_STATUS.STOPPED) || launchStatus.includes('stopp');
       if (isPipelineRunning()) return false;
       return getAgentStatusEntries().some(({ text }) => text.includes('stoppé'));
     };
@@ -79,9 +94,9 @@
 
       const activeIndex = statuses.findIndex(({ text }) => text.includes('génération') || text.includes('audit') || text.includes('relance'));
       const pauseIndex = statuses.findIndex(({ text }) => text.includes('sélection requise'));
-      const errorIndex = statuses.findIndex(({ text }) => text.includes('erreur') || text.includes('alerte'));
+      const errorIndex = statuses.findIndex(({ text }) => text.includes(PIPELINE_AGENT_STATUS_TEXT.ERROR) || text.includes('alerte'));
       const stoppedIndex = statuses.findIndex(({ text }) => text.includes('stoppé'));
-      const doneCount = statuses.filter(({ text }) => text.includes('done')).length;
+      const doneCount = statuses.filter(({ text }) => text.includes(PIPELINE_AGENT_STATUS_TEXT.DONE)).length;
 
       if (activeIndex !== -1) return { current: Math.max(doneCount + 1, activeIndex + 1), total };
       if (pauseIndex !== -1) return { current: Math.max(doneCount, pauseIndex + 1), total };
@@ -254,10 +269,10 @@
       if (!root || isBound) return;
 
       root.addEventListener('click', (event) => {
-        const button = event.target.closest(`[data-${pipelinePrefix === 'col' ? 'collection' : 'dnd'}-tab]`);
+        const button = event.target.closest(`[data-${pipelinePrefix === PIPELINE_PREFIXES.COLLECTION ? 'collection' : 'dnd'}-tab]`);
         if (!button) return;
 
-        const tabId = pipelinePrefix === 'col'
+        const tabId = pipelinePrefix === PIPELINE_PREFIXES.COLLECTION
           ? button.dataset.collectionTab
           : button.dataset.dndTab;
         activate(tabId);

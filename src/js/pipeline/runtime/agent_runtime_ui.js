@@ -2,6 +2,11 @@
 
 (function initPipelineUIAgentRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.PIPELINE || 'pipeline');
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    TABLETOP: 'tt',
+  };
 
   const abortControllers = {};
   const AGENT_MODELS = {
@@ -61,7 +66,7 @@
 
   function syncResumeResultTab(prefix, lastStatus) {
     if (lastStatus === PIPELINE_STATUS_DONE) {
-      const hasResult = prefix === 'tt'
+      const hasResult = prefix === PIPELINE_PREFIXES.TABLETOP
         ? global.isDndSoloResultAvailable()
         : global.isCollectionSoloResultAvailable();
 
@@ -144,7 +149,7 @@
       ({ lastAgentId, lastStatus } = await runResumeAgentSequence(prefix, continuationAgents));
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
-      console.error('continuePipelineAfterSelection failed', error);
+      logger?.error?.('continuePipelineAfterSelection failed', error);
       global.showToast(`❌ Suite du pipeline: ${error.message}`, '#ff4757');
     } finally {
       finalizePipelineContinuation(prefix, lastAgentId, lastStatus);
@@ -194,7 +199,7 @@
       lastStatus = resolveAgentRunStatus(ok, agent);
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
-      console.error('rerunAgent failed', error);
+      logger?.error?.('rerunAgent failed', error);
       global.showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);
@@ -222,7 +227,7 @@
       }));
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
-      console.error('rerunSuite failed', error);
+      logger?.error?.('rerunSuite failed', error);
       global.showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);

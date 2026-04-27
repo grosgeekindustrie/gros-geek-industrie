@@ -5,6 +5,8 @@
   // Stockage persistant des images du workspace courant pour survivre aux refreshs,
   // fermetures navigateur et redémarrages machine.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.STORAGE || 'storage');
 
   const DB_NAME = 'etsy-pipeline-local';
   const DB_VERSION = 1;
@@ -197,7 +199,7 @@
 
       return restoredImages;
     } catch (error) {
-      console.warn(`IndexedDB restore failed for ${prefix}`, error);
+      logger?.warn?.(`IndexedDB restore failed for ${prefix}`, error);
       return [];
     }
   };

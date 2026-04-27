@@ -5,6 +5,8 @@
 // Upload, normalisation locale, rendu des miniatures et actions de crop / debug.
 // Le payload envoyé aux agents reste contenu dans state.images[p].
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.MEDIA || 'media');
 
   const getState = () => global.state;
   const imageTools = () => global.PipelineUIImageTools || {};
@@ -31,7 +33,7 @@
         state.images[prefix] = normalized;
       }
     } catch (error) {
-      console.warn(`Persist images failed for ${prefix}`, error);
+      logger?.warn?.(`Persist images failed for ${prefix}`, error);
     }
   };
 

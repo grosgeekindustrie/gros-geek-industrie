@@ -6,8 +6,13 @@
 
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIShell = window.PipelineUIShell || {};
+const sharedConstants = window.PipelineUISharedConstants || {};
+const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+  TABLETOP: 'tabletop',
+  COLLECTION: 'collection',
+};
 
-var currentMode = 'tabletop'; // 'tabletop' | 'collection'
+var currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
 const getModeUiConfig = (mode = currentMode) => (
   getPipelineUiConfig(mode)
@@ -25,10 +30,10 @@ function switchMode(mode) {
   state.mode = mode;
   window.currentMode = currentMode;
 
-  const isTabletop = mode === 'tabletop';
+  const isTabletop = mode === PIPELINE_MODES.TABLETOP;
   const modeUiConfig = getModeUiConfig(mode);
-  const tabletopUiConfig = getModeUiConfig('tabletop');
-  const collectionUiConfig = getModeUiConfig('collection');
+  const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
+  const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
 
   document.body.classList.toggle('mode-collection', !isTabletop);
 
@@ -91,7 +96,7 @@ var state = {
   selectedTitre: null,
   socialSections: {},
   sessionCost: 0,
-  mode: 'tabletop',
+  mode: PIPELINE_MODES.TABLETOP,
   agentUsage: {},
 };
 

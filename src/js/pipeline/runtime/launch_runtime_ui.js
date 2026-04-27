@@ -2,6 +2,35 @@
 
 (function initPipelineUILaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+    TABLETOP: 'tabletop',
+    COLLECTION: 'collection',
+  };
+  const PIPELINE_PREFIXES = sharedConstants.PIPELINE_PREFIXES || {
+    TABLETOP: 'tt',
+    COLLECTION: 'col',
+  };
+  const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
+    ACTIVE: 'active',
+    DONE: 'done',
+    ERROR: 'error',
+  };
+  const PIPELINE_RUN_STATUS = sharedConstants.PIPELINE_RUN_STATUS || {
+    RUNNING: 'en cours',
+    DONE: 'termine',
+    ERROR: 'erreur',
+    SELECTION_REQUIRED: 'en pause · selection requise',
+  };
+  const PIPELINE_AGENT_STATUS_TEXT = sharedConstants.PIPELINE_AGENT_STATUS_TEXT || {
+    WAITING: 'en attente',
+    GENERATING: 'generation...',
+    SELECTION_REQUIRED: 'selection requise',
+    DONE: 'done',
+    STOPPED: 'stoppe',
+    ERROR: 'erreur',
+    EMPTY_OUTPUT: 'pas encore genere',
+  };
   const PIPELINE_STATUS_DONE = 'terminÃ©';
   const PIPELINE_STATUS_ERROR = 'erreur';
   const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause Â· sÃ©lection requise';
@@ -76,7 +105,7 @@
     const refs = getPipelineAgentDomRefs(prefix, agent.id);
 
     if (refs.card) refs.card.className = 'agent-card active';
-    global.updatePipelineTimeline(agent.id, 'active');
+    global.updatePipelineTimeline(agent.id, PIPELINE_TIMELINE_STATUS.ACTIVE);
     refreshSoloTabs(prefix);
     if (refs.stat) {
       refs.stat.className = 'agent-status s-run';
@@ -127,7 +156,7 @@
     global.showAgentCost(agent.id, usage, { prefix, source: isRetry ? 'rerun' : 'pipeline' });
     global.syncCacheIndicator(usage);
     if (refs.card) refs.card.className = 'agent-card done';
-    global.updatePipelineTimeline(agent.id, 'done');
+    global.updatePipelineTimeline(agent.id, PIPELINE_TIMELINE_STATUS.DONE);
 
     if (renderAgentSelectionUi(agent, result)) {
       if (refs.stat) {
@@ -147,7 +176,7 @@
   function finalizeAgentError(prefix, agent, refs, error) {
     if (refs.out) refs.out.textContent = `❌ ${error.message}`;
     if (refs.card) refs.card.className = 'agent-card error';
-    global.updatePipelineTimeline(agent.id, 'error');
+    global.updatePipelineTimeline(agent.id, PIPELINE_TIMELINE_STATUS.ERROR);
     if (refs.stat) {
       refs.stat.className = 'agent-status s-err';
       refs.stat.textContent = error.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
@@ -168,7 +197,7 @@
 
     if (refs.stat) {
       refs.stat.className = 'agent-status s-wait';
-      refs.stat.textContent = 'en attente';
+      refs.stat.textContent = PIPELINE_AGENT_STATUS_TEXT.WAITING;
     }
 
     if (refs.out) {
@@ -215,7 +244,7 @@
 
     if (isSoloTabsFlow) {
       refreshSoloTabs(prefix);
-      const hasResult = prefix === 'tt'
+      const hasResult = prefix === PIPELINE_PREFIXES.TABLETOP
         ? global.isDndSoloResultAvailable()
         : global.isCollectionSoloResultAvailable();
       if (hasResult) {
@@ -256,7 +285,7 @@
     const mode = global.getPipelineLaunchMode(prefix);
     const echelles = global.PipelineUIEchelles.getEchellesSelected();
     const dimensions = global.PipelineUIEchelles.getDimsFromEchelles();
-    const collectionData = mode === 'collection'
+    const collectionData = mode === PIPELINE_MODES.COLLECTION
       ? global.getCollectionData()
       : {};
     const lines = [];
@@ -276,7 +305,7 @@
     pushSnapshotLine('Pièces', document.getElementById(`${prefix}-fPieces`)?.value);
     pushSnapshotLine('Pose', document.getElementById(`${prefix}-fPose`)?.value);
 
-    if (mode === 'tabletop') {
+    if (mode === PIPELINE_MODES.TABLETOP) {
       pushSnapshotLine('Type', document.getElementById('tt-fType')?.value);
       pushSnapshotLine('Version', document.getElementById('tt-fVersion')?.value);
       pushSnapshotLine('Archétypes', global.getArchetypes());
@@ -522,7 +551,7 @@
       lastStatus: PIPELINE_STATUS_RUNNING,
     });
 
-    const isSoloTabsFlow = prefix === 'tt' || prefix === 'col';
+    const isSoloTabsFlow = prefix === PIPELINE_PREFIXES.TABLETOP || prefix === PIPELINE_PREFIXES.COLLECTION;
 
     if (isSoloTabsFlow) {
       const pipelineEl = document.getElementById(`pipeline-${prefix}`);
