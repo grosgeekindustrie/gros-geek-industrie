@@ -152,6 +152,7 @@
   const collectScaleEntries = (prefix, count) => Array.from({ length: count }, (_, index) => ({
     checked: isElementChecked(`${prefix}-ec${index}`),
     dim: getElementValue(`${prefix}-ed${index}`),
+    source: document.getElementById(`${prefix}-ei${index}`)?.dataset?.dimensionSource || '',
   }));
 
   const restoreScaleEntries = (entries, prefix) => {
@@ -164,6 +165,9 @@
         global.toggleEch(index, { shouldSave: false });
       }
       if (entry.dim) setElementValue(`${prefix}-ed${index}`, entry.dim);
+      if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
+        global.PipelineUIEchelles.setRowDimensionSource(index, entry.source);
+      }
     });
   };
 
@@ -558,11 +562,17 @@
 
     if (currentMode === 'tabletop') {
       data._echelles = collectScaleEntries('tt', (echellesApi.ECHELLES || []).length);
+      data._dynamicEchelles = echellesApi.isDynamicScaleEnabled?.('tt') || false;
+      data._originEchelleIndex = (() => {
+        const checked = document.querySelector('input[name="tt-origin-scale"]:checked');
+        return checked ? Number(checked.value) : null;
+      })();
       data._genres = getTabletopGenreValues();
       data._buzz = isElementChecked('tt-fBuzz');
       data._buzzNote = getElementValue('tt-fBuzzNote');
     } else {
       data._echelles = collectScaleEntries('col', (echellesApi.ECHELLES_COLLECTION || []).length);
+      data._dynamicEchelles = echellesApi.isDynamicScaleEnabled?.('col') || false;
       data._license = isElementChecked('col-fLicense');
       data._mediums = getCollectionMediumValues();
       data._mediumSubcategories = getCollectionMediumSubcategoryValues();
@@ -585,6 +595,7 @@
           checked: isElementChecked(`col-ec${scaleIndex}`),
           label: getElementValue(`col-elabel${scaleIndex}`),
           dim: getElementValue(`col-ed${scaleIndex}`),
+          source: document.getElementById(`col-ei${scaleIndex}`)?.dataset?.dimensionSource || '',
         });
       }
     }
@@ -602,8 +613,17 @@
       if (!data) return;
 
       if (currentMode === 'tabletop') {
+        if (data._dynamicEchelles !== undefined) {
+          echellesApi.setDynamicEchellesEnabled?.(data._dynamicEchelles, { shouldSave: false });
+        }
+
         restoreFieldValues(TABLETOP_FORM_FIELDS, data);
         restoreScaleEntries(data._echelles, 'tt');
+
+        if (Number.isInteger(data._originEchelleIndex)) {
+          global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
+        }
+
         setCheckedValues(`#${TABLETOP_DYNAMIC_IDS.genreGroup} input`, data._genres);
 
         if (data._buzz !== undefined) {
@@ -618,6 +638,8 @@
           setElementValue('tt-fBuzzNote', data._buzzNote);
         }
       } else {
+        echellesApi.setDynamicEchellesEnabled?.(data._dynamicEchelles !== undefined ? data._dynamicEchelles : true, { shouldSave: false });
+
         restoreFieldValues(COLLECTION_FORM_FIELDS, data);
         restoreScaleEntries(data._echelles, 'col');
 
@@ -678,6 +700,9 @@
               global.toggleEch(scaleIndex, { shouldSave: false });
             }
             if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
+            if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
+              global.PipelineUIEchelles.setRowDimensionSource(scaleIndex, entry.source);
+            }
           });
         }
 

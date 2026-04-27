@@ -14,12 +14,17 @@
   const CUSTOM_COLLECTION_COUNT = Number.isInteger(echellesData.CUSTOM_COLLECTION_COUNT) ? echellesData.CUSTOM_COLLECTION_COUNT : 3;
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
   const MANUAL_COLLECTION_SCALE_LABELS = new Set(['buste', '75mm']);
+  const TABLETOP_MODE = 'tabletop';
+  const COLLECTION_MODE = 'collection';
 
   const getPfx = () => global.PipelineUIShell.pfx();
-
   const getCurrentMode = () => global.currentMode;
-  const isCollectionMode = () => getCurrentMode() === 'collection';
-  const getCollectionRowCount = () => ECHELLES_COLLECTION.length + CUSTOM_COLLECTION_COUNT;
+  const resolveMode = (prefix = getPfx()) => prefix === 'col' ? COLLECTION_MODE : TABLETOP_MODE;
+  const isCollectionMode = (mode = getCurrentMode()) => mode === COLLECTION_MODE;
+  const getScaleList = (mode = getCurrentMode()) => isCollectionMode(mode) ? ECHELLES_COLLECTION : ECHELLES;
+  const getRowCount = (mode = getCurrentMode()) => getScaleList(mode).length + (isCollectionMode(mode) ? CUSTOM_COLLECTION_COUNT : 0);
+  const getDynamicToggle = (prefix = getPfx()) => document.getElementById(`${prefix}-fDynamicEchelles`);
+  const isDynamicScaleEnabled = (prefix = getPfx()) => Boolean(getDynamicToggle(prefix)?.checked);
 
   const getRowEls = (index) => {
     const p = getPfx();
@@ -36,7 +41,7 @@
   const normalizeScaleLabel = (value = '') => String(value || '').replace(/\s+/g, '');
   const normalizeManualScaleLabel = (value = '') => normalizeScaleLabel(value).toLowerCase();
   const isManualCollectionScaleLabel = (label = '') => MANUAL_COLLECTION_SCALE_LABELS.has(normalizeManualScaleLabel(label));
-  const isManualCollectionScale = (index) => isCollectionMode() && isManualCollectionScaleLabel(getCollectionScaleLabel(index));
+  const isManualCollectionScale = (index, mode = getCurrentMode()) => isCollectionMode(mode) && isManualCollectionScaleLabel(getScaleLabel(index, mode));
 
   const parseScaleDescriptor = (label = '') => {
     const normalizedLabel = normalizeScaleLabel(label);
@@ -91,20 +96,27 @@
   const roundHalfUp = (value) => Math.floor(value + 0.5);
   const formatDimensions = (dimensions) => dimensions.map((dimension) => `${dimension}mm`).join(' * ');
 
-  const getCollectionScaleLabel = (index) => {
-    if (index < ECHELLES_COLLECTION.length) return ECHELLES_COLLECTION[index];
+  const getScaleLabel = (index, mode = getCurrentMode()) => {
+    const list = getScaleList(mode);
+    if (index < list.length) return list[index];
     return getRowEls(index).customLabel?.value?.trim() || '';
   };
 
-  const getOriginIndex = () => {
-    if (!isCollectionMode()) return null;
+  const supportsOriginSelection = (index, mode = getCurrentMode()) => {
+    const label = getScaleLabel(index, mode);
+    if (!label) return false;
+    if (isManualCollectionScale(index, mode)) return false;
+    return Boolean(parseScaleDescriptor(label));
+  };
 
-    const p = getPfx();
-    const checked = document.querySelector(`input[name="${p}-origin-scale"]:checked`);
+  const getOriginIndex = (prefix = getPfx(), mode = getCurrentMode()) => {
+    if (!isDynamicScaleEnabled(prefix)) return null;
+
+    const checked = document.querySelector(`input[name="${prefix}-origin-scale"]:checked`);
     if (!checked) return null;
 
     const index = Number(checked.value);
-    return Number.isInteger(index) ? index : null;
+    return Number.isInteger(index) && supportsOriginSelection(index, mode) ? index : null;
   };
 
   const getRowDimensionSource = (index) => getRowEls(index).row?.dataset.dimensionSource || '';
@@ -121,12 +133,10 @@
     delete row.dataset.dimensionSource;
   };
 
-  const getFirstCheckedIndex = () => {
-    if (!isCollectionMode()) return null;
-
-    for (let index = 0; index < getCollectionRowCount(); index += 1) {
+  const getFirstCheckedIndex = (mode = getCurrentMode()) => {
+    for (let index = 0; index < getRowCount(mode); index += 1) {
       const { checkbox, originRadio } = getRowEls(index);
-      if (checkbox?.checked && originRadio && !isManualCollectionScale(index)) {
+      if (checkbox?.checked && originRadio && supportsOriginSelection(index, mode)) {
         return index;
       }
     }
@@ -134,19 +144,26 @@
     return null;
   };
 
-  const updateOriginState = () => {
-    if (!isCollectionMode()) return;
+  const updateOriginState = (prefix = getPfx(), mode = getCurrentMode()) => {
+    const autoEnabled = isDynamicScaleEnabled(prefix);
+    const originIndex = getOriginIndex(prefix, mode);
 
-    const originIndex = getOriginIndex();
-
-    for (let index = 0; index < getCollectionRowCount(); index += 1) {
+    for (let index = 0; index < getRowCount(mode); index += 1) {
       const { row, originRadio, checkbox } = getRowEls(index);
       if (!row) continue;
 
-      const isManualScale = isManualCollectionScale(index);
+      const isManualScale = isManualCollectionScale(index, mode);
+      const canUseOrigin = supportsOriginSelection(index, mode);
+      const originToggle = originRadio?.closest('.ech-origin-toggle');
       row.classList.toggle('is-manual-scale', isManualScale);
+      row.classList.toggle('is-auto-enabled', autoEnabled && canUseOrigin);
 
-      const isOrigin = !isManualScale && originIndex === index;
+      if (originToggle) {
+        originToggle.hidden = !autoEnabled || !canUseOrigin;
+        originToggle.classList.toggle('is-disabled', !autoEnabled || !checkbox?.checked);
+      }
+
+      const isOrigin = autoEnabled && canUseOrigin && originIndex === index;
       row.classList.toggle('is-origin', isOrigin);
       row.dataset.origin = isOrigin ? 'true' : 'false';
 
@@ -157,13 +174,14 @@
       }
 
       if (originRadio) {
+        originRadio.disabled = !autoEnabled || !checkbox?.checked || !canUseOrigin;
         originRadio.setAttribute('aria-checked', String(isOrigin));
       }
     }
   };
 
-  const isAutoManagedRow = (index) => {
-    if (isManualCollectionScale(index)) return false;
+  const isAutoManagedRow = (index, mode = getCurrentMode()) => {
+    if (isManualCollectionScale(index, mode)) return false;
 
     const { dimInput } = getRowEls(index);
     const source = getRowDimensionSource(index);
@@ -172,10 +190,12 @@
   };
 
   const applyAutoDimensions = (index, { shouldSave = true, force = false } = {}) => {
-    if (!isCollectionMode()) return false;
+    const prefix = getPfx();
+    const mode = getCurrentMode();
+    if (!isDynamicScaleEnabled(prefix)) return false;
 
-    const originIndex = getOriginIndex();
-    if (originIndex === null || originIndex === index || isManualCollectionScale(index)) return false;
+    const originIndex = getOriginIndex(prefix, mode);
+    if (originIndex === null || originIndex === index || isManualCollectionScale(index, mode)) return false;
 
     const {
       row,
@@ -186,8 +206,8 @@
     if (!targetCheckbox?.checked || !targetDimInput || !row) return false;
     if (!force && !isAutoManagedRow(index)) return false;
 
-    const originLabel = getCollectionScaleLabel(originIndex);
-    const targetLabel = getCollectionScaleLabel(index);
+    const originLabel = getScaleLabel(originIndex, mode);
+    const targetLabel = getScaleLabel(index, mode);
     const originDimensions = parseDimensions(getRowEls(originIndex).dimInput?.value || '');
     const scaleFactor = getScaleFactor(originLabel, targetLabel);
 
@@ -203,12 +223,18 @@
   };
 
   const recalculateCollectionDimensions = ({ shouldSave = true, force = false } = {}) => {
-    if (!isCollectionMode()) return;
+    const prefix = getPfx();
+    const mode = getCurrentMode();
+    if (!isDynamicScaleEnabled(prefix)) {
+      updateOriginState(prefix, mode);
+      if (shouldSave) global.saveFormState();
+      return;
+    }
 
-    updateOriginState();
+    updateOriginState(prefix, mode);
 
-    for (let index = 0; index < getCollectionRowCount(); index += 1) {
-      if (getOriginIndex() === index) continue;
+    for (let index = 0; index < getRowCount(mode); index += 1) {
+      if (getOriginIndex(prefix, mode) === index) continue;
       applyAutoDimensions(index, { shouldSave: false, force });
     }
 
@@ -216,13 +242,15 @@
   };
 
   const setEchelleOrigin = (index, { shouldSave = true, recalculate = true } = {}) => {
-    if (!isCollectionMode()) return;
+    const prefix = getPfx();
+    const mode = getCurrentMode();
+    if (!isDynamicScaleEnabled(prefix)) return;
 
     const { checkbox, originRadio } = getRowEls(index);
-    if (!checkbox?.checked || !originRadio) return;
+    if (!checkbox?.checked || !originRadio || !supportsOriginSelection(index, mode)) return;
 
     originRadio.checked = true;
-    updateOriginState();
+    updateOriginState(prefix, mode);
 
     if (recalculate) {
       recalculateCollectionDimensions({ shouldSave: false });
@@ -233,8 +261,10 @@
 
   const buildStandardRow = ({ index, label, isCollection }) => {
     const p = getPfx();
+    const mode = isCollection ? COLLECTION_MODE : TABLETOP_MODE;
     const isManualScale = isCollection && isManualCollectionScaleLabel(label);
-    const originControl = isCollection && !isManualScale
+    const supportsOrigin = supportsOriginSelection(index, mode);
+    const originControl = supportsOrigin
       ? `
       <label class="ech-origin-toggle" for="${p}-eo${index}">
         <input
@@ -306,7 +336,7 @@
     });
 
     dimInput?.addEventListener('input', () => {
-      if (isCollectionMode()) {
+      if (isDynamicScaleEnabled()) {
         if (getOriginIndex() === index) {
           setRowDimensionSource(index, 'origin');
           recalculateCollectionDimensions({ shouldSave: false });
@@ -354,8 +384,9 @@
 
   function buildEchellesUI() {
     const p = getPfx();
-    const isTT = getCurrentMode() === 'tabletop';
-    const list = isTT ? ECHELLES : ECHELLES_COLLECTION;
+    const mode = getCurrentMode();
+    const isTT = mode === TABLETOP_MODE;
+    const list = getScaleList(mode);
 
     let html = list.map((label, index) => buildStandardRow({
       index,
@@ -374,7 +405,7 @@
 
     grid.innerHTML = html;
     bindEchellesUI({ list, isCollection: !isTT });
-    updateOriginState();
+    updateOriginState(p, mode);
   }
 
   function toggleEch(index, options = {}) {
@@ -393,18 +424,17 @@
     row.classList.toggle('on', isEnabled);
 
     if (originRadio) {
-      originRadio.disabled = !isEnabled;
       if (!isEnabled && originRadio.checked) {
         originRadio.checked = false;
       }
     }
 
-    if (isCollectionMode()) {
+    if (isDynamicScaleEnabled()) {
       if (!isEnabled) {
         setRowDimensionSource(index);
       }
 
-      if (isEnabled && getOriginIndex() === null && originRadio) {
+      if (isEnabled && getOriginIndex() === null && originRadio && supportsOriginSelection(index)) {
         originRadio.checked = true;
       }
 
@@ -420,20 +450,48 @@
 
       updateOriginState();
 
-      if (isEnabled && autoFill && !originRadio?.checked && !isManualCollectionScale(index)) {
+      if (isEnabled && autoFill && !originRadio?.checked && supportsOriginSelection(index)) {
         applyAutoDimensions(index, { shouldSave: false, force: true });
       }
 
+      recalculateCollectionDimensions({ shouldSave: false });
+    } else {
+      updateOriginState();
+    }
+
+    if (shouldSave) global.saveFormState();
+  }
+
+  function setDynamicEchellesEnabled(enabled, { shouldSave = true } = {}) {
+    const toggle = getDynamicToggle();
+    if (!toggle) return;
+
+    toggle.checked = Boolean(enabled);
+    updateOriginState();
+    if (toggle.checked) {
+      if (getOriginIndex() === null) {
+        const fallbackOriginIndex = getFirstCheckedIndex();
+        if (fallbackOriginIndex !== null) {
+          const fallbackOriginRadio = getRowEls(fallbackOriginIndex).originRadio;
+          if (fallbackOriginRadio) fallbackOriginRadio.checked = true;
+        }
+      }
       recalculateCollectionDimensions({ shouldSave: false });
     }
 
     if (shouldSave) global.saveFormState();
   }
 
+  function toggleDynamicEchelles(prefix = getPfx()) {
+    const toggle = getDynamicToggle(prefix);
+    if (!toggle) return;
+    setDynamicEchellesEnabled(toggle.checked, { shouldSave: true });
+  }
+
   function getEchellesSelected() {
     const p = getPfx();
     const mode = getCurrentMode();
-    const list = mode === 'tabletop' ? ECHELLES : ECHELLES_COLLECTION;
+    const list = getScaleList(mode);
 
     const standard = list.filter((_, index) => document.getElementById(`${p}-ec${index}`)?.checked);
 
@@ -454,7 +512,7 @@
   function getDimsFromEchelles() {
     const p = getPfx();
     const mode = getCurrentMode();
-    const list = mode === 'tabletop' ? ECHELLES : ECHELLES_COLLECTION;
+    const list = getScaleList(mode);
 
     const lines = list.map((label, index) => {
       const checkbox = document.getElementById(`${p}-ec${index}`);
@@ -481,6 +539,10 @@
     CUSTOM_COLLECTION_COUNT,
     buildEchellesUI,
     toggleEch,
+    toggleDynamicEchelles,
+    setDynamicEchellesEnabled,
+    isDynamicScaleEnabled,
+    setRowDimensionSource,
     setEchelleOrigin,
     getEchellesSelected,
     getDimsFromEchelles,
@@ -489,5 +551,6 @@
 
   global.buildEchellesUI = buildEchellesUI;
   global.toggleEch = toggleEch;
+  global.toggleDynamicEchelles = toggleDynamicEchelles;
   global.setEchelleOrigin = setEchelleOrigin;
 })(window);

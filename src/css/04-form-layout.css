@@ -609,6 +609,10 @@
   gap: 0.625rem;
 }
 
+.echelles-stepper-toolbar {
+  margin-bottom: 0.875rem;
+}
+
 .ech-item.is-origin {
   border-color: rgba(126, 184, 247, 0.4);
   background: rgba(126, 184, 247, 0.08);
@@ -677,6 +681,10 @@
 
 .ech-origin-radio:disabled + .ech-origin-text {
   opacity: 0.45;
+}
+
+.ech-origin-toggle.is-disabled {
+  opacity: 0.65;
 }
 
 

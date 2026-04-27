@@ -271,6 +271,15 @@
         <section class="collection-step" data-js="dnd-step" data-step-index="2">
           <div class="form-section">
             <h2>Échelles + dimensions</h2>
+            <div class="collection-stepper-inline-fields echelles-stepper-toolbar">
+              <div class="collection-stepper-inline-field">
+                <span class="collection-stepper-inline-label">Calcul dynamique <span class="fg-hint">→ déduire les dimensions à partir d'une échelle d'origine</span></span>
+                <label class="social-check social-check-offset collection-inline-toggle">
+                  <input type="checkbox" id="tt-fDynamicEchelles" onchange="toggleDynamicEchelles('tt')"/>
+                  <span>Activer le calcul auto</span>
+                </label>
+              </div>
+            </div>
             <div class="echelles-grid" id="echellesGrid-tt"></div>
           </div>
         </section>
@@ -767,6 +776,15 @@ Cache : —</pre>
         <section class="collection-step" data-js="collection-step" data-step-index="2">
           <div class="form-section">
             <h2>Échelles + dimensions</h2>
+            <div class="collection-stepper-inline-fields echelles-stepper-toolbar">
+              <div class="collection-stepper-inline-field">
+                <span class="collection-stepper-inline-label">Calcul dynamique <span class="fg-hint">→ déduire les dimensions à partir d'une échelle d'origine</span></span>
+                <label class="social-check social-check-offset collection-inline-toggle">
+                  <input type="checkbox" id="col-fDynamicEchelles" onchange="toggleDynamicEchelles('col')" checked/>
+                  <span>Activer le calcul auto</span>
+                </label>
+              </div>
+            </div>
             <div class="echelles-grid" id="echellesGrid-col"></div>
           </div>
         </section>
