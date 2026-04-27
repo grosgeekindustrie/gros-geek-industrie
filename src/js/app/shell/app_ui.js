@@ -71,7 +71,7 @@
     if (!trigger || trigger.disabled) return;
 
     event.preventDefault();
-    global.handlePipelineActionRequest?.(buildPipelineActionRequest(trigger));
+    global.handlePipelineActionRequest(buildPipelineActionRequest(trigger));
   };
 
   const bindPipelineActionDelegation = () => {
@@ -93,7 +93,7 @@
   }
 
   function refreshPipelineLaunchPanels() {
-    global.refreshPipelineLaunchPanels?.();
+    global.refreshPipelineLaunchPanels();
   }
 
   function setPipelineExecutionActive(isActive) {
@@ -159,7 +159,7 @@
     if (!confirm(STORAGE_CLEAR_CONFIRM)) return;
     localStorage.clear();
     getState().persistentRules = {};
-    getAgents().forEach((agent) => global.refreshRules?.(agent.id));
+    getAgents().forEach((agent) => global.refreshRules(agent.id));
     showToast(STORAGE_CLEAR_SUCCESS);
     setTimeout(() => location.reload(), 800);
   }
@@ -244,7 +244,7 @@
   }
 
   function selectMode(mode) {
-    if (mode !== getCurrentMode()) global.switchMode?.(mode);
+    if (mode !== getCurrentMode()) global.switchMode(mode);
 
     const modeUiConfig = getModeUiConfig(mode);
     const tabletopUiConfig = getModeUiConfig('tabletop');

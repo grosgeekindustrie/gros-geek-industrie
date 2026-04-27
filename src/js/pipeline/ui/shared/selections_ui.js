@@ -16,22 +16,7 @@
   };
 
   const continueAfterSelection = async (agentId) => {
-    if (typeof global.continuePipelineAfterSelection === 'function') {
-      await global.continuePipelineAfterSelection(agentId);
-      return;
-    }
-
-    const agents = getAgents();
-    const currentIndex = agents.findIndex((agent) => agent.id === agentId);
-    const continuationAgents = currentIndex === -1 ? [] : agents.slice(currentIndex + 1);
-
-    for (const agent of continuationAgents) {
-      if (agent.optional) break;
-      const ok = await global.runAgent(agent);
-      if (!ok || agent.hasSelection) break;
-    }
-
-    global.assembleFinal?.();
+    await global.continuePipelineAfterSelection(agentId);
   };
 
   const TAG_SELECTION_MAX = 13;
@@ -89,7 +74,7 @@
   }
 
   function getTagLibraryState() {
-    const parsed = global.parseBiblioTags ? global.parseBiblioTags(global.getBiblio?.('tags')) : {};
+    const parsed = global.parseBiblioTags(global.getBiblio('tags'));
     return {
       validated: parsed.validated || [],
       blacklisted: parsed.blacklisted || [],
@@ -220,7 +205,7 @@
 
   function copyTagsSelectionValues(values, successMessage) {
     navigator.clipboard.writeText(values.join(', '));
-    global.showToast?.(successMessage);
+    global.showToast(successMessage);
   }
 
   function copyTagsSelectionColumn(columnIndex) {
@@ -232,7 +217,7 @@
       .filter(Boolean);
 
     if (!values.length) {
-      global.showToast?.('Aucun tag à copier dans cette liste', '#ff4757');
+      global.showToast('Aucun tag à copier dans cette liste', '#ff4757');
       return;
     }
 
@@ -242,7 +227,7 @@
   function copyTagsSelectionFinalOutput() {
     const values = getTagsSelectedValues();
     if (!values.length) {
-      global.showToast?.('Aucun tag sélectionné à copier', '#ff4757');
+      global.showToast('Aucun tag sélectionné à copier', '#ff4757');
       return;
     }
 
@@ -325,7 +310,7 @@
       validateButton.disabled = checkedCount === 0 || checkedCount > TAG_SELECTION_MAX || invalidSelectedCount > 0;
     }
 
-    global.PipelineUIRender?.syncTagsOutputFromUI?.();
+    global.PipelineUIRender.syncTagsOutputFromUI();
   }
 
   function bindTagsSelectionEvents() {
@@ -341,7 +326,7 @@
         const checkedCount = getTagsSelectionRows().filter((row) => row.querySelector('.tags-selection-checkbox')?.checked).length;
         if (checkedCount > TAG_SELECTION_MAX) {
           event.target.checked = false;
-          global.showToast?.(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
+          global.showToast(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
         }
       }
 
@@ -369,7 +354,7 @@
       const row = button.closest('.tags-selection-item');
       const rowValue = getTagsSelectionRowValue(row);
       if (!rowValue) {
-        global.showToast?.('Tag vide : impossible de lancer cette action', '#ff4757');
+        global.showToast('Tag vide : impossible de lancer cette action', '#ff4757');
         return;
       }
 
@@ -480,8 +465,8 @@
       </div>`;
 
     zone.style.display = 'block';
-    modals().ensureLibraryModals?.();
-    modals().ensureTagsManualAddButton?.();
+    modals().ensureLibraryModals();
+    modals().ensureTagsManualAddButton();
     bindTagsSelectionEvents();
     updateTagsSelectionSummary();
 
@@ -498,7 +483,7 @@
     if (!normalizedTag) return;
 
     if (validated.some((entry) => helpers().sameTag ? helpers().sameTag(entry, normalizedTag) : entry === normalizedTag)) {
-      global.showToast?.('Déjà validé');
+      global.showToast('Déjà validé');
       return;
     }
 
@@ -509,14 +494,14 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       global.state.bibliosByMode[global.currentMode].tags = updated;
       document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
-      global.showToast?.(`👍 "${normalizedTag}" validé`);
+      global.showToast(`👍 "${normalizedTag}" validé`);
     } catch (error) {
-      global.showToast?.('Erreur sauvegarde', '#ff4757');
+      global.showToast('Erreur sauvegarde', '#ff4757');
     }
   }
 
   async function invalidateTag(tag, itemId = null, source = 'main') {
-    modals().openLibraryBlacklistModal?.({
+    modals().openLibraryBlacklistModal({
       kind: 'tags',
       currentValue: normalizeTagInputValue(tag),
       itemId,
@@ -551,9 +536,9 @@
     const finalCsv = selectedTags.join(', ');
     global.state.selectedTags = selectedTags;
     global.state.outputs.tags = finalCsv;
-    global.setPipelineRunEntry?.(p, agentId, finalCsv, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
-    global.PipelineUIRender?.syncSelectionField?.('tags', finalCsv, p);
-    global.PipelineUIRender?.syncFinalPre?.('tags', finalCsv, p);
+    global.setPipelineRunEntry(p, agentId, finalCsv, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
+    global.PipelineUIRender.syncSelectionField('tags', finalCsv, p);
+    global.PipelineUIRender.syncFinalPre('tags', finalCsv, p);
 
     const zone = getTagsSelectionZone();
     const status = document.getElementById(`${p}-stat-${agentId}`);
@@ -596,8 +581,8 @@
       document.getElementById('explorerListLabel').textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
       document.getElementById('explorerConversation').value = result;
 
-      modals().ensureLibraryModals?.();
-      modals().ensureExplorerManualAddButton?.('tags');
+      modals().ensureLibraryModals();
+      modals().ensureExplorerManualAddButton('tags');
 
       const list = document.getElementById('explorerList');
       list.innerHTML = filteredTags.length ? filteredTags.map((tag, i) => {
@@ -616,9 +601,9 @@
       }).join('') : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       document.getElementById('explorerLightbox').classList.add('visible');
-      global.showToast?.(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
+      global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
     } catch (error) {
-      global.showToast?.(`Erreur: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -639,8 +624,8 @@
     if (!zone || !list) return;
 
     zone.classList.add('visible');
-    modals().ensureLibraryModals?.();
-    modals().ensureTitresManualAddButton?.(agentId);
+    modals().ensureLibraryModals();
+    modals().ensureTitresManualAddButton(agentId);
 
     list.innerHTML = lines.map((line, i) => {
       const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
@@ -659,7 +644,7 @@
       </div></div>`;
     }).join('');
 
-    const parsed = global.parseBiblioTitres ? global.parseBiblioTitres(global.getBiblio?.('titres')) : { blacklisted: [] };
+    const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
     const blacklisted = parsed.blacklisted || [];
     if (blacklisted.length) {
       lines.forEach((line, i) => {
@@ -667,7 +652,7 @@
         const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(text, blacklisted) : null;
         if (term) {
           const el = document.getElementById(`ti-${i}`);
-          if (el) setTimeout(() => titlesApi().autoRegenTitre?.(text, term, el, agentId), i * 300);
+          if (el) setTimeout(() => titlesApi().autoRegenTitre(text, term, el, agentId), i * 300);
         }
       });
     }
@@ -719,14 +704,14 @@
       const res = await fetch(`/files/biblios/${global.currentMode}/titres.md`, { method: 'PUT', body: updated });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       global.state.bibliosByMode[global.currentMode].titres = updated;
-      global.showToast?.('👍 Titre ajouté aux exemples validés');
+      global.showToast('👍 Titre ajouté aux exemples validés');
     } catch (error) {
-      global.showToast?.('Erreur sauvegarde titres', '#ff4757');
+      global.showToast('Erreur sauvegarde titres', '#ff4757');
     }
   }
 
   async function invalidateTitreSegment(text, itemId, agentId, source = 'main') {
-    modals().openLibraryBlacklistModal?.({
+    modals().openLibraryBlacklistModal({
       kind: 'titres',
       currentValue: helpers().normalizeTitreValue ? helpers().normalizeTitreValue(text) : String(text || '').trim(),
       itemId,
@@ -737,7 +722,7 @@
 
   function copyTitreLine(text) {
     navigator.clipboard.writeText(text);
-    global.showToast?.('Titre copié ✓');
+    global.showToast('Titre copié ✓');
   }
 
   async function validateTitre(agentId) {
@@ -752,10 +737,10 @@
 
     global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
-    global.setPipelineRunEntry?.(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
+    global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
     if (titre !== selectedTitre) {
       validateTitreSegment(titre);
-      global.showToast?.('✅ Titre manuel ajouté aux exemples validés');
+      global.showToast('✅ Titre manuel ajouté aux exemples validés');
     }
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
@@ -877,7 +862,7 @@
     const assembledDescription = result.join('\n').trim();
 
     global.state.outputs[`${agentId}_assembled`] = assembledDescription;
-    global.setPipelineRunEntry?.(p, agentId, assembledDescription, {
+    global.setPipelineRunEntry(p, agentId, assembledDescription, {
       quality: 'net',
       validation: 'valide',
       origin: 'manuel',
@@ -909,8 +894,8 @@
         fixedContent: prompt.fixedContent,
       }, false);
 
-      global.showAgentCost?.('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
-      global.syncCacheIndicator?.(usage);
+      global.showAgentCost('titre_explorer', usage, { prefix: p, source: 'titre-explorer' });
+      global.syncCacheIndicator(usage);
 
       const lines = result.split('\n').filter((line) => line.match(/^\d+\.\s+/));
       const titres = lines.map((line) => {
@@ -925,8 +910,8 @@
       document.getElementById('explorerListLabel').textContent = 'Titres générés — 👍 valider · 👎 blacklister';
       document.getElementById('explorerConversation').value = result;
 
-      modals().ensureLibraryModals?.();
-      modals().ensureExplorerManualAddButton?.('titres', 'titre');
+      modals().ensureLibraryModals();
+      modals().ensureExplorerManualAddButton('titres', 'titre');
 
       const list = document.getElementById('explorerList');
       list.innerHTML = titres.map((titre, i) => {
@@ -944,9 +929,9 @@
       }).join('');
 
       document.getElementById('explorerLightbox').classList.add('visible');
-      global.showToast?.('Exploration terminée ✓', '#e8c547');
+      global.showToast('Exploration terminée ✓', '#e8c547');
     } catch (error) {
-      global.showToast?.(`Erreur: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;

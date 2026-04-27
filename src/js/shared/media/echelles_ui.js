@@ -197,9 +197,7 @@
     targetDimInput.value = formatDimensions(scaledDimensions);
     setRowDimensionSource(index, 'auto');
 
-    if (shouldSave && typeof global.saveFormState === 'function') {
-      global.saveFormState();
-    }
+    if (shouldSave) global.saveFormState();
 
     return true;
   };
@@ -214,9 +212,7 @@
       applyAutoDimensions(index, { shouldSave: false, force });
     }
 
-    if (shouldSave && typeof global.saveFormState === 'function') {
-      global.saveFormState();
-    }
+    if (shouldSave) global.saveFormState();
   };
 
   const setEchelleOrigin = (index, { shouldSave = true, recalculate = true } = {}) => {
@@ -232,9 +228,7 @@
       recalculateCollectionDimensions({ shouldSave: false });
     }
 
-    if (shouldSave && typeof global.saveFormState === 'function') {
-      global.saveFormState();
-    }
+    if (shouldSave) global.saveFormState();
   };
 
   const buildStandardRow = ({ index, label, isCollection }) => {
@@ -321,7 +315,7 @@
         }
       }
 
-      global.saveFormState?.();
+      global.saveFormState();
     });
 
     if (!isCollection) return;
@@ -340,7 +334,7 @@
           applyAutoDimensions(index, { shouldSave: false, force: true });
         }
 
-        global.saveFormState?.();
+        global.saveFormState();
       });
     }
   };
@@ -433,9 +427,7 @@
       recalculateCollectionDimensions({ shouldSave: false });
     }
 
-    if (shouldSave && typeof global.saveFormState === 'function') {
-      global.saveFormState();
-    }
+    if (shouldSave) global.saveFormState();
   }
 
   function getEchellesSelected() {

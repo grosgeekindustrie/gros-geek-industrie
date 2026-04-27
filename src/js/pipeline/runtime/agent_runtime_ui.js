@@ -62,16 +62,16 @@
   function syncResumeResultTab(prefix, lastStatus) {
     if (lastStatus === PIPELINE_STATUS_DONE) {
       const hasResult = prefix === 'tt'
-        ? global.isDndSoloResultAvailable?.()
-        : global.isCollectionSoloResultAvailable?.();
+        ? global.isDndSoloResultAvailable()
+        : global.isCollectionSoloResultAvailable();
 
       if (hasResult) {
-        global.activateSoloTab?.(prefix, 'result', { force: true });
+        global.activateSoloTab(prefix, 'result', { force: true });
         return;
       }
     }
 
-    global.activateSoloTab?.(prefix, 'pipeline', { force: true });
+    global.activateSoloTab(prefix, 'pipeline', { force: true });
   }
 
   function getAgentCorrectionInputValue(prefix, agentId) {
@@ -79,7 +79,7 @@
   }
 
   function setResumePipelineExecutionActive(isActive) {
-    global.setPipelineExecutionActive?.(isActive);
+    global.setPipelineExecutionActive(isActive);
   }
 
   function getContinuationAgentsAfterSelection(prefix, agentId) {
@@ -164,7 +164,7 @@
     const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
     const activePrefix = prefix || global.pfx();
     const actionHandlers = {
-      launch: () => (global.runPipelineWithCacheAware ? global.runPipelineWithCacheAware(activePrefix) : global.startPipeline(activePrefix)),
+      launch: () => global.runPipelineWithCacheAware(activePrefix),
       'rerun-agent': () => rerunAgent(agentId, activePrefix),
       'rerun-suite': () => rerunSuite(agentId, activePrefix),
       'stop-agent': () => stopAgent(agentId, activePrefix),

@@ -44,20 +44,18 @@
     const contentNode = document.getElementById(contentId);
     if (!contentNode) return;
 
-    contentNode.textContent = global.PipelineUIRender?.formatFinalOutputText
-      ? global.PipelineUIRender.formatFinalOutputText(key, content)
-      : content;
+    contentNode.textContent = global.PipelineUIRender.formatFinalOutputText(key, content);
   }
 
   function refreshFinalOutputTabs(prefix) {
     if (prefix === 'tt') {
-      global.refreshDndSoloTabs?.();
-      if (!global.isPipelineExecutionActive?.()) global.activateDndSoloTab?.('result', { force: true });
+      global.refreshDndSoloTabs();
+      if (!global.isPipelineExecutionActive()) global.activateDndSoloTab('result', { force: true });
     }
 
     if (prefix === 'col') {
-      global.refreshCollectionSoloTabs?.();
-      if (!global.isPipelineExecutionActive?.()) global.activateCollectionSoloTab?.('result', { force: true });
+      global.refreshCollectionSoloTabs();
+      if (!global.isPipelineExecutionActive()) global.activateCollectionSoloTab('result', { force: true });
     }
   }
 
@@ -100,7 +98,7 @@
     setFinalSectionContent(`fs-alt-${prefix}`, `fc-alt-${prefix}`, alt, 'alt');
 
     revealFinalOutput(prefix);
-    if (alt) global.showSocialEntryPanel?.(prefix);
+    if (alt) global.showSocialEntryPanel(prefix);
     refreshFinalOutputTabs(prefix);
   }
 

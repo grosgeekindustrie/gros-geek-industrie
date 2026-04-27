@@ -16,16 +16,14 @@
 
   function refreshSoloTabs(prefix) {
     const mode = global.getPipelineModeByPrefix(prefix);
-    const refreshMethodName = global.getPipelineUiConfig(mode)?.tabs?.refreshMethod;
-    const refreshMethod = refreshMethodName ? global[refreshMethodName] : null;
-    refreshMethod?.();
+    const refreshMethodName = global.getPipelineUiConfig(mode).tabs.refreshMethod;
+    global[refreshMethodName]();
   }
 
   function activateSoloTab(prefix, tabId, options = {}) {
     const mode = global.getPipelineModeByPrefix(prefix);
-    const activateMethodName = global.getPipelineUiConfig(mode)?.tabs?.activateMethod;
-    const activateMethod = activateMethodName ? global[activateMethodName] : null;
-    activateMethod?.(tabId, options);
+    const activateMethodName = global.getPipelineUiConfig(mode).tabs.activateMethod;
+    global[activateMethodName](tabId, options);
   }
 
   function getPipelineAgentDomRefs(prefix, agentId) {
@@ -200,7 +198,7 @@
       button.innerHTML = '▶';
     }
 
-    global.setPipelineExecutionActive?.(false);
+    global.setPipelineExecutionActive(false);
 
     const finalStatus = hasError
       ? 'erreur'
@@ -218,8 +216,8 @@
     if (isSoloTabsFlow) {
       refreshSoloTabs(prefix);
       const hasResult = prefix === 'tt'
-        ? global.isDndSoloResultAvailable?.()
-        : global.isCollectionSoloResultAvailable?.();
+        ? global.isDndSoloResultAvailable()
+        : global.isCollectionSoloResultAvailable();
       if (hasResult) {
         activateSoloTab(prefix, 'result', { force: true });
       } else {
@@ -236,7 +234,7 @@
     if (!statusNode) return;
 
     statusNode.textContent = global.getPipelineLaunchSummary(prefix);
-    global.syncStandaloneLaunchButtons?.(prefix);
+    global.syncStandaloneLaunchButtons(prefix);
   }
 
   function refreshPipelineLaunchPanelState(prefix) {
@@ -506,8 +504,8 @@
 
     if (warningBox) warningBox.style.display = 'none';
     if (!preserveCacheStatus) global.setLastCacheStatus('—');
-    global.resetSocialRuntimePanels?.(prefix);
-    global.resetFinalOutputPanels?.(prefix);
+    global.resetSocialRuntimePanels(prefix);
+    global.resetFinalOutputPanels(prefix);
 
     ['titre_valide', 'description_assembled', 'tags', 'tags_raw', 'alt'].forEach((key) => {
       global.state.outputs[key] = '';
@@ -529,7 +527,7 @@
     if (isSoloTabsFlow) {
       const pipelineEl = document.getElementById(`pipeline-${prefix}`);
       if (pipelineEl) pipelineEl.style.display = '';
-      global.setPipelineExecutionActive?.(true);
+      global.setPipelineExecutionActive(true);
       activateSoloTab(prefix, 'pipeline', { force: true });
       refreshSoloTabs(prefix);
       global.showView('form');
@@ -541,8 +539,8 @@
           pipelineEl.style.display = '';
           pipelineBody.appendChild(pipelineEl);
         }
-        global.moveFinalOutputPanelToPipelineBody?.(prefix, pipelineBody);
-        global.moveSocialPanelsToPipelineBody?.(prefix, pipelineBody);
+        global.moveFinalOutputPanelToPipelineBody(prefix, pipelineBody);
+        global.moveSocialPanelsToPipelineBody(prefix, pipelineBody);
       }
 
       const titleEl = document.getElementById('pipelineViewTitle');
@@ -557,7 +555,7 @@
         ctx.textContent = '⟳ Pipeline en cours...';
       }
       global.buildPipelineTimeline();
-      global.setPipelineExecutionActive?.(true);
+      global.setPipelineExecutionActive(true);
       global.showView('pipeline');
     }
 
@@ -617,11 +615,9 @@
     });
   }
 
-  if (typeof global.state !== 'undefined') {
-    const prefixes = global.getPipelinePrefixes();
-    prefixes.forEach((prefix) => getPipelineRunState(prefix));
-    refreshPipelineLaunchPanels();
-  }
+  const prefixes = global.getPipelinePrefixes();
+  prefixes.forEach((prefix) => getPipelineRunState(prefix));
+  refreshPipelineLaunchPanels();
 
   global.PipelineUILaunchRuntime = {
     refreshSoloTabs,
