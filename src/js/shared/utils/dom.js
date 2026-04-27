@@ -3,10 +3,15 @@
 (function initPipelineUIDomUtils(global) {
   global.PipelineUI = global.PipelineUI || {};
 
+  const toDataAttributeName = (name = '') => String(name || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/_/g, '-')
+    .toLowerCase();
+
   const buildDataSelector = (name, value = null) => (
     typeof value === 'string'
-      ? `[data-${name}="${value}"]`
-      : `[data-${name}]`
+      ? `[data-${toDataAttributeName(name)}="${value}"]`
+      : `[data-${toDataAttributeName(name)}]`
   );
 
   const getByData = (name, value = null, root = document) => (
@@ -22,6 +27,7 @@
   );
 
   global.PipelineUIDom = {
+    toDataAttributeName,
     buildDataSelector,
     getByData,
     getAllByData,

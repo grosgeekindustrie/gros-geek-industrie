@@ -89,7 +89,13 @@
     }
   }
 
-  global.PipelineUITitles = { autoRegenTitre };
+  function rerollTitre(text, itemId, agentId = 'titre') {
+    const itemEl = document.getElementById(itemId);
+    if (!itemEl) return;
+    autoRegenTitre(text, 'remplacement manuel', itemEl, agentId);
+  }
+
+  global.PipelineUITitles = { autoRegenTitre, rerollTitre };
   global.PipelineUI.title = global.PipelineUI.title || {};
   Object.assign(global.PipelineUI.title, global.PipelineUITitles);
 })(window);
