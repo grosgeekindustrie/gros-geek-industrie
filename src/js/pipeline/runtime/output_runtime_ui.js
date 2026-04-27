@@ -295,10 +295,6 @@
     copyOut,
     copyAllOutputs,
     copySection,
-    buildFinalOutputExport,
-    getSoloExportMeta,
-    getSoloFinalOutputAgentLabels,
-    buildSoloFinalOutputFiles,
     exportFinalOutputs,
     copyAll,
   };

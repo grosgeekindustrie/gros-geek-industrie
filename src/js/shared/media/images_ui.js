@@ -344,10 +344,6 @@
     setupImageHandlers,
     processImages,
     renderThumbs,
-    removeImageAt,
-    duplicateImageAt,
-    openCropForImage,
-    openPayloadDebug,
   };
 
   global.PipelineUI.images = global.PipelineUI.images || {};
