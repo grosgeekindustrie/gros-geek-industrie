@@ -8,17 +8,11 @@
   const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
   const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
-  const LEGACY_FORM_STORAGE_KEY_PREFIX = 'pipeline_form_';
   const DEFAULT_SUBJECT_NAME = 'Figurine';
   const DEFAULT_SCULPTOR_NAME = 'Inconnu';
   const DEFAULT_POSE_NAME = 'MUSEUM';
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
-  const LEGACY_FORM_STORAGE_KEYS_BY_MODE = Object.freeze({
-    tabletop: `${LEGACY_FORM_STORAGE_KEY_PREFIX}tabletop`,
-    collection: `${LEGACY_FORM_STORAGE_KEY_PREFIX}collection`,
-  });
-  const LEGACY_RULES_STORAGE_KEYS = Object.freeze(['pipeline_rules']);
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -128,37 +122,13 @@
     }
   };
 
-  const readStoredJSON = (keys, fallback) => {
-    const storageKeys = Array.isArray(keys) ? keys : [keys];
-
-    for (const key of storageKeys) {
-      const entry = getStoredJSONEntry(key);
-      if (entry.found) return entry.value;
-    }
-
-    return fallback;
+  const readStoredJSON = (key, fallback) => {
+    const entry = getStoredJSONEntry(key);
+    return entry.found ? entry.value : fallback;
   };
 
   const writeStoredJSON = (key, value) => {
     localStorage.setItem(key, JSON.stringify(value));
-  };
-
-  const migrateStoredJSON = (primaryKey, legacyKeys = [], fallback = null) => {
-    const primaryEntry = getStoredJSONEntry(primaryKey);
-    if (primaryEntry.found) return primaryEntry.value;
-
-    for (const legacyKey of legacyKeys) {
-      const legacyEntry = getStoredJSONEntry(legacyKey);
-      if (!legacyEntry.found) continue;
-
-      writeStoredJSON(primaryKey, legacyEntry.value);
-      legacyKeys.forEach((key) => {
-        if (key !== primaryKey) localStorage.removeItem(key);
-      });
-      return legacyEntry.value;
-    }
-
-    return fallback;
   };
 
   const collectFieldValues = (fieldIds) => fieldIds.reduce((data, id) => {
@@ -628,11 +598,7 @@
     renderDeclarativeFormCatalogs({ shouldSave: false });
 
     try {
-      const data = migrateStoredJSON(
-        `${FORM_STORAGE_KEY_PREFIX}${currentMode}`,
-        [LEGACY_FORM_STORAGE_KEYS_BY_MODE[currentMode]],
-        null,
-      );
+      const data = readStoredJSON(`${FORM_STORAGE_KEY_PREFIX}${currentMode}`, null);
       if (!data) return;
 
       if (currentMode === 'tabletop') {
@@ -674,14 +640,12 @@
           setElementValue('col-fParticularites', data._particularites);
         }
 
-        const descriptionFigurineValue = data._descriptionFigurine ?? data['col-fNotes'];
-        if (descriptionFigurineValue !== undefined) {
-          setElementValue('col-fDescriptionFigurine', descriptionFigurineValue);
+        if (data._descriptionFigurine !== undefined) {
+          setElementValue('col-fDescriptionFigurine', data._descriptionFigurine);
         }
 
-        const resumePersonnageValue = data._resumePersonnage ?? data._contextePerso;
-        if (resumePersonnageValue !== undefined) {
-          setElementValue('col-fResumePersonnage', resumePersonnageValue);
+        if (data._resumePersonnage !== undefined) {
+          setElementValue('col-fResumePersonnage', data._resumePersonnage);
         }
 
         if (data._connexesPrioritaires !== undefined) {
@@ -745,7 +709,7 @@
   function loadPersistedData() {
     const state = getState();
     try {
-      const rules = migrateStoredJSON('pipeline.rules', LEGACY_RULES_STORAGE_KEYS, null);
+      const rules = readStoredJSON('pipeline.rules', null);
       if (rules) {
         state.persistentRules = rules;
         Object.keys(state.persistentRules).forEach((id) => global.refreshRules(id));
