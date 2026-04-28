@@ -40,6 +40,10 @@
     ERROR: 'error',
   });
 
+  const STORAGE_KEYS = Object.freeze({
+    APP_SETTINGS: 'pipeline.settings',
+  });
+
   const PIPELINE_RUN_STATUS = Object.freeze({
     RUNNING: 'en cours',
     DONE: 'termine',
@@ -74,6 +78,7 @@
     PIPELINE_MODE_BY_PREFIX,
     PIPELINE_PREFIX_BY_MODE,
     PIPELINE_TIMELINE_STATUS,
+    STORAGE_KEYS,
     PIPELINE_RUN_STATUS,
     PIPELINE_AGENT_STATUS_TEXT,
     LOG_PREFIXES,
