@@ -13,6 +13,7 @@
   const DEFAULT_POSE_NAME = 'MUSEUM';
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
+  const PIPELINE_RULES_STORAGE_KEY = 'pipeline.rules';
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -42,6 +43,13 @@
     'col-fLienPerso',
     'col-fConnexesPrioritaires',
   ];
+  const COLLECTION_PERSISTED_TEXT_FIELD_STORAGE_MAP = {
+    _particularites: 'col-fParticularites',
+    _descriptionFigurine: 'col-fDescriptionFigurine',
+    _resumePersonnage: 'col-fResumePersonnage',
+    _connexesPrioritaires: 'col-fConnexesPrioritaires',
+    _lienPerso: 'col-fLienPerso',
+  };
   const BIBLIO_FILES = ['tags', 'accroches', 'objectif', 'psycho', 'titres', 'bibliotheque-semantique'];
   const formFieldsData = global.PipelineUIDataFormFields || {};
   const formCatalogsData = global.PipelineUIDataFormCatalogs || {};
@@ -111,6 +119,15 @@
   const getCheckedValues = (selector) => [...document.querySelectorAll(selector)].map((input) => input.value);
   const formatCommaList = (values = []) => values.join(', ');
   const saveFormStateIfNeeded = () => saveFormState();
+  const getSelectedScaleOriginIndex = (name) => {
+    const checked = document.querySelector(`input[name="${name}"]:checked`);
+    return checked ? Number(checked.value) : null;
+  };
+  const setScaleOriginFromStorage = (originIndex) => {
+    if (Number.isInteger(originIndex)) {
+      global.setEchelleOrigin(originIndex, { shouldSave: false, recalculate: false });
+    }
+  };
 
   const getStoredJSONEntry = (key) => {
     try {
@@ -191,6 +208,51 @@
 
   const writeAppSettings = (nextSettings) => {
     writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
+  };
+
+  const saveCollectionPersistedTextFields = (data) => {
+    Object.entries(COLLECTION_PERSISTED_TEXT_FIELD_STORAGE_MAP).forEach(([storageKey, fieldId]) => {
+      data[storageKey] = getElementValue(fieldId);
+    });
+  };
+
+  const restoreCollectionPersistedTextFields = (data) => {
+    Object.entries(COLLECTION_PERSISTED_TEXT_FIELD_STORAGE_MAP).forEach(([storageKey, fieldId]) => {
+      if (data[storageKey] !== undefined) {
+        setElementValue(fieldId, data[storageKey]);
+      }
+    });
+  };
+
+  const saveCollectionCustomScales = (data, echellesApi) => {
+    data._customEchelles = [];
+    for (let index = 0; index < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); index += 1) {
+      const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
+      data._customEchelles.push({
+        checked: isElementChecked(`col-ec${scaleIndex}`),
+        label: getElementValue(`col-elabel${scaleIndex}`),
+        dim: getElementValue(`col-ed${scaleIndex}`),
+        source: document.getElementById(`col-ei${scaleIndex}`)?.dataset?.dimensionSource || '',
+      });
+    }
+  };
+
+  const restoreCollectionCustomScales = (customScales, echellesApi) => {
+    if (!Array.isArray(customScales)) return;
+
+    customScales.forEach((entry, index) => {
+      const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
+      const checkbox = getElementById(`col-ec${scaleIndex}`);
+      if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
+      if (checkbox && entry.checked) {
+        checkbox.checked = true;
+        global.toggleEch(scaleIndex, { shouldSave: false });
+      }
+      if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
+      if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
+        global.PipelineUIEchelles.setRowDimensionSource(scaleIndex, entry.source);
+      }
+    });
   };
 
   const renderSelectOptions = (selectId, options = [], selectedValue = null) => {
@@ -364,17 +426,48 @@
     writeAppSettings(settings);
   };
 
+  const parseCommaSeparatedElementValues = (id) => getElementValue(id)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const setFetchUiLoadingState = ({ button, status }) => {
+    if (!button || !status) return;
+    button.disabled = true;
+    button.textContent = FETCH_STATUS.loadingLabel;
+    status.style.display = 'block';
+    status.style.color = 'var(--muted)';
+    status.textContent = FETCH_STATUS.loadingText;
+  };
+
+  const setFetchUiSuccessState = ({ status, chars }) => {
+    if (!status) return;
+    status.style.color = 'var(--success)';
+    status.textContent = `${FETCH_STATUS.successTextPrefix} ${chars} ${FETCH_STATUS.successTextSuffix}`;
+  };
+
+  const setFetchUiErrorState = ({ status, message }) => {
+    if (!status) return;
+    status.style.color = 'var(--error)';
+    status.textContent = `${FETCH_STATUS.errorTextPrefix} ${message}`;
+  };
+
+  const resetFetchButtonState = (button) => {
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = FETCH_STATUS.idleLabel;
+  };
+
+  const getDominantProfileFromStateOutputs = (outputs = {}) => {
+    const match = (outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
+    return match ? match[1].trim() : DEFAULT_PROFILE_NAME;
+  };
+
   function getArchetypes() {
     if (getCurrentMode() !== 'tabletop') return '';
 
-    const archetypes = getElementValue('tt-fArchetypes')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const seo = getElementValue('tt-fArchSeo')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const archetypes = parseCommaSeparatedElementValues('tt-fArchetypes');
+    const seo = parseCommaSeparatedElementValues('tt-fArchSeo');
     const parts = [];
 
     if (archetypes.length) parts.push(`Archetypes: ${archetypes.join(', ')}`);
@@ -472,11 +565,7 @@
     const status = getElementById('fetchStatus-col');
     if (!btn || !status) return;
 
-    btn.disabled = true;
-    btn.textContent = FETCH_STATUS.loadingLabel;
-    status.style.display = 'block';
-    status.style.color = 'var(--muted)';
-    status.textContent = FETCH_STATUS.loadingText;
+    setFetchUiLoadingState({ button: btn, status });
 
     try {
       const res = await fetch(`/fetch-url?url=${encodeURIComponent(url)}`);
@@ -484,17 +573,15 @@
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       setElementValue('col-fResumePersonnage', data.text);
-      status.style.color = 'var(--success)';
-      status.textContent = `${FETCH_STATUS.successTextPrefix} ${data.chars} ${FETCH_STATUS.successTextSuffix}`;
+      setFetchUiSuccessState({ status, chars: data.chars });
       saveFormState();
       global.showToast(FETCH_STATUS.successToast, FETCH_STATUS.successColor, 3000);
     } catch (error) {
-      status.style.color = 'var(--error)';
-      status.textContent = `${FETCH_STATUS.errorTextPrefix} ${error.message}`;
-      global.showToast(`${FETCH_STATUS.errorToastPrefix}${error.message}`, FETCH_STATUS.errorColor, 10000);
+      const errorMessage = error?.message || 'Erreur inconnue';
+      setFetchUiErrorState({ status, message: errorMessage });
+      global.showToast(`${FETCH_STATUS.errorToastPrefix}${errorMessage}`, FETCH_STATUS.errorColor, 10000);
     } finally {
-      btn.disabled = false;
-      btn.textContent = FETCH_STATUS.idleLabel;
+      resetFetchButtonState(btn);
     }
   }
 
@@ -538,10 +625,7 @@
       selectedAccrocheText: state.selectedAccroche?.text || '',
       selectedCTAText: state.selectedCTA?.text || '',
       ...buildPipelinePromptContext(pipelineRun),
-      profil_dominant: (() => {
-        const match = (state.outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
-        return match ? match[1].trim() : DEFAULT_PROFILE_NAME;
-      })(),
+      profil_dominant: getDominantProfileFromStateOutputs(state.outputs),
     };
 
     if (currentMode === 'tabletop') {
@@ -563,10 +647,7 @@
     if (currentMode === 'tabletop') {
       data._echelles = collectScaleEntries('tt', (echellesApi.ECHELLES || []).length);
       data._dynamicEchelles = echellesApi.isDynamicScaleEnabled?.('tt') || false;
-      data._originEchelleIndex = (() => {
-        const checked = document.querySelector('input[name="tt-origin-scale"]:checked');
-        return checked ? Number(checked.value) : null;
-      })();
+      data._originEchelleIndex = getSelectedScaleOriginIndex('tt-origin-scale');
       data._genres = getTabletopGenreValues();
       data._buzz = isElementChecked('tt-fBuzz');
       data._buzzNote = getElementValue('tt-fBuzzNote');
@@ -577,27 +658,11 @@
       data._mediums = getCollectionMediumValues();
       data._mediumSubcategories = getCollectionMediumSubcategoryValues();
       data._genres = getCollectionGenreValues();
-      data._particularites = getElementValue('col-fParticularites');
-      data._descriptionFigurine = getElementValue('col-fDescriptionFigurine');
-      data._resumePersonnage = getElementValue('col-fResumePersonnage');
-      data._connexesPrioritaires = getElementValue('col-fConnexesPrioritaires');
-      data._lienPerso = getElementValue('col-fLienPerso');
+      saveCollectionPersistedTextFields(data);
       data._buzz = isElementChecked('col-fBuzzCollection');
       data._buzzNote = getElementValue('col-fBuzzCollectionNote');
-      data._originEchelleIndex = (() => {
-        const checked = document.querySelector('input[name="col-origin-scale"]:checked');
-        return checked ? Number(checked.value) : null;
-      })();
-      data._customEchelles = [];
-      for (let index = 0; index < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); index += 1) {
-        const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
-        data._customEchelles.push({
-          checked: isElementChecked(`col-ec${scaleIndex}`),
-          label: getElementValue(`col-elabel${scaleIndex}`),
-          dim: getElementValue(`col-ed${scaleIndex}`),
-          source: document.getElementById(`col-ei${scaleIndex}`)?.dataset?.dimensionSource || '',
-        });
-      }
+      data._originEchelleIndex = getSelectedScaleOriginIndex('col-origin-scale');
+      saveCollectionCustomScales(data, echellesApi);
     }
 
     writeStoredJSON(`${FORM_STORAGE_KEY_PREFIX}${currentMode}`, data);
@@ -620,9 +685,7 @@
         restoreFieldValues(TABLETOP_FORM_FIELDS, data);
         restoreScaleEntries(data._echelles, 'tt');
 
-        if (Number.isInteger(data._originEchelleIndex)) {
-          global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
-        }
+        setScaleOriginFromStorage(data._originEchelleIndex);
 
         setCheckedValues(`#${TABLETOP_DYNAMIC_IDS.genreGroup} input`, data._genres);
 
@@ -658,25 +721,7 @@
           shouldSave: false,
         });
 
-        if (data._particularites !== undefined) {
-          setElementValue('col-fParticularites', data._particularites);
-        }
-
-        if (data._descriptionFigurine !== undefined) {
-          setElementValue('col-fDescriptionFigurine', data._descriptionFigurine);
-        }
-
-        if (data._resumePersonnage !== undefined) {
-          setElementValue('col-fResumePersonnage', data._resumePersonnage);
-        }
-
-        if (data._connexesPrioritaires !== undefined) {
-          setElementValue('col-fConnexesPrioritaires', data._connexesPrioritaires);
-        }
-
-        if (data._lienPerso !== undefined) {
-          setElementValue('col-fLienPerso', data._lienPerso);
-        }
+        restoreCollectionPersistedTextFields(data);
 
         if (data._buzz !== undefined) {
           const buzzEl = getElementById('col-fBuzzCollection');
@@ -690,27 +735,10 @@
           setElementValue('col-fBuzzCollectionNote', data._buzzNote);
         }
 
-        if (Array.isArray(data._customEchelles)) {
-          data._customEchelles.forEach((entry, index) => {
-            const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
-            const checkbox = getElementById(`col-ec${scaleIndex}`);
-            if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
-            if (checkbox && entry.checked) {
-              checkbox.checked = true;
-              global.toggleEch(scaleIndex, { shouldSave: false });
-            }
-            if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
-            if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
-              global.PipelineUIEchelles.setRowDimensionSource(scaleIndex, entry.source);
-            }
-          });
-        }
-
-        if (Number.isInteger(data._originEchelleIndex)) {
-          global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
-        }
+        restoreCollectionCustomScales(data._customEchelles, echellesApi);
+        setScaleOriginFromStorage(data._originEchelleIndex);
       }
-    } catch (error) {}
+    } catch (_error) {}
   }
 
   function attachFormPersistence() {
@@ -734,12 +762,12 @@
   function loadPersistedData() {
     const state = getState();
     try {
-      const rules = readStoredJSON('pipeline.rules', null);
+      const rules = readStoredJSON(PIPELINE_RULES_STORAGE_KEY, null);
       if (rules) {
         state.persistentRules = rules;
         Object.keys(state.persistentRules).forEach((id) => global.refreshRules(id));
       }
-    } catch (error) {}
+    } catch (_error) {}
 
     try {
       const settings = readAppSettings();
@@ -759,8 +787,36 @@
         global._restoreView = settings.view;
         global._restoreMode = settings.mode;
       }
-    } catch (error) {}
+    } catch (_error) {}
   }
+
+  const formatMarkdownFilePath = (family, mode, fileName) => `${family}/${mode}/${fileName}.md`;
+  const loadMarkdownFile = async ({ filePath, onSuccess, missing }) => {
+    try {
+      const response = await fetch(`/files/${filePath}`);
+      if (!response.ok) {
+        missing.push(filePath);
+        return;
+      }
+
+      const markdownContent = await response.text();
+      onSuccess(markdownContent);
+    } catch (_error) {
+      missing.push(filePath);
+    }
+  };
+
+  const setRunButtonMissingState = (button, mode) => {
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
+  };
+
+  const setRunButtonReadyState = (button) => {
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = '\u25b6';
+  };
 
   async function loadAllFiles(silent = false) {
     const state = getState();
@@ -776,28 +832,24 @@
 
     await Promise.all([
       ...promptFiles.map(async ([agentId, fileName]) => {
-        try {
-          const res = await fetch(`/files/prompts/${mode}/${fileName}.md`);
-          if (!res.ok) {
-            missing.push(`prompts/${mode}/${fileName}.md`);
-            return;
-          }
-          state.promptsByMode[mode][agentId] = await res.text();
-        } catch (error) {
-          missing.push(`prompts/${mode}/${fileName}.md`);
-        }
+        const filePath = formatMarkdownFilePath('prompts', mode, fileName);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.promptsByMode[mode][agentId] = markdownContent;
+          },
+        });
       }),
       ...BIBLIO_FILES.map(async (key) => {
-        try {
-          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-          if (!res.ok) {
-            missing.push(`biblios/${mode}/${key}.md`);
-            return;
-          }
-          state.bibliosByMode[mode][key] = await res.text();
-        } catch (error) {
-          missing.push(`biblios/${mode}/${key}.md`);
-        }
+        const filePath = formatMarkdownFilePath('biblios', mode, key);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.bibliosByMode[mode][key] = markdownContent;
+          },
+        });
       }),
     ]);
 
@@ -812,13 +864,9 @@
         global.showToast(`${missing.length} ${MISSING_FILES_MESSAGES.toastPrefix} ${mode}`, FETCH_STATUS.errorColor, 10000);
       }
 
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
-      }
-    } else if (btn) {
-      btn.disabled = false;
-      btn.textContent = '\u25b6';
+      setRunButtonMissingState(btn, mode);
+    } else {
+      setRunButtonReadyState(btn);
     }
   }
 
