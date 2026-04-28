@@ -34,6 +34,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/ui/shared/prompt_biblio_ui.js',
   ]),
   uiNavigation: Object.freeze([
+    'pipeline/ui/shared/echelles_ui.js',
     'pipeline/ui/shared/forms_ui.js',
     'pipeline/ui/shared/stepper_core_ui.js',
     'pipeline/ui/shared/solo_tabs_core_ui.js',

@@ -12,7 +12,6 @@ const sharedBootstrapManifest = Object.freeze({
     'shared/utils/runtime_cache.js',
   ]),
   scripts: Object.freeze([
-    'shared/media/echelles_ui.js',
     'shared/media/image_tools_ui.js',
     'shared/storage/indexeddb_ui.js',
     'shared/media/images_ui.js',
