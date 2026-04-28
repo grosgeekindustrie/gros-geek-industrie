@@ -7,14 +7,19 @@
 window.PipelineUI = window.PipelineUI || {};
 window.PipelineUIShell = window.PipelineUIShell || {};
 const sharedConstants = window.PipelineUISharedConstants || {};
+const storage = window.PipelineUIStorage || {};
 const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
   TABLETOP: 'tabletop',
   COLLECTION: 'collection',
 };
-const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
-  APP_SETTINGS: 'pipeline.settings',
-};
-const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
+const updateAppSettings = storage.updateAppSettings || ((updater) => {
+  let settings = {};
+  try {
+    settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+  } catch (_error) {}
+  updater(settings);
+  localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+});
 
 var currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
@@ -22,30 +27,21 @@ const getModeUiConfig = (mode = currentMode) => (
   getPipelineUiConfig(mode)
 );
 const getModePrefix = (mode = currentMode) => getPipelinePrefix(mode);
-const readAppSettings = () => {
-  try {
-    return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
-  } catch (_error) {
-    return {};
-  }
-};
-const writeAppSettings = (nextSettings) => {
-  localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-};
+const normalizeMode = (mode) => (
+  mode === PIPELINE_MODES.COLLECTION ? PIPELINE_MODES.COLLECTION : PIPELINE_MODES.TABLETOP
+);
 
 function pfx() {
   return getModePrefix(currentMode);
 }
 
-function switchMode(mode) {
-  if (mode === currentMode) return;
-
-  currentMode = mode;
-  state.mode = mode;
+function applyModeState(mode) {
+  currentMode = normalizeMode(mode);
+  state.mode = currentMode;
   window.currentMode = currentMode;
 
-  const isTabletop = mode === PIPELINE_MODES.TABLETOP;
-  const modeUiConfig = getModeUiConfig(mode);
+  const isTabletop = currentMode === PIPELINE_MODES.TABLETOP;
+  const modeUiConfig = getModeUiConfig(currentMode);
   const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
   const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
 
@@ -76,6 +72,14 @@ function switchMode(mode) {
 
   if (tabletopRoot) tabletopRoot.style.display = isTabletop ? '' : 'none';
   if (collectionRoot) collectionRoot.style.display = isTabletop ? 'none' : '';
+}
+
+function switchMode(mode) {
+  const nextMode = normalizeMode(mode);
+  if (nextMode === currentMode) return;
+
+  applyModeState(nextMode);
+  const isTabletop = nextMode === PIPELINE_MODES.TABLETOP;
 
   rebuildModeUi({
     silentFileLoad: true,
@@ -88,9 +92,9 @@ function switchMode(mode) {
     modeToastColor: isTabletop ? '#e8c547' : '#7eb8f7',
   });
 
-  const settings = readAppSettings();
-  settings.mode = mode;
-  writeAppSettings(settings);
+  updateAppSettings((settings) => {
+    settings.mode = nextMode;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -119,5 +123,10 @@ Object.assign(window.PipelineUIShell, {
   get currentMode() { return currentMode; },
   get state() { return state; },
   pfx,
+  applyModeState,
   switchMode,
+});
+
+Object.assign(window, {
+  applyModeState,
 });

@@ -41,7 +41,10 @@
   });
 
   const STORAGE_KEYS = Object.freeze({
+    ROOT_PREFIX: 'pipeline.',
     APP_SETTINGS: 'pipeline.settings',
+    PIPELINE_RULES: 'pipeline.rules',
+    FORM_STATE_PREFIX: 'pipeline.form.',
   });
 
   const PIPELINE_RUN_STATUS = Object.freeze({

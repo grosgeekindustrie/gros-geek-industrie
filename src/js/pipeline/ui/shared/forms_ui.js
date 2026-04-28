@@ -5,19 +5,22 @@
 // dans les prompts. Toute evolution ici peut impacter plusieurs agents a la fois.
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const storage = global.PipelineUIStorage || {};
   const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
     APP_SETTINGS: 'pipeline.settings',
+    PIPELINE_RULES: 'pipeline.rules',
+    FORM_STATE_PREFIX: 'pipeline.form.',
   };
 
   const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
   const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
-  const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
+  const FORM_STORAGE_KEY_PREFIX = STORAGE_KEYS.FORM_STATE_PREFIX;
   const DEFAULT_SUBJECT_NAME = 'Figurine';
   const DEFAULT_SCULPTOR_NAME = 'Inconnu';
   const DEFAULT_POSE_NAME = 'MUSEUM';
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
-  const PIPELINE_RULES_STORAGE_KEY = 'pipeline.rules';
+  const PIPELINE_RULES_STORAGE_KEY = STORAGE_KEYS.PIPELINE_RULES;
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -108,6 +111,29 @@
   const getPfx = () => global.pfx();
   const getEchellesApi = () => global.PipelineUIEchelles || {};
   const getConfig = () => global.PipelineUIConfig;
+  const readStoredJSON = storage.readStoredJSON || ((key, fallback) => {
+    try {
+      const rawValue = localStorage.getItem(key);
+      return rawValue ? JSON.parse(rawValue) : fallback;
+    } catch (_error) {
+      return fallback;
+    }
+  });
+  const writeStoredJSON = storage.writeStoredJSON || ((key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  });
+  const readAppSettings = storage.readAppSettings || (() => readStoredJSON(APP_SETTINGS_STORAGE_KEY, {}));
+  const writeAppSettings = storage.writeAppSettings || ((nextSettings) => {
+    writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
+  });
+  const updateAppSettings = storage.updateAppSettings || ((updater) => {
+    const settings = readAppSettings();
+    updater(settings);
+    writeAppSettings(settings);
+  });
+  const getFormStorageKey = storage.getFormStorageKey || ((mode) => `${FORM_STORAGE_KEY_PREFIX}${mode}`);
+  const readPersistentRules = storage.readPersistentRules || (() => readStoredJSON(PIPELINE_RULES_STORAGE_KEY, null));
+  const setPendingRestore = storage.setPendingRestore || (() => {});
   const getElementById = (id) => document.getElementById(id);
   const getElementValue = (id, fallback = '') => getElementById(id)?.value || fallback;
   const getTrimmedElementValue = (id, fallback = '') => getElementById(id)?.value?.trim() || fallback;
@@ -131,25 +157,6 @@
     if (Number.isInteger(originIndex)) {
       global.setEchelleOrigin(originIndex, { shouldSave: false, recalculate: false });
     }
-  };
-
-  const getStoredJSONEntry = (key) => {
-    try {
-      const rawValue = localStorage.getItem(key);
-      if (!rawValue) return { found: false, value: null };
-      return { found: true, value: JSON.parse(rawValue) };
-    } catch (error) {
-      return { found: false, value: null };
-    }
-  };
-
-  const readStoredJSON = (key, fallback) => {
-    const entry = getStoredJSONEntry(key);
-    return entry.found ? entry.value : fallback;
-  };
-
-  const writeStoredJSON = (key, value) => {
-    localStorage.setItem(key, JSON.stringify(value));
   };
 
   const collectFieldValues = (fieldIds) => fieldIds.reduce((data, id) => {
@@ -206,18 +213,6 @@
         element.addEventListener('change', saveFormState);
       }
     });
-  };
-
-  const readAppSettings = () => readStoredJSON(APP_SETTINGS_STORAGE_KEY, {});
-
-  const writeAppSettings = (nextSettings) => {
-    writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
-  };
-
-  const updateAppSettings = (updater) => {
-    const settings = readAppSettings();
-    updater(settings);
-    writeAppSettings(settings);
   };
 
   const saveCollectionPersistedTextFields = (data) => {
@@ -674,7 +669,7 @@
       saveCollectionCustomScales(data, echellesApi);
     }
 
-    writeStoredJSON(`${FORM_STORAGE_KEY_PREFIX}${currentMode}`, data);
+    writeStoredJSON(getFormStorageKey(currentMode), data);
   }
 
   function loadFormState() {
@@ -683,7 +678,7 @@
     renderDeclarativeFormCatalogs({ shouldSave: false });
 
     try {
-      const data = readStoredJSON(`${FORM_STORAGE_KEY_PREFIX}${currentMode}`, null);
+      const data = readStoredJSON(getFormStorageKey(currentMode), null);
       if (!data) return;
 
       if (currentMode === 'tabletop') {
@@ -771,7 +766,7 @@
   function loadPersistedData() {
     const state = getState();
     try {
-      const rules = readStoredJSON(PIPELINE_RULES_STORAGE_KEY, null);
+      const rules = readPersistentRules();
       if (rules) {
         state.persistentRules = rules;
         Object.keys(state.persistentRules).forEach((id) => global.refreshRules(id));
@@ -787,15 +782,10 @@
       if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
 
       if (settings.mode && settings.mode !== getCurrentMode()) {
-        global.currentMode = settings.mode;
-        state.mode = settings.mode;
-        document.body.classList.toggle('mode-collection', settings.mode === 'collection');
+        global.applyModeState?.(settings.mode);
       }
 
-      if (settings.view && settings.view === 'form') {
-        global._restoreView = settings.view;
-        global._restoreMode = settings.mode;
-      }
+      setPendingRestore({ view: settings.view, mode: settings.mode });
     } catch (_error) {}
   }
 

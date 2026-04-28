@@ -6,6 +6,7 @@
 // Partagee entre le boot initial et les rebuilds au switch de mode pour eviter
 // que plusieurs points d'entree rejouent l'init chacun de leur cote.
   global.PipelineUI = global.PipelineUI || {};
+  const storage = global.PipelineUIStorage || {};
 
   function getBootstrapPipelinePrefixes() {
     return global.getPipelinePrefixes();
@@ -33,10 +34,8 @@
   }
 
   function restoreBootstrapView() {
-    if (global._restoreView === 'form' && global._restoreMode) {
-      global.selectMode(global._restoreMode);
-      global._restoreView = null;
-    }
+    const restoreState = storage.consumePendingRestore?.();
+    if (restoreState?.view === 'form' && restoreState.mode) global.selectMode(restoreState.mode);
   }
 
   function revealBootstrapUi() {

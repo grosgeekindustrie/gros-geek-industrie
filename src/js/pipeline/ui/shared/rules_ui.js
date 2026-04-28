@@ -4,10 +4,14 @@
 // Petit bridge DOM/localStorage volontairement isole pour eviter de laisser ce reliquat
 // dans le boot principal.
   global.PipelineUI = global.PipelineUI || {};
+  const storage = global.PipelineUIStorage || {};
+  const writePersistentRules = storage.writePersistentRules || ((rules) => {
+    localStorage.setItem('pipeline.rules', JSON.stringify(rules));
+  });
   let rulesDelegationBound = false;
 
   function savePersistentRules() {
-    localStorage.setItem('pipeline.rules', JSON.stringify(global.state.persistentRules));
+    writePersistentRules(global.state.persistentRules);
   }
 
   function renderPersistentRules(agentId, rules) {

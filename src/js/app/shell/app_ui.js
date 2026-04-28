@@ -5,6 +5,7 @@
 // À garder orienté shell / UX, sans réembarquer le coeur pipeline.
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const storage = global.PipelineUIStorage || {};
   const dom = global.PipelineUIDom || {};
   const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
     TABLETOP: 'tabletop',
@@ -13,16 +14,21 @@
   const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
     WAIT: 'wait',
   };
-  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
-    APP_SETTINGS: 'pipeline.settings',
-  };
-
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
   const getPfx = () => global.pfx();
   const getAgents = () => global.getPipelineAgents();
   const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig(mode);
   const getModes = () => global.getPipelineModes();
+  const updateAppSettings = storage.updateAppSettings || ((updater) => {
+    let settings = {};
+    try {
+      settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+    } catch (_error) {}
+    updater(settings);
+    localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+  });
+  const clearPipelineStorage = storage.clearPipelineStorage || (() => localStorage.clear());
 
   const callModeUiMethod = (mode, section, action, ...args) => {
     const methodName = getModeUiConfig(mode)[section][`${action}Method`];
@@ -69,7 +75,6 @@
   const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
   const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
   const AGENT_TITLE_EMOJI_PATTERN = /[🔍🖼️📊🔖🏷️📝]/gu;
-  const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
 
   const buildPipelineActionRequest = (trigger) => ({
     action: String(trigger.dataset.pipelineAction || '').trim(),
@@ -151,18 +156,6 @@
     'toggle-buzz-collection': () => global.toggleBuzzCollection?.(),
     'toggle-license': () => global.toggleLicense?.(),
   });
-
-  const readAppSettings = () => {
-    try {
-      return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
-    } catch (_error) {
-      return {};
-    }
-  };
-
-  const writeAppSettings = (nextSettings) => {
-    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-  };
 
   const handleDelegatedUiActionClick = (event) => {
     const overlay = dom.getClosestByData?.(event.target, 'overlayClose');
@@ -279,7 +272,7 @@
 
   function clearAllStorage() {
     if (!confirm(STORAGE_CLEAR_CONFIRM)) return;
-    localStorage.clear();
+    clearPipelineStorage();
     getState().persistentRules = {};
     getAgents().forEach((agent) => global.refreshRules(agent.id));
     showToast(STORAGE_CLEAR_SUCCESS);
@@ -321,9 +314,9 @@
     syncHeaderBackAction();
 
     if (name !== 'pipeline') {
-      const settings = readAppSettings();
-      settings.view = name;
-      writeAppSettings(settings);
+      updateAppSettings((settings) => {
+        settings.view = name;
+      });
     }
   }
 
@@ -459,9 +452,9 @@
     const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
     if (!apiKey) return;
 
-    const settings = readAppSettings();
-    settings.apiKey = apiKey;
-    writeAppSettings(settings);
+    updateAppSettings((settings) => {
+      settings.apiKey = apiKey;
+    });
   }
 
 
