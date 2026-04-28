@@ -440,8 +440,9 @@
       );
     });
 
-    navigator.clipboard.writeText(lines.join('\n'));
-    global.showToast('Rapport coûts/tokens copié ✓');
+    navigator.clipboard.writeText(lines.join('\n'))
+      .then(() => global.showToast('Rapport coûts/tokens copié ✓'))
+      .catch(() => global.showToast('Copie impossible', '#ff4757'));
   }
 
   global.PipelineUICostRuntime = {

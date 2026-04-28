@@ -6,12 +6,18 @@
   const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
   const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
   const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
+  const COPY_FAILED_MESSAGE = 'Copie impossible';
   const SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX = Object.freeze({
     tt: 'tabletop',
     col: 'collection',
   });
   const SOLO_EXPORT_FALLBACK_AUTHOR = 'unknown_sculptor';
   const getFinalDescriptionOutput = () => global.state.outputs.description_assembled || '';
+  const copyTextToClipboard = (text, successMessage) => {
+    navigator.clipboard.writeText(text)
+      .then(() => global.showToast(successMessage))
+      .catch(() => global.showToast(COPY_FAILED_MESSAGE, '#ff4757'));
+  };
 
   function getOutputText(prefix, agentId) {
     const outputNode = document.getElementById(`${prefix}-out-${agentId}`);
@@ -104,8 +110,7 @@
 
   function copyOut(agentId) {
     const prefix = global.pfx();
-    navigator.clipboard.writeText(getOutputText(prefix, agentId));
-    global.showToast('Copie OK');
+    copyTextToClipboard(getOutputText(prefix, agentId), 'Copie OK');
   }
 
   function copyAllOutputs() {
@@ -124,13 +129,11 @@
       return;
     }
 
-    navigator.clipboard.writeText(parts.join('\n\n'));
-    global.showToast(COPY_ALL_OUTPUTS_SUCCESS(parts.length));
+    copyTextToClipboard(parts.join('\n\n'), COPY_ALL_OUTPUTS_SUCCESS(parts.length));
   }
 
   function copySection(key) {
-    navigator.clipboard.writeText(global.state.outputs[key] || '');
-    global.showToast('Copié ✓');
+    copyTextToClipboard(global.state.outputs[key] || '', 'Copie OK');
   }
 
   function buildFinalOutputExport(prefixOverride) {
@@ -279,8 +282,7 @@
       return;
     }
 
-    navigator.clipboard.writeText(content);
-    global.showToast('Tout copié ✓');
+    copyTextToClipboard(content, 'Copie OK');
   }
 
   global.PipelineUIOutputRuntime = {

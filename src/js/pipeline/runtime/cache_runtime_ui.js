@@ -568,8 +568,12 @@
 
   async function copyCacheDebugReport(prefix = global.pfx()) {
     const report = await buildCacheDebugReport(prefix);
-    await navigator.clipboard.writeText(report);
-    global.showToast('Rapport cache copie');
+    try {
+      await navigator.clipboard.writeText(report);
+      global.showToast('Copie OK');
+    } catch (_error) {
+      global.showToast('Copie impossible', '#ff4757');
+    }
   }
 
   function syncCacheIndicator(usage = {}) {

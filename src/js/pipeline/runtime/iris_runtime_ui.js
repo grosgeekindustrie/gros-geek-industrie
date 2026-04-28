@@ -32,12 +32,12 @@
     global.syncCacheIndicator(response?.usage || null);
 
     if (refs.output) refs.output.textContent = response?.text || '';
-    global.showToast('Recherche sémantique Iris générée ✓');
+    global.showToast('Generation OK');
   }
 
   function finalizeIrisSemanticSearchError(refs = {}, error) {
     if (refs.output) refs.output.textContent = `❌ ${error.message}`;
-    global.showToast(`❌ ${error.message}`, '#ff4757');
+    global.showToast(`Erreur: ${error.message}`, '#ff4757');
   }
 
   function endIrisSemanticSearch(refs = {}) {

@@ -610,7 +610,7 @@
 
     if (global.state.images[prefix].length === 0) {
       if (warningBox) warningBox.style.display = 'block';
-      global.showToast('⚠️ Charge au moins une image !', '#ff4757');
+      global.showToast('Charge au moins une image', '#ff4757');
       return;
     }
 
