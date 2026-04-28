@@ -50,7 +50,7 @@
 
     resetSocialContentSections(prefix);
     const toggleButton = document.getElementById(`toggleReseauxOnlyBtn-${prefix}`);
-    if (toggleButton) toggleButton.textContent = '📋 Fiche déjà publiée';
+    if (toggleButton) toggleButton.textContent = 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e';
     global.state.socialSections = {};
   }
 
@@ -97,7 +97,7 @@
     if (refs.card) refs.card.className = 'agent-card active';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-run';
-      refs.stat.textContent = '⟳ génération...';
+      refs.stat.textContent = 'âŸ³ gÃ©nÃ©ration...';
     }
     if (refs.out) {
       refs.out.className = 'output-box';
@@ -116,17 +116,17 @@
     if (refs.card) refs.card.className = 'agent-card done';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-done';
-      refs.stat.textContent = '✓ done';
+      refs.stat.textContent = 'âœ“ done';
     }
     refreshSocialTabs(prefix);
   }
 
   function finalizeSocialAgentError(prefix, refs, error) {
-    if (refs.out) refs.out.textContent = `❌ ${error.message}`;
+    if (refs.out) refs.out.textContent = `âŒ ${error.message}`;
     if (refs.card) refs.card.className = 'agent-card error';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-err';
-      refs.stat.textContent = '✗ erreur';
+      refs.stat.textContent = 'âœ— erreur';
     }
     refreshSocialTabs(prefix);
   }
@@ -148,7 +148,7 @@
   async function runLeoAgent(prefix, options = {}) {
     const formats = getSocialSelectedFormats(prefix);
     if (formats.length === 0) {
-      global.showToast('Coche au moins un réseau !', '#ff4757');
+      global.showToast('Coche au moins un rÃ©seau !', '#ff4757');
       return;
     }
 
@@ -164,14 +164,14 @@
       global.showAgentCost('social', usage, { prefix, source: 'social' });
       global.syncCacheIndicator(usage);
       displaySocialOutput(result, prefix);
-      global.showToast('Posts générés ✓');
+      global.showToast('Posts gÃ©nÃ©rÃ©s âœ“');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`❌ ${error.message}`, '#ff4757');
+      global.showToast(`âŒ ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
-        button.textContent = '▶ Générer';
+        button.textContent = 'â–¶ GÃ©nÃ©rer';
       }
       if (refs.stopBtn) refs.stopBtn.style.display = 'none';
     }
@@ -195,14 +195,14 @@
       global.showAgentCost('camille', usage, { prefix, source: 'camille' });
       global.syncCacheIndicator(usage);
       displayCamilleOutput(result, prefix);
-      global.showToast('Pinterest généré ✓');
+      global.showToast('Pinterest gÃ©nÃ©rÃ© âœ“');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`❌ ${error.message}`, '#ff4757');
+      global.showToast(`âŒ ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
-        button.textContent = '▶ Générer';
+        button.textContent = 'â–¶ GÃ©nÃ©rer';
       }
       if (refs.stopBtn) refs.stopBtn.style.display = 'none';
     }
@@ -215,7 +215,7 @@
 
     const isVisible = section.style.display !== 'none';
     section.style.display = isVisible ? 'none' : 'block';
-    if (button) button.textContent = isVisible ? '📋 Fiche déjà publiée' : '✕ Fermer';
+    if (button) button.textContent = isVisible ? 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e' : 'âœ• Fermer';
     refreshSocialTabs(prefix, { activate: !isVisible });
   }
 
@@ -353,7 +353,6 @@
     };
     const clean = String(output || '')
       .replace(/\*\*(.*?)\*\*/g, '$1')
-      // Retire seulement les faux headings markdown, pas les hashtags sociaux.
       .replace(/^\s{0,3}#{1,3}\s+/gm, '');
     const parts = clean.split(/(?:^|\n)\s*(INSTAGRAM(?:\/TIKTOK)?|TIKTOK|FACEBOOK MARKETPLACE|FACEBOOK|PINTEREST)\s*\n/im);
 
@@ -379,12 +378,12 @@
 
   function copySocialSection(id) {
     navigator.clipboard.writeText(global.state.socialSections?.[SOCIAL_SECTION_KEY_MAP[id]] || '');
-    global.showToast('Copié ✓');
+    global.showToast('CopiÃ© âœ“');
   }
 
   function copySocial() {
     navigator.clipboard.writeText(global.state.outputs.social || '');
-    global.showToast('Posts copiés ✓');
+    global.showToast('Posts copiÃ©s âœ“');
   }
 
   global.PipelineUISocialRuntime = {
