@@ -2,6 +2,15 @@
 
 (function initPipelineUISocialRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+    APP_SETTINGS: 'pipeline.settings',
+  };
+  const APP_DEFAULTS = sharedConstants.APP_DEFAULTS || {
+    SHOP_URL: 'https://grosgeekindustrie.etsy.com',
+  };
+  const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
+  const DEFAULT_SHOP_URL = APP_DEFAULTS.SHOP_URL;
   const SOCIAL_FORMAT_LABELS = Object.freeze({
     instagram: 'INSTAGRAM/TIKTOK',
     facebook: 'FACEBOOK',
@@ -16,6 +25,18 @@
     pinterestDesc: 'pinterestDesc',
     pinterestAlt: 'pinterestAlt',
   });
+
+  const readAppSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
+    } catch (_error) {
+      return {};
+    }
+  };
+
+  const writeAppSettings = (nextSettings) => {
+    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+  };
 
   function refreshSocialTabs(prefix, { activate = false } = {}) {
     if (prefix !== 'tt' && prefix !== 'col') return;
@@ -312,11 +333,9 @@
 
     if (url && shopUrlInput) {
       shopUrlInput.value = url;
-      try {
-        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-        settings.shopUrl = url;
-        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-      } catch (error) {}
+      const settings = readAppSettings();
+      settings.shopUrl = url;
+      writeAppSettings(settings);
     }
 
     try {
@@ -332,11 +351,9 @@
       if (sculpteurInput) sculpteurInput.value = previousSculpteur;
       if (shopUrlInput) {
         shopUrlInput.value = previousUrl;
-        try {
-          const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-          settings.shopUrl = previousUrl || 'https://grosgeekindustrie.etsy.com';
-          localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-        } catch (error) {}
+        const settings = readAppSettings();
+        settings.shopUrl = previousUrl || DEFAULT_SHOP_URL;
+        writeAppSettings(settings);
       }
     }
   }

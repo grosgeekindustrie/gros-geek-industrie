@@ -4,9 +4,16 @@
 // Ce module centralise la lecture/ecriture des champs et construit le contexte injecte
 // dans les prompts. Toute evolution ici peut impacter plusieurs agents a la fois.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+    APP_SETTINGS: 'pipeline.settings',
+  };
+  const APP_DEFAULTS = sharedConstants.APP_DEFAULTS || {
+    SHOP_URL: 'https://grosgeekindustrie.etsy.com',
+  };
 
-  const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
-  const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
+  const DEFAULT_SHOP_URL = APP_DEFAULTS.SHOP_URL;
+  const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const DEFAULT_SUBJECT_NAME = 'Figurine';
   const DEFAULT_SCULPTOR_NAME = 'Inconnu';
@@ -426,17 +433,48 @@
     writeAppSettings(settings);
   };
 
+  const parseCommaSeparatedElementValues = (id) => getElementValue(id)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const setFetchUiLoadingState = ({ button, status }) => {
+    if (!button || !status) return;
+    button.disabled = true;
+    button.textContent = FETCH_STATUS.loadingLabel;
+    status.style.display = 'block';
+    status.style.color = 'var(--muted)';
+    status.textContent = FETCH_STATUS.loadingText;
+  };
+
+  const setFetchUiSuccessState = ({ status, chars }) => {
+    if (!status) return;
+    status.style.color = 'var(--success)';
+    status.textContent = `${FETCH_STATUS.successTextPrefix} ${chars} ${FETCH_STATUS.successTextSuffix}`;
+  };
+
+  const setFetchUiErrorState = ({ status, message }) => {
+    if (!status) return;
+    status.style.color = 'var(--error)';
+    status.textContent = `${FETCH_STATUS.errorTextPrefix} ${message}`;
+  };
+
+  const resetFetchButtonState = (button) => {
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = FETCH_STATUS.idleLabel;
+  };
+
+  const getDominantProfileFromStateOutputs = (outputs = {}) => {
+    const match = (outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
+    return match ? match[1].trim() : DEFAULT_PROFILE_NAME;
+  };
+
   function getArchetypes() {
     if (getCurrentMode() !== 'tabletop') return '';
 
-    const archetypes = getElementValue('tt-fArchetypes')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const seo = getElementValue('tt-fArchSeo')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const archetypes = parseCommaSeparatedElementValues('tt-fArchetypes');
+    const seo = parseCommaSeparatedElementValues('tt-fArchSeo');
     const parts = [];
 
     if (archetypes.length) parts.push(`Archetypes: ${archetypes.join(', ')}`);
@@ -534,11 +572,7 @@
     const status = getElementById('fetchStatus-col');
     if (!btn || !status) return;
 
-    btn.disabled = true;
-    btn.textContent = FETCH_STATUS.loadingLabel;
-    status.style.display = 'block';
-    status.style.color = 'var(--muted)';
-    status.textContent = FETCH_STATUS.loadingText;
+    setFetchUiLoadingState({ button: btn, status });
 
     try {
       const res = await fetch(`/fetch-url?url=${encodeURIComponent(url)}`);
@@ -546,17 +580,15 @@
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
       setElementValue('col-fResumePersonnage', data.text);
-      status.style.color = 'var(--success)';
-      status.textContent = `${FETCH_STATUS.successTextPrefix} ${data.chars} ${FETCH_STATUS.successTextSuffix}`;
+      setFetchUiSuccessState({ status, chars: data.chars });
       saveFormState();
       global.showToast(FETCH_STATUS.successToast, FETCH_STATUS.successColor, 3000);
     } catch (error) {
-      status.style.color = 'var(--error)';
-      status.textContent = `${FETCH_STATUS.errorTextPrefix} ${error.message}`;
-      global.showToast(`${FETCH_STATUS.errorToastPrefix}${error.message}`, FETCH_STATUS.errorColor, 10000);
+      const errorMessage = error?.message || 'Erreur inconnue';
+      setFetchUiErrorState({ status, message: errorMessage });
+      global.showToast(`${FETCH_STATUS.errorToastPrefix}${errorMessage}`, FETCH_STATUS.errorColor, 10000);
     } finally {
-      btn.disabled = false;
-      btn.textContent = FETCH_STATUS.idleLabel;
+      resetFetchButtonState(btn);
     }
   }
 
@@ -600,10 +632,7 @@
       selectedAccrocheText: state.selectedAccroche?.text || '',
       selectedCTAText: state.selectedCTA?.text || '',
       ...buildPipelinePromptContext(pipelineRun),
-      profil_dominant: (() => {
-        const match = (state.outputs.marche || '').match(/Dominant\s*:\s*(.+)/i);
-        return match ? match[1].trim() : DEFAULT_PROFILE_NAME;
-      })(),
+      profil_dominant: getDominantProfileFromStateOutputs(state.outputs),
     };
 
     if (currentMode === 'tabletop') {
@@ -768,6 +797,34 @@
     } catch (_error) {}
   }
 
+  const formatMarkdownFilePath = (family, mode, fileName) => `${family}/${mode}/${fileName}.md`;
+  const loadMarkdownFile = async ({ filePath, onSuccess, missing }) => {
+    try {
+      const response = await fetch(`/files/${filePath}`);
+      if (!response.ok) {
+        missing.push(filePath);
+        return;
+      }
+
+      const markdownContent = await response.text();
+      onSuccess(markdownContent);
+    } catch (_error) {
+      missing.push(filePath);
+    }
+  };
+
+  const setRunButtonMissingState = (button, mode) => {
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
+  };
+
+  const setRunButtonReadyState = (button) => {
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = '\u25b6';
+  };
+
   async function loadAllFiles(silent = false) {
     const state = getState();
     const currentMode = getCurrentMode();
@@ -782,28 +839,24 @@
 
     await Promise.all([
       ...promptFiles.map(async ([agentId, fileName]) => {
-        try {
-          const res = await fetch(`/files/prompts/${mode}/${fileName}.md`);
-          if (!res.ok) {
-            missing.push(`prompts/${mode}/${fileName}.md`);
-            return;
-          }
-          state.promptsByMode[mode][agentId] = await res.text();
-        } catch (error) {
-          missing.push(`prompts/${mode}/${fileName}.md`);
-        }
+        const filePath = formatMarkdownFilePath('prompts', mode, fileName);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.promptsByMode[mode][agentId] = markdownContent;
+          },
+        });
       }),
       ...BIBLIO_FILES.map(async (key) => {
-        try {
-          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-          if (!res.ok) {
-            missing.push(`biblios/${mode}/${key}.md`);
-            return;
-          }
-          state.bibliosByMode[mode][key] = await res.text();
-        } catch (error) {
-          missing.push(`biblios/${mode}/${key}.md`);
-        }
+        const filePath = formatMarkdownFilePath('biblios', mode, key);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.bibliosByMode[mode][key] = markdownContent;
+          },
+        });
       }),
     ]);
 
@@ -818,13 +871,9 @@
         global.showToast(`${missing.length} ${MISSING_FILES_MESSAGES.toastPrefix} ${mode}`, FETCH_STATUS.errorColor, 10000);
       }
 
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
-      }
-    } else if (btn) {
-      btn.disabled = false;
-      btn.textContent = '\u25b6';
+      setRunButtonMissingState(btn, mode);
+    } else {
+      setRunButtonReadyState(btn);
     }
   }
 
