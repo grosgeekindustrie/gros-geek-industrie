@@ -4,9 +4,13 @@
 // Ce module centralise la lecture/ecriture des champs et construit le contexte injecte
 // dans les prompts. Toute evolution ici peut impacter plusieurs agents a la fois.
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+    APP_SETTINGS: 'pipeline.settings',
+  };
 
   const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
-  const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
+  const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const DEFAULT_SUBJECT_NAME = 'Figurine';
   const DEFAULT_SCULPTOR_NAME = 'Inconnu';
