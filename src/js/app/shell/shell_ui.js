@@ -12,21 +12,37 @@ const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
   TABLETOP: 'tabletop',
   COLLECTION: 'collection',
 };
+const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+  APP_SETTINGS: 'pipeline.settings',
+};
 const updateAppSettings = storage.updateAppSettings || ((updater) => {
   let settings = {};
   try {
-    settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+    settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.APP_SETTINGS) || '{}');
   } catch (_error) {}
   updater(settings);
-  localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+  localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(settings));
 });
 
 var currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
-const getModeUiConfig = (mode = currentMode) => (
-  getPipelineUiConfig(mode)
-);
-const getModePrefix = (mode = currentMode) => getPipelinePrefix(mode);
+const getModeUiConfig = (mode = currentMode) => {
+  if (typeof window.getPipelineUiConfig !== 'function') {
+    return {
+      headerTitle: 'Etsy Pipeline',
+      pageTitle: document.title || 'Etsy Pipeline',
+      headerModeLabel: mode === PIPELINE_MODES.COLLECTION ? 'Collection' : 'DnD Tabletop',
+      uiRootId: mode === PIPELINE_MODES.COLLECTION ? 'collectionRoot' : 'tabletopRoot',
+    };
+  }
+  return window.getPipelineUiConfig(mode);
+};
+const getModePrefix = (mode = currentMode) => {
+  if (typeof window.getPipelinePrefix !== 'function') {
+    return mode === PIPELINE_MODES.COLLECTION ? 'col' : 'tt';
+  }
+  return window.getPipelinePrefix(mode);
+};
 const normalizeMode = (mode) => (
   mode === PIPELINE_MODES.COLLECTION ? PIPELINE_MODES.COLLECTION : PIPELINE_MODES.TABLETOP
 );
@@ -77,11 +93,12 @@ function applyModeState(mode) {
 function switchMode(mode) {
   const nextMode = normalizeMode(mode);
   if (nextMode === currentMode) return;
+  if (typeof window.rebuildModeUi !== 'function') return;
 
   applyModeState(nextMode);
   const isTabletop = nextMode === PIPELINE_MODES.TABLETOP;
 
-  rebuildModeUi({
+  window.rebuildModeUi({
     silentFileLoad: true,
     refreshCatalogs: true,
     rebuildPipeline: true,
@@ -128,5 +145,7 @@ Object.assign(window.PipelineUIShell, {
 });
 
 Object.assign(window, {
+  pfx,
   applyModeState,
+  switchMode,
 });

@@ -14,24 +14,45 @@
   const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
     WAIT: 'wait',
   };
+  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+    ROOT_PREFIX: 'pipeline.',
+    APP_SETTINGS: 'pipeline.settings',
+  };
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
-  const getPfx = () => global.pfx();
-  const getAgents = () => global.getPipelineAgents();
-  const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig(mode);
-  const getModes = () => global.getPipelineModes();
+  const getAgents = () => (
+    typeof global.getPipelineAgents === 'function'
+      ? global.getPipelineAgents()
+      : []
+  );
+  const getModeUiConfig = (mode = getCurrentMode()) => (
+    typeof global.getPipelineUiConfig === 'function'
+      ? global.getPipelineUiConfig(mode)
+      : null
+  );
+  const getModes = () => (
+    typeof global.getPipelineModes === 'function'
+      ? global.getPipelineModes()
+      : []
+  );
   const updateAppSettings = storage.updateAppSettings || ((updater) => {
     let settings = {};
     try {
-      settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.APP_SETTINGS) || '{}');
     } catch (_error) {}
     updater(settings);
-    localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(settings));
   });
-  const clearPipelineStorage = storage.clearPipelineStorage || (() => localStorage.clear());
+  const clearPipelineStorage = storage.clearPipelineStorage || (() => {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(STORAGE_KEYS.ROOT_PREFIX))
+      .forEach((key) => localStorage.removeItem(key));
+  });
 
   const callModeUiMethod = (mode, section, action, ...args) => {
-    const methodName = getModeUiConfig(mode)[section][`${action}Method`];
+    const modeUiConfig = getModeUiConfig(mode);
+    const methodName = modeUiConfig?.[section]?.[`${action}Method`];
+    if (!methodName || typeof global[methodName] !== 'function') return;
     return global[methodName](...args);
   };
 
@@ -65,7 +86,8 @@
   const STORAGE_CLEAR_CONFIRM = 'Vider le cache local ?\n(regles persistantes, formulaire)';
   const STORAGE_CLEAR_SUCCESS = 'Cache vide - rechargement...';
   const RAW_INPUT_MISSING_MESSAGE = "Pas encore genere - lance d abord cet agent";
-  const RAW_INPUT_COPIED_MESSAGE = 'Input copie';
+  const RAW_INPUT_COPIED_MESSAGE = 'Copie OK';
+  const RAW_INPUT_COPY_ERROR_MESSAGE = 'Copie impossible';
   const HOME_HEADER_CONTEXT = 'Etsy Pipeline - Generation de fiches produit IA';
   const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
@@ -84,6 +106,7 @@
   });
 
   const handleDelegatedPipelineActionClick = (event) => {
+    if (!(event.target instanceof Element)) return;
     const trigger = event.target.closest(PIPELINE_ACTION_SELECTOR);
     if (!trigger || trigger.disabled) return;
 
@@ -158,6 +181,7 @@
   });
 
   const handleDelegatedUiActionClick = (event) => {
+    if (!(event.target instanceof Element)) return;
     const overlay = dom.getClosestByData?.(event.target, 'overlayClose');
     if (overlay && event.target === overlay) {
       const closeAction = overlay.dataset.overlayClose;
@@ -176,6 +200,7 @@
   };
 
   const handleDelegatedUiActionChange = (event) => {
+    if (!(event.target instanceof Element)) return;
     const trigger = dom.getClosestByData?.(event.target, 'uiChange');
     if (!trigger || trigger !== event.target) return;
 
@@ -274,7 +299,9 @@
     if (!confirm(STORAGE_CLEAR_CONFIRM)) return;
     clearPipelineStorage();
     getState().persistentRules = {};
-    getAgents().forEach((agent) => global.refreshRules(agent.id));
+    if (typeof global.refreshRules === 'function') {
+      getAgents().forEach((agent) => global.refreshRules(agent.id));
+    }
     showToast(STORAGE_CLEAR_SUCCESS);
     setTimeout(() => location.reload(), 800);
   }
@@ -288,19 +315,30 @@
 
     const agent = getAgents().find((entry) => entry.id === agentId);
     const label = agent ? agent.title : agentId;
-    (dom.getByData?.('js', 'raw-input-title') || document.getElementById('rawInputTitle')).textContent = `</> INPUT - ${label}`;
-    (dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value = raw;
-    (dom.getByData?.('js', 'raw-input-count') || document.getElementById('rawInputCount')).textContent = `${raw.length.toLocaleString()} car.`;
-    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.add('visible');
+    const titleElement = dom.getByData?.('js', 'raw-input-title') || document.getElementById('rawInputTitle');
+    const textareaElement = dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea');
+    const countElement = dom.getByData?.('js', 'raw-input-count') || document.getElementById('rawInputCount');
+    const lightboxElement = dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox');
+    if (!titleElement || !textareaElement || !countElement || !lightboxElement) return;
+
+    titleElement.textContent = `</> INPUT - ${label}`;
+    textareaElement.value = raw;
+    countElement.textContent = `${raw.length.toLocaleString()} car.`;
+    lightboxElement.classList.add('visible');
   }
 
   function closeRawInput() {
-    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.remove('visible');
+    const lightboxElement = dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox');
+    if (!lightboxElement) return;
+    lightboxElement.classList.remove('visible');
   }
 
   function copyRawInput() {
-    navigator.clipboard.writeText((dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value);
-    showToast(RAW_INPUT_COPIED_MESSAGE);
+    const textareaElement = dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea');
+    if (!textareaElement) return;
+    navigator.clipboard.writeText(textareaElement.value)
+      .then(() => showToast(RAW_INPUT_COPIED_MESSAGE))
+      .catch(() => showToast(RAW_INPUT_COPY_ERROR_MESSAGE, '#ff4757'));
   }
 
   function showView(name) {
@@ -342,6 +380,7 @@
   // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
   function resetSingleFlowPanels(mode) {
     const modeUiConfig = getModeUiConfig(mode);
+    if (!modeUiConfig) return;
     const panelIds = modeUiConfig.panelIds;
 
     panelIds.forEach((panelId) => {
@@ -362,6 +401,7 @@
     const modeUiConfig = getModeUiConfig(mode);
     const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
     const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
+    if (!modeUiConfig || !tabletopUiConfig || !collectionUiConfig) return;
     const label = dom.getByData?.('js', 'form-mode-label') || document.getElementById('formModeLabel');
     const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
     const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
@@ -441,13 +481,21 @@
   }
 
   function openSettings() {
-    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.add('visible');
-    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.add('visible');
+    const overlay = dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay');
+    const panel = dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel');
+    if (!overlay || !panel) return;
+
+    overlay.classList.add('visible');
+    panel.classList.add('visible');
   }
 
   function closeSettings() {
-    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
-    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
+    const overlay = dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay');
+    const panel = dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel');
+    if (!overlay || !panel) return;
+
+    overlay.classList.remove('visible');
+    panel.classList.remove('visible');
 
     const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
     if (!apiKey) return;
