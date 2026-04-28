@@ -12,7 +12,7 @@ Etat actuel:
 
 ## Vivant
 
-- `src/js/index.js`: loader bootstrap unique
+- `src/js/index.js`: loader bootstrap unique.
 - `src/js/app/**`: shell et orchestration app
 - `src/js/pipeline/data/**`: sources declaratives pipeline
 - `src/js/pipeline/runtime/**`: runtime vivant par domaines
