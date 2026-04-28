@@ -135,6 +135,7 @@
       nextButton?.addEventListener('click', goToNextStep);
 
       root.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
         const jumpButton = event.target.closest('[data-js$="stepper-jump"]');
         if (!jumpButton) return;
 

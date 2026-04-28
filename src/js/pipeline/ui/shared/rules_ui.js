@@ -72,6 +72,7 @@
 
   if (!rulesDelegationBound) {
     document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
       const trigger = event.target.closest('[data-rule-action]');
       if (!trigger || trigger.disabled) return;
 

@@ -5,13 +5,20 @@
 // Zone sensible car fortement couplée au DOM des cartes pipeline.
   global.PipelineUI = global.PipelineUI || {};
   const files = global.PipelineUIFiles || {};
+  const shell = global.PipelineUIShell || {};
+  const app = global.PipelineUI.app || {};
+  const forms = global.PipelineUI.forms || {};
+  const promptBiblio = global.PipelineUI.promptBiblio || {};
+  const anthropic = global.PipelineUI.runtimeAnthropic || {};
   const dom = global.PipelineUIDom || {};
   const runtimeCache = global.PipelineUIRuntimeCache || {};
+  const tagsApi = () => global.PipelineUI.tags || {};
 
   const helpers = () => global.PipelineUIHelpers || {};
-  const modals = () => global.PipelineUIModals || {};
-  const titlesApi = () => global.PipelineUITitles || {};
-  const getPfx = () => global.pfx();
+  const modals = () => global.PipelineUI.modals || global.PipelineUIModals || {};
+  const titlesApi = () => global.PipelineUI.title || global.PipelineUITitles || {};
+  const getPfx = () => shell.pfx?.() || global.pfx();
+  const getState = () => shell.state || global.state;
   const writeLibraryMarkdown = files.writeLibraryMarkdown;
   let selectionDelegationBound = false;
 
@@ -83,7 +90,7 @@
 
   function buildAuxiliaryPromptKey(kind, filled, fixedContent = '') {
     return runtimeCache.buildCacheKey?.(
-      global.currentMode,
+      shell.currentMode || global.currentMode,
       getPfx(),
       kind,
       fixedContent,
@@ -154,7 +161,7 @@
   }
 
   function getTagLibraryState() {
-    const parsed = global.parseBiblioTags(global.getBiblio('tags'));
+    const parsed = promptBiblio.parseBiblioTags(promptBiblio.getBiblio('tags'));
     return {
       validated: parsed.validated || [],
       blacklisted: parsed.blacklisted || [],
@@ -284,8 +291,9 @@
   }
 
   function copyTagsSelectionValues(values, successMessage) {
-    navigator.clipboard.writeText(values.join(', '));
-    global.showToast(successMessage);
+    navigator.clipboard.writeText(values.join(', '))
+      .then(() => app.showToast?.(successMessage))
+      .catch(() => app.showToast?.('Copie impossible', '#ff4757'));
   }
 
   function copyTagsSelectionColumn(columnIndex) {
@@ -297,7 +305,7 @@
       .filter(Boolean);
 
     if (!values.length) {
-      global.showToast('Aucun tag à copier dans cette liste', '#ff4757');
+      app.showToast?.('Aucun tag à copier dans cette liste', '#ff4757');
       return;
     }
 
@@ -307,7 +315,7 @@
   function copyTagsSelectionFinalOutput() {
     const values = getTagsSelectedValues();
     if (!values.length) {
-      global.showToast('Aucun tag sélectionné à copier', '#ff4757');
+      app.showToast?.('Aucun tag sélectionné à copier', '#ff4757');
       return;
     }
 
@@ -408,7 +416,7 @@
         const checkedCount = getTagsSelectionRows().filter((row) => dom.getByData?.('tags-checkbox', null, row)?.checked).length;
         if (checkedCount > TAG_SELECTION_MAX) {
           event.target.checked = false;
-          global.showToast(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
+          app.showToast?.(`Tu ne peux pas sélectionner plus de ${TAG_SELECTION_MAX} tags.`, '#ff4757');
         }
       }
 
@@ -422,6 +430,7 @@
     });
 
     zone.addEventListener('click', async (event) => {
+      if (!(event.target instanceof Element)) return;
       const button = event.target.closest('[data-tags-action], [data-tags-copy]');
       if (!button) return;
 
@@ -437,7 +446,7 @@
       const row = dom.getClosestByData?.(button, 'tags-item');
       const rowValue = getTagsSelectionRowValue(row);
       if (!rowValue) {
-        global.showToast('Tag vide : impossible de lancer cette action', '#ff4757');
+        app.showToast?.('Tag vide : impossible de lancer cette action', '#ff4757');
         return;
       }
 
@@ -464,9 +473,9 @@
     const runtimeRoot = getTagsSelectionRuntimeRoot();
     if (!zone || !runtimeRoot) return;
 
-    global.state.outputs.tags_raw = output;
-    global.state.outputs.tags = '';
-    global.state.selectedTags = [];
+    getState().outputs.tags_raw = output;
+    getState().outputs.tags = '';
+    getState().selectedTags = [];
 
     if (!tags.length) {
       runtimeRoot.innerHTML = '<div class="tags-selection-empty">Aucun tag généré.</div>';
@@ -558,7 +567,7 @@
   }
 
   async function validateTag(tag) {
-    const parsed = global.parseBiblioTags(global.getBiblio('tags'));
+    const parsed = promptBiblio.parseBiblioTags(promptBiblio.getBiblio('tags'));
     const validated = parsed.validated || [];
     const blacklisted = parsed.blacklisted || [];
     const normalizedTag = normalizeTagInputValue(tag);
@@ -566,19 +575,20 @@
     if (!normalizedTag) return;
 
     if (validated.some((entry) => helpers().sameTag ? helpers().sameTag(entry, normalizedTag) : entry === normalizedTag)) {
-      global.showToast('Déjà validé');
+      app.showToast?.('Déjà validé');
       return;
     }
 
     validated.push(normalizedTag);
-    const updated = global.buildBiblioTagsRaw(validated, blacklisted);
+    const updated = promptBiblio.buildBiblioTagsRaw(validated, blacklisted);
     try {
-      await writeLibraryMarkdown(global.currentMode, 'tags', updated);
-      global.state.bibliosByMode[global.currentMode].tags = updated;
+      const currentMode = shell.currentMode || global.currentMode;
+      await writeLibraryMarkdown(currentMode, 'tags', updated);
+      shell.state.bibliosByMode[currentMode].tags = updated;
       document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
-      global.showToast(`👍 "${normalizedTag}" validé`);
+      app.showToast?.(`👍 "${normalizedTag}" validé`);
     } catch (error) {
-      global.showToast('Erreur sauvegarde', '#ff4757');
+      app.showToast?.('Erreur sauvegarde', '#ff4757');
     }
   }
 
@@ -616,8 +626,8 @@
     }
 
     const finalCsv = selectedTags.join(', ');
-    global.state.selectedTags = selectedTags;
-    global.state.outputs.tags = finalCsv;
+    getState().selectedTags = selectedTags;
+    getState().outputs.tags = finalCsv;
     global.setPipelineRunEntry(p, agentId, finalCsv, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
     global.PipelineUIRender.syncSelectionField('tags', finalCsv, p);
     global.PipelineUIRender.syncFinalPre('tags', finalCsv, p);
@@ -704,6 +714,7 @@
     if (selectionDelegationBound) return;
 
     document.addEventListener('click', async (event) => {
+      if (!(event.target instanceof Element)) return;
       const trigger = dom.getClosestByData?.(event.target, 'selectionAction');
       if (!trigger || trigger.disabled) return;
 
@@ -721,7 +732,7 @@
         return;
       }
       if (action === 'reroll-tag-explorer') {
-        global.PipelineUITags?.rerollTag?.(getSelectionText(trigger), trigger.dataset.itemId || '');
+        tagsApi().rerollTag?.(getSelectionText(trigger), trigger.dataset.itemId || '');
         return;
       }
       if (action === 'select-titre') {
@@ -794,13 +805,13 @@
       btn.textContent = '⟳ Exploration...';
     }
 
-    const ctx = global.buildCtx('tags');
-    const prompt = global.buildPrompt('tags', ctx);
+    const ctx = forms.buildCtx('tags');
+    const prompt = promptBiblio.buildPrompt('tags', ctx);
     const cacheKey = buildAuxiliaryPromptKey('tags-explorer', prompt.filled, prompt.fixedContent);
 
     try {
       const { text: result, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
-        const response = await global.callClaude('tags', {
+        const response = await anthropic.callClaude('tags', {
           filled: prompt.filled,
           fixedContent: prompt.fixedContent,
         }, false, AUXILIARY_RETRY_COUNT);
@@ -827,9 +838,9 @@
         : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
+      app.showToast?.(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
     } catch (error) {
-      global.showToast(`Erreur: ${error.message}`, '#ff4757');
+      app.showToast?.(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -860,7 +871,7 @@
       return buildTitreSelectionItemMarkup(text, chars, agentId, i);
     }).join('');
 
-    const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
+    const parsed = promptBiblio.parseBiblioTitres(promptBiblio.getBiblio('titres'));
     const blacklisted = parsed.blacklisted || [];
     if (blacklisted.length) {
       lines.forEach((line, i) => {
@@ -880,7 +891,7 @@
     const radio = el.querySelector('input');
     if (radio) radio.checked = true;
     const selectedTitre = (dom.getByData?.('selection-text-node', null, el) || el.querySelector('.titre-text'))?.textContent.trim();
-    global.state.selectedTitre = selectedTitre;
+    getState().selectedTitre = selectedTitre;
     const p = getPfx();
     const input = getTitreManualInput(agentId);
     if (input) {
@@ -903,27 +914,28 @@
 
   function pasteSelectedTitre(agentId) {
     const p = getPfx();
-    if (global.state.selectedTitre) {
+    if (getState().selectedTitre) {
       const input = getTitreManualInput(agentId);
-      if (input) input.value = global.state.selectedTitre;
+      if (input) input.value = getState().selectedTitre;
       updateTitreCounter(agentId);
     }
   }
 
   async function validateTitreSegment(text) {
-    const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
+    const parsed = promptBiblio.parseBiblioTitres(promptBiblio.getBiblio('titres'));
     const validated = parsed.validated || [];
     const blacklisted = parsed.blacklisted || [];
     if (validated.includes(text)) return;
 
     validated.push(text);
-    const updated = global.buildBiblioTitresRaw(validated, blacklisted);
+    const updated = promptBiblio.buildBiblioTitresRaw(validated, blacklisted);
     try {
-      await writeLibraryMarkdown(global.currentMode, 'titres', updated);
-      global.state.bibliosByMode[global.currentMode].titres = updated;
-      global.showToast('👍 Titre ajouté aux exemples validés');
+      const currentMode = shell.currentMode || global.currentMode;
+      await writeLibraryMarkdown(currentMode, 'titres', updated);
+      shell.state.bibliosByMode[currentMode].titres = updated;
+      app.showToast?.('👍 Titre ajouté aux exemples validés');
     } catch (error) {
-      global.showToast('Erreur sauvegarde titres', '#ff4757');
+      app.showToast?.('Erreur sauvegarde titres', '#ff4757');
     }
   }
 
@@ -938,26 +950,27 @@
   }
 
   function copyTitreLine(text) {
-    navigator.clipboard.writeText(text);
-    global.showToast('Titre copié ✓');
+    navigator.clipboard.writeText(text)
+      .then(() => app.showToast?.('Titre copie'))
+      .catch(() => app.showToast?.('Copie impossible', '#ff4757'));
   }
 
   async function validateTitre(agentId) {
     const p = getPfx();
     const input = getTitreManualInput(agentId);
     const titre = input?.value.trim() || '';
-    const selectedTitre = String(global.state.selectedTitre || '').trim();
+    const selectedTitre = String(getState().selectedTitre || '').trim();
     if (!titre) {
       alert('Choisis ou saisis un titre.');
       return;
     }
 
-    global.state.selectedTitre = titre;
-    global.state.outputs.titre_valide = titre;
+    getState().selectedTitre = titre;
+    getState().outputs.titre_valide = titre;
     global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
     if (titre !== selectedTitre) {
       validateTitreSegment(titre);
-      global.showToast('✅ Titre manuel ajouté aux exemples validés');
+      app.showToast?.('✅ Titre manuel ajouté aux exemples validés');
     }
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
@@ -1042,18 +1055,18 @@
     const radio = el.querySelector('input');
     if (radio) radio.checked = true;
     const text = el.querySelector('label').textContent.trim();
-    if (type === 'accroche') global.state.selectedAccroche = { num, text };
-    if (type === 'cta') global.state.selectedCTA = { num, text };
+    if (type === 'accroche') getState().selectedAccroche = { num, text };
+    if (type === 'cta') getState().selectedCTA = { num, text };
   }
 
   async function validateAccrocheCTA(agentId) {
     const p = getPfx();
-    if (!global.state.selectedAccroche || !global.state.selectedCTA) {
+    if (!getState().selectedAccroche || !getState().selectedCTA) {
       alert('Choisis une accroche et un CTA.');
       return;
     }
 
-    const output = global.state.outputs[agentId];
+    const output = getState().outputs[agentId];
     const lines = output.split('\n');
     const result = [];
     let accrocheDone = false;
@@ -1062,14 +1075,14 @@
     for (const line of lines) {
       if (line.match(/^A\d+\s*[→:]/)) {
         if (!accrocheDone) {
-          result.push(global.state.selectedAccroche.text);
+          result.push(getState().selectedAccroche.text);
           accrocheDone = true;
         }
         continue;
       }
       if (line.match(/^C\d+\s*[→:]/)) {
         if (!ctaDone) {
-          result.push(global.state.selectedCTA.text);
+          result.push(getState().selectedCTA.text);
           ctaDone = true;
         }
         continue;
@@ -1079,7 +1092,7 @@
 
     const assembledDescription = result.join('\n').trim();
 
-    global.state.outputs[`${agentId}_assembled`] = assembledDescription;
+    getState().outputs[`${agentId}_assembled`] = assembledDescription;
     global.setPipelineRunEntry(p, agentId, assembledDescription, {
       quality: 'net',
       validation: 'valide',
@@ -1102,14 +1115,14 @@
       btn.textContent = '⟳ Exploration...';
     }
 
-    const ctx = global.buildCtx('titre');
-    const prompt = global.buildPrompt('titre', ctx);
+    const ctx = forms.buildCtx('titre');
+    const prompt = promptBiblio.buildPrompt('titre', ctx);
     const explorerPrompt = `${prompt.filled}\n\nMODE EXPLORATION: Génère environ 30 titres. Format : liste numérotée avec compteur de caractères.`;
     const cacheKey = buildAuxiliaryPromptKey('titre-explorer', explorerPrompt, prompt.fixedContent);
 
     try {
       const { text: result, usage, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
-        const response = await global.callClaude('titre', {
+        const response = await anthropic.callClaude('titre', {
           filled: explorerPrompt,
           fixedContent: prompt.fixedContent,
         }, false, AUXILIARY_RETRY_COUNT);
@@ -1145,9 +1158,9 @@
       if (list) list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
+      app.showToast?.(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
     } catch (error) {
-      global.showToast(`Erreur: ${error.message}`, '#ff4757');
+      app.showToast?.(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;

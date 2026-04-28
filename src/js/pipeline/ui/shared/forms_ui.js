@@ -28,9 +28,9 @@
     loadingText: 'Recuperation en cours...',
     successTextPrefix: '\u2713',
     successTextSuffix: 'caracteres recuperes',
-    successToast: 'Contexte recupere \u2713',
+    successToast: 'Recuperation OK',
     errorTextPrefix: '\u2717',
-    errorToastPrefix: 'Fetch echoue : ',
+    errorToastPrefix: 'Erreur: ',
     successColor: '#4caf7d',
     errorColor: '#ff4757',
   };
@@ -111,7 +111,7 @@
   const getCurrentMode = () => global.currentMode;
   const getPfx = () => global.pfx();
   const getEchellesApi = () => global.PipelineUIEchelles || {};
-  const getConfig = () => global.PipelineUIConfig;
+  const getConfig = () => global.PipelineUIConfig || {};
   const buildMarkdownPath = files.buildMarkdownPath;
   const readMarkdownFile = files.readMarkdownFile;
   const readStoredJSON = storage.readStoredJSON || ((key, fallback) => {

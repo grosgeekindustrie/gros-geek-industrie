@@ -269,6 +269,7 @@
       if (!root || isBound) return;
 
       root.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
         const button = event.target.closest(`[data-${pipelinePrefix === PIPELINE_PREFIXES.COLLECTION ? 'collection' : 'dnd'}-tab]`);
         if (!button) return;
 

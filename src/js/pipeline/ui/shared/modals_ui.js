@@ -6,10 +6,15 @@
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
   const files = global.PipelineUIFiles || {};
+  const shell = global.PipelineUIShell || {};
+  const app = global.PipelineUI.app || {};
+  const promptBiblio = global.PipelineUI.promptBiblio || {};
   const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.UI || 'ui');
   const dom = global.PipelineUIDom || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const writeLibraryMarkdown = files.writeLibraryMarkdown;
+  const titlesApi = () => global.PipelineUI.title || {};
+  const tagsApi = () => global.PipelineUI.tags || {};
   let modalDelegationBound = false;
 
   function ensureLibraryModals() {
@@ -82,6 +87,7 @@
     if (modalDelegationBound) return;
 
     document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
       const trigger = dom.getClosestByData?.(event.target, 'modalAction');
       if (!trigger || trigger.disabled) return;
 
@@ -166,16 +172,18 @@
   }
 
   async function saveTagsLibrary(validated, blacklisted) {
-    const updated = global.buildBiblioTagsRaw(validated, blacklisted);
-    await writeLibraryMarkdown(global.currentMode, 'tags', updated);
-    global.state.bibliosByMode[global.currentMode].tags = updated;
+    const currentMode = shell.currentMode || global.currentMode;
+    const updated = promptBiblio.buildBiblioTagsRaw(validated, blacklisted);
+    await writeLibraryMarkdown(currentMode, 'tags', updated);
+    shell.state.bibliosByMode[currentMode].tags = updated;
     document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
   }
 
   async function saveTitresLibrary(validated, blacklisted) {
-    const updated = global.buildBiblioTitresRaw(validated, blacklisted);
-    await writeLibraryMarkdown(global.currentMode, 'titres', updated);
-    global.state.bibliosByMode[global.currentMode].titres = updated;
+    const currentMode = shell.currentMode || global.currentMode;
+    const updated = promptBiblio.buildBiblioTitresRaw(validated, blacklisted);
+    await writeLibraryMarkdown(currentMode, 'titres', updated);
+    shell.state.bibliosByMode[currentMode].titres = updated;
   }
 
   async function confirmLibraryBlacklistModal() {
@@ -194,7 +202,7 @@
 
     try {
       if (state.kind === 'tags') {
-        const { validated, blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
+        const { validated, blacklisted } = promptBiblio.parseBiblioTags(promptBiblio.getBiblio('tags'));
         const added = [];
 
         for (const entry of entries.map(helpers().normalizeTagValue)) {
@@ -213,7 +221,7 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            const autoRegenTagFn = global.PipelineUITags.autoRegenTag;
+            const autoRegenTagFn = tagsApi().autoRegenTag;
 
             if (typeof autoRegenTagFn === 'function') {
               setTimeout(() => autoRegenTagFn(
@@ -227,12 +235,12 @@
           }
         }
 
-        global.showToast(
+        app.showToast?.(
           added.length ? ` ${added.length} tag(s) blacklisté(s)` : 'Déjà blacklisté',
           added.length ? undefined : '#7eb8f7'
         );
       } else {
-        const { validated, blacklisted } = global.parseBiblioTitres(global.getBiblio('titres'));
+        const { validated, blacklisted } = promptBiblio.parseBiblioTitres(promptBiblio.getBiblio('titres'));
         const added = [];
 
         for (const entry of entries.map(helpers().normalizeTitreValue)) {
@@ -251,7 +259,7 @@
           if (item) {
             item.classList.remove('validated');
             item.classList.add('invalidated');
-            const autoRegenTitreFn = global.PipelineUITitles.autoRegenTitre;
+            const autoRegenTitreFn = titlesApi().autoRegenTitre;
 
             if (typeof autoRegenTitreFn === 'function') {
               setTimeout(() => autoRegenTitreFn(
@@ -266,7 +274,7 @@
           }
         }
 
-        global.showToast(
+        app.showToast?.(
           added.length ? ` ${added.length} titre(s) blacklisté(s)` : 'Déjà blacklisté',
           added.length ? undefined : '#7eb8f7'
         );
@@ -291,7 +299,7 @@
 
     try {
       if (state.kind === 'tags') {
-        const { validated, blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
+        const { validated, blacklisted } = promptBiblio.parseBiblioTags(promptBiblio.getBiblio('tags'));
         const accepted = [];
         for (const raw of entries) {
           const value = helpers().normalizeTagValue(raw);
@@ -303,9 +311,9 @@
         if (accepted.length) {
           await saveTagsLibrary([...validated, ...accepted], blacklisted);
         }
-        global.showToast(`✅ ${accepted.length} tag(s) validé(s) ajouté(s)`);
+        app.showToast?.(`✅ ${accepted.length} tag(s) validé(s) ajouté(s)`);
       } else {
-        const { validated, blacklisted } = global.parseBiblioTitres(global.getBiblio('titres'));
+        const { validated, blacklisted } = promptBiblio.parseBiblioTitres(promptBiblio.getBiblio('titres'));
         const accepted = [];
         for (const raw of entries) {
           const value = helpers().normalizeTitreValue(raw);
@@ -317,7 +325,7 @@
         if (accepted.length) {
           await saveTitresLibrary([...validated, ...accepted], blacklisted);
         }
-        global.showToast(`✅ ${accepted.length} titre(s) validé(s) ajouté(s)`);
+        app.showToast?.(`✅ ${accepted.length} titre(s) validé(s) ajouté(s)`);
       }
 
       closeLibraryValidatedModal();
@@ -355,20 +363,20 @@
   }
 
   function ensureTagsManualAddButton() {
-    const zone = document.getElementById(`${global.pfx()}-sel-tags`);
+    const zone = document.getElementById(`${shell.pfx?.() || global.pfx()}-sel-tags`);
     ensureZoneLibraryActionButton(
       zone,
-      `${global.pfx()}-manual-valid-tags`,
+      `${shell.pfx?.() || global.pfx()}-manual-valid-tags`,
       '➕ Ajouter des tags validés',
       { action: 'open-validated', kind: 'tags', source: 'main' }
     );
   }
 
   function ensureTitresManualAddButton(agentId) {
-    const zone = document.getElementById(`${global.pfx()}-sel-${agentId}`);
+    const zone = document.getElementById(`${shell.pfx?.() || global.pfx()}-sel-${agentId}`);
     ensureZoneLibraryActionButton(
       zone,
-      `${global.pfx()}-manual-valid-${agentId}`,
+      `${shell.pfx?.() || global.pfx()}-manual-valid-${agentId}`,
       '➕ Ajouter des titres validés',
       { action: 'open-validated', kind: 'titres', source: 'main', agentId }
     );

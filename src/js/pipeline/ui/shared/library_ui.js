@@ -17,7 +17,7 @@
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
-  const getConfig = () => global.PipelineUIConfig;
+  const getConfig = () => global.PipelineUIConfig || {};
   const readLibraryMarkdown = files.readLibraryMarkdown;
   const writeLibraryMarkdown = files.writeLibraryMarkdown;
   const readPromptMarkdown = files.readPromptMarkdown;
@@ -52,9 +52,9 @@
       await writeLibraryMarkdown(mode, key, value);
       getState().bibliosByMode[mode][key] = value;
       closeBiblioLightbox();
-      showToast(`${label} sauvegardé ✓`);
+      global.showToast?.(`${label} sauvegardé ✓`);
     } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
+      global.showToast?.(`Erreur: ${e.message}`, '#ff4757');
     }
   }
 
@@ -67,9 +67,9 @@
       const txt = await readLibraryMarkdown(mode, key);
       getState().bibliosByMode[mode][key] = txt;
       document.getElementById('biblio-textarea').value = txt;
-      showToast(`${label} rechargé ✓`);
+      global.showToast?.(`${label} rechargé ✓`);
     } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
+      global.showToast?.(`Erreur: ${e.message}`, '#ff4757');
     }
   }
 
@@ -80,7 +80,9 @@
       tags_filter: 'Céline · Filter Tags',
       tags_select: 'Axel · Select Tags',
     };
-    const agents = getConfig().getPipelineAgents();
+    const agents = typeof getConfig().getPipelineAgents === 'function'
+      ? getConfig().getPipelineAgents()
+      : [];
     const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
 
     document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;
@@ -107,9 +109,9 @@
       await writePromptMarkdown(mode, fname, val);
       getState().promptsByMode[mode][currentLbAgentId] = val;
       closePromptLightbox();
-      showToast('Prompt sauvegardé ✓');
+      global.showToast?.('Prompt sauvegardé ✓');
     } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
+      global.showToast?.(`Erreur: ${e.message}`, '#ff4757');
     }
   }
 
@@ -126,9 +128,9 @@
       const txt = await readPromptMarkdown(mode, fname);
       getState().promptsByMode[mode][currentLbAgentId] = txt;
       document.getElementById('lbTextarea').value = txt;
-      showToast('Rechargé depuis le fichier ✓');
+      global.showToast?.('Rechargé depuis le fichier ✓');
     } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
+      global.showToast?.(`Erreur: ${e.message}`, '#ff4757');
     }
   }
 

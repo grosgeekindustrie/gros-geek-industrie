@@ -3,6 +3,8 @@
 + Amenti Legion Giant Scorpion - Rescale miniatures, figurines créatures à peindre, garage kit imprimé en 3D hobby DnD Tabletop TTRPG fantasy
 + Râ, Le Roi Des Sables DéChu - Rescale miniatures, miniatures pharaon fantasy à peindre, garage kit imprimé en 3D pour DnD Tabletop TTRPG
 + Elder Blue Dragon - Rescale miniatures, figurine dragon ancien à peindre, garage kit imprimé en 3D pour DnD, Tabletop et TTRPG fantasy
++ PrêTres Mort Vivants - Nerikson, miniatures prêtre et nécromancien à peindre, garage kit imprimé en 3D, DnD Tabletop TTRPG
++ Gardien Mort-Vivant - Nerikson, miniature soldat zombie serviteur nécromancien à peindre, garage kit imprimé en 3D, DnD Tabletop TTRPG
 
 ## BLACKLISTÉS
 

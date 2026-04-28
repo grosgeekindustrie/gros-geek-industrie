@@ -4,15 +4,18 @@
 // Responsable du template filling, des blocs fixes cachables et du parsing des fichiers
 // VALIDÉS / BLACKLISTÉS. À garder cohérent avec la structure des prompts disque.
   global.PipelineUI = global.PipelineUI || {};
+  const shell = global.PipelineUIShell || {};
 
-  const getState = () => global.state;
-  const getCurrentMode = () => global.currentMode;
+  const getState = () => shell.state || global.state;
+  const getCurrentMode = () => shell.currentMode || global.currentMode;
 
   function getBiblio(key) {
     return getState().bibliosByMode[getCurrentMode()][key] || '';
   }
 
-  const getPromptBiblioDevConfig = () => global.PipelineUIDataDev.PIPELINE_DEV_CONFIG.promptBiblio;
+  const getPromptBiblioDevConfig = () => (
+    global.PipelineUIDataDev?.PIPELINE_DEV_CONFIG?.promptBiblio || {}
+  );
 
   const isPromptBiblioEnabled = (key) => {
     const config = getPromptBiblioDevConfig();

@@ -7,7 +7,11 @@
   const dom = global.PipelineUIDom || {};
 
   const getPfx = () => global.pfx();
-  const getAgents = () => global.getPipelineAgents();
+  const getAgents = () => (
+    typeof global.getPipelineAgents === 'function'
+      ? global.getPipelineAgents()
+      : []
+  );
 
   function buildPipeline() {
     const p = getPfx();
@@ -134,6 +138,7 @@
   Object.assign(global, global.PipelineUICards);
 
   document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
     const toggle = event.target.closest('[data-card-toggle]');
     if (toggle) {
       toggleCard(toggle.dataset.cardToggle);

@@ -2,6 +2,19 @@
 
 (function initPipelineUISocialRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const storage = global.PipelineUIStorage || {};
+  const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+    APP_SETTINGS: 'pipeline.settings',
+  };
+  const updateAppSettings = storage.updateAppSettings || ((updater) => {
+    let settings = {};
+    try {
+      settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.APP_SETTINGS) || '{}');
+    } catch (_error) {}
+    updater(settings);
+    localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(settings));
+  });
   const SOCIAL_FORMAT_LABELS = Object.freeze({
     instagram: 'INSTAGRAM/TIKTOK',
     facebook: 'FACEBOOK',
@@ -148,7 +161,7 @@
   async function runLeoAgent(prefix, options = {}) {
     const formats = getSocialSelectedFormats(prefix);
     if (formats.length === 0) {
-      global.showToast('Coche au moins un rÃ©seau !', '#ff4757');
+      global.showToast('Coche au moins un reseau', '#ff4757');
       return;
     }
 
@@ -164,10 +177,10 @@
       global.showAgentCost('social', usage, { prefix, source: 'social' });
       global.syncCacheIndicator(usage);
       displaySocialOutput(result, prefix);
-      global.showToast('Posts gÃ©nÃ©rÃ©s âœ“');
+      global.showToast('Generation OK');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`âŒ ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
@@ -195,10 +208,10 @@
       global.showAgentCost('camille', usage, { prefix, source: 'camille' });
       global.syncCacheIndicator(usage);
       displayCamilleOutput(result, prefix);
-      global.showToast('Pinterest gÃ©nÃ©rÃ© âœ“');
+      global.showToast('Generation OK');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`âŒ ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
@@ -312,11 +325,9 @@
 
     if (url && shopUrlInput) {
       shopUrlInput.value = url;
-      try {
-        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      updateAppSettings((settings) => {
         settings.shopUrl = url;
-        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-      } catch (error) {}
+      });
     }
 
     try {
@@ -332,11 +343,9 @@
       if (sculpteurInput) sculpteurInput.value = previousSculpteur;
       if (shopUrlInput) {
         shopUrlInput.value = previousUrl;
-        try {
-          const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+        updateAppSettings((settings) => {
           settings.shopUrl = previousUrl || 'https://grosgeekindustrie.etsy.com';
-          localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-        } catch (error) {}
+        });
       }
     }
   }
@@ -377,13 +386,15 @@
   }
 
   function copySocialSection(id) {
-    navigator.clipboard.writeText(global.state.socialSections?.[SOCIAL_SECTION_KEY_MAP[id]] || '');
-    global.showToast('CopiÃ© âœ“');
+    navigator.clipboard.writeText(global.state.socialSections?.[SOCIAL_SECTION_KEY_MAP[id]] || '')
+      .then(() => global.showToast('Copie OK'))
+      .catch(() => global.showToast('Copie impossible', '#ff4757'));
   }
 
   function copySocial() {
-    navigator.clipboard.writeText(global.state.outputs.social || '');
-    global.showToast('Posts copiÃ©s âœ“');
+    navigator.clipboard.writeText(global.state.outputs.social || '')
+      .then(() => global.showToast('Copie OK'))
+      .catch(() => global.showToast('Copie impossible', '#ff4757'));
   }
 
   global.PipelineUISocialRuntime = {

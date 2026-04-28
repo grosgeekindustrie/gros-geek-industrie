@@ -4,6 +4,11 @@
 // Module spécialisé dans le reroll / regen de tags après blacklist ou action manuelle.
   global.PipelineUI = global.PipelineUI || {};
   const dom = global.PipelineUIDom || {};
+  const shell = global.PipelineUIShell || {};
+  const app = global.PipelineUI.app || {};
+  const forms = global.PipelineUI.forms || {};
+  const promptBiblio = global.PipelineUI.promptBiblio || {};
+  const anthropic = global.PipelineUI.runtimeAnthropic || {};
   const runtimeCache = global.PipelineUIRuntimeCache || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const render = () => global.PipelineUIRender || {};
@@ -84,8 +89,8 @@
 
   function buildTagRegenCacheKey(promptData, siblingTags = []) {
     return runtimeCache.buildCacheKey?.(
-      global.currentMode,
-      global.pfx(),
+      shell.currentMode || global.currentMode,
+      shell.pfx?.() || global.pfx(),
       'tag-regen',
       promptData.fixedContent || '',
       promptData.filled || '',
@@ -102,9 +107,9 @@
     if (textSpan) textSpan.textContent = '⟳ remplacement…';
 
     try {
-      const ctx = global.buildCtx('tags');
-      const prompt = global.buildPrompt('tags', ctx);
-      const { blacklisted } = global.parseBiblioTags(global.getBiblio('tags'));
+      const ctx = forms.buildCtx('tags');
+      const prompt = promptBiblio.buildPrompt('tags', ctx);
+      const { blacklisted } = promptBiblio.parseBiblioTags(promptBiblio.getBiblio('tags'));
       const rejectedTags = [originalText];
       const siblingTags = collectSiblingTags(itemEl);
       let replacementTag = '';
@@ -114,7 +119,7 @@
         const regenPrompt = buildReplacementPrompt(prompt, tag, matchedTerm, rejectedTags);
         const cacheKey = buildTagRegenCacheKey(regenPrompt, siblingTags.concat(rejectedTags));
         const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
-          global.callClaude('tags', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+          anthropic.callClaude('tags', regenPrompt, false, AUXILIARY_RETRY_COUNT)
         ));
         const result = response.text;
         const candidateTag = extractGeneratedTag(result);
@@ -152,12 +157,12 @@
       updateTagItemUI(itemEl, replacementTag);
       itemEl.classList.remove('regen-pending');
       render().syncTagsOutputFromUI?.();
-      global.showToast(`♻️ Tag remplacé : "${replacementTag}"`, '#7eb8f7');
+      app.showToast?.(`Tag remplace: "${replacementTag}"`, '#7eb8f7');
     } catch (error) {
       itemEl.classList.remove('regen-pending');
       updateTagItemUI(itemEl, originalText);
       render().syncTagsOutputFromUI?.();
-      global.showToast(`Erreur remplacement tag: ${error.message}`, '#ff4757');
+      app.showToast?.(`Erreur: ${error.message}`, '#ff4757');
     }
   }
 

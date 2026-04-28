@@ -4,14 +4,19 @@
 // Même rôle que tags_ui.js mais pour les titres, avec contraintes longueur / blacklist.
   global.PipelineUI = global.PipelineUI || {};
   const dom = global.PipelineUIDom || {};
+  const shell = global.PipelineUIShell || {};
+  const app = global.PipelineUI.app || {};
+  const forms = global.PipelineUI.forms || {};
+  const promptBiblio = global.PipelineUI.promptBiblio || {};
+  const anthropic = global.PipelineUI.runtimeAnthropic || {};
   const runtimeCache = global.PipelineUIRuntimeCache || {};
   const helpers = () => global.PipelineUIHelpers || {};
   const AUXILIARY_RETRY_COUNT = 1;
 
   function buildTitreRegenCacheKey(promptData, agentId, text, matchedTerm) {
     return runtimeCache.buildCacheKey?.(
-      global.currentMode,
-      global.pfx(),
+      shell.currentMode || global.currentMode,
+      shell.pfx?.() || global.pfx(),
       'titre-regen',
       agentId,
       text,
@@ -31,8 +36,8 @@
     textSpan.textContent = '⟳ remplacement…';
 
     try {
-      const ctx = global.buildCtx('titre');
-      const prompt = global.buildPrompt('titre', ctx);
+      const ctx = forms.buildCtx('titre');
+      const prompt = promptBiblio.buildPrompt('titre', ctx);
       const regenPrompt = {
         filled: `${prompt.filled}\n\n---\nMODE REMPLACEMENT UNIQUE:\nLe titre "${text}" contient un terme blacklisté ("${matchedTerm}"). Génère UN SEUL titre de remplacement. Idéalement 128-140 caractères, naturel, SEO Etsy.\nFormat: juste le titre, sans numérotation, sans compteur de caractères.`,
         fixedContent: prompt.fixedContent,
@@ -40,7 +45,7 @@
 
       const cacheKey = buildTitreRegenCacheKey(regenPrompt, agentId, text, matchedTerm);
       const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
-        global.callClaude('titre', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+        anthropic.callClaude('titre', regenPrompt, false, AUXILIARY_RETRY_COUNT)
       ));
       const result = response.text;
       const newTitre = result
@@ -50,7 +55,7 @@
         .split('\n')[0]
         .trim();
 
-      const { blacklisted } = global.parseBiblioTitres(global.getBiblio('titres'));
+      const { blacklisted } = promptBiblio.parseBiblioTitres(promptBiblio.getBiblio('titres'));
       const stillBad = helpers().getBlacklistedTerm(newTitre, blacklisted);
 
       textSpan.textContent = newTitre;
@@ -80,12 +85,12 @@
       if (stillBad) {
         autoRegenTitre(newTitre, stillBad, itemEl, agentId);
       } else {
-        global.showToast('♻️ Titre remplacé', '#7eb8f7');
+        app.showToast?.('Titre remplace', '#7eb8f7');
       }
     } catch (error) {
       itemEl.classList.remove('regen-pending');
       textSpan.textContent = originalText;
-      global.showToast('Erreur remplacement titre', '#ff4757');
+      app.showToast?.('Erreur: remplacement titre', '#ff4757');
     }
   }
 
