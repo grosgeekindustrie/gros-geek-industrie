@@ -768,6 +768,34 @@
     } catch (_error) {}
   }
 
+  const formatMarkdownFilePath = (family, mode, fileName) => `${family}/${mode}/${fileName}.md`;
+  const loadMarkdownFile = async ({ filePath, onSuccess, missing }) => {
+    try {
+      const response = await fetch(`/files/${filePath}`);
+      if (!response.ok) {
+        missing.push(filePath);
+        return;
+      }
+
+      const markdownContent = await response.text();
+      onSuccess(markdownContent);
+    } catch (_error) {
+      missing.push(filePath);
+    }
+  };
+
+  const setRunButtonMissingState = (button, mode) => {
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
+  };
+
+  const setRunButtonReadyState = (button) => {
+    if (!button) return;
+    button.disabled = false;
+    button.textContent = '\u25b6';
+  };
+
   async function loadAllFiles(silent = false) {
     const state = getState();
     const currentMode = getCurrentMode();
@@ -782,28 +810,24 @@
 
     await Promise.all([
       ...promptFiles.map(async ([agentId, fileName]) => {
-        try {
-          const res = await fetch(`/files/prompts/${mode}/${fileName}.md`);
-          if (!res.ok) {
-            missing.push(`prompts/${mode}/${fileName}.md`);
-            return;
-          }
-          state.promptsByMode[mode][agentId] = await res.text();
-        } catch (error) {
-          missing.push(`prompts/${mode}/${fileName}.md`);
-        }
+        const filePath = formatMarkdownFilePath('prompts', mode, fileName);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.promptsByMode[mode][agentId] = markdownContent;
+          },
+        });
       }),
       ...BIBLIO_FILES.map(async (key) => {
-        try {
-          const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-          if (!res.ok) {
-            missing.push(`biblios/${mode}/${key}.md`);
-            return;
-          }
-          state.bibliosByMode[mode][key] = await res.text();
-        } catch (error) {
-          missing.push(`biblios/${mode}/${key}.md`);
-        }
+        const filePath = formatMarkdownFilePath('biblios', mode, key);
+        await loadMarkdownFile({
+          filePath,
+          missing,
+          onSuccess: (markdownContent) => {
+            state.bibliosByMode[mode][key] = markdownContent;
+          },
+        });
       }),
     ]);
 
@@ -818,13 +842,9 @@
         global.showToast(`${missing.length} ${MISSING_FILES_MESSAGES.toastPrefix} ${mode}`, FETCH_STATUS.errorColor, 10000);
       }
 
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = `${MISSING_FILES_MESSAGES.buttonPrefix} (${mode})`;
-      }
-    } else if (btn) {
-      btn.disabled = false;
-      btn.textContent = '\u25b6';
+      setRunButtonMissingState(btn, mode);
+    } else {
+      setRunButtonReadyState(btn);
     }
   }
 
