@@ -8,8 +8,11 @@
   const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
     APP_SETTINGS: 'pipeline.settings',
   };
+  const APP_DEFAULTS = sharedConstants.APP_DEFAULTS || {
+    SHOP_URL: 'https://grosgeekindustrie.etsy.com',
+  };
 
-  const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
+  const DEFAULT_SHOP_URL = APP_DEFAULTS.SHOP_URL;
   const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const DEFAULT_SUBJECT_NAME = 'Figurine';
