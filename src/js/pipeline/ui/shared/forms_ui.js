@@ -214,6 +214,12 @@
     writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
   };
 
+  const updateAppSettings = (updater) => {
+    const settings = readAppSettings();
+    updater(settings);
+    writeAppSettings(settings);
+  };
+
   const saveCollectionPersistedTextFields = (data) => {
     Object.entries(COLLECTION_PERSISTED_TEXT_FIELD_STORAGE_MAP).forEach(([storageKey, fieldId]) => {
       data[storageKey] = getElementValue(fieldId);
@@ -420,14 +426,13 @@
     const inputValue = getTrimmedElementValue('shopUrl');
     if (inputValue) return inputValue;
 
-    const savedValue = readAppSettings().shopUrl;
-    return savedValue || DEFAULT_SHOP_URL;
+    return readAppSettings().shopUrl || DEFAULT_SHOP_URL;
   };
 
   const persistShopUrl = () => {
-    const settings = readAppSettings();
-    settings.shopUrl = getShopUrl();
-    writeAppSettings(settings);
+    updateAppSettings((settings) => {
+      settings.shopUrl = getShopUrl();
+    });
   };
 
   const parseCommaSeparatedElementValues = (id) => getElementValue(id)
@@ -753,9 +758,9 @@
     const apiKeyEl = getElementById('apiKey');
     if (apiKeyEl) {
       apiKeyEl.addEventListener('input', () => {
-        const settings = readAppSettings();
-        settings.apiKey = apiKeyEl.value;
-        writeAppSettings(settings);
+        updateAppSettings((settings) => {
+          settings.apiKey = apiKeyEl.value;
+        });
       });
     }
 
@@ -795,20 +800,29 @@
   }
 
   const formatMarkdownFilePath = (family, mode, fileName) => `${family}/${mode}/${fileName}.md`;
-  const loadMarkdownFile = async ({ filePath, onSuccess, missing }) => {
+  const loadMarkdownFile = async ({ filePath, missing }) => {
     try {
       const response = await fetch(`/files/${filePath}`);
       if (!response.ok) {
         missing.push(filePath);
-        return;
+        return null;
       }
 
-      const markdownContent = await response.text();
-      onSuccess(markdownContent);
+      return await response.text();
     } catch (_error) {
       missing.push(filePath);
+      return null;
     }
   };
+
+  const loadMarkdownFiles = async ({ family, mode, entries, missing, onSuccess }) => Promise.all(
+    entries.map(async ([key, fileName]) => {
+      const filePath = formatMarkdownFilePath(family, mode, fileName);
+      const markdownContent = await loadMarkdownFile({ filePath, missing });
+      if (markdownContent === null) return;
+      onSuccess(key, markdownContent);
+    })
+  );
 
   const setRunButtonMissingState = (button, mode) => {
     if (!button) return;
@@ -835,25 +849,23 @@
     const mode = currentMode;
 
     await Promise.all([
-      ...promptFiles.map(async ([agentId, fileName]) => {
-        const filePath = formatMarkdownFilePath('prompts', mode, fileName);
-        await loadMarkdownFile({
-          filePath,
-          missing,
-          onSuccess: (markdownContent) => {
-            state.promptsByMode[mode][agentId] = markdownContent;
-          },
-        });
+      loadMarkdownFiles({
+        family: 'prompts',
+        mode,
+        entries: promptFiles,
+        missing,
+        onSuccess: (agentId, markdownContent) => {
+          state.promptsByMode[mode][agentId] = markdownContent;
+        },
       }),
-      ...BIBLIO_FILES.map(async (key) => {
-        const filePath = formatMarkdownFilePath('biblios', mode, key);
-        await loadMarkdownFile({
-          filePath,
-          missing,
-          onSuccess: (markdownContent) => {
-            state.bibliosByMode[mode][key] = markdownContent;
-          },
-        });
+      loadMarkdownFiles({
+        family: 'biblios',
+        mode,
+        entries: BIBLIO_FILES.map((key) => [key, key]),
+        missing,
+        onSuccess: (key, markdownContent) => {
+          state.bibliosByMode[mode][key] = markdownContent;
+        },
       }),
     ]);
 

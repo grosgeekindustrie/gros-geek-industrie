@@ -11,7 +11,10 @@ const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
   TABLETOP: 'tabletop',
   COLLECTION: 'collection',
 };
-const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
+const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
+  APP_SETTINGS: 'pipeline.settings',
+};
+const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
 
 var currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
