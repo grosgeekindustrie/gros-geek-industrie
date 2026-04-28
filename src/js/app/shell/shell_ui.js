@@ -11,6 +11,7 @@ const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
   TABLETOP: 'tabletop',
   COLLECTION: 'collection',
 };
+const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
 
 var currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
@@ -18,6 +19,16 @@ const getModeUiConfig = (mode = currentMode) => (
   getPipelineUiConfig(mode)
 );
 const getModePrefix = (mode = currentMode) => getPipelinePrefix(mode);
+const readAppSettings = () => {
+  try {
+    return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
+  } catch (_error) {
+    return {};
+  }
+};
+const writeAppSettings = (nextSettings) => {
+  localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+};
 
 function pfx() {
   return getModePrefix(currentMode);
@@ -74,11 +85,9 @@ function switchMode(mode) {
     modeToastColor: isTabletop ? '#e8c547' : '#7eb8f7',
   });
 
-  try {
-    const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-    settings.mode = mode;
-    localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-  } catch (error) {}
+  const settings = readAppSettings();
+  settings.mode = mode;
+  writeAppSettings(settings);
 }
 
 // ═══════════════════════════════════════════════════════════

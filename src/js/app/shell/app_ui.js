@@ -66,6 +66,7 @@
   const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
   const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
   const AGENT_TITLE_EMOJI_PATTERN = /[🔍🖼️📊🔖🏷️📝]/gu;
+  const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
 
   const buildPipelineActionRequest = (trigger) => ({
     action: String(trigger.dataset.pipelineAction || '').trim(),
@@ -147,6 +148,18 @@
     'toggle-buzz-collection': () => global.toggleBuzzCollection?.(),
     'toggle-license': () => global.toggleLicense?.(),
   });
+
+  const readAppSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
+    } catch (_error) {
+      return {};
+    }
+  };
+
+  const writeAppSettings = (nextSettings) => {
+    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+  };
 
   const handleDelegatedUiActionClick = (event) => {
     const overlay = dom.getClosestByData?.(event.target, 'overlayClose');
@@ -305,11 +318,9 @@
     syncHeaderBackAction();
 
     if (name !== 'pipeline') {
-      try {
-        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-        settings.view = name;
-        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-      } catch (error) {}
+      const settings = readAppSettings();
+      settings.view = name;
+      writeAppSettings(settings);
     }
   }
 
@@ -445,11 +456,9 @@
     const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
     if (!apiKey) return;
 
-    try {
-      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-      settings.apiKey = apiKey;
-      localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-    } catch (error) {}
+    const settings = readAppSettings();
+    settings.apiKey = apiKey;
+    writeAppSettings(settings);
   }
 
 
