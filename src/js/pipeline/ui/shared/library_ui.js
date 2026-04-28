@@ -4,6 +4,7 @@
 // Ouvre les lightboxes d'édition et synchronise les contenus avec le backend fichier.
 // Ne pas y ajouter de logique pipeline : ce module reste centré sur l'édition.
   global.PipelineUI = global.PipelineUI || {};
+  const files = global.PipelineUIFiles || {};
 
   const BIBLIO_MAP = {
     tags: { label: 'Tags' },
@@ -17,6 +18,10 @@
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
   const getConfig = () => global.PipelineUIConfig;
+  const readLibraryMarkdown = files.readLibraryMarkdown;
+  const writeLibraryMarkdown = files.writeLibraryMarkdown;
+  const readPromptMarkdown = files.readPromptMarkdown;
+  const writePromptMarkdown = files.writePromptMarkdown;
 
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
@@ -44,8 +49,7 @@
     const mode = getCurrentMode();
 
     try {
-      const res = await fetch(`/files/biblios/${mode}/${key}.md`, { method: 'PUT', body: value });
-      if (!res.ok) throw new Error((await res.json()).error);
+      await writeLibraryMarkdown(mode, key, value);
       getState().bibliosByMode[mode][key] = value;
       closeBiblioLightbox();
       showToast(`${label} sauvegardé ✓`);
@@ -60,9 +64,7 @@
     const mode = getCurrentMode();
 
     try {
-      const res = await fetch(`/files/biblios/${mode}/${key}.md`);
-      if (!res.ok) throw new Error((await res.json()).error);
-      const txt = await res.text();
+      const txt = await readLibraryMarkdown(mode, key);
       getState().bibliosByMode[mode][key] = txt;
       document.getElementById('biblio-textarea').value = txt;
       showToast(`${label} rechargé ✓`);
@@ -102,8 +104,7 @@
 
     const val = document.getElementById('lbTextarea').value;
     try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`, { method: 'PUT', body: val });
-      if (!res.ok) throw new Error((await res.json()).error);
+      await writePromptMarkdown(mode, fname, val);
       getState().promptsByMode[mode][currentLbAgentId] = val;
       closePromptLightbox();
       showToast('Prompt sauvegardé ✓');
@@ -122,9 +123,7 @@
     if (!confirm(`Recharger prompts/${mode}/${fname}.md depuis le disque ?`)) return;
 
     try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
-      if (!res.ok) throw new Error((await res.json()).error);
-      const txt = await res.text();
+      const txt = await readPromptMarkdown(mode, fname);
       getState().promptsByMode[mode][currentLbAgentId] = txt;
       document.getElementById('lbTextarea').value = txt;
       showToast('Rechargé depuis le fichier ✓');

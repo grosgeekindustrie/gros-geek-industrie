@@ -4,6 +4,7 @@
 // Regroupe les flows de validation utilisateur, explorers et assemblage des sorties.
 // Zone sensible car fortement couplée au DOM des cartes pipeline.
   global.PipelineUI = global.PipelineUI || {};
+  const files = global.PipelineUIFiles || {};
   const dom = global.PipelineUIDom || {};
   const runtimeCache = global.PipelineUIRuntimeCache || {};
 
@@ -11,6 +12,7 @@
   const modals = () => global.PipelineUIModals || {};
   const titlesApi = () => global.PipelineUITitles || {};
   const getPfx = () => global.pfx();
+  const writeLibraryMarkdown = files.writeLibraryMarkdown;
   let selectionDelegationBound = false;
 
   const continueAfterSelection = async (agentId) => {
@@ -571,8 +573,7 @@
     validated.push(normalizedTag);
     const updated = global.buildBiblioTagsRaw(validated, blacklisted);
     try {
-      const res = await fetch(`/files/biblios/${global.currentMode}/tags.md`, { method: 'PUT', body: updated });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await writeLibraryMarkdown(global.currentMode, 'tags', updated);
       global.state.bibliosByMode[global.currentMode].tags = updated;
       document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
       global.showToast(`👍 "${normalizedTag}" validé`);
@@ -918,8 +919,7 @@
     validated.push(text);
     const updated = global.buildBiblioTitresRaw(validated, blacklisted);
     try {
-      const res = await fetch(`/files/biblios/${global.currentMode}/titres.md`, { method: 'PUT', body: updated });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await writeLibraryMarkdown(global.currentMode, 'titres', updated);
       global.state.bibliosByMode[global.currentMode].titres = updated;
       global.showToast('👍 Titre ajouté aux exemples validés');
     } catch (error) {

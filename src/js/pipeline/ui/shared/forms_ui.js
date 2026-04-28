@@ -6,6 +6,7 @@
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
   const storage = global.PipelineUIStorage || {};
+  const files = global.PipelineUIFiles || {};
   const STORAGE_KEYS = sharedConstants.STORAGE_KEYS || {
     APP_SETTINGS: 'pipeline.settings',
     PIPELINE_RULES: 'pipeline.rules',
@@ -111,6 +112,8 @@
   const getPfx = () => global.pfx();
   const getEchellesApi = () => global.PipelineUIEchelles || {};
   const getConfig = () => global.PipelineUIConfig;
+  const buildMarkdownPath = files.buildMarkdownPath;
+  const readMarkdownFile = files.readMarkdownFile;
   const readStoredJSON = storage.readStoredJSON || ((key, fallback) => {
     try {
       const rawValue = localStorage.getItem(key);
@@ -789,16 +792,9 @@
     } catch (_error) {}
   }
 
-  const formatMarkdownFilePath = (family, mode, fileName) => `${family}/${mode}/${fileName}.md`;
   const loadMarkdownFile = async ({ filePath, missing }) => {
     try {
-      const response = await fetch(`/files/${filePath}`);
-      if (!response.ok) {
-        missing.push(filePath);
-        return null;
-      }
-
-      return await response.text();
+      return await readMarkdownFile(filePath);
     } catch (_error) {
       missing.push(filePath);
       return null;
@@ -807,7 +803,7 @@
 
   const loadMarkdownFiles = async ({ family, mode, entries, missing, onSuccess }) => Promise.all(
     entries.map(async ([key, fileName]) => {
-      const filePath = formatMarkdownFilePath(family, mode, fileName);
+      const filePath = buildMarkdownPath(family, mode, fileName);
       const markdownContent = await loadMarkdownFile({ filePath, missing });
       if (markdownContent === null) return;
       onSuccess(key, markdownContent);

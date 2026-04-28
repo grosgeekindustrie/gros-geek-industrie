@@ -5,9 +5,11 @@
 // Module DOM-heavy : toute modification doit rester ciblée et retestée visuellement.
   global.PipelineUI = global.PipelineUI || {};
   const sharedConstants = global.PipelineUISharedConstants || {};
+  const files = global.PipelineUIFiles || {};
   const logger = global.PipelineUILogger?.createLogger?.(sharedConstants.LOG_PREFIXES?.UI || 'ui');
   const dom = global.PipelineUIDom || {};
   const helpers = () => global.PipelineUIHelpers || {};
+  const writeLibraryMarkdown = files.writeLibraryMarkdown;
   let modalDelegationBound = false;
 
   function ensureLibraryModals() {
@@ -165,22 +167,14 @@
 
   async function saveTagsLibrary(validated, blacklisted) {
     const updated = global.buildBiblioTagsRaw(validated, blacklisted);
-    const response = await fetch(`/files/biblios/${global.currentMode}/tags.md`, {
-      method: 'PUT',
-      body: updated,
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await writeLibraryMarkdown(global.currentMode, 'tags', updated);
     global.state.bibliosByMode[global.currentMode].tags = updated;
     document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
   }
 
   async function saveTitresLibrary(validated, blacklisted) {
     const updated = global.buildBiblioTitresRaw(validated, blacklisted);
-    const response = await fetch(`/files/biblios/${global.currentMode}/titres.md`, {
-      method: 'PUT',
-      body: updated,
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await writeLibraryMarkdown(global.currentMode, 'titres', updated);
     global.state.bibliosByMode[global.currentMode].titres = updated;
   }
 
