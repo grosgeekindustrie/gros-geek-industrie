@@ -69,11 +69,7 @@
   const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
   const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
   const AGENT_TITLE_EMOJI_PATTERN = /[🔍🖼️📊🔖🏷️📝]/gu;
-<<<<<<< ours
   const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
-=======
-  const APP_SETTINGS_STORAGE_KEY = STORAGE_KEYS.APP_SETTINGS;
->>>>>>> theirs
 
   const buildPipelineActionRequest = (trigger) => ({
     action: String(trigger.dataset.pipelineAction || '').trim(),
