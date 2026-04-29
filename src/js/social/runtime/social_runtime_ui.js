@@ -29,6 +29,28 @@
     pinterestDesc: 'pinterestDesc',
     pinterestAlt: 'pinterestAlt',
   });
+  const SOCIAL_TOGGLE_CLOSED_LABEL = '📋 Fiche déjà publiée';
+  const SOCIAL_TOGGLE_OPEN_LABEL = '✕ Fermer';
+
+  function getSocialNode(prefix, role, root = document) {
+    return root.querySelector?.(`[data-social-role="${role}"][data-prefix="${prefix}"]`) || null;
+  }
+
+  function getSocialAgentNode(prefix, agentId, part, root = document) {
+    return root.querySelector?.(
+      `[data-social-agent="${part}"][data-agent-id="${agentId}"][data-prefix="${prefix}"]`,
+    ) || null;
+  }
+
+  function getSocialRunButton(prefix, buttonId) {
+    if (buttonId === `runLeoBtn-${prefix}`) {
+      return document.querySelector(`[data-ui-action="run-leo-agent"][data-action-arg="${prefix}"]`);
+    }
+    if (buttonId === `runCamilleBtn-${prefix}`) {
+      return document.querySelector(`[data-ui-action="run-camille-agent"][data-action-arg="${prefix}"]`);
+    }
+    return document.getElementById(buttonId);
+  }
 
   function refreshSocialTabs(prefix, { activate = false } = {}) {
     if (prefix !== 'tt' && prefix !== 'col') return;
@@ -38,37 +60,37 @@
 
   function resetSocialContentSections(prefix) {
     [
-      `ss-insta-${prefix}`,
-      `ss-fb-${prefix}`,
-      `ss-marketplace-${prefix}`,
-      `ss-pinterest-${prefix}`,
-      `sc-pinterest-titre-${prefix}`,
-      `sc-pinterest-desc-wrap-${prefix}`,
-      `sc-pinterest-alt-wrap-${prefix}`,
-    ].forEach((id) => {
-      const element = document.getElementById(id);
+      'ss-insta',
+      'ss-fb',
+      'ss-marketplace',
+      'ss-pinterest',
+      'sc-pinterest-titre',
+      'sc-pinterest-desc-wrap',
+      'sc-pinterest-alt-wrap',
+    ].forEach((role) => {
+      const element = getSocialNode(prefix, role);
       if (element) element.style.display = 'none';
     });
   }
 
   function resetSocialRuntimePanels(prefix) {
     [
-      `socialSection-${prefix}`,
-      `socialOutput-${prefix}`,
-      `reseauxOnlySection-${prefix}`,
-    ].forEach((id) => {
-      const element = document.getElementById(id);
+      'section',
+      'social-output',
+      'reseaux-only',
+    ].forEach((role) => {
+      const element = getSocialNode(prefix, role);
       if (element) element.style.display = 'none';
     });
 
     resetSocialContentSections(prefix);
-    const toggleButton = document.getElementById(`toggleReseauxOnlyBtn-${prefix}`);
-    if (toggleButton) toggleButton.textContent = 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e';
+    const toggleButton = getSocialNode(prefix, 'toggle-reseaux-only');
+    if (toggleButton) toggleButton.textContent = SOCIAL_TOGGLE_CLOSED_LABEL;
     global.state.socialSections = {};
   }
 
   function showSocialEntryPanel(prefix) {
-    const section = document.getElementById(`socialSection-${prefix}`);
+    const section = getSocialNode(prefix, 'section');
     if (section) section.style.display = 'block';
     refreshSocialTabs(prefix);
   }
@@ -77,35 +99,35 @@
     if (!pipelineBody) return;
 
     [
-      `socialSection-${prefix}`,
-      `socialOutput-${prefix}`,
-      `reseauxOnlySection-${prefix}`,
-    ].forEach((id) => {
-      const element = document.getElementById(id);
+      'section',
+      'social-output',
+      'reseaux-only',
+    ].forEach((role) => {
+      const element = getSocialNode(prefix, role);
       if (element) pipelineBody.appendChild(element);
     });
   }
 
   function getSocialSelectedFormats(prefix) {
     const formats = [];
-    if (document.getElementById(`soc-insta-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.instagram);
-    if (document.getElementById(`soc-fb-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.facebook);
-    if (document.getElementById(`soc-marketplace-${prefix}`)?.checked) formats.push(SOCIAL_FORMAT_LABELS.marketplace);
+    if (getSocialNode(prefix, 'soc-insta')?.checked) formats.push(SOCIAL_FORMAT_LABELS.instagram);
+    if (getSocialNode(prefix, 'soc-fb')?.checked) formats.push(SOCIAL_FORMAT_LABELS.facebook);
+    if (getSocialNode(prefix, 'soc-marketplace')?.checked) formats.push(SOCIAL_FORMAT_LABELS.marketplace);
     return formats;
   }
 
   function getSocialAgentRefs(prefix, agentId) {
     return {
-      card: document.getElementById(`card-${agentId}-${prefix}`),
-      stat: document.getElementById(`stat-${agentId}-${prefix}`),
-      out: document.getElementById(`out-${agentId}-${prefix}`),
-      stopBtn: document.getElementById(`bstop-${agentId}-${prefix}`),
+      card: getSocialAgentNode(prefix, agentId, 'card'),
+      stat: getSocialAgentNode(prefix, agentId, 'stat'),
+      out: getSocialAgentNode(prefix, agentId, 'out'),
+      stopBtn: getSocialAgentNode(prefix, agentId, 'stop'),
     };
   }
 
   function beginSocialAgentRun(prefix, agentId, buttonId) {
     const refs = getSocialAgentRefs(prefix, agentId);
-    const button = document.getElementById(buttonId);
+    const button = getSocialRunButton(prefix, buttonId);
 
     if (refs.card) refs.card.className = 'agent-card active';
     if (refs.stat) {
@@ -166,7 +188,7 @@
     }
 
     const { refs, button } = beginSocialAgentRun(prefix, 'social', `runLeoBtn-${prefix}`);
-    const correction = document.getElementById(`cor-social-${prefix}`)?.value || '';
+    const correction = getSocialNode(prefix, 'cor-social')?.value || '';
     const ctx = buildSocialAgentContext('social', formats, correction, options);
     const prompt = global.buildPrompt('social', ctx);
     global.state.inputs.social = prompt.filled;
@@ -191,13 +213,13 @@
   }
 
   async function runCamilleAgent(prefix, options = {}) {
-    if (!document.getElementById(`soc-pinterest-${prefix}`)?.checked) {
+    if (!getSocialNode(prefix, 'soc-pinterest')?.checked) {
       global.showToast(`Active Pinterest pour ${global.currentMode === 'collection' ? 'Zoe' : 'Camille'} !`, '#ff4757');
       return;
     }
 
     const { refs, button } = beginSocialAgentRun(prefix, 'camille', `runCamilleBtn-${prefix}`);
-    const correction = document.getElementById(`cor-camille-${prefix}`)?.value || '';
+    const correction = getSocialNode(prefix, 'cor-camille')?.value || '';
     const ctx = buildSocialAgentContext('camille', [], correction, options);
     const prompt = global.buildPrompt('camille', ctx);
     global.state.inputs.camille = prompt.filled;
@@ -222,13 +244,13 @@
   }
 
   function toggleReseauxOnly(prefix) {
-    const section = document.getElementById(`reseauxOnlySection-${prefix}`);
-    const button = document.getElementById(`toggleReseauxOnlyBtn-${prefix}`);
+    const section = getSocialNode(prefix, 'reseaux-only');
+    const button = getSocialNode(prefix, 'toggle-reseaux-only');
     if (!section) return;
 
     const isVisible = section.style.display !== 'none';
     section.style.display = isVisible ? 'none' : 'block';
-    if (button) button.textContent = isVisible ? 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e' : 'âœ• Fermer';
+    if (button) button.textContent = isVisible ? SOCIAL_TOGGLE_CLOSED_LABEL : SOCIAL_TOGGLE_OPEN_LABEL;
     refreshSocialTabs(prefix, { activate: !isVisible });
   }
 
@@ -237,7 +259,7 @@
     global.state.socialSections = sections;
     resetSocialContentSections(prefix);
 
-    const socialOutput = document.getElementById(`socialOutput-${prefix}`);
+    const socialOutput = getSocialNode(prefix, 'social-output');
     if (socialOutput) {
       socialOutput.style.display = 'flex';
       socialOutput.style.flexDirection = 'column';
@@ -245,9 +267,9 @@
 
     const showSection = (id, content) => {
       if (!content) return;
-      const wrap = document.getElementById(`ss-${id}-${prefix}`);
+      const wrap = getSocialNode(prefix, `ss-${id}`);
       if (wrap) wrap.style.display = 'block';
-      const element = document.getElementById(`sc-${id}-${prefix}`);
+      const element = getSocialNode(prefix, `sc-${id}`);
       if (element) element.textContent = content;
     };
 
@@ -256,33 +278,33 @@
     showSection('marketplace', sections.marketplace);
 
     if (sections.pinterest || sections.pinterestTitre || sections.pinterestDesc || sections.pinterestAlt) {
-      const wrap = document.getElementById(`ss-pinterest-${prefix}`);
+      const wrap = getSocialNode(prefix, 'ss-pinterest');
       if (wrap) wrap.style.display = 'block';
 
       if (sections.pinterestTitre) {
-        const titleWrap = document.getElementById(`sc-pinterest-titre-${prefix}`);
-        const titleContent = document.getElementById(`sc-pinterest-t-${prefix}`);
+        const titleWrap = getSocialNode(prefix, 'sc-pinterest-titre');
+        const titleContent = getSocialNode(prefix, 'sc-pinterest-t');
         if (titleWrap) titleWrap.style.display = 'block';
         if (titleContent) titleContent.textContent = sections.pinterestTitre;
       }
 
       if (sections.pinterestDesc) {
-        const descWrap = document.getElementById(`sc-pinterest-desc-wrap-${prefix}`);
-        const descContent = document.getElementById(`sc-pinterest-d-${prefix}`);
+        const descWrap = getSocialNode(prefix, 'sc-pinterest-desc-wrap');
+        const descContent = getSocialNode(prefix, 'sc-pinterest-d');
         if (descWrap) descWrap.style.display = 'block';
         if (descContent) descContent.textContent = sections.pinterestDesc;
       }
 
       if (sections.pinterestAlt) {
-        const altWrap = document.getElementById(`sc-pinterest-alt-wrap-${prefix}`);
-        const altContent = document.getElementById(`sc-pinterest-a-${prefix}`);
+        const altWrap = getSocialNode(prefix, 'sc-pinterest-alt-wrap');
+        const altContent = getSocialNode(prefix, 'sc-pinterest-a');
         if (altWrap) altWrap.style.display = 'block';
         if (altContent) altContent.textContent = sections.pinterestAlt;
       }
 
       if (!sections.pinterestTitre && !sections.pinterestDesc) {
-        const descWrap = document.getElementById(`sc-pinterest-desc-wrap-${prefix}`);
-        const descContent = document.getElementById(`sc-pinterest-d-${prefix}`);
+        const descWrap = getSocialNode(prefix, 'sc-pinterest-desc-wrap');
+        const descContent = getSocialNode(prefix, 'sc-pinterest-d');
         if (descWrap) descWrap.style.display = 'block';
         if (descContent) descContent.textContent = sections.pinterest;
       }
@@ -296,13 +318,13 @@
   }
 
   async function runReseauxOnly(type, prefix) {
-    const nom = document.getElementById(`ro-nom-${prefix}`)?.value || '';
-    const sculpteur = document.getElementById(`ro-sculpteur-${prefix}`)?.value || '';
-    const url = document.getElementById(`ro-url-${prefix}`)?.value || '';
-    const echelles = document.getElementById(`ro-echelles-${prefix}`)?.value || '';
-    const accroche = document.getElementById(`ro-accroche-${prefix}`)?.value || '';
-    const cta = document.getElementById(`ro-cta-${prefix}`)?.value || '';
-    const titre = document.getElementById(`ro-titre-${prefix}`)?.value || '';
+    const nom = getSocialNode(prefix, 'ro-nom')?.value || '';
+    const sculpteur = getSocialNode(prefix, 'ro-sculpteur')?.value || '';
+    const url = getSocialNode(prefix, 'ro-url')?.value || '';
+    const echelles = getSocialNode(prefix, 'ro-echelles')?.value || '';
+    const accroche = getSocialNode(prefix, 'ro-accroche')?.value || '';
+    const cta = getSocialNode(prefix, 'ro-cta')?.value || '';
+    const titre = getSocialNode(prefix, 'ro-titre')?.value || '';
 
     const previousAccroche = global.state.selectedAccroche;
     const previousCTA = global.state.selectedCTA;

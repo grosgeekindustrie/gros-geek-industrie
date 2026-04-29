@@ -456,72 +456,72 @@ Cache : —</pre>
       <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="social" hidden>
 
   <!-- RÉSEAUX SOCIAUX TABLETOP -->
-  <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt">
+  <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt" data-social-role="section" data-prefix="tt">
     <div class="section-header-inline">
       <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="tt" id="toggleReseauxOnlyBtn-tt">📋 Fiche déjà publiée</button>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="tt" id="toggleReseauxOnlyBtn-tt" data-social-role="toggle-reseaux-only" data-prefix="tt">📋 Fiche déjà publiée</button>
     </div>
     <div class="section-stack-md">
-      <div class="agent-card" id="card-social-tt">
+      <div class="agent-card" id="card-social-tt" data-social-agent="card" data-agent-id="social" data-prefix="tt">
         <div class="agent-header" data-card-toggle="social-tt">
           <span class="agent-num">○</span>
           <span class="agent-title">📸 Léo · Réseaux sociaux</span>
           <span class="badge-rules is-hidden" id="brul-social-tt">📌</span>
-          <span class="agent-status s-wait" id="stat-social-tt">en attente</span>
+          <span class="agent-status s-wait" id="stat-social-tt" data-social-agent="stat" data-agent-id="social" data-prefix="tt">en attente</span>
           <span class="chevron" id="chev-social-tt">▾</span>
         </div>
         <div class="agent-body" id="body-social-tt">
           <div class="social-platform-row">
             <label class="social-check">
-              <input type="checkbox" id="soc-insta-tt" checked/>
+              <input type="checkbox" id="soc-insta-tt" checked data-social-role="soc-insta" data-prefix="tt"/>
               📸 Instagram / TikTok
             </label>
             <label class="social-check">
-              <input type="checkbox" id="soc-fb-tt" checked/>
+              <input type="checkbox" id="soc-fb-tt" checked data-social-role="soc-fb" data-prefix="tt"/>
               👥 Facebook
             </label>
             <label class="social-check">
-              <input type="checkbox" id="soc-marketplace-tt"/>
+              <input type="checkbox" id="soc-marketplace-tt" data-social-role="soc-marketplace" data-prefix="tt"/>
               🛍️ FB Marketplace
             </label>
           </div>
-          <div class="output-box empty" id="out-social-tt">— pas encore généré —</div>
+          <div class="output-box empty" id="out-social-tt" data-social-agent="out" data-agent-id="social" data-prefix="tt">— pas encore généré —</div>
           <div class="correction-area">
             <label>💬 Correction ponctuelle</label>
-            <textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..."></textarea>
+            <textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..." data-social-role="cor-social" data-prefix="tt"></textarea>
           </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runLeoBtn-tt" type="button" data-ui-action="run-leo-agent" data-action-arg="tt">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="tt">⏹</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="tt" data-social-agent="stop">⏹</button>
             <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
             <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
-      <div class="agent-card" id="card-camille-tt">
+      <div class="agent-card" id="card-camille-tt" data-social-agent="card" data-agent-id="camille" data-prefix="tt">
         <div class="agent-header" data-card-toggle="camille-tt">
           <span class="agent-num">○</span>
           <span class="agent-title">📌 Camille · Pinterest</span>
           <span class="badge-rules is-hidden" id="brul-camille-tt">📌</span>
-          <span class="agent-status s-wait" id="stat-camille-tt">en attente</span>
+          <span class="agent-status s-wait" id="stat-camille-tt" data-social-agent="stat" data-agent-id="camille" data-prefix="tt">en attente</span>
           <span class="chevron" id="chev-camille-tt">▾</span>
         </div>
         <div class="agent-body" id="body-camille-tt">
           <div class="social-platform-row">
             <label class="social-check">
-              <input type="checkbox" id="soc-pinterest-tt" checked/>
+              <input type="checkbox" id="soc-pinterest-tt" checked data-social-role="soc-pinterest" data-prefix="tt"/>
               📌 Pinterest
             </label>
           </div>
-          <div class="output-box empty" id="out-camille-tt">— pas encore généré —</div>
+          <div class="output-box empty" id="out-camille-tt" data-social-agent="out" data-agent-id="camille" data-prefix="tt">— pas encore généré —</div>
           <div class="correction-area">
             <label>💬 Correction ponctuelle</label>
-            <textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..."></textarea>
+            <textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..." data-social-role="cor-camille" data-prefix="tt"></textarea>
           </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runCamilleBtn-tt" type="button" data-ui-action="run-camille-agent" data-action-arg="tt">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="tt">⏹</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="tt" data-social-agent="stop">⏹</button>
             <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
             <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
@@ -531,36 +531,36 @@ Cache : —</pre>
     </div>
   </div>
 
-  <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-tt">
+  <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-tt" data-social-role="reseaux-only" data-prefix="tt">
     <h2>📱 Réseaux only — Fiche déjà publiée</h2>
     <div class="form-grid">
       <div class="fg full">
         <label>Accroche validée</label>
-        <textarea id="ro-accroche-tt" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea>
+        <textarea id="ro-accroche-tt" class="textarea-compact" placeholder="Colle l'accroche ici..." data-social-role="ro-accroche" data-prefix="tt"></textarea>
       </div>
       <div class="fg full">
         <label>CTA validé</label>
-        <textarea id="ro-cta-tt" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea>
+        <textarea id="ro-cta-tt" class="textarea-compact" placeholder="Colle le CTA ici..." data-social-role="ro-cta" data-prefix="tt"></textarea>
       </div>
       <div class="fg full">
         <label>Titre validé</label>
-        <input type="text" id="ro-titre-tt" placeholder="Colle le titre Etsy ici..."/>
+        <input type="text" id="ro-titre-tt" placeholder="Colle le titre Etsy ici..." data-social-role="ro-titre" data-prefix="tt"/>
       </div>
       <div class="fg">
         <label>Échelles</label>
-        <input type="text" id="ro-echelles-tt" placeholder="ex: 32mm, 75mm, 140mm"/>
+        <input type="text" id="ro-echelles-tt" placeholder="ex: 32mm, 75mm, 140mm" data-social-role="ro-echelles" data-prefix="tt"/>
       </div>
       <div class="fg">
         <label>URL boutique</label>
-        <input type="text" id="ro-url-tt" value="https://grosgeekindustrie.etsy.com"/>
+        <input type="text" id="ro-url-tt" value="https://grosgeekindustrie.etsy.com" data-social-role="ro-url" data-prefix="tt"/>
       </div>
       <div class="fg">
         <label>Personnage</label>
-        <input type="text" id="ro-nom-tt" placeholder="ex: Jingwei The Monk"/>
+        <input type="text" id="ro-nom-tt" placeholder="ex: Jingwei The Monk" data-social-role="ro-nom" data-prefix="tt"/>
       </div>
       <div class="fg">
         <label>Sculpteur</label>
-        <input type="text" id="ro-sculpteur-tt" placeholder="ex: Nerikson"/>
+        <input type="text" id="ro-sculpteur-tt" placeholder="ex: Nerikson" data-social-role="ro-sculpteur" data-prefix="tt"/>
       </div>
     </div>
     <div class="reseaux-only-actions">
@@ -570,57 +570,57 @@ Cache : —</pre>
     </div>
   </div>
 
-  <div id="socialOutput-tt" class="social-output-panel is-hidden">
+  <div id="socialOutput-tt" class="social-output-panel is-hidden" data-social-role="social-output" data-prefix="tt">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
       <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" type="button" data-ui-action="copy-social">📋 Tout copier</button>
     </div>
-    <div class="final-section is-hidden" id="ss-insta-tt">
+    <div class="final-section is-hidden" id="ss-insta-tt" data-social-role="ss-insta" data-prefix="tt">
       <div class="fs-header">
         <span>📸 Instagram / TikTok</span>
         <button type="button" data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
       </div>
-      <pre class="fs-content" id="sc-insta-tt"></pre>
+      <pre class="fs-content" id="sc-insta-tt" data-social-role="sc-insta" data-prefix="tt"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-fb-tt">
+    <div class="final-section is-hidden" id="ss-fb-tt" data-social-role="ss-fb" data-prefix="tt">
       <div class="fs-header">
         <span>👥 Facebook</span>
         <button type="button" data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
       </div>
-      <pre class="fs-content" id="sc-fb-tt"></pre>
+      <pre class="fs-content" id="sc-fb-tt" data-social-role="sc-fb" data-prefix="tt"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-marketplace-tt">
+    <div class="final-section is-hidden" id="ss-marketplace-tt" data-social-role="ss-marketplace" data-prefix="tt">
       <div class="fs-header">
         <span>🛍️ Facebook Marketplace</span>
         <button type="button" data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
       </div>
-      <pre class="fs-content" id="sc-marketplace-tt"></pre>
+      <pre class="fs-content" id="sc-marketplace-tt" data-social-role="sc-marketplace" data-prefix="tt"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-pinterest-tt">
+    <div class="final-section is-hidden" id="ss-pinterest-tt" data-social-role="ss-pinterest" data-prefix="tt">
       <div class="fs-header">
         <span>📌 Pinterest</span>
         <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
       </div>
-      <div id="sc-pinterest-titre-tt" class="is-hidden">
+      <div id="sc-pinterest-titre-tt" class="is-hidden" data-social-role="sc-pinterest-titre" data-prefix="tt">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Titre Pinterest</span>
           <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-t-tt"></pre>
+        <pre class="fs-content" id="sc-pinterest-t-tt" data-social-role="sc-pinterest-t" data-prefix="tt"></pre>
       </div>
-      <div id="sc-pinterest-desc-wrap-tt" class="is-hidden">
+      <div id="sc-pinterest-desc-wrap-tt" class="is-hidden" data-social-role="sc-pinterest-desc-wrap" data-prefix="tt">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Description Pinterest</span>
           <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-d-tt"></pre>
+        <pre class="fs-content" id="sc-pinterest-d-tt" data-social-role="sc-pinterest-d" data-prefix="tt"></pre>
       </div>
-      <div id="sc-pinterest-alt-wrap-tt" class="is-hidden">
+      <div id="sc-pinterest-alt-wrap-tt" class="is-hidden" data-social-role="sc-pinterest-alt-wrap" data-prefix="tt">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
           <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-a-tt"></pre>
+        <pre class="fs-content" id="sc-pinterest-a-tt" data-social-role="sc-pinterest-a" data-prefix="tt"></pre>
       </div>
     </div>
   </div>
@@ -952,72 +952,72 @@ Cache : —</pre>
       <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="social" hidden>
 
   <!-- RÉSEAUX SOCIAUX COLLECTION -->
-  <div class="form-section social-section social-section-col is-hidden" id="socialSection-col">
+  <div class="form-section social-section social-section-col is-hidden" id="socialSection-col" data-social-role="section" data-prefix="col">
     <div class="section-header-inline">
       <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="col" id="toggleReseauxOnlyBtn-col">📋 Fiche déjà publiée</button>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="col" id="toggleReseauxOnlyBtn-col" data-social-role="toggle-reseaux-only" data-prefix="col">📋 Fiche déjà publiée</button>
     </div>
     <div class="section-stack-md">
-      <div class="agent-card" id="card-social-col">
+      <div class="agent-card" id="card-social-col" data-social-agent="card" data-agent-id="social" data-prefix="col">
         <div class="agent-header" data-card-toggle="social-col">
           <span class="agent-num">○</span>
           <span class="agent-title">📸 Theo · Réseaux sociaux</span>
           <span class="badge-rules is-hidden" id="brul-social-col">📌</span>
-          <span class="agent-status s-wait" id="stat-social-col">en attente</span>
+          <span class="agent-status s-wait" id="stat-social-col" data-social-agent="stat" data-agent-id="social" data-prefix="col">en attente</span>
           <span class="chevron" id="chev-social-col">▾</span>
         </div>
         <div class="agent-body" id="body-social-col">
           <div class="social-platform-row">
             <label class="social-check">
-              <input type="checkbox" id="soc-insta-col" checked/>
+              <input type="checkbox" id="soc-insta-col" checked data-social-role="soc-insta" data-prefix="col"/>
               📸 Instagram / TikTok
             </label>
             <label class="social-check">
-              <input type="checkbox" id="soc-fb-col" checked/>
+              <input type="checkbox" id="soc-fb-col" checked data-social-role="soc-fb" data-prefix="col"/>
               👥 Facebook
             </label>
             <label class="social-check">
-              <input type="checkbox" id="soc-marketplace-col"/>
+              <input type="checkbox" id="soc-marketplace-col" data-social-role="soc-marketplace" data-prefix="col"/>
               🛍️ FB Marketplace
             </label>
           </div>
-          <div class="output-box empty" id="out-social-col">— pas encore généré —</div>
+          <div class="output-box empty" id="out-social-col" data-social-agent="out" data-agent-id="social" data-prefix="col">— pas encore généré —</div>
           <div class="correction-area">
             <label>💬 Correction ponctuelle</label>
-            <textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..."></textarea>
+            <textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..." data-social-role="cor-social" data-prefix="col"></textarea>
           </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runLeoBtn-col" type="button" data-ui-action="run-leo-agent" data-action-arg="col">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="col">⏹</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="col" data-social-agent="stop">⏹</button>
             <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
             <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
-      <div class="agent-card" id="card-camille-col">
+      <div class="agent-card" id="card-camille-col" data-social-agent="card" data-agent-id="camille" data-prefix="col">
         <div class="agent-header" data-card-toggle="camille-col">
           <span class="agent-num">○</span>
           <span class="agent-title">📌 Zoe · Pinterest</span>
           <span class="badge-rules is-hidden" id="brul-camille-col">📌</span>
-          <span class="agent-status s-wait" id="stat-camille-col">en attente</span>
+          <span class="agent-status s-wait" id="stat-camille-col" data-social-agent="stat" data-agent-id="camille" data-prefix="col">en attente</span>
           <span class="chevron" id="chev-camille-col">▾</span>
         </div>
         <div class="agent-body" id="body-camille-col">
           <div class="social-platform-row">
             <label class="social-check">
-              <input type="checkbox" id="soc-pinterest-col" checked/>
+              <input type="checkbox" id="soc-pinterest-col" checked data-social-role="soc-pinterest" data-prefix="col"/>
               📌 Pinterest
             </label>
           </div>
-          <div class="output-box empty" id="out-camille-col">— pas encore généré —</div>
+          <div class="output-box empty" id="out-camille-col" data-social-agent="out" data-agent-id="camille" data-prefix="col">— pas encore généré —</div>
           <div class="correction-area">
             <label>💬 Correction ponctuelle</label>
-            <textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..."></textarea>
+            <textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..." data-social-role="cor-camille" data-prefix="col"></textarea>
           </div>
           <div class="agent-actions">
             <button class="btn btn-accent" id="runCamilleBtn-col" type="button" data-ui-action="run-camille-agent" data-action-arg="col">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="col">⏹</button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="col" data-social-agent="stop">⏹</button>
             <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
             <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
@@ -1027,36 +1027,36 @@ Cache : —</pre>
     </div>
   </div>
 
-  <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-col">
+  <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-col" data-social-role="reseaux-only" data-prefix="col">
     <h2>📱 Réseaux only — Fiche déjà publiée</h2>
     <div class="form-grid">
       <div class="fg full">
         <label>Accroche validée</label>
-        <textarea id="ro-accroche-col" class="textarea-compact" placeholder="Colle l'accroche ici..."></textarea>
+        <textarea id="ro-accroche-col" class="textarea-compact" placeholder="Colle l'accroche ici..." data-social-role="ro-accroche" data-prefix="col"></textarea>
       </div>
       <div class="fg full">
         <label>CTA validé</label>
-        <textarea id="ro-cta-col" class="textarea-compact" placeholder="Colle le CTA ici..."></textarea>
+        <textarea id="ro-cta-col" class="textarea-compact" placeholder="Colle le CTA ici..." data-social-role="ro-cta" data-prefix="col"></textarea>
       </div>
       <div class="fg full">
         <label>Titre validé</label>
-        <input type="text" id="ro-titre-col" placeholder="Colle le titre Etsy ici..."/>
+        <input type="text" id="ro-titre-col" placeholder="Colle le titre Etsy ici..." data-social-role="ro-titre" data-prefix="col"/>
       </div>
       <div class="fg">
         <label>Échelles</label>
-        <input type="text" id="ro-echelles-col" placeholder="ex: 1/8, 1/10"/>
+        <input type="text" id="ro-echelles-col" placeholder="ex: 1/8, 1/10" data-social-role="ro-echelles" data-prefix="col"/>
       </div>
       <div class="fg">
         <label>URL boutique</label>
-        <input type="text" id="ro-url-col" value="https://grosgeekindustrie.etsy.com"/>
+        <input type="text" id="ro-url-col" value="https://grosgeekindustrie.etsy.com" data-social-role="ro-url" data-prefix="col"/>
       </div>
       <div class="fg">
         <label>Personnage</label>
-        <input type="text" id="ro-nom-col" placeholder="ex: Leon Kennedy"/>
+        <input type="text" id="ro-nom-col" placeholder="ex: Leon Kennedy" data-social-role="ro-nom" data-prefix="col"/>
       </div>
       <div class="fg">
         <label>Sculpteur</label>
-        <input type="text" id="ro-sculpteur-col" placeholder="ex: Neko Figurines"/>
+        <input type="text" id="ro-sculpteur-col" placeholder="ex: Neko Figurines" data-social-role="ro-sculpteur" data-prefix="col"/>
       </div>
     </div>
     <div class="reseaux-only-actions">
@@ -1066,57 +1066,57 @@ Cache : —</pre>
     </div>
   </div>
 
-  <div id="socialOutput-col" class="social-output-panel is-hidden">
+  <div id="socialOutput-col" class="social-output-panel is-hidden" data-social-role="social-output" data-prefix="col">
     <div class="panel-toolbar">
       <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
       <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" data-ui-action="copy-social">📋 Tout copier</button>
     </div>
-    <div class="final-section is-hidden" id="ss-insta-col">
+    <div class="final-section is-hidden" id="ss-insta-col" data-social-role="ss-insta" data-prefix="col">
       <div class="fs-header">
         <span>📸 Instagram / TikTok</span>
         <button data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
       </div>
-      <pre class="fs-content" id="sc-insta-col"></pre>
+      <pre class="fs-content" id="sc-insta-col" data-social-role="sc-insta" data-prefix="col"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-fb-col">
+    <div class="final-section is-hidden" id="ss-fb-col" data-social-role="ss-fb" data-prefix="col">
       <div class="fs-header">
         <span>👥 Facebook</span>
         <button data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
       </div>
-      <pre class="fs-content" id="sc-fb-col"></pre>
+      <pre class="fs-content" id="sc-fb-col" data-social-role="sc-fb" data-prefix="col"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-marketplace-col">
+    <div class="final-section is-hidden" id="ss-marketplace-col" data-social-role="ss-marketplace" data-prefix="col">
       <div class="fs-header">
         <span>🛍️ Facebook Marketplace</span>
         <button data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
       </div>
-      <pre class="fs-content" id="sc-marketplace-col"></pre>
+      <pre class="fs-content" id="sc-marketplace-col" data-social-role="sc-marketplace" data-prefix="col"></pre>
     </div>
-    <div class="final-section is-hidden" id="ss-pinterest-col">
+    <div class="final-section is-hidden" id="ss-pinterest-col" data-social-role="ss-pinterest" data-prefix="col">
       <div class="fs-header">
         <span>📌 Pinterest</span>
         <button data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
       </div>
-      <div id="sc-pinterest-titre-col" class="is-hidden">
+      <div id="sc-pinterest-titre-col" class="is-hidden" data-social-role="sc-pinterest-titre" data-prefix="col">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Titre Pinterest</span>
           <button data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-t-col"></pre>
+        <pre class="fs-content" id="sc-pinterest-t-col" data-social-role="sc-pinterest-t" data-prefix="col"></pre>
       </div>
-      <div id="sc-pinterest-desc-wrap-col" class="is-hidden">
+      <div id="sc-pinterest-desc-wrap-col" class="is-hidden" data-social-role="sc-pinterest-desc-wrap" data-prefix="col">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Description Pinterest</span>
           <button data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-d-col"></pre>
+        <pre class="fs-content" id="sc-pinterest-d-col" data-social-role="sc-pinterest-d" data-prefix="col"></pre>
       </div>
-      <div id="sc-pinterest-alt-wrap-col" class="is-hidden">
+      <div id="sc-pinterest-alt-wrap-col" class="is-hidden" data-social-role="sc-pinterest-alt-wrap" data-prefix="col">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
           <button data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
         </div>
-        <pre class="fs-content" id="sc-pinterest-a-col"></pre>
+        <pre class="fs-content" id="sc-pinterest-a-col" data-social-role="sc-pinterest-a" data-prefix="col"></pre>
       </div>
     </div>
   </div>
@@ -1231,7 +1231,7 @@ Cache : —</pre>
 </div>
 
 <!-- ═══════════════════════════════════════ SCRIPTS CHARGÉS ═══════════════════════════════════════ -->
-<!-- Ordre important : modules UI d’abord, puis bridge pipeline-ui.js, puis runtime pipeline-api.js. -->
+<!-- Ordre important : bootstrap via js/index.js (UI partagée puis runtimes domaines) ; conserver l'ordre défini dans index.js. -->
 
 <script type="module" src="js/index.js"></script>
 

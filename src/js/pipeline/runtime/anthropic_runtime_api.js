@@ -589,7 +589,7 @@
     const images = Array.isArray(result?.images) ? result.images : [];
     const debug = createFilesApiDebug(result?.debug);
 
-    if (result?.error) throw new Error(result.error);
+    if (result?.error) throw new Error(`Files API (${prefix}): ${result.error}`);
 
     return {
       blocks: images.map((image) => ({
@@ -604,7 +604,7 @@
   }
 
   async function callClaude(agentId, promptData, useImages, retries = 3) {
-    const apiKey = document.getElementById('apiKey').value.trim();
+    const apiKey = document.getElementById('apiKey')?.value?.trim();
     if (!apiKey) throw new Error('Clé API manquante');
 
     const controller = new AbortController();

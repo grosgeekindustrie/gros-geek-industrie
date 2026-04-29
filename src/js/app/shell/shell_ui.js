@@ -24,7 +24,7 @@ const updateAppSettings = storage.updateAppSettings || ((updater) => {
   localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(settings));
 });
 
-var currentMode = PIPELINE_MODES.TABLETOP;
+let currentMode = PIPELINE_MODES.TABLETOP;
 const MODE_SUCCESS_SUFFIX = 'OK';
 const getModeUiConfig = (mode = currentMode) => {
   if (typeof window.getPipelineUiConfig !== 'function') {
@@ -117,7 +117,7 @@ function switchMode(mode) {
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
-var state = {
+const state = {
   images: { tt: [], col: [] },
   outputs: {},
   inputs: {},
