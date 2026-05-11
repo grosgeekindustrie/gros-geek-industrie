@@ -20,7 +20,7 @@
     getJumpButtons: () => Array.from(document.querySelectorAll('[data-js="collection-stepper-jump"]')),
     getPrevButton: () => document.querySelector('[data-js="collection-stepper-prev"]'),
     getNextButton: () => document.querySelector('[data-js="collection-stepper-next"]'),
-    getRunButton: () => document.querySelector('[data-js="collection-stepper"] #runBtn-col'),
+    getRunButton: () => document.querySelector('[data-js="collection-stepper"] [data-pipeline-action="launch"][data-pipeline-prefix="col"]'),
     getWarningBox: () => document.getElementById('imgWarning-col'),
     getFooterLabel: () => document.querySelector('[data-js="collection-stepper-footer-label"]'),
     getTitle: () => document.querySelector('[data-js="collection-stepper-title"]'),
