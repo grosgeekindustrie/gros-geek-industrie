@@ -296,7 +296,7 @@
     if (!apiKey) throw new Error('Cle API manquante');
 
     const runtimeDebug = getRuntimeDebugState();
-    const resolvedModel = String(model || 'claude-sonnet-4-20250514').trim();
+    const resolvedModel = String(model || 'claude-sonnet-4-5').trim();
     const cacheKey = getTokenCountCacheKey(resolvedModel, normalizedText);
     const cachedValue = runtimeDebug.tokenCountCache[cacheKey];
     if (typeof cachedValue === 'number') return cachedValue;
@@ -373,7 +373,7 @@
 
   async function buildEventTokenSections(event = {}) {
     const sectionTexts = getEventSectionTexts(event);
-    const model = global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-20250514';
+    const model = global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
     const sectionEntries = Object.entries(sectionTexts);
     const tokenSections = {};
 

@@ -10,15 +10,15 @@
 
   const abortControllers = {};
   const AGENT_MODELS = {
-    alt: 'claude-sonnet-4-20250514',
-    marche: 'claude-sonnet-4-20250514',
-    tags: 'claude-sonnet-4-20250514',
-    titre: 'claude-sonnet-4-20250514',
-    description: 'claude-sonnet-4-20250514',
-    social: 'claude-sonnet-4-20250514',
-    camille: 'claude-sonnet-4-20250514',
-    iris: 'claude-sonnet-4-20250514',
-    cache_aware: 'claude-sonnet-4-20250514',
+    alt: 'claude-sonnet-4-5',
+    marche: 'claude-sonnet-4-5',
+    tags: 'claude-sonnet-4-5',
+    titre: 'claude-sonnet-4-5',
+    description: 'claude-sonnet-4-5',
+    social: 'claude-sonnet-4-5',
+    camille: 'claude-sonnet-4-5',
+    iris: 'claude-sonnet-4-5',
+    cache_aware: 'claude-sonnet-4-5',
   };
 
   const PIPELINE_STATUS_DONE = 'terminé';
