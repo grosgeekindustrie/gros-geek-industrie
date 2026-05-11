@@ -189,12 +189,19 @@
   color: var(--text);
   padding: 8px 12px;
   font-family: 'JetBrains Mono', monospace;
+  color-scheme: dark;
 }
 
 .launch-model-select:focus {
   outline: none;
   border-color: rgba(126,184,247,.5);
   background: rgba(126,184,247,.08);
+}
+
+.launch-model-select option,
+.launch-model-select optgroup {
+  background: #171b22;
+  color: #f3f6fb;
 }
 
 .fetch-status {
