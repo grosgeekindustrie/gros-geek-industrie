@@ -373,7 +373,7 @@
 
   async function buildEventTokenSections(event = {}) {
     const sectionTexts = getEventSectionTexts(event);
-    const model = global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
+    const model = global.getActiveAgentModel?.(event.agentId) || global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
     const sectionEntries = Object.entries(sectionTexts);
     const tokenSections = {};
 

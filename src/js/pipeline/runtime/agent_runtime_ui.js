@@ -21,6 +21,12 @@
     cache_aware: 'claude-sonnet-4-5',
   };
 
+  function getActiveAgentModel(agentId = '') {
+    const selectedModel = String(global.getSelectedClaudeModel?.() || '').trim();
+    if (selectedModel) return selectedModel;
+    return String(AGENT_MODELS[agentId] || 'claude-sonnet-4-5').trim();
+  }
+
   const PIPELINE_STATUS_DONE = 'terminé';
   const PIPELINE_STATUS_ERROR = 'erreur';
   const PIPELINE_STATUS_SELECTION_REQUIRED = 'en pause · sélection requise';
@@ -302,6 +308,7 @@
   global.PipelineUIAgentRuntime = {
     abortControllers,
     AGENT_MODELS,
+    getActiveAgentModel,
     PIPELINE_STATUS_DONE,
     PIPELINE_STATUS_ERROR,
     PIPELINE_STATUS_SELECTION_REQUIRED,

@@ -13,6 +13,8 @@
   const DEFAULT_POSE_NAME = 'MUSEUM';
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
+  const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
+  const CLAUDE_MODEL_SELECT_IDS = Object.freeze(['tt-launch-model', 'col-launch-model']);
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -367,6 +369,25 @@
     settings.shopUrl = getShopUrl();
     writeAppSettings(settings);
   };
+
+  function syncClaudeModelSelects(nextValue = '', sourceId = '') {
+    const normalizedValue = String(nextValue || '').trim() || DEFAULT_CLAUDE_MODEL;
+    CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+      if (!id || id === sourceId) return;
+      const select = getElementById(id);
+      if (select) select.value = normalizedValue;
+    });
+  }
+
+  function getSelectedClaudeModel() {
+    const currentPrefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
+    const currentSelect = getElementById(`${currentPrefix}-launch-model`);
+    const currentValue = String(currentSelect?.value || '').trim();
+    if (currentValue) return currentValue;
+
+    const settingsValue = String(readAppSettings().selectedClaudeModel || '').trim();
+    return settingsValue || DEFAULT_CLAUDE_MODEL;
+  }
 
   function getArchetypes() {
     const prefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
@@ -724,6 +745,17 @@
     COLLECTION_FORM_FIELDS.forEach(attachSaveListener);
     COLLECTION_PERSISTED_TEXT_FIELDS.forEach(attachSaveListener);
 
+    CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+      const select = getElementById(id);
+      if (!select) return;
+      select.addEventListener('change', () => {
+        const settings = readAppSettings();
+        settings.selectedClaudeModel = String(select.value || '').trim() || DEFAULT_CLAUDE_MODEL;
+        writeAppSettings(settings);
+        syncClaudeModelSelects(settings.selectedClaudeModel, id);
+      });
+    });
+
     const apiKeyEl = getElementById('apiKey');
     if (apiKeyEl) {
       apiKeyEl.addEventListener('input', () => {
@@ -754,6 +786,12 @@
 
       const shopUrlEl = getElementById('shopUrl');
       if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
+
+      const selectedClaudeModel = String(settings.selectedClaudeModel || '').trim() || DEFAULT_CLAUDE_MODEL;
+      CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+        const select = getElementById(id);
+        if (select) select.value = selectedClaudeModel;
+      });
 
       if (settings.mode && settings.mode !== getCurrentMode()) {
         global.currentMode = settings.mode;
@@ -834,6 +872,7 @@
     TABLETOP_FORM_FIELDS,
     COLLECTION_FORM_FIELDS,
     getArchetypes,
+    getSelectedClaudeModel,
     getMediums,
     getCollectionData,
     getCollectionMediumSubcategoryValues,

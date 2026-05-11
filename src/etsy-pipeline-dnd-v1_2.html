@@ -387,6 +387,17 @@
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
+                <label class="launch-model-picker" for="tt-launch-model">
+                  <span class="launch-model-picker-label">Mod�le Claude</span>
+                  <select id="tt-launch-model" class="launch-model-select">
+                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
+                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
+                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
+                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
+                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
+                  </select>
+                </label>
                 <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="tt">▶ Lancer le pipeline complet</button>
               </div>
               <pre class="output-box" id="launchStatus-tt">Pipeline : complet
@@ -893,6 +904,17 @@ Cache : —</pre>
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
+                <label class="launch-model-picker" for="col-launch-model">
+                  <span class="launch-model-picker-label">Mod�le Claude</span>
+                  <select id="col-launch-model" class="launch-model-select">
+                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
+                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
+                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
+                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
+                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
+                  </select>
+                </label>
                 <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="col">▶ Lancer le pipeline complet</button>
               </div>
               <pre class="output-box" id="launchStatus-col">Pipeline : complet
@@ -1251,6 +1273,7 @@ Cache : —</pre>
 </div><!-- /app-shell -->
 </body>
 </html>
+
 
 
 

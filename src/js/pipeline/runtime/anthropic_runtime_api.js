@@ -658,7 +658,7 @@
             'anthropic-dangerous-direct-browser-access': 'true',
           },
           body: JSON.stringify({
-            model: global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
+            model: global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
             max_tokens: 2000,
             messages: [{ role: 'user', content }],
           }),
