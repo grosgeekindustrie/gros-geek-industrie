@@ -2,12 +2,30 @@
 
 (function initPipelineUIIrisRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  let irisOutputEditingBound = false;
 
   function getIrisRuntimeRefs(prefix = 'col') {
     return {
       button: document.getElementById(`runIrisBtn-${prefix}`),
       output: document.getElementById(`out-iris-${prefix}`),
     };
+  }
+
+  function syncIrisOutputState(prefix = 'col') {
+    const refs = getIrisRuntimeRefs(prefix);
+    if (!refs.output) return;
+    global.state.outputs.iris = refs.output.textContent || '';
+  }
+
+  function bindIrisOutputEditing() {
+    if (irisOutputEditingBound) return;
+    irisOutputEditingBound = true;
+
+    document.addEventListener('input', (event) => {
+      const editor = event.target.closest?.('[data-iris-output-editor]');
+      if (!editor) return;
+      syncIrisOutputState(editor.dataset.prefix || 'col');
+    });
   }
 
   function beginIrisSemanticSearch(prefix = 'col') {
@@ -82,6 +100,8 @@
     runCollectionIrisSemanticSearch,
     runTabletopIrisSemanticSearch,
   };
+
+  bindIrisOutputEditing();
 
   global.PipelineUI.runtimeIris = global.PipelineUI.runtimeIris || {};
   Object.assign(global.PipelineUI.runtimeIris, global.PipelineUIIrisRuntime);

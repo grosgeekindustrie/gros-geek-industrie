@@ -7,6 +7,7 @@ const sharedBootstrapManifest = Object.freeze({
   prelude: Object.freeze([
     'shared/constants/pipeline_constants.js',
     'shared/utils/dom.js',
+    'shared/utils/icons.js',
     'shared/utils/logger.js',
     'shared/utils/runtime_formats.js',
     'shared/utils/runtime_cache.js',

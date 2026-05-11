@@ -278,7 +278,8 @@
       .map((row) => ({ row, state: getTagsSelectionRowState(row, rows, libraryState) }))
       .filter(({ state }) => (onlyValid ? state.isRowValid : true))
       .map(({ state }) => state.value)
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }));
   }
 
   function copyTagsSelectionValues(values, successMessage) {
@@ -480,13 +481,13 @@
       <div class="tags-selection-shell">
         <div class="tags-selection-topbar">
           <div class="tags-selection-heading">
-            <div class="tags-selection-title">🔖 Sélection manuelle</div>
+            <div class="tags-selection-title">Selection manuelle</div>
             <div class="tags-selection-subtitle">2 colonnes · ${TAG_SELECTION_MAX} tags max · une ligne par tag.</div>
           </div>
           <div class="tags-selection-toolbar">
-            <button class="btn btn-muted" type="button" data-tags-copy="1">📋 Liste 1</button>
-            <button class="btn btn-muted" type="button" data-tags-copy="2">📋 Liste 2</button>
-            <button class="btn btn-accent" type="button" data-tags-copy="final">📋 Sortie finale</button>
+            <button class="btn btn-muted" type="button" data-tags-copy="1">Liste 1</button>
+            <button class="btn btn-muted" type="button" data-tags-copy="2">Liste 2</button>
+            <button class="btn btn-accent" type="button" data-tags-copy="final">Sortie finale</button>
           </div>
         </div>
         <div class="tags-selection-stats">
@@ -670,8 +671,6 @@
       <span class="titre-text" data-selection-text-node>${text}</span>
       <span class="titre-char" data-selection-char data-char-tone="${getCharTone(chars)}">${chars}</span>
       <div class="titre-actions">
-        <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
-        <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" data-selection-source="main" aria-label="Blacklister ce titre">NO</button>
         <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
         <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" aria-label="Regenerer ce titre">Relance</button>
       </div></div>`;
@@ -691,8 +690,6 @@
         <span class="titre-text" data-selection-text-node>${titre.text}</span>
         <span class="titre-char" data-selection-char data-char-tone="${getCharTone(titre.chars)}">${titre.chars}</span>
         <div class="titre-actions">
-          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
-          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" data-selection-source="explorer" aria-label="Blacklister ce titre">NO</button>
           <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
           <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" aria-label="Regenerer ce titre">Relance</button>
         </div>
@@ -725,21 +722,6 @@
       }
       if (action === 'select-titre') {
         selectTitre(Number(trigger.dataset.selectionIndex || 0), trigger.dataset.agentId || 'titre', trigger);
-        return;
-      }
-      if (action === 'validate-titre-segment' || action === 'validate-titre-explorer') {
-        await validateTitreSegment(getSelectionText(trigger));
-        item?.classList.add('validated');
-        return;
-      }
-      if (action === 'blacklist-titre-segment' || action === 'blacklist-titre-explorer') {
-        item?.classList.add('invalidated');
-        await invalidateTitreSegment(
-          getSelectionText(trigger),
-          trigger.dataset.itemId || null,
-          trigger.dataset.agentId || 'titre',
-          trigger.dataset.selectionSource || 'main'
-        );
         return;
       }
       if (action === 'reroll-titre-segment' || action === 'reroll-titre-explorer') {
@@ -832,7 +814,7 @@
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔭 Explorer';
+        btn.textContent = 'Explorer';
       }
     }
   }
@@ -909,34 +891,6 @@
     }
   }
 
-  async function validateTitreSegment(text) {
-    const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
-    const validated = parsed.validated || [];
-    const blacklisted = parsed.blacklisted || [];
-    if (validated.includes(text)) return;
-
-    validated.push(text);
-    const updated = global.buildBiblioTitresRaw(validated, blacklisted);
-    try {
-      const res = await fetch(`/files/biblios/${global.currentMode}/titres.md`, { method: 'PUT', body: updated });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      global.state.bibliosByMode[global.currentMode].titres = updated;
-      global.showToast('👍 Titre ajouté aux exemples validés');
-    } catch (error) {
-      global.showToast('Erreur sauvegarde titres', '#ff4757');
-    }
-  }
-
-  async function invalidateTitreSegment(text, itemId, agentId, source = 'main') {
-    modals().openLibraryBlacklistModal({
-      kind: 'titres',
-      currentValue: helpers().normalizeTitreValue ? helpers().normalizeTitreValue(text) : String(text || '').trim(),
-      itemId,
-      source,
-      agentId: agentId || 'titre',
-    });
-  }
-
   function copyTitreLine(text) {
     navigator.clipboard.writeText(text);
     global.showToast('Titre copié ✓');
@@ -946,7 +900,6 @@
     const p = getPfx();
     const input = getTitreManualInput(agentId);
     const titre = input?.value.trim() || '';
-    const selectedTitre = String(global.state.selectedTitre || '').trim();
     if (!titre) {
       alert('Choisis ou saisis un titre.');
       return;
@@ -955,10 +908,6 @@
     global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
     global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
-    if (titre !== selectedTitre) {
-      validateTitreSegment(titre);
-      global.showToast('✅ Titre manuel ajouté aux exemples validés');
-    }
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
@@ -1135,7 +1084,7 @@
       const explorerNodes = getExplorerNodes();
       if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TITRES';
       if (explorerNodes.count) explorerNodes.count.textContent = `${titres.length} titres`;
-      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — 👍 valider · 👎 blacklister';
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — copier ou relancer';
       if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
@@ -1151,7 +1100,7 @@
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔭 Explorer';
+        btn.textContent = 'Explorer';
       }
     }
   }
@@ -1169,8 +1118,6 @@
     selectTitre,
     updateTitreCounter,
     pasteSelectedTitre,
-    validateTitreSegment,
-    invalidateTitreSegment,
     copyTitreLine,
     validateTitre,
     parseChoices,
@@ -1184,11 +1131,6 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
-
-
-
-
-
 
 
 

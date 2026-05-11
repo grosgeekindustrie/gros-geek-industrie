@@ -284,6 +284,16 @@
     return card;
   };
 
+  const clearAllImages = async (prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+    if (!state.images[prefix].length) return;
+
+    state.images[prefix] = [];
+    renderThumbs(prefix);
+    await imageDb().clearWorkspaceImages?.(prefix);
+  };
+
   const renderThumbs = (prefix) => {
     const state = getState();
     if (!state?.images?.[prefix]) return;
@@ -307,6 +317,10 @@
     count.className = 'image-thumb-toolbar-count';
     count.textContent = `${state.images[prefix].length} image(s)`;
 
+    const toolbarActions = document.createElement('div');
+    toolbarActions.className = 'image-thumb-toolbar-actions';
+    toolbarActions.addEventListener('click', stopEvent);
+
     const debugButton = document.createElement('button');
     debugButton.type = 'button';
     debugButton.className = 'btn btn-muted btn-xs-inline image-thumb-debug-btn';
@@ -316,8 +330,19 @@
       openPayloadDebug(prefix);
     });
 
+    const clearAllButton = document.createElement('button');
+    clearAllButton.type = 'button';
+    clearAllButton.className = 'btn btn-error btn-xs-inline image-thumb-clear-all-btn';
+    clearAllButton.textContent = 'Tout supprimer';
+    clearAllButton.addEventListener('click', async (event) => {
+      stopEvent(event);
+      await clearAllImages(prefix);
+    });
+
     toolbar.appendChild(count);
-    toolbar.appendChild(debugButton);
+    toolbarActions.appendChild(debugButton);
+    toolbarActions.appendChild(clearAllButton);
+    toolbar.appendChild(toolbarActions);
 
     const grid = document.createElement('div');
     grid.className = 'image-thumb-grid';
@@ -347,6 +372,7 @@
   };
 
   global.PipelineUIImages = {
+    clearAllImages,
     setupImageHandlers,
     processImages,
     renderThumbs,

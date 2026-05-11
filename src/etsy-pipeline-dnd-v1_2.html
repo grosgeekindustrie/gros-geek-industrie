@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="pageTitle">🎲 Etsy Pipeline DnD v1.2</title>
+<title id="pageTitle">Etsy Pipeline DnD v1.2</title>
 <link rel="stylesheet" href="css/00-var.css">
 <link rel="stylesheet" href="css/01-legacy-base.css">
 <link rel="stylesheet" href="css/02-ui-pro.css">
@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="css/05-library-gpt.css">
 <link rel="stylesheet" href="css/06-inline-merged.css">
 <link rel="stylesheet" href="css/07-tags-selection.css">
+<link rel="stylesheet" href="css/08-icons.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -25,10 +26,10 @@
 <header class="app-header" id="appHeader" data-js="app-header">
   <!-- LEFT -->
   <div class="app-header-left">
-    <span class="app-logo" title="Annuler et revenir à l'accueil" data-ui-action="cancel-to-home">🎲</span>
+    <span class="app-logo" title="Annuler et revenir à l'accueil" data-ui-action="cancel-to-home" data-svg-icon="tabletop"></span>
     <span class="hbadge">v1.2</span>
-    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cost" title="Cliquer pour copier le rapport coûts/tokens session" data-ui-action="copy-token-report" aria-label="Copier le rapport coûts/tokens session">💰 0.00¢</button>
-    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cache" title="Cliquer pour copier le rapport cache complet" data-ui-action="copy-cache-debug-report" aria-label="Copier le rapport cache complet">🧠 cache —</button>
+    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cost" title="Cliquer pour copier le rapport coûts/tokens session" data-ui-action="copy-token-report" aria-label="Copier le rapport coûts/tokens session"><span data-svg-icon="coins"></span><span class="ui-icon-label">0.00¢</span></button>
+    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cache" title="Cliquer pour copier le rapport cache complet" data-ui-action="copy-cache-debug-report" aria-label="Copier le rapport cache complet"><span data-svg-icon="layers"></span><span class="ui-icon-label">cache —</span></button>
   </div>
   <!-- CENTER -->
   <div class="app-header-center">
@@ -36,8 +37,8 @@
   </div>
   <!-- RIGHT -->
   <div class="app-header-right">
-    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home">↩️ Retour</button>
-    <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres">⚙</button>
+    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home"><span data-svg-icon="back"></span><span class="ui-icon-label">Retour</span></button>
+    <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres" data-svg-icon="settings"></button>
   </div>
 </header>
 
@@ -79,18 +80,18 @@
   <div id="view-home-inner" class="home-view-center">
     <div class="home-inner">
       <div class="home-headline">
-        <h2>🎲 Etsy Pipeline</h2>
+        <h2>Etsy Pipeline</h2>
         <p>Génération de fiches produit IA — Tabletop &amp; Collection</p>
       </div>
       <div class="home-cards home-cards-dual">
         <div class="home-card" data-ui-action="select-mode" data-action-arg="tabletop">
-          <div class="home-card-icon">🎲</div>
+          <div class="home-card-icon" data-svg-icon="tabletop"></div>
           <div class="home-card-title">Tabletop DnD</div>
           <div class="home-card-desc">Miniatures RPG, D&amp;D, TTRPG.<br>Pipeline Marcus → Claire.</div>
           <div class="home-card-tag">6 agents · Nerikson · Rescale</div>
         </div>
         <div class="home-card" data-ui-action="select-mode" data-action-arg="collection">
-          <div class="home-card-icon">🖼️</div>
+          <div class="home-card-icon" data-svg-icon="collection"></div>
           <div class="home-card-title">Collection</div>
           <div class="home-card-desc">Figurines fan art, garage kits,<br>statues résine à peindre.</div>
           <div class="home-card-tag">6 agents · Jules → Eden</div>
@@ -104,7 +105,7 @@
 <!-- Vue de saisie : les blocs Tabletop et Collection restent volontairement séparés tant qu’aucune abstraction stable n’est validée. -->
 <div class="view" id="view-form" data-js="view" data-view="form">
 
-  <span id="formModeLabel" class="is-hidden" data-js="form-mode-label">🎲 Tabletop DnD</span>
+  <span id="formModeLabel" class="is-hidden" data-js="form-mode-label">Tabletop DnD</span>
   <div class="form-view-body" id="formViewBody">
 
 <!-- ═══════════════════════════════════════ BLOC TABLETOP ═══════════════════════════════════════ -->
@@ -186,7 +187,7 @@
           <div class="form-full-row">
             <div class="drop-zone collection-stepper-drop-zone" id="dropZone-tt" data-js="image-drop-zone" data-prefix="tt">
               <div class="dz-placeholder" id="dzPlaceholder-tt">
-                <div class="di">🖼️</div>
+                <div class="di" data-svg-icon="image"></div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
               </div>
               <div class="thumb-strip" id="thumbStrip-tt"></div>
@@ -358,10 +359,12 @@
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
                     <button class="btn btn-accent" type="button" id="runIrisBtn-tt" data-ui-action="run-iris" data-action-arg="tt">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris"><span data-svg-icon="settings"></span><span class="ui-icon-label">Prompt</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier</span></button>
                   </div>
-                  <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
+                  <div class="iris-output-editor" contenteditable="true" spellcheck="false" data-iris-output-editor data-prefix="tt">
+                    <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
+                  </div>
                 </div>
               </div>
             </div>
@@ -427,28 +430,28 @@ Cache : —</pre>
         <span>🏷️ Titre validé</span>
         <button type="button" data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-titre-tt" data-final-prefix="tt" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="titre_valide" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-titre-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-tags-tt">
       <div class="fs-header">
         <span>🔖 Tags</span>
         <button type="button" data-ui-action="copy-section" data-action-arg="tags">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-tags-tt" data-final-prefix="tt" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="tags" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-tags-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-description-tt">
       <div class="fs-header">
         <span>📝 Description</span>
         <button type="button" data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-description-tt" data-final-prefix="tt" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="description_assembled" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-description-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-alt-tt">
       <div class="fs-header">
         <span>🖼️ Balise ALT</span>
         <button type="button" data-ui-action="copy-section" data-action-arg="alt">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-alt-tt" data-final-prefix="tt" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="alt" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-alt-tt"></pre></div>
     </div>
   </div>
       </section>
@@ -709,7 +712,7 @@ Cache : —</pre>
           <div class="form-full-row">
             <div class="drop-zone collection-stepper-drop-zone" id="dropZone-col" data-js="image-drop-zone" data-prefix="col">
               <div class="dz-placeholder" id="dzPlaceholder-col">
-                <div class="di">🖼️</div>
+                <div class="di" data-svg-icon="image"></div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
               </div>
               <div class="thumb-strip" id="thumbStrip-col"></div>
@@ -841,6 +844,14 @@ Cache : —</pre>
   />
 </div>
                     <div class="fg full">
+                      <label>Archétypes <span class="fg-hint">→ classes, rôles, fonctions</span></label>
+                      <input type="text" id="col-fArchetypes" placeholder="ex: heroine, rival, anti-hero"/>
+                    </div>
+                    <div class="fg full">
+                      <label>SEO élargies <span class="fg-hint">→ connexes plus larges, séparés par virgules</span></label>
+                      <input type="text" id="col-fArchSeo" placeholder="ex: arcane statue, fan art collectible, resin garage kit"/>
+                    </div>
+                    <div class="fg full">
                       <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
                       <div class="field-action-row">
                         <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
@@ -860,10 +871,12 @@ Cache : —</pre>
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
                     <button class="btn btn-accent" type="button" id="runIrisBtn-col" data-ui-action="run-iris" data-action-arg="col">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris"><span data-svg-icon="settings"></span><span class="ui-icon-label">Prompt</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier</span></button>
                   </div>
-                  <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
+                  <div class="iris-output-editor" contenteditable="true" spellcheck="false" data-iris-output-editor data-prefix="col">
+                    <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
+                  </div>
                 </div>
                 <div class="fg full">
                   <label>Description figurine <span class="fg-hint">→ pièce vendue, options, variantes, socle, FX</span></label>
@@ -923,28 +936,28 @@ Cache : —</pre>
         <span>🏷️ Titre validé</span>
         <button data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-titre-col" data-final-prefix="col" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="titre_valide" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-titre-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-tags-col">
       <div class="fs-header">
         <span>🔖 Tags</span>
         <button data-ui-action="copy-section" data-action-arg="tags">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-tags-col" data-final-prefix="col" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="tags" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-tags-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-description-col">
       <div class="fs-header">
         <span>📝 Description</span>
         <button data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-description-col" data-final-prefix="col" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="description_assembled" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-description-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-alt-col">
       <div class="fs-header">
         <span>🖼️ Balise ALT</span>
         <button data-ui-action="copy-section" data-action-arg="alt">📋</button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-alt-col" data-final-prefix="col" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="alt" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-alt-col"></pre></div>
     </div>
   </div>
       </section>
@@ -1238,3 +1251,6 @@ Cache : —</pre>
 </div><!-- /app-shell -->
 </body>
 </html>
+
+
+

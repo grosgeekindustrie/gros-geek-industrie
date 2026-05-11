@@ -37,6 +37,8 @@
     'col-fPieces',
     'col-fDescriptionFigurine',
     'col-fPose',
+    'col-fArchetypes',
+    'col-fArchSeo',
   ];
 
   Object.assign(global.PipelineUIDataFormFields, {

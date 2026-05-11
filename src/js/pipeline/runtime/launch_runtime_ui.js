@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 (function initPipelineUILaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -101,7 +101,7 @@
     const ctxEl = document.getElementById('headerContext');
     if (!ctxEl || !agent?.title) return;
 
-    ctxEl.textContent = agent.title.replace(/^[🔍🖼️📊🔖🏷️📝]/u, '').trim();
+    ctxEl.textContent = agent.title.trim();
   }
 
   function beginAgentExecution(prefix, agent, { isRetry = false } = {}) {
@@ -112,7 +112,7 @@
     refreshSoloTabs(prefix);
     if (refs.stat) {
       refs.stat.className = 'agent-status s-run';
-      refs.stat.textContent = '⟳ génération...';
+      refs.stat.textContent = 'generation...';
     }
 
     setAgentHeaderContext(agent);
@@ -164,11 +164,11 @@
     if (renderAgentSelectionUi(agent, result)) {
       if (refs.stat) {
         refs.stat.className = 'agent-status s-run';
-        refs.stat.textContent = '⏳ sélection requise';
+        refs.stat.textContent = 'selection requise';
       }
     } else if (refs.stat) {
       refs.stat.className = 'agent-status s-done';
-      refs.stat.textContent = '✓ done';
+      refs.stat.textContent = 'done';
     }
 
     enableAgentRuntimeActions(refs, agent);
@@ -177,12 +177,12 @@
   }
 
   function finalizeAgentError(prefix, agent, refs, error) {
-    if (refs.out) refs.out.textContent = `❌ ${error.message}`;
+    if (refs.out) refs.out.textContent = `Erreur: ${error.message}`;
     if (refs.card) refs.card.className = 'agent-card error';
     global.updatePipelineTimeline(agent.id, PIPELINE_TIMELINE_STATUS.ERROR);
     if (refs.stat) {
       refs.stat.className = 'agent-status s-err';
-      refs.stat.textContent = error.message.includes('stoppée') ? '⏹ stoppé' : '✗ erreur';
+      refs.stat.textContent = error.message.includes('stoppée') ? 'stoppe' : 'erreur';
     }
     if (refs.rerunBtn) refs.rerunBtn.disabled = false;
     if (refs.stopBtn) refs.stopBtn.style.display = 'none';
@@ -312,12 +312,15 @@
       pushSnapshotLine('Type', document.getElementById('tt-fType')?.value);
       pushSnapshotLine('Version', document.getElementById('tt-fVersion')?.value);
       pushSnapshotLine('Archétypes', global.getArchetypes());
+      pushSnapshotLine('SEO élargies', document.getElementById('tt-fArchSeo')?.value);
       pushSnapshotLine('Notes', document.getElementById('tt-fNotes')?.value);
     } else {
       pushSnapshotLine('Medium', collectionData.medium || global.getMediums());
       pushSnapshotLine('Sous-catégories medium', collectionData.mediumSubcategories || collectionData.medium_subcategories || '');
       pushSnapshotLine('Genres transverses', collectionData.genresTransverses || collectionData.genres_transverses || collectionData.genres || '');
       pushSnapshotLine('Contexte medium', collectionData.mediumContext || collectionData.medium_context || '');
+      pushSnapshotLine('Archétypes', global.getArchetypes());
+      pushSnapshotLine('SEO élargies', document.getElementById('col-fArchSeo')?.value);
       pushSnapshotLine('License sensible', document.getElementById('col-fLicense')?.checked ? 'oui' : 'non');
       pushSnapshotLine('Particularités', document.getElementById('col-fParticularites')?.value);
       pushSnapshotLine('Description figurine', document.getElementById('col-fDescriptionFigurine')?.value);
@@ -547,13 +550,13 @@
       if (activeRun) {
         activeRun.cacheAwareSkipped = true;
         activeRun.cacheAwareSkipReason = 'cache chaud';
-        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} � cache chaud`;
+        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} � cache chaud`;
       }
 
       setPipelineLaunchState(prefix, {
         currentStepId: global.CACHE_AWARE_STEP_ID,
         isRunning: false,
-        lastStatus: `${CACHE_AWARE_SKIPPED_STATUS} � cache chaud`,
+        lastStatus: `${CACHE_AWARE_SKIPPED_STATUS} � cache chaud`,
       });
       global.showToast('Cache chaud detecte - prechauffage saute', '#7eb8f7', 1800);
 
@@ -572,13 +575,13 @@
         activeRun.cacheAwareSkipped = true;
         activeRun.cacheAwareSkipReason = error.message;
         activeRun.cacheAwareEnabled = false;
-        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} � fallback direct`;
+        activeRun.launchScope = `${global.PIPELINE_LAUNCH_DEFAULT_SCOPE} � fallback direct`;
       }
 
       setPipelineLaunchState(prefix, {
         currentStepId: global.CACHE_AWARE_STEP_ID,
         isRunning: false,
-        lastStatus: `${CACHE_AWARE_DIRECT_FALLBACK_STATUS} � lancement direct`,
+        lastStatus: `${CACHE_AWARE_DIRECT_FALLBACK_STATUS} � lancement direct`,
       });
       global.showToast(`Warmup indisponible - lancement direct (${error.message})`, '#e8c547', 2600);
 
@@ -760,4 +763,3 @@
   Object.assign(global.PipelineUI.runtimeLaunch, global.PipelineUILaunchRuntime);
   Object.assign(global, global.PipelineUILaunchRuntime);
 })(window);
-

@@ -41,6 +41,8 @@
     'col-fResumePersonnage',
     'col-fLienPerso',
     'col-fConnexesPrioritaires',
+    'col-fArchetypes',
+    'col-fArchSeo',
   ];
   const BIBLIO_FILES = ['tags', 'accroches', 'objectif', 'psycho', 'titres', 'bibliotheque-semantique'];
   const formFieldsData = global.PipelineUIDataFormFields || {};
@@ -74,6 +76,8 @@
     'col-fPieces',
     'col-fDescriptionFigurine',
     'col-fPose',
+    'col-fArchetypes',
+    'col-fArchSeo',
   ];
 
   const TABLETOP_FORM_CATALOGS = formCatalogsData.TABLETOP_FORM_CATALOGS || {};
@@ -365,22 +369,12 @@
   };
 
   function getArchetypes() {
-    if (getCurrentMode() !== 'tabletop') return '';
-
-    const archetypes = getElementValue('tt-fArchetypes')
+    const prefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
+    const archetypes = getElementValue(`${prefix}-fArchetypes`)
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean);
-    const seo = getElementValue('tt-fArchSeo')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const parts = [];
-
-    if (archetypes.length) parts.push(`Archetypes: ${archetypes.join(', ')}`);
-    if (seo.length) parts.push(`SEO elargi: ${seo.join(', ')}`);
-
-    return parts.join(' | ') || '';
+    return archetypes.join(', ');
   }
 
   function getMediums() {
@@ -433,6 +427,8 @@
       ...getCollectionMediumMetaData(),
       license: isElementChecked('col-fLicense') ? 'oui' : 'non',
       particularites: getElementValue('col-fParticularites'),
+      archetypesManuels: getElementValue('col-fArchetypes'),
+      seoElargies: getElementValue('col-fArchSeo'),
       descriptionFigurine: getElementValue('col-fDescriptionFigurine'),
       resumePersonnage: getElementValue('col-fResumePersonnage'),
       connexesPrioritaires: getElementValue('col-fConnexesPrioritaires'),
@@ -578,6 +574,8 @@
       data._mediumSubcategories = getCollectionMediumSubcategoryValues();
       data._genres = getCollectionGenreValues();
       data._particularites = getElementValue('col-fParticularites');
+      data._archetypesManuels = getElementValue('col-fArchetypes');
+      data._seoElargies = getElementValue('col-fArchSeo');
       data._descriptionFigurine = getElementValue('col-fDescriptionFigurine');
       data._resumePersonnage = getElementValue('col-fResumePersonnage');
       data._connexesPrioritaires = getElementValue('col-fConnexesPrioritaires');
@@ -660,6 +658,14 @@
 
         if (data._particularites !== undefined) {
           setElementValue('col-fParticularites', data._particularites);
+        }
+
+        if (data._archetypesManuels !== undefined) {
+          setElementValue('col-fArchetypes', data._archetypesManuels);
+        }
+
+        if (data._seoElargies !== undefined) {
+          setElementValue('col-fArchSeo', data._seoElargies);
         }
 
         if (data._descriptionFigurine !== undefined) {

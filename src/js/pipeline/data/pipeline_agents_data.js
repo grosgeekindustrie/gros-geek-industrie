@@ -1,6 +1,6 @@
 'use strict';
 
-// Données déclaratives des agents pipeline.
+// Donnees declaratives des agents pipeline.
 
 (function initPipelineUIDataAgents(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -9,16 +9,16 @@
 
   const pipelineAgentsByMode = {
     tabletop: [
-      { id:'titre',       title:'🏷️ 01 — Maya · Titres SEO (×5)',         usesImages:false, hasSelection:true,  selectionType:'titre' },
-      { id:'tags',        title:'🔖 02 — Karim · Tags (×13)',             usesImages:false, hasSelection:true,  selectionType:'tags' },
-      { id:'description', title:'📝 03 — Claire · Description',           usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
-      { id:'alt',         title:'🖼️ 04 — Nadia · Balise ALT finale',     usesImages:true,  hasSelection:false },
+      { id:'titre', title:'01 - Maya · Titres SEO (x5)', usesImages:false, hasSelection:true, selectionType:'titre' },
+      { id:'tags', title:'02 - Karim · Tags (x13)', usesImages:false, hasSelection:true, selectionType:'tags' },
+      { id:'description', title:'03 - Claire · Description', usesImages:true, hasSelection:true, selectionType:'accroche_cta' },
+      { id:'alt', title:'04 - Nadia · Balise ALT finale', usesImages:true, hasSelection:false },
     ],
     collection: [
-      { id:'titre',       title:'🏷️ 01 — Nova · Titres SEO (×5)',        usesImages:false, hasSelection:true,  selectionType:'titre' },
-      { id:'tags',        title:'🔖 02 — Axel · Tags (×13)',              usesImages:false, hasSelection:true,  selectionType:'tags' },
-      { id:'description', title:'📝 03 — Eden · Description',             usesImages:true,  hasSelection:true,  selectionType:'accroche_cta' },
-      { id:'alt',         title:'🖼️ 04 — Jules · Balise ALT finale',     usesImages:true,  hasSelection:false },
+      { id:'titre', title:'01 - Nova · Titres SEO (x5)', usesImages:false, hasSelection:true, selectionType:'titre' },
+      { id:'tags', title:'02 - Axel · Tags (x13)', usesImages:false, hasSelection:true, selectionType:'tags' },
+      { id:'description', title:'03 - Eden · Description', usesImages:true, hasSelection:true, selectionType:'accroche_cta' },
+      { id:'alt', title:'04 - Jules · Balise ALT finale', usesImages:true, hasSelection:false },
     ],
   };
 
@@ -29,16 +29,16 @@
 
   const pipelineTargetSteps = {
     tabletop: [
-      { id:'titre',       label:'Maya · Titres SEO (×5)',     stopAfterAgentId:'titre' },
-      { id:'tags',        label:'Karim · Tags (×13)',         stopAfterAgentId:'tags' },
-      { id:'description', label:'Claire · Description',       stopAfterAgentId:'description' },
-      { id:'alt',         label:'Nadia · Balise ALT finale',  stopAfterAgentId:'alt' },
+      { id:'titre', label:'Maya · Titres SEO (x5)', stopAfterAgentId:'titre' },
+      { id:'tags', label:'Karim · Tags (x13)', stopAfterAgentId:'tags' },
+      { id:'description', label:'Claire · Description', stopAfterAgentId:'description' },
+      { id:'alt', label:'Nadia · Balise ALT finale', stopAfterAgentId:'alt' },
     ],
     collection: [
-      { id:'titre',       label:'Nova · Titres SEO (×5)',     stopAfterAgentId:'titre' },
-      { id:'tags',        label:'Axel · Tags (×13)',          stopAfterAgentId:'tags' },
-      { id:'description', label:'Eden · Description',         stopAfterAgentId:'description' },
-      { id:'alt',         label:'Jules · Balise ALT finale',  stopAfterAgentId:'alt' },
+      { id:'titre', label:'Nova · Titres SEO (x5)', stopAfterAgentId:'titre' },
+      { id:'tags', label:'Axel · Tags (x13)', stopAfterAgentId:'tags' },
+      { id:'description', label:'Eden · Description', stopAfterAgentId:'description' },
+      { id:'alt', label:'Jules · Balise ALT finale', stopAfterAgentId:'alt' },
     ],
   };
 

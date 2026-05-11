@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 (function initPipelineUICostRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -236,7 +236,7 @@
     const sessionEl = document.getElementById('session-cost');
     if (!sessionEl) return;
 
-    sessionEl.textContent = `💰 ${totals.costCents.toFixed(2)}¢`;
+    global.PipelineUIIcons?.setIconLabel?.(sessionEl, 'coins', `${totals.costCents.toFixed(2)}¢`);
     sessionEl.style.color = '';
     if (totals.costCents > 10) sessionEl.style.color = 'var(--accent)';
     if (totals.costCents > 20) sessionEl.style.color = 'var(--error)';

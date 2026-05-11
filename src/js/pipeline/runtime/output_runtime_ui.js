@@ -210,16 +210,16 @@
     const completeParts = [
       '# Output final',
       '',
-      '## 🏷️ Titre',
+      '## Titre',
       global.state.outputs.titre_valide || '',
       '',
-      '## 🔖 Tags',
+      '## Tags',
       global.state.outputs.tags || '',
       '',
-      '## 📝 Description',
+      '## Description',
       getFinalDescriptionOutput(),
       '',
-      '## 🖼️ Balise ALT',
+      '## Balise ALT',
       global.state.outputs.alt || '',
     ];
     const rawParts = ['# Output final — RAW', ''];

@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 (function initPipelineUICacheRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -141,7 +141,7 @@
     const freshness = getPromptCacheFreshnessInfo(resolvedPrefix);
     const status = getLastCacheStatus(resolvedPrefix);
     cacheNode.classList.remove(...(global.CACHE_FRESHNESS_CLASSES || []));
-    cacheNode.textContent = `cache ${status}`;
+    global.PipelineUIIcons?.setIconLabel?.(cacheNode, 'layers', `cache ${status}`);
 
     if (!freshness.hasEstimate) {
       cacheNode.title = `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`;
