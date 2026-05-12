@@ -41,9 +41,51 @@
     'col-fArchSeo',
   ];
 
+  const promptFlagByFieldId = Object.freeze({
+    'tt-fNom': '[[NOM]]',
+    'tt-fNomCourt': '[[NOM_COURT]]',
+    'tt-fUnivers': '[[UNIVERS]]',
+    'tt-fSculpteur': '[[SCULPTEUR]]',
+    'tt-fType': '[[TYPE]], [[TYPE_PIECE]]',
+    'tt-fVersion': '[[VERSION]]',
+    'tt-fPresentationVisuelle': '[[PRESENTATION_VISUELLE]]',
+    'tt-fNatureSujet': '[[NATURE_SUJET]]',
+    'tt-fGenreGroup': '[[GENRES]], [[GENRES_TRANSVERSES]]',
+    'tt-fPieces': '[[PIECES]]',
+    'tt-fPose': '[[POSE]]',
+    'tt-fArchetypes': '[[ARCHETYPES]], [[ARCHETYPES_MANUELS]]',
+    'tt-fArchSeo': '[[SEO_ELARGIES]]',
+    'tt-fParticularites': '[[PARTICULARITES]]',
+    'tt-fResumePersonnage': '[[RESUME_PERSONNAGE]], [[CONTEXTE_PERSO]]',
+    'tt-fConnexesPrioritaires': '[[CONNEXES_PRIORITAIRES]]',
+    'tt-fLienPerso': '[[LIEN_PERSO]]',
+    'tt-fDescriptionFigurine': '[[DESCRIPTION_FIGURINE]]',
+    'tt-fNotes': '[[NOTES]]',
+    'col-fType': '[[TYPE]], [[TYPE_PIECE]]',
+    'col-fNomCourt': '[[NOM_COURT]]',
+    'col-fNom': '[[NOM]]',
+    'col-fUnivers': '[[UNIVERS]]',
+    'col-fSculpteur': '[[SCULPTEUR]]',
+    'col-fMediumGroup': '[[MEDIUM]]',
+    'col-fMediumSubcategoriesGroup': '[[MEDIUM_SUBCATEGORIES]]',
+    'col-fGenreGroup': '[[GENRES]], [[GENRES_TRANSVERSES]]',
+    'col-fPieces': '[[PIECES]]',
+    'col-fDescriptionFigurine': '[[DESCRIPTION_FIGURINE]], [[NOTES]]',
+    'col-fPose': '[[POSE]]',
+    'col-fParticularites': '[[PARTICULARITES]]',
+    'col-fResumePersonnage': '[[RESUME_PERSONNAGE]], [[CONTEXTE_PERSO]]',
+    'col-fConnexesPrioritaires': '[[CONNEXES_PRIORITAIRES]]',
+    'col-fArchetypes': '[[ARCHETYPES]], [[ARCHETYPES_MANUELS]]',
+    'col-fArchSeo': '[[SEO_ELARGIES]]',
+    'col-fLienPerso': '[[LIEN_PERSO]]',
+    'col-fLicense': '[[LICENSE]]',
+    'col-fBuzzCollection': '[[BUZZ_COLLECTION]]',
+  });
+
   Object.assign(global.PipelineUIDataFormFields, {
     TABLETOP_FORM_FIELDS: tabletopFormFields,
     COLLECTION_FORM_FIELDS: collectionFormFields,
+    PROMPT_FLAG_BY_FIELD_ID: promptFlagByFieldId,
   });
 
   Object.assign(global.PipelineUIData, {

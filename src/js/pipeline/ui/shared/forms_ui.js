@@ -49,6 +49,7 @@
   const BIBLIO_FILES = ['tags', 'accroches', 'objectif', 'psycho', 'titres', 'bibliotheque-semantique'];
   const formFieldsData = global.PipelineUIDataFormFields || {};
   const formCatalogsData = global.PipelineUIDataFormCatalogs || {};
+  const PROMPT_FLAG_BY_FIELD_ID = formFieldsData.PROMPT_FLAG_BY_FIELD_ID || {};
 
   const TABLETOP_FORM_FIELDS = formFieldsData.TABLETOP_FORM_FIELDS || [
     'tt-fNom',
@@ -337,9 +338,18 @@
     renderCollectionMediumMeta({ shouldSave: false });
   };
 
+  function applyPromptFlagAttributes() {
+    Object.entries(PROMPT_FLAG_BY_FIELD_ID).forEach(([fieldId, promptFlag]) => {
+      const element = getElementById(fieldId);
+      if (!element) return;
+      element.dataset.promptFlag = String(promptFlag || '').trim();
+    });
+  }
+
   function renderDeclarativeFormCatalogs({ shouldSave = false } = {}) {
     renderTabletopCatalogs();
     renderCollectionCatalogs();
+    applyPromptFlagAttributes();
     if (shouldSave) saveFormState();
   }
 
@@ -420,9 +430,11 @@
 
   const getTabletopData = () => {
     const genres = formatCommaList(getTabletopGenreValues());
+    const type = getElementValue('tt-fType', 'SOLO');
 
     return {
-      type: getElementValue('tt-fType', 'SOLO'),
+      type,
+      typePiece: type,
       version: getElementValue('tt-fVersion', DEFAULT_VERSION_LABEL),
       presentationVisuelle: getElementValue('tt-fPresentationVisuelle'),
       natureSujet: getElementValue('tt-fNatureSujet', 'HUMANOIDE'),
@@ -442,8 +454,11 @@
   };
 
   function getCollectionData() {
+    const typePiece = getElementValue('col-fType', DEFAULT_VERSION_LABEL);
+
     return {
-      typePiece: getElementValue('col-fType', DEFAULT_VERSION_LABEL),
+      type: typePiece,
+      typePiece,
       medium: getMediums(),
       ...getCollectionMediumMetaData(),
       license: isElementChecked('col-fLicense') ? 'oui' : 'non',
@@ -879,6 +894,7 @@
     getCollectionGenreValues,
     renderCollectionMediumMeta,
     renderDeclarativeFormCatalogs,
+    applyPromptFlagAttributes,
     toggleBuzz,
     toggleLicense,
     toggleBuzzCollection,
