@@ -19,6 +19,7 @@
 
   const TAG_SELECTION_MAX = 13;
   const AUXILIARY_RETRY_COUNT = 1;
+  const COMMON_PRODUCT_TAGS = global.PipelineUIDataTagsCommon?.COMMON_PRODUCT_TAGS || [];
 
   function escapeAttr(value) {
     return String(value || '')
@@ -240,10 +241,10 @@
     };
   }
 
-  function buildTagsSelectionRowMarkup(tag, index) {
+  function buildTagsSelectionRowMarkup(tag, index, source = 'generated') {
     const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
     return `
-      <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item>
+      <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item data-tags-source="${escapeAttr(source)}">
         <label class="tags-selection-checkbox-wrap">
           <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" data-tags-checkbox />
         </label>
@@ -282,35 +283,26 @@
       .sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }));
   }
 
+  function getAllGeneratedTagValues() {
+    return getTagsSelectionRows()
+      .filter((row) => String(row?.dataset?.tagsSource || 'generated') === 'generated')
+      .map((row) => getTagsSelectionRowValue(row))
+      .filter(Boolean);
+  }
+
   function copyTagsSelectionValues(values, successMessage) {
     navigator.clipboard.writeText(values.join(', '));
     global.showToast(successMessage);
   }
 
-  function copyTagsSelectionColumn(columnIndex) {
-    const column = dom.getByData?.('tagsColumn', String(columnIndex), getTagsSelectionRuntimeRoot()) || document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
-    if (!column) return;
-
-    const values = (dom.getAllByData?.('tags-input', null, column) || [])
-      .map((input) => normalizeTagInputValue(input.value))
-      .filter(Boolean);
-
+  function copyAllGeneratedTags() {
+    const values = getAllGeneratedTagValues();
     if (!values.length) {
-      global.showToast('Aucun tag à copier dans cette liste', '#ff4757');
+      global.showToast('Aucun tag généré à copier', '#ff4757');
       return;
     }
 
-    copyTagsSelectionValues(values, `Liste brute ${columnIndex} copiée ✓`);
-  }
-
-  function copyTagsSelectionFinalOutput() {
-    const values = getTagsSelectedValues();
-    if (!values.length) {
-      global.showToast('Aucun tag sélectionné à copier', '#ff4757');
-      return;
-    }
-
-    copyTagsSelectionValues(values, 'Sortie finale tags copiée ✓');
+    copyTagsSelectionValues(values, 'Tous les tags générés copiés ✓');
   }
 
   function updateTagsSelectionSummary() {
@@ -425,11 +417,7 @@
       if (!button) return;
 
       if (button.dataset.tagsCopy) {
-        if (button.dataset.tagsCopy === 'final') {
-          copyTagsSelectionFinalOutput();
-        } else {
-          copyTagsSelectionColumn(button.dataset.tagsCopy);
-        }
+        copyAllGeneratedTags();
         return;
       }
 
@@ -475,7 +463,9 @@
       return;
     }
 
+    const [commonLeftColumn, commonRightColumn] = splitTagsIntoColumns(COMMON_PRODUCT_TAGS);
     const [leftColumn, rightColumn] = splitTagsIntoColumns(tags);
+    const commonTagStartIndex = tags.length;
 
     runtimeRoot.innerHTML = `
       <div class="tags-selection-shell">
@@ -485,9 +475,7 @@
             <div class="tags-selection-subtitle">2 colonnes · ${TAG_SELECTION_MAX} tags max · une ligne par tag.</div>
           </div>
           <div class="tags-selection-toolbar">
-            <button class="btn btn-muted" type="button" data-tags-copy="1">Liste 1</button>
-            <button class="btn btn-muted" type="button" data-tags-copy="2">Liste 2</button>
-            <button class="btn btn-accent" type="button" data-tags-copy="final">Sortie finale</button>
+            <button class="btn btn-accent" type="button" data-tags-copy="all">Copier tous les tags</button>
           </div>
         </div>
         <div class="tags-selection-stats">
@@ -508,6 +496,20 @@
             <span class="tags-selection-stat-value" id="${p}-tags-stat-invalid" data-tags-stat="invalid">0</span>
           </div>
         </div>
+        <section class="tags-selection-common">
+          <div class="tags-selection-common-head">
+            <span class="tags-selection-common-title">Tronc commun à toutes les fiches produits</span>
+            <span class="tags-selection-common-meta">Sélection manuelle prioritaire</span>
+          </div>
+          <div class="tags-selection-columns tags-selection-columns-common">
+            <section class="tags-selection-column">
+              <div class="tags-selection-list">${commonLeftColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, commonTagStartIndex + index, 'common')).join('')}</div>
+            </section>
+            <section class="tags-selection-column">
+              <div class="tags-selection-list">${commonRightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, commonTagStartIndex + commonLeftColumn.length + index, 'common')).join('')}</div>
+            </section>
+          </div>
+        </section>
         <div class="tags-selection-columns">
           <section class="tags-selection-column" id="${p}-tags-column-1" data-tags-column="1">
             <div class="tags-selection-column-head">
@@ -521,7 +523,7 @@
               <span>Valid</span>
               <span>Invalid</span>
             </div>
-            <div class="tags-selection-list">${leftColumn.map(buildTagsSelectionRowMarkup).join('')}</div>
+            <div class="tags-selection-list">${leftColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index, 'generated')).join('')}</div>
           </section>
           <section class="tags-selection-column" id="${p}-tags-column-2" data-tags-column="2">
             <div class="tags-selection-column-head">
@@ -535,7 +537,7 @@
               <span>Valid</span>
               <span>Invalid</span>
             </div>
-            <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length)).join('')}</div>
+            <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length, 'generated')).join('')}</div>
           </section>
         </div>
         <section class="tags-selection-preview">
@@ -1131,12 +1133,3 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
-
-
-
-
-
-
-
-
-

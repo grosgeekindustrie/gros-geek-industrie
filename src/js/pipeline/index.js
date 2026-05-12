@@ -26,6 +26,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/data/stepper_steps_data.js',
     'pipeline/data/echelles_data.js',
     'pipeline/data/form_catalogs_data.js',
+    'pipeline/data/tags_common_data.js',
   ]),
   runtimePrelude: Object.freeze([
     'pipeline/runtime/config_ui.js',
