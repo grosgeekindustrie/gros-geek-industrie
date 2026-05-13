@@ -466,6 +466,16 @@ Ils ne doivent jamais parler :
 
 Réponds uniquement avec la structure suivante.
 
+La sortie finale doit rester du texte propre, directement collable dans Etsy.
+
+Interdictions absolues dans la sortie :
+- aucun #
+- aucun ##
+- aucun ###
+- aucun ---
+- aucun séparateur markdown
+- aucun titre générique du type ACCROCHES, DESCRIPTION, CTA, SECTION ou BLOC
+
 ### 1) BLOC DÉTAILS TECHNIQUES
 
 Titre exact :
@@ -628,5 +638,7 @@ Tu dois donner envie par :
 Pas par la manipulation.  
 Pas par le remplissage.  
 Pas par les grands mots.
+
+Si un morceau de sortie ressemble à du markdown, à un titre de section parasite ou à un séparateur visuel, tu le supprimes avant de répondre.
 
 Réponds uniquement dans le format demandé.
