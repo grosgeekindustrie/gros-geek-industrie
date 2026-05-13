@@ -144,22 +144,6 @@
     return data;
   }, {});
 
-  const normalizeCollectionCustomScaleEntries = (entries = [], customCount = 0) => {
-    if (!Array.isArray(entries) || customCount <= 0) return [];
-    if (entries.length <= customCount) return entries.slice(0, customCount);
-
-    const firstMeaningfulEntry = entries.find((entry) => (
-      entry && (
-        entry.checked
-        || String(entry.label || '').trim()
-        || String(entry.dim || '').trim()
-      )
-    ));
-
-    if (customCount === 1) return [firstMeaningfulEntry || entries[0] || {}];
-    return entries.slice(0, customCount);
-  };
-
   const buildPipelinePromptContext = (pipelineRun = {}) => ({
     pipeline_form_snapshot: pipelineRun.formSnapshot || '',
     pipeline_cumulatif: pipelineRun.cumulativeText || '',
@@ -748,25 +732,22 @@
           setElementValue('col-fBuzzCollectionNote', data._buzzNote);
         }
 
-        const customScaleEntries = normalizeCollectionCustomScaleEntries(
-          data._customEchelles,
-          echellesApi.CUSTOM_COLLECTION_COUNT || 0
-        );
+        const collectionScaleList = echellesApi.ECHELLES_COLLECTION || [];
+        const legacyOneFifthEntry = Array.isArray(data._customEchelles)
+          ? data._customEchelles.find((entry) => String(entry?.label || '').trim() === '1/5')
+          : null;
+        const oneFifthIndex = collectionScaleList.findIndex((label) => String(label || '').trim() === '1/5');
 
-        if (customScaleEntries.length) {
-          customScaleEntries.forEach((entry, index) => {
-            const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
-            const checkbox = getElementById(`col-ec${scaleIndex}`);
-            if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
-            if (checkbox && entry.checked) {
-              checkbox.checked = true;
-              global.toggleEch(scaleIndex, { shouldSave: false });
-            }
-            if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
-            if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
-              global.PipelineUIEchelles.setRowDimensionSource(scaleIndex, entry.source);
-            }
-          });
+        if (legacyOneFifthEntry && oneFifthIndex >= 0) {
+          const checkbox = getElementById(`col-ec${oneFifthIndex}`);
+          if (checkbox && legacyOneFifthEntry.checked) {
+            checkbox.checked = true;
+            global.toggleEch(oneFifthIndex, { shouldSave: false });
+          }
+          if (legacyOneFifthEntry.dim) setElementValue(`col-ed${oneFifthIndex}`, legacyOneFifthEntry.dim);
+          if (legacyOneFifthEntry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
+            global.PipelineUIEchelles.setRowDimensionSource(oneFifthIndex, legacyOneFifthEntry.source);
+          }
         }
 
         if (Number.isInteger(data._originEchelleIndex)) {
