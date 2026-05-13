@@ -144,6 +144,22 @@
     return data;
   }, {});
 
+  const normalizeCollectionCustomScaleEntries = (entries = [], customCount = 0) => {
+    if (!Array.isArray(entries) || customCount <= 0) return [];
+    if (entries.length <= customCount) return entries.slice(0, customCount);
+
+    const firstMeaningfulEntry = entries.find((entry) => (
+      entry && (
+        entry.checked
+        || String(entry.label || '').trim()
+        || String(entry.dim || '').trim()
+      )
+    ));
+
+    if (customCount === 1) return [firstMeaningfulEntry || entries[0] || {}];
+    return entries.slice(0, customCount);
+  };
+
   const buildPipelinePromptContext = (pipelineRun = {}) => ({
     pipeline_form_snapshot: pipelineRun.formSnapshot || '',
     pipeline_cumulatif: pipelineRun.cumulativeText || '',
@@ -732,8 +748,13 @@
           setElementValue('col-fBuzzCollectionNote', data._buzzNote);
         }
 
-        if (Array.isArray(data._customEchelles)) {
-          data._customEchelles.forEach((entry, index) => {
+        const customScaleEntries = normalizeCollectionCustomScaleEntries(
+          data._customEchelles,
+          echellesApi.CUSTOM_COLLECTION_COUNT || 0
+        );
+
+        if (customScaleEntries.length) {
+          customScaleEntries.forEach((entry, index) => {
             const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
             const checkbox = getElementById(`col-ec${scaleIndex}`);
             if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
@@ -751,6 +772,8 @@
         if (Number.isInteger(data._originEchelleIndex)) {
           global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
         }
+
+        echellesApi.refreshCollectionAutoDimensions?.({ shouldSave: false, force: true });
       }
     } catch (error) {}
   }

@@ -12,7 +12,7 @@
     collection: Object.freeze(['Buste', '75mm', '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6']),
   });
 
-  const customCollectionCount = 3;
+  const customCollectionCount = 1;
   const dimensionPlaceholder = '224mm * 200mm * 136mm';
 
   Object.assign(global.PipelineUIDataEchelles, {
