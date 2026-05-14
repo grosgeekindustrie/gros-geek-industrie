@@ -50,7 +50,7 @@
 
     resetSocialContentSections(prefix);
     const toggleButton = document.getElementById(`toggleReseauxOnlyBtn-${prefix}`);
-    if (toggleButton) toggleButton.textContent = 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e';
+    if (toggleButton) global.PipelineUIIcons?.setIconLabel?.(toggleButton, 'copy', 'Fiche déjà publiée');
     global.state.socialSections = {};
   }
 
@@ -97,7 +97,7 @@
     if (refs.card) refs.card.className = 'agent-card active';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-run';
-      refs.stat.textContent = 'âŸ³ gÃ©nÃ©ration...';
+      refs.stat.textContent = 'génération...';
     }
     if (refs.out) {
       refs.out.className = 'output-box';
@@ -116,17 +116,17 @@
     if (refs.card) refs.card.className = 'agent-card done';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-done';
-      refs.stat.textContent = 'âœ“ done';
+      refs.stat.textContent = 'done';
     }
     refreshSocialTabs(prefix);
   }
 
   function finalizeSocialAgentError(prefix, refs, error) {
-    if (refs.out) refs.out.textContent = `âŒ ${error.message}`;
+    if (refs.out) refs.out.textContent = `Erreur: ${error.message}`;
     if (refs.card) refs.card.className = 'agent-card error';
     if (refs.stat) {
       refs.stat.className = 'agent-status s-err';
-      refs.stat.textContent = 'âœ— erreur';
+      refs.stat.textContent = 'erreur';
     }
     refreshSocialTabs(prefix);
   }
@@ -164,14 +164,14 @@
       global.showAgentCost('social', usage, { prefix, source: 'social' });
       global.syncCacheIndicator(usage);
       displaySocialOutput(result, prefix);
-      global.showToast('Posts gÃ©nÃ©rÃ©s âœ“');
+      global.showToast('Posts générés');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`âŒ ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
-        button.textContent = 'â–¶ GÃ©nÃ©rer';
+        global.PipelineUIIcons?.setIconLabel?.(button, 'play', 'Générer');
       }
       if (refs.stopBtn) refs.stopBtn.style.display = 'none';
     }
@@ -195,14 +195,14 @@
       global.showAgentCost('camille', usage, { prefix, source: 'camille' });
       global.syncCacheIndicator(usage);
       displayCamilleOutput(result, prefix);
-      global.showToast('Pinterest gÃ©nÃ©rÃ© âœ“');
+      global.showToast('Pinterest généré');
     } catch (error) {
       finalizeSocialAgentError(prefix, refs, error);
-      global.showToast(`âŒ ${error.message}`, '#ff4757');
+      global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (button) {
         button.disabled = false;
-        button.textContent = 'â–¶ GÃ©nÃ©rer';
+        global.PipelineUIIcons?.setIconLabel?.(button, 'play', 'Générer');
       }
       if (refs.stopBtn) refs.stopBtn.style.display = 'none';
     }
@@ -215,7 +215,10 @@
 
     const isVisible = section.style.display !== 'none';
     section.style.display = isVisible ? 'none' : 'block';
-    if (button) button.textContent = isVisible ? 'ðŸ“‹ Fiche dÃ©jÃ  publiÃ©e' : 'âœ• Fermer';
+    if (button) {
+      if (isVisible) global.PipelineUIIcons?.setIconLabel?.(button, 'copy', 'Fiche déjà publiée');
+      else global.PipelineUIIcons?.setIconLabel?.(button, 'close', 'Fermer');
+    }
     refreshSocialTabs(prefix, { activate: !isVisible });
   }
 
@@ -378,12 +381,12 @@
 
   function copySocialSection(id) {
     navigator.clipboard.writeText(global.state.socialSections?.[SOCIAL_SECTION_KEY_MAP[id]] || '');
-    global.showToast('CopiÃ© âœ“');
+    global.showToast('Copié');
   }
 
   function copySocial() {
     navigator.clipboard.writeText(global.state.outputs.social || '');
-    global.showToast('Posts copiÃ©s âœ“');
+    global.showToast('Posts copiés');
   }
 
   global.PipelineUISocialRuntime = {

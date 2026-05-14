@@ -441,7 +441,7 @@
     });
 
     navigator.clipboard.writeText(lines.join('\n'));
-    global.showToast('Rapport coûts/tokens copié ✓');
+    global.showToast('Rapport coûts/tokens copié');
   }
 
   global.PipelineUICostRuntime = {

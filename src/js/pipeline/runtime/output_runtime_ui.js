@@ -130,7 +130,7 @@
 
   function copySection(key) {
     navigator.clipboard.writeText(global.state.outputs[key] || '');
-    global.showToast('Copié ✓');
+    global.showToast('Copié');
   }
 
   function buildFinalOutputExport(prefixOverride) {
@@ -266,7 +266,7 @@
         throw new Error(data.error || `HTTP ${response.status}`);
       }
 
-      global.showToast(`✅ Exporté dans ${folder} — ${data.count} fichier(s)`, '#4caf7d', 5000);
+      global.showToast(`Exporté dans ${folder} — ${data.count} fichier(s)`, '#4caf7d', 5000);
     } catch (error) {
       global.showToast(`Erreur export: ${error.message}`, '#ff4757', 5000);
     }
@@ -280,7 +280,7 @@
     }
 
     navigator.clipboard.writeText(content);
-    global.showToast('Tout copié ✓');
+    global.showToast('Tout copié');
   }
 
   global.PipelineUIOutputRuntime = {

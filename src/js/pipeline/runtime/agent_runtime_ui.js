@@ -162,7 +162,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('continuePipelineAfterSelection failed', error);
-      global.showToast(`❌ Suite du pipeline: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur suite du pipeline: ${error.message}`, '#ff4757');
     } finally {
       finalizePipelineContinuation(prefix, lastAgentId, lastStatus);
     }
@@ -212,7 +212,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('rerunAgent failed', error);
-      global.showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur relance agent: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);
       finalizeResumeLaunchState(prefix, agent.id, lastStatus);
@@ -253,7 +253,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('rerunSuite failed', error);
-      global.showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur suite agents: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);
       finalizeResumeLaunchState(prefix, lastAgentId, lastStatus);

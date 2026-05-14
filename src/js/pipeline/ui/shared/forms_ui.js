@@ -775,15 +775,6 @@
       });
     });
 
-    const apiKeyEl = getElementById('apiKey');
-    if (apiKeyEl) {
-      apiKeyEl.addEventListener('input', () => {
-        const settings = readAppSettings();
-        settings.apiKey = apiKeyEl.value;
-        writeAppSettings(settings);
-      });
-    }
-
     const shopUrlEl = getElementById('shopUrl');
     if (shopUrlEl) shopUrlEl.addEventListener('input', persistShopUrl);
   }
@@ -800,9 +791,6 @@
 
     try {
       const settings = readAppSettings();
-      const apiKeyEl = getElementById('apiKey');
-      if (apiKeyEl && settings.apiKey) apiKeyEl.value = settings.apiKey;
-
       const shopUrlEl = getElementById('shopUrl');
       if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
 

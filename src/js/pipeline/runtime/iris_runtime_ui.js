@@ -33,7 +33,7 @@
 
     if (refs.button) {
       refs.button.disabled = true;
-      refs.button.textContent = '⟳ Recherche...';
+      global.PipelineUIIcons?.setIconLabel?.(refs.button, 'refresh', 'Recherche...');
     }
 
     if (refs.output) {
@@ -50,18 +50,18 @@
     global.syncCacheIndicator(response?.usage || null);
 
     if (refs.output) refs.output.textContent = response?.text || '';
-    global.showToast('Recherche sémantique Iris générée ✓');
+    global.showToast('Recherche sémantique Iris générée');
   }
 
   function finalizeIrisSemanticSearchError(refs = {}, error) {
-    if (refs.output) refs.output.textContent = `❌ ${error.message}`;
-    global.showToast(`❌ ${error.message}`, '#ff4757');
+    if (refs.output) refs.output.textContent = `Erreur: ${error.message}`;
+    global.showToast(`Erreur: ${error.message}`, '#ff4757');
   }
 
   function endIrisSemanticSearch(refs = {}) {
     if (refs.button) {
       refs.button.disabled = false;
-      refs.button.textContent = '▶ Lancer Iris';
+      global.PipelineUIIcons?.setIconLabel?.(refs.button, 'play', 'Lancer Iris');
     }
   }
 

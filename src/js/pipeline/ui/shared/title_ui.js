@@ -28,7 +28,7 @@
     const textSpan = dom.getByData?.('selection-text-node', null, itemEl) || itemEl.querySelector('.titre-text');
     const charSpan = dom.getByData?.('selection-char', null, itemEl) || itemEl.querySelector('.titre-char');
     const originalText = textSpan.textContent;
-    textSpan.textContent = '⟳ remplacement…';
+    textSpan.textContent = 'remplacement…';
 
     try {
       const ctx = global.buildCtx('titre');
@@ -99,4 +99,3 @@
   global.PipelineUI.title = global.PipelineUI.title || {};
   Object.assign(global.PipelineUI.title, global.PipelineUITitles);
 })(window);
-

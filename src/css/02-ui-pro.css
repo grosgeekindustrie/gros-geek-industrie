@@ -180,31 +180,6 @@ body.mode-collection .home-card:hover {
   letter-spacing: .3px;
 }
 
-.home-apikey {
-  margin-top: 36px;
-}
-
-.home-apikey input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  padding: 12px 16px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  transition: border-color .2s;
-}
-
-.home-apikey input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.home-apikey input::placeholder {
-  color: var(--muted);
-}
-
 /* ── Form view header ── */
 
 .form-view-header {

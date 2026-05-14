@@ -243,6 +243,8 @@
 
   function buildTagsSelectionRowMarkup(tag, index, source = 'generated') {
     const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
+    const validateIcon = global.PipelineUIIcons?.renderIcon('check') || 'Valider';
+    const blacklistIcon = global.PipelineUIIcons?.renderIcon('close') || 'Blacklister';
     return `
       <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item data-tags-source="${escapeAttr(source)}">
         <label class="tags-selection-checkbox-wrap">
@@ -250,8 +252,8 @@
         </label>
         <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" data-tags-input />
         <span class="tags-selection-length" data-tags-length>0</span>
-        <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">✓</button>
-        <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">✕</button>
+        <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">${validateIcon}</button>
+        <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">${blacklistIcon}</button>
       </article>`;
   }
 
@@ -302,7 +304,7 @@
       return;
     }
 
-    copyTagsSelectionValues(values, 'Tous les tags générés copiés ✓');
+    copyTagsSelectionValues(values, 'Tous les tags générés copiés');
   }
 
   function updateTagsSelectionSummary() {
@@ -578,7 +580,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       global.state.bibliosByMode[global.currentMode].tags = updated;
       document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
-      global.showToast(`👍 "${normalizedTag}" validé`);
+      global.showToast(`"${normalizedTag}" validé`);
     } catch (error) {
       global.showToast('Erreur sauvegarde', '#ff4757');
     }
@@ -631,7 +633,7 @@
       zone.classList.add('is-validated');
     }
     if (status) {
-      status.textContent = '✓ sélection validée';
+      status.textContent = 'sélection validée';
       status.className = 'agent-status s-done';
     }
 
@@ -654,13 +656,16 @@
   function buildExplorerTagMarkup(tag, index) {
     const itemId = `exp-tag-${index}`;
     const safeTag = escapeAttr(tag);
+    const validateIcon = global.PipelineUIIcons?.renderIcon('check') || 'Valider';
+    const blacklistIcon = global.PipelineUIIcons?.renderIcon('close') || 'Blacklister';
+    const rerollIcon = global.PipelineUIIcons?.renderIcon('refresh') || 'Relancer';
     return `<div class="titre-item" id="${itemId}" data-selection-item="tag-explorer">
         <span class="titre-text" data-selection-text-node>${tag}</span>
         <span class="titre-char" data-selection-char data-char-tone="${tag.length > 30 ? 'danger' : 'success'}">${tag.length}</span>
         <div class="titre-actions">
-          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘</button>
-          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘Ž</button>
-          <button class="titre-thumb" type="button" data-selection-role="reroll" data-selection-action="reroll-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ”„</button>
+          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${validateIcon}</button>
+          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${blacklistIcon}</button>
+          <button class="titre-thumb" type="button" data-selection-role="reroll" data-selection-action="reroll-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${rerollIcon}</button>
         </div>
       </div>`;
   }
@@ -774,7 +779,7 @@
     const btn = getSelectionExplorerButton('tags');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⟳ Exploration...';
+      global.PipelineUIIcons?.setIconLabel?.(btn, 'refresh', 'Exploration...');
     }
 
     const ctx = global.buildCtx('tags');
@@ -796,9 +801,9 @@
       const excludedCount = tags.length - filteredTags.length;
 
       const explorerNodes = getExplorerNodes();
-      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TAGS';
+      if (explorerNodes.title) explorerNodes.title.textContent = 'Exploration tags';
       if (explorerNodes.count) explorerNodes.count.textContent = `${filteredTags.length} tags`;
-      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Tags générés hors biblio — valider, blacklister ou relancer';
       if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
@@ -810,7 +815,7 @@
         : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
+      global.showToast(excludedCount > 0 ? `Exploration terminée (${excludedCount} exclus via biblio)` : 'Exploration terminée', '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
@@ -895,7 +900,7 @@
 
   function copyTitreLine(text) {
     navigator.clipboard.writeText(text);
-    global.showToast('Titre copié ✓');
+    global.showToast('Titre copié');
   }
 
   async function validateTitre(agentId) {
@@ -912,7 +917,7 @@
     global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
-    document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
+    document.getElementById(`${p}-stat-${agentId}`).textContent = 'titre validé';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
     await continueAfterSelection(agentId);
@@ -936,7 +941,7 @@
           continue;
         }
         if (!pastTechnique) continue;
-        const hasEmoji = /^[\u{1F300}-\u{1FFFF}⚡🎯⚔️🎨🏆💫🎁🔥✨🏅💎🌑👀⏳🎲🖌️🎭]/u.test(line);
+        const hasEmoji = /^\p{Extended_Pictographic}/u.test(line);
         if (hasEmoji && choices.length < 5) choices.push({ num: String(choices.length + 1), text: line });
         if (line.includes('Conseils de peinture')) break;
       }
@@ -952,7 +957,7 @@
         }
         if (!pastConseils) continue;
         if (line.startsWith('🎭') || line.includes('Fan Art')) break;
-        const hasEmoji = /^[\u{1F300}-\u{1FFFF}⚡🎯⚔️🎨🏆💫🎁🔥✨🏅💎🌑👀⏳🎲🖌️🎭]/u.test(line);
+        const hasEmoji = /^\p{Extended_Pictographic}/u.test(line);
         if (hasEmoji && count < 5) {
           choices.push({ num: String(count + 1), text: line });
           count++;
@@ -1039,7 +1044,7 @@
     });
     document.getElementById(`${p}-sel-accroche-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-sel-cta-${agentId}`).classList.remove('visible');
-    document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ sélection validée';
+    document.getElementById(`${p}-stat-${agentId}`).textContent = 'sélection validée';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
     await continueAfterSelection(agentId);
@@ -1050,7 +1055,7 @@
     const btn = getSelectionExplorerButton('titre');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⟳ Exploration...';
+      global.PipelineUIIcons?.setIconLabel?.(btn, 'refresh', 'Exploration...');
     }
 
     const ctx = global.buildCtx('titre');
@@ -1084,7 +1089,7 @@
       });
 
       const explorerNodes = getExplorerNodes();
-      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TITRES';
+      if (explorerNodes.title) explorerNodes.title.textContent = 'Exploration titres';
       if (explorerNodes.count) explorerNodes.count.textContent = `${titres.length} titres`;
       if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — copier ou relancer';
       if (explorerNodes.conversation) explorerNodes.conversation.value = result;
@@ -1096,7 +1101,7 @@
       if (list) list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
+      global.showToast(cached ? 'Exploration titres reusée depuis la session' : 'Exploration terminée', cached ? '#7eb8f7' : '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {

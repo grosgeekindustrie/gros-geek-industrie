@@ -440,15 +440,6 @@
   function closeSettings() {
     (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
     (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
-
-    const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
-    if (!apiKey) return;
-
-    try {
-      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-      settings.apiKey = apiKey;
-      localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-    } catch (error) {}
   }
 
 

@@ -23,12 +23,74 @@ from threading import Lock, Timer
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
+ENV_FILE = ROOT / '.env'
 ALLOWED_DIRS = {'prompts', 'biblios'}
 ALLOWED_SUBDIRS = {'tabletop', 'collection'}
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
 ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
 ANTHROPIC_FILES_CACHE_LOCK = Lock()
 SOLO_EXPORT_ROOT = 'export'
+
+
+def load_dotenv_file(path: Path = ENV_FILE):
+    """Charger un .env local sans écraser les variables d'environnement existantes."""
+    if not path.exists():
+        return
+
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+
+        key, value = line.split('=', 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+def get_anthropic_api_key(request_payload: dict | None = None) -> str:
+    """Prendre d'abord la clé du .env, puis garder le fallback UI temporaire."""
+    env_value = str(os.getenv('ANTHROPIC_API_KEY') or '').strip()
+    if env_value:
+        return env_value
+
+    if request_payload:
+        return str(request_payload.get('apiKey') or '').strip()
+
+    return ''
+
+
+def decode_json_bytes(raw: bytes) -> dict:
+    if not raw:
+        return {}
+
+    text = raw.decode('utf-8', errors='replace')
+    if not text.strip():
+        return {}
+
+    return json.loads(text)
+
+
+def forward_anthropic_json_request(url: str, payload: dict, *, use_files_beta: bool = False, timeout: int = 120) -> tuple[int, dict]:
+    api_key = get_anthropic_api_key(payload)
+    if not api_key:
+        raise ValueError('Clé API manquante (.env ou interface)')
+
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': api_key,
+        'anthropic-version': '2023-06-01',
+    }
+    if use_files_beta:
+        headers['anthropic-beta'] = f'prompt-caching-2024-07-31,{ANTHROPIC_FILES_BETA}'
+
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+        method='POST',
+        headers=headers,
+    )
+
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.getcode(), decode_json_bytes(response.read())
 
 
 def safe_path(raw: str) -> Path | None:
@@ -353,9 +415,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             body = self.rfile.read(length).decode('utf-8')
             try:
                 data = json.loads(body)
-                api_key = str(data.get('apiKey') or '').strip()
+                api_key = get_anthropic_api_key(data)
                 if not api_key:
-                    self.send_json(400, {'error': 'Clé API manquante'})
+                    self.send_json(400, {'error': 'Clé API manquante (.env ou interface)'})
                     return
 
                 images = data.get('images') or []
@@ -374,6 +436,52 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 except Exception:
                     payload = {}
                 self.send_json(e.code, {'error': payload.get('error', {}).get('message') or raw_error or str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/anthropic/messages':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                use_files_beta = bool(data.pop('useFilesBeta', False))
+                status, payload = forward_anthropic_json_request(
+                    'https://api.anthropic.com/v1/messages',
+                    data,
+                    use_files_beta=use_files_beta,
+                )
+                self.send_json(status, payload)
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/anthropic/messages/count_tokens':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                status, payload = forward_anthropic_json_request(
+                    'https://api.anthropic.com/v1/messages/count_tokens',
+                    data,
+                )
+                self.send_json(status, payload)
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
             return
@@ -439,6 +547,8 @@ class ThreadingLocalServer(http.server.ThreadingHTTPServer):
     allow_reuse_address = True
 
 def main():
+    load_dotenv_file()
+
     # Créer les dossiers s'ils n'existent pas
     for d in ALLOWED_DIRS:
         (ROOT / d).mkdir(exist_ok=True)

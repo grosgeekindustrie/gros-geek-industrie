@@ -227,7 +227,7 @@
 
     if (button) {
       button.disabled = false;
-      button.innerHTML = '▶';
+      global.PipelineUIIcons?.setIconLabel?.(button, 'play', global.PIPELINE_LAUNCH_LABEL);
     }
 
     global.setPipelineExecutionActive(false);
@@ -613,7 +613,7 @@
 
     if (global.state.images[prefix].length === 0) {
       if (warningBox) warningBox.style.display = 'block';
-      global.showToast('⚠️ Charge au moins une image !', '#ff4757');
+      global.showToast('Charge au moins une image', '#ff4757');
       return;
     }
 
@@ -628,7 +628,7 @@
 
     if (button) {
       button.disabled = true;
-      button.textContent = '⟳ Pipeline en cours...';
+      global.PipelineUIIcons?.setIconLabel?.(button, 'refresh', 'Pipeline en cours...');
     }
 
     setPipelineLaunchState(prefix, {
@@ -659,7 +659,11 @@
       }
 
       const titleEl = document.getElementById('pipelineViewTitle');
-      if (titleEl) titleEl.textContent = global.currentMode === 'tabletop' ? '🎲 Pipeline Tabletop' : '🖼️ Pipeline Collection';
+      if (titleEl) {
+        const iconName = global.currentMode === 'tabletop' ? 'tabletop' : 'collection';
+        const label = global.currentMode === 'tabletop' ? 'Pipeline Tabletop' : 'Pipeline Collection';
+        global.PipelineUIIcons?.setIconLabel?.(titleEl, iconName, label);
+      }
 
       const timeline = document.getElementById('pipelineTimeline');
       if (timeline) timeline.style.display = '';
@@ -667,7 +671,7 @@
       const ctx = document.getElementById('headerContext');
       if (ctx) {
         ctx.className = 'app-context mode-pipeline';
-        ctx.textContent = '⟳ Pipeline en cours...';
+        ctx.textContent = 'Pipeline en cours...';
       }
       global.buildPipelineTimeline();
       global.setPipelineExecutionActive(true);

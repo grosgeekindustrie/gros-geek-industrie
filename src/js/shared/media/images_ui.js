@@ -265,7 +265,7 @@
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
     removeButton.className = 'btn btn-error image-thumb-action-btn image-thumb-action-btn-danger';
-    removeButton.textContent = '✕';
+    removeButton.innerHTML = global.PipelineUIIcons?.renderIcon('close') || 'Retirer';
     removeButton.title = 'Retirer';
     removeButton.addEventListener('click', (event) => {
       stopEvent(event);

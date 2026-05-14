@@ -221,7 +221,7 @@
       const signature = `${p}:${normalized}`;
       if (lastTagsDuplicateSignature !== signature) {
         lastTagsDuplicateSignature = signature;
-        global.showToast?.(`⚠️ ${duplicateCount} doublon(s) tag détecté(s) dans la sélection`, '#ff4757', 5000);
+        global.showToast?.(`${duplicateCount} doublon(s) tag détecté(s) dans la sélection`, '#ff4757', 5000);
       }
     } else {
       lastTagsDuplicateSignature = '';

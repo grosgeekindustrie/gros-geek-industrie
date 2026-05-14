@@ -13,6 +13,7 @@ patch/
 prompt de transfert/
 
 # Local noise
+.env
 .DS_Store
 FETCH_HEAD
 logs/
