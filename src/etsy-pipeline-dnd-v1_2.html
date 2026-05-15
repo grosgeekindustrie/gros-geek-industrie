@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/06-inline-merged.css">
 <link rel="stylesheet" href="css/07-tags-selection.css">
 <link rel="stylesheet" href="css/08-icons.css">
+<link rel="stylesheet" href="css/09-integrations.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -93,6 +94,71 @@
           <div class="home-card-tag">6 agents · Jules → Eden</div>
         </div>
       </div>
+      <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
+        <div class="home-integration-panel-header">
+          <div>
+            <p class="home-integration-kicker">POC API</p>
+            <h3 id="etsyAuthHomeTitle">Connexion Etsy OAuth</h3>
+          </div>
+          <div class="home-integration-panel-icon" data-svg-icon="collection"></div>
+        </div>
+        <p class="home-integration-panel-copy">Première fondation d’intégration : autoriser la boutique Etsy, vérifier la configuration OAuth, puis préparer les lectures d’endpoints.</p>
+        <div class="home-integration-grid">
+          <div class="home-integration-item">
+            <span class="home-integration-label">Configuration</span>
+            <span class="home-integration-value" id="etsyAuthConfigured">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Connexion</span>
+            <span class="home-integration-value" id="etsyAuthConnected">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Demande OAuth</span>
+            <span class="home-integration-value" id="etsyAuthPending">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Expiration token</span>
+            <span class="home-integration-value" id="etsyAuthExpiresAt">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Redirect URI</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthRedirectUri">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Scopes</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthScopes">—</span>
+          </div>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthDetails">En attente de la première autorisation OAuth Etsy.</pre>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-accent" type="button" id="etsyAuthStartBtn" data-ui-action="start-etsy-auth" disabled><span data-svg-icon="play"></span><span class="ui-icon-label">Autoriser la boutique</span></button>
+          <button class="btn btn-muted" type="button" id="etsyAuthRefreshBtn" data-ui-action="refresh-etsy-auth-status"><span data-svg-icon="refresh"></span><span class="ui-icon-label">Actualiser l’état</span></button>
+          <button class="btn btn-muted" type="button" id="etsyPingBtn" data-ui-action="run-etsy-ping" disabled><span data-svg-icon="search"></span><span class="ui-icon-label">Lire ping</span></button>
+          <button class="btn btn-muted" type="button" id="etsyIdentityBtn" data-ui-action="run-etsy-identity" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire identité OAuth</span></button>
+          <button class="btn btn-muted" type="button" id="etsyShopBtn" data-ui-action="run-etsy-shop" disabled><span data-svg-icon="collection"></span><span class="ui-icon-label">Lire boutique</span></button>
+          <button class="btn btn-muted" type="button" id="etsyListingsBtn" data-ui-action="run-etsy-listings" disabled><span data-svg-icon="tag"></span><span class="ui-icon-label">Lire listings</span></button>
+          <button class="btn btn-muted" type="button" id="etsySectionsBtn" data-ui-action="run-etsy-sections" disabled><span data-svg-icon="book"></span><span class="ui-icon-label">Lire sections</span></button>
+        </div>
+        <div class="home-integration-listing-tools">
+          <label class="settings-label" for="etsyListingReferenceInput">Référence fiche Etsy</label>
+          <input
+            type="text"
+            id="etsyListingReferenceInput"
+            class="settings-input"
+            placeholder="Colle un listing_id ou une URL Etsy"
+            autocomplete="off"
+          />
+          <div class="field-action-row home-integration-actions">
+            <button class="btn btn-muted" type="button" id="etsyListingBtn" data-ui-action="run-etsy-listing" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire fiche</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingPropertiesBtn" data-ui-action="run-etsy-listing-properties" disabled><span data-svg-icon="settings"></span><span class="ui-icon-label">Lire attributs</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingVariationImagesBtn" data-ui-action="run-etsy-listing-variation-images" disabled><span data-svg-icon="image"></span><span class="ui-icon-label">Lire images variations</span></button>
+          </div>
+        </div>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-muted" type="button" id="etsyCopyOutputBtn" data-ui-action="copy-etsy-output"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier la sortie API</span></button>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthOutput">Les réponses des endpoints de test Etsy apparaîtront ici.</pre>
+      </section>
     </div>
   </div>
 </div>
@@ -126,6 +192,10 @@
       <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="social">
         <span class="collection-solo-tab-label">Réseaux sociaux</span>
         <span class="collection-solo-tab-state" data-dnd-tab-state="social">Indispo</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="etsy">
+        <span class="collection-solo-tab-label">Etsy API</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="etsy">Disponible</span>
       </button>
     </div>
 
@@ -629,6 +699,69 @@ Cache : —</pre>
     </div>
   </div>
       </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="etsy" hidden>
+        <div class="form-section etsy-api-panel" id="etsyApiPanel-tt" data-etsy-workspace-prefix="tt">
+          <div class="collection-stepper-header etsy-api-header">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Etsy API · Chantier parallèle</span>
+              <h2 class="collection-stepper-title">Photo et vidéo</h2>
+              <p class="collection-stepper-subtitle">Charge une fiche Etsy source, récupère ses médias, puis prépare la future duplication draft bloc par bloc.</p>
+            </div>
+            <div class="collection-stepper-progress etsy-api-progress" aria-label="Étapes Etsy API">
+              <button class="collection-stepper-pill is-current" type="button" disabled>
+                <span class="collection-stepper-pill-index">01</span>
+                <span class="collection-stepper-pill-label">Photo et vidéo</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">02</span>
+                <span class="collection-stepper-pill-label">Catégorie</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">03</span>
+                <span class="collection-stepper-pill-label">Détails</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">04</span>
+                <span class="collection-stepper-pill-label">Options</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">05</span>
+                <span class="collection-stepper-pill-label">Attributs</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">06</span>
+                <span class="collection-stepper-pill-label">Prix et stock</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">07</span>
+                <span class="collection-stepper-pill-label">Livraison</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">08</span>
+                <span class="collection-stepper-pill-label">Paramètres</span>
+              </button>
+            </div>
+          </div>
+          <div class="etsy-api-body">
+            <div class="fg full">
+              <label for="etsyApiListingRef-tt">Référence fiche Etsy</label>
+              <input type="text" id="etsyApiListingRef-tt" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" data-ui-action="load-etsy-workspace-media" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger les médias</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="copy-etsy-workspace-payload" data-action-arg="tt"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier le payload</span></button>
+              </div>
+              <p class="fetch-status" id="etsyApiStatus-tt">En attente d’une fiche source.</p>
+            </div>
+            <div class="etsy-api-media-summary" id="etsyApiSummary-tt"></div>
+            <div class="image-thumb-strip etsy-api-media-strip" id="etsyApiMediaStrip-tt"></div>
+            <details class="form-optional">
+              <summary><span class="form-optional-toggle">Payload brut</span></summary>
+              <pre class="home-integration-details etsy-api-payload" id="etsyApiPayload-tt">Aucun payload chargé.</pre>
+            </details>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </div><!-- /ui-tt -->
@@ -656,6 +789,10 @@ Cache : —</pre>
       <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="social">
         <span class="collection-solo-tab-label">Réseaux sociaux</span>
         <span class="collection-solo-tab-state" data-collection-tab-state="social">Indispo</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="etsy">
+        <span class="collection-solo-tab-label">Etsy API</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="etsy">Disponible</span>
       </button>
     </div>
 
@@ -1140,6 +1277,69 @@ Cache : —</pre>
     </div>
   </div>
       </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="etsy" hidden>
+        <div class="form-section etsy-api-panel" id="etsyApiPanel-col" data-etsy-workspace-prefix="col">
+          <div class="collection-stepper-header etsy-api-header">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Etsy API · Chantier parallèle</span>
+              <h2 class="collection-stepper-title">Photo et vidéo</h2>
+              <p class="collection-stepper-subtitle">Charge une fiche Etsy source, récupère ses médias, puis prépare la future duplication draft bloc par bloc.</p>
+            </div>
+            <div class="collection-stepper-progress etsy-api-progress" aria-label="Étapes Etsy API">
+              <button class="collection-stepper-pill is-current" type="button" disabled>
+                <span class="collection-stepper-pill-index">01</span>
+                <span class="collection-stepper-pill-label">Photo et vidéo</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">02</span>
+                <span class="collection-stepper-pill-label">Catégorie</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">03</span>
+                <span class="collection-stepper-pill-label">Détails</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">04</span>
+                <span class="collection-stepper-pill-label">Options</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">05</span>
+                <span class="collection-stepper-pill-label">Attributs</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">06</span>
+                <span class="collection-stepper-pill-label">Prix et stock</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">07</span>
+                <span class="collection-stepper-pill-label">Livraison</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">08</span>
+                <span class="collection-stepper-pill-label">Paramètres</span>
+              </button>
+            </div>
+          </div>
+          <div class="etsy-api-body">
+            <div class="fg full">
+              <label for="etsyApiListingRef-col">Référence fiche Etsy</label>
+              <input type="text" id="etsyApiListingRef-col" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" data-ui-action="load-etsy-workspace-media" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger les médias</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="copy-etsy-workspace-payload" data-action-arg="col"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier le payload</span></button>
+              </div>
+              <p class="fetch-status" id="etsyApiStatus-col">En attente d’une fiche source.</p>
+            </div>
+            <div class="etsy-api-media-summary" id="etsyApiSummary-col"></div>
+            <div class="image-thumb-strip etsy-api-media-strip" id="etsyApiMediaStrip-col"></div>
+            <details class="form-optional">
+              <summary><span class="form-optional-toggle">Payload brut</span></summary>
+              <pre class="home-integration-details etsy-api-payload" id="etsyApiPayload-col">Aucun payload chargé.</pre>
+            </details>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -1257,9 +1457,3 @@ Cache : —</pre>
 </div><!-- /app-shell -->
 </body>
 </html>
-
-
-
-
-
-

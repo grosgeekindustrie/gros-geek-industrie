@@ -100,6 +100,19 @@
     'copy-cache-debug-report': () => global.copyCacheDebugReport?.(),
     'open-settings': () => openSettings(),
     'close-settings': () => closeSettings(),
+    'start-etsy-auth': () => global.startEtsyAuth?.(),
+    'refresh-etsy-auth-status': () => global.refreshEtsyAuthStatus?.(),
+    'run-etsy-ping': () => global.runEtsyPingProbe?.(),
+    'run-etsy-identity': () => global.runEtsyIdentityProbe?.(),
+    'run-etsy-shop': () => global.runEtsyShopProbe?.(),
+    'run-etsy-listings': () => global.runEtsyListingsProbe?.(),
+    'run-etsy-sections': () => global.runEtsySectionsProbe?.(),
+    'run-etsy-listing': () => global.runEtsyListingProbe?.(),
+    'run-etsy-listing-properties': () => global.runEtsyListingPropertiesProbe?.(),
+    'run-etsy-listing-variation-images': () => global.runEtsyListingVariationImagesProbe?.(),
+    'copy-etsy-output': () => global.copyEtsyOutput?.(),
+    'load-etsy-workspace-media': (prefix) => global.loadEtsyWorkspaceMedia?.(prefix),
+    'copy-etsy-workspace-payload': (prefix) => global.copyEtsyWorkspacePayload?.(prefix),
     'open-biblio-from-settings': () => {
       global.openBiblioLightbox?.();
       closeSettings();

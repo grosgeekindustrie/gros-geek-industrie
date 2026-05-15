@@ -41,6 +41,7 @@
       document.getElementById('socialOutput-tt'),
       document.getElementById('reseauxOnlySection-tt'),
     ].some(isVisible),
+    hasEtsyPanel: () => Boolean(document.getElementById('etsyApiPanel-tt')),
     nameFieldIds: ['tt-fNomCourt', 'tt-fNom'],
   });
 

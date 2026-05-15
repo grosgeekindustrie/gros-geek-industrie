@@ -18,6 +18,7 @@ prompt de transfert/
 FETCH_HEAD
 logs/
 tmp/
+local-certs/
 *.tmp
 *.patch
 *.bak_*

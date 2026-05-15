@@ -11,6 +11,10 @@ import {
   appBootstrapLayerOrder,
 } from './app/index.js';
 import {
+  integrationsBootstrapManifest,
+  integrationsBootstrapLayerOrder,
+} from './integrations/index.js';
+import {
   pipelineBootstrapManifest,
   pipelineBootstrapLayerOrder,
 } from './pipeline/index.js';
@@ -51,6 +55,10 @@ const BOOTSTRAP_GROUPS = Object.freeze([
   ...createDomainBootstrapGroups('shared', sharedBootstrapManifest, pickBootstrapLayers(
     sharedBootstrapLayerOrder,
     ['scripts']
+  )),
+  ...createDomainBootstrapGroups('integrations', integrationsBootstrapManifest, pickBootstrapLayers(
+    integrationsBootstrapLayerOrder,
+    ['data', 'vendor', 'runtime']
   )),
   ...createDomainBootstrapGroups('app', appBootstrapManifest, pickBootstrapLayers(
     appBootstrapLayerOrder,
@@ -96,6 +104,7 @@ const assertBootstrapPathsAreUnique = (paths) => {
 const bootstrapDebugManifest = Object.freeze({
   domains: Object.freeze({
     app: appBootstrapManifest,
+    integrations: integrationsBootstrapManifest,
     pipeline: pipelineBootstrapManifest,
     social: socialBootstrapManifest,
     shared: sharedBootstrapManifest,
