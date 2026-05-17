@@ -58,7 +58,7 @@ const BOOTSTRAP_GROUPS = Object.freeze([
   )),
   ...createDomainBootstrapGroups('integrations', integrationsBootstrapManifest, pickBootstrapLayers(
     integrationsBootstrapLayerOrder,
-    ['data', 'vendor', 'runtime']
+    ['data', 'vendor', 'runtime', 'ui']
   )),
   ...createDomainBootstrapGroups('app', appBootstrapManifest, pickBootstrapLayers(
     appBootstrapLayerOrder,

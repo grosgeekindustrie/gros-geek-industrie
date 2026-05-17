@@ -4,6 +4,7 @@
   global.PipelineUI = global.PipelineUI || {};
 
   const CONFIG = global.PipelineUIDataIntegrations?.etsyAuth || {};
+  const EtsyData = global.PipelineUIEtsyData || {};
   const ROUTES = CONFIG.routes || {};
   const STATUS_LABELS = CONFIG.statusLabels || {};
   const QUERY_PARAM = CONFIG.queryParam || 'etsy_oauth';
@@ -60,19 +61,7 @@
     });
   }
 
-  function extractListingId(value = '') {
-    const source = String(value || '').trim();
-    if (!source) return '';
-    if (/^\d+$/.test(source)) return source;
-
-    const pathMatch = source.match(/\/listing\/(\d+)/i);
-    if (pathMatch?.[1]) return pathMatch[1];
-
-    const queryMatch = source.match(/(?:\?|&)listing_id=(\d+)/i);
-    if (queryMatch?.[1]) return queryMatch[1];
-
-    return '';
-  }
+  const extractListingId = EtsyData.extractListingId;
 
   function buildRouteWithListingId(routeKey) {
     const route = ROUTES[routeKey];
