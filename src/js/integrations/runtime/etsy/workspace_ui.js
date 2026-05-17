@@ -1451,26 +1451,6 @@
     openMediaLightbox,
   });
 
-  const createTextBlock = (className, text) => {
-    const node = document.createElement('div');
-    node.className = className;
-    node.textContent = text;
-    return node;
-  };
-
-  const createImageCard = (image, index, mediaKey, prefix, isLocal) => getEtsyUiMedia().createImageCard?.(image, index, mediaKey, prefix, isLocal, {
-    getLocalImageKey,
-    getImageKey,
-    getDisplayImageSource,
-    removeMediaByKeyInline,
-    openMediaLightbox,
-  });
-
-  const createVideoCard = (video, index, mediaKey, prefix) => getEtsyUiMedia().createVideoCard?.(video, index, mediaKey, prefix, {
-    getVideoKey,
-    removeMediaByKeyInline,
-  });
-
   const reorderMediaFromGrid = (prefix, grid) => {
     const state = getState(prefix);
     if (!state || !grid) return false;
@@ -1762,51 +1742,7 @@
     if (!state?.sortable) setupSortable(prefix, grid);
   };
 
-  const renderMediaGrid = (prefix, mediaPayload) => {
-    return renderMediaGridShared(prefix, mediaPayload);
-    const nodes = getNodes(prefix);
-    const state = getState(prefix);
-    if (!nodes.strip || !state) return;
-
-    const data = mediaPayload?.data || {};
-    const images = Array.isArray(data.images) ? data.images : [];
-    const videos = Array.isArray(data.videos) ? data.videos : [];
-    const localImages = Array.isArray(state.localImages) ? state.localImages : [];
-    const mediaItems = getOrderedMediaItems(state);
-
-    nodes.strip.innerHTML = '';
-
-    if (!images.length && !videos.length && !localImages.length) {
-      renderPlaceholder(prefix, 'Charge une fiche source Etsy, puis exploite ici les mÃ©dias dÃ©jÃ  prÃ©sents dans le workspace.');
-      return;
-    }
-
-    const toolbar = document.createElement('div');
-    toolbar.className = 'image-thumb-toolbar';
-    toolbar.appendChild(createTextBlock('image-thumb-toolbar-count', `${images.length + localImages.length} image(s) - ${videos.length} video(s)`));
-
-    const toolbarActions = document.createElement('div');
-    toolbarActions.className = 'image-thumb-toolbar-actions';
-
-    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'image', 'Ajouter images', () => triggerAddImages(prefix)));
-    toolbarActions.appendChild(createToolbarButton('btn btn-error btn-xs-inline', 'trash', 'Tout supprimer', () => clearAllMedia(prefix)));
-    toolbar.appendChild(toolbarActions);
-
-    const grid = document.createElement('div');
-    grid.className = 'image-thumb-grid etsy-api-media-grid';
-
-    mediaItems.forEach((item, index) => {
-      if (item.kind === 'image') {
-        grid.appendChild(createImageCard(item.value, index, item.key, prefix, item.isLocal));
-        return;
-      }
-      grid.appendChild(createVideoCard(item.value, index, item.key, prefix));
-    });
-
-    nodes.strip.appendChild(toolbar);
-    nodes.strip.appendChild(grid);
-    setupSortable(prefix, grid);
-  };
+  const renderMediaGrid = (prefix, mediaPayload) => renderMediaGridShared(prefix, mediaPayload);
 
   const setStatus = (prefix, message) => setStatusShared(prefix, message);
 
@@ -2049,5 +1985,6 @@
     initEtsyWorkspace();
   }
 })(window);
+
 
 

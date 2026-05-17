@@ -23,3 +23,5 @@ local-certs/
 *.patch
 *.bak_*
 src/**/*.bak*
+
+.etsy_oauth_tokens.json

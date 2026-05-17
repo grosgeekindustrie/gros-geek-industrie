@@ -13,6 +13,7 @@ import os
 import re
 import ssl
 import sys
+import time
 import urllib.parse
 import urllib.request
 import uuid
@@ -41,6 +42,16 @@ ETSY_OAUTH_CALLBACK_ROUTE = '/etsy/oauth/callback'
 LOCAL_HTTPS_DEFAULT_PORT = 8443
 ETSY_OAUTH_EXPIRY_SKEW_SECONDS = 60
 ETSY_OAUTH_TOKEN_LOCK = Lock()
+ETSY_MEDIA_CACHE_DIR = ROOT / '.etsy_media_cache'
+ETSY_TAXONOMY_CACHE_TTL_SECONDS = 1800
+ETSY_TAXONOMY_CACHE = {
+    'seller': {
+        'fetched_at': 0.0,
+        'payload': None,
+        'entries': [],
+        'by_id': {},
+    },
+}
 
 
 def load_dotenv_file(path: Path = ENV_FILE):
@@ -124,6 +135,69 @@ def decode_json_bytes(raw: bytes) -> dict:
         return {}
 
     return json.loads(text)
+
+
+def guess_media_extension(content_type: str, url: str) -> str:
+    normalized = str(content_type or '').split(';', 1)[0].strip().lower()
+    if normalized == 'image/jpeg':
+        return '.jpg'
+    if normalized == 'image/png':
+        return '.png'
+    if normalized == 'image/webp':
+        return '.webp'
+    if normalized == 'image/gif':
+        return '.gif'
+
+    suffix = Path(urllib.parse.urlparse(url).path).suffix.lower()
+    if suffix in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+        return '.jpg' if suffix == '.jpeg' else suffix
+    return '.jpg'
+
+
+def is_allowed_etsy_media_url(url: str) -> bool:
+    try:
+        parsed = urllib.parse.urlparse(str(url or '').strip())
+    except Exception:
+        return False
+
+    if parsed.scheme != 'https':
+        return False
+
+    hostname = str(parsed.hostname or '').lower()
+    if not hostname:
+        return False
+
+    return hostname == 'i.etsystatic.com' or hostname.endswith('.etsystatic.com')
+
+
+def build_etsy_media_cache_filename(url: str, extension: str) -> str:
+    digest = hashlib.sha256(str(url).encode('utf-8')).hexdigest()
+    normalized_extension = extension if extension.startswith('.') else f'.{extension}'
+    return f'{digest}{normalized_extension}'
+
+
+def cache_etsy_media_url(url: str) -> str:
+    if not is_allowed_etsy_media_url(url):
+        raise ValueError('URL media Etsy non autorisee')
+
+    request = urllib.request.Request(
+        url,
+        headers={'User-Agent': 'Mozilla/5.0 (compatible; EtsyPipeline/1.1)'},
+    )
+
+    with urllib.request.urlopen(request, timeout=20) as response:
+        content_type = str(response.headers.get('Content-Type') or '').strip().lower()
+        if not content_type.startswith('image/'):
+            raise ValueError(f'Ressource non image: {content_type or "type inconnu"}')
+        payload = response.read()
+
+    extension = guess_media_extension(content_type, url)
+    filename = build_etsy_media_cache_filename(url, extension)
+    ETSY_MEDIA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    target = ETSY_MEDIA_CACHE_DIR / filename
+    if not target.exists():
+        target.write_bytes(payload)
+    return filename
 
 
 def load_json_file(path: Path, fallback):
@@ -428,6 +502,126 @@ def perform_etsy_get_request(path: str, *, include_oauth: bool) -> dict:
         return decode_json_bytes(response.read())
 
 
+def _flatten_taxonomy_nodes(nodes, parents: list[str] | None = None) -> list[dict]:
+    parents = list(parents or [])
+    flattened: list[dict] = []
+    if not isinstance(nodes, list):
+        return flattened
+
+    for raw_node in nodes:
+        if not isinstance(raw_node, dict):
+            continue
+
+        label = str(
+            raw_node.get('name')
+            or raw_node.get('display_name')
+            or raw_node.get('category_name')
+            or ''
+        ).strip()
+        taxonomy_id = str(raw_node.get('taxonomy_id') or raw_node.get('id') or '').strip()
+        if not taxonomy_id:
+            continue
+
+        path_parts = [*parents, label] if label else [*parents]
+        path_text = ' > '.join([part for part in path_parts if part])
+        entry = {
+            'taxonomy_id': taxonomy_id,
+            'name': label or f'Taxonomy {taxonomy_id}',
+            'path': path_parts,
+            'path_text': path_text or (label or f'Taxonomy {taxonomy_id}'),
+            'level': len(path_parts) - 1,
+            'parent_taxonomy_id': str(raw_node.get('parent') or raw_node.get('parent_taxonomy_id') or '').strip(),
+            'is_supplies_top_level': bool(raw_node.get('is_supplies_top_level')),
+            'search_text': ' '.join([
+                taxonomy_id,
+                label,
+                path_text,
+            ]).strip().lower(),
+        }
+        flattened.append(entry)
+
+        children = raw_node.get('children')
+        if isinstance(children, list) and children:
+            flattened.extend(_flatten_taxonomy_nodes(children, path_parts))
+
+    return flattened
+
+
+def get_cached_seller_taxonomy_entries(*, force_refresh: bool = False) -> list[dict]:
+    cache = ETSY_TAXONOMY_CACHE['seller']
+    now_ts = time.time()
+    if (
+        not force_refresh
+        and cache['entries']
+        and (now_ts - float(cache['fetched_at'] or 0.0)) < ETSY_TAXONOMY_CACHE_TTL_SECONDS
+    ):
+        return cache['entries']
+
+    payload = perform_etsy_get_request('seller-taxonomy/nodes', include_oauth=False)
+    nodes = payload.get('results') if isinstance(payload, dict) else payload
+    entries = _flatten_taxonomy_nodes(nodes if isinstance(nodes, list) else [])
+    entries.sort(key=lambda item: (item['level'], item['path_text'].lower(), item['taxonomy_id']))
+
+    cache['fetched_at'] = now_ts
+    cache['payload'] = payload
+    cache['entries'] = entries
+    cache['by_id'] = {entry['taxonomy_id']: entry for entry in entries}
+    return entries
+
+
+def search_seller_taxonomy_entries(query: str, *, limit: int = 20) -> list[dict]:
+    needle = str(query or '').strip().lower()
+    entries = get_cached_seller_taxonomy_entries()
+    if not needle:
+        return entries[:limit]
+
+    exact_name = []
+    prefix_name = []
+    contains_name = []
+    contains_path = []
+    for entry in entries:
+        name = str(entry.get('name') or '').lower()
+        path_text = str(entry.get('path_text') or '').lower()
+        if name == needle:
+            exact_name.append(entry)
+        elif name.startswith(needle):
+            prefix_name.append(entry)
+        elif needle in name:
+            contains_name.append(entry)
+        elif needle in path_text:
+            contains_path.append(entry)
+
+    ranked = [*exact_name, *prefix_name, *contains_name, *contains_path]
+    seen = set()
+    results = []
+    for entry in ranked:
+        taxonomy_id = entry['taxonomy_id']
+        if taxonomy_id in seen:
+            continue
+        seen.add(taxonomy_id)
+        results.append(entry)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def get_seller_taxonomy_entry_by_id(taxonomy_id: str) -> dict:
+    normalized = str(taxonomy_id or '').strip()
+    if not normalized:
+        return {}
+
+    entries = get_cached_seller_taxonomy_entries()
+    cache = ETSY_TAXONOMY_CACHE['seller']
+    by_id = cache.get('by_id') if isinstance(cache, dict) else {}
+    if isinstance(by_id, dict) and normalized in by_id:
+        return by_id[normalized]
+
+    for entry in entries:
+        if entry.get('taxonomy_id') == normalized:
+            return entry
+    return {}
+
+
 def get_etsy_shop_payload() -> dict:
     user_id = get_etsy_user_id()
     if not user_id:
@@ -728,6 +922,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_binary_file(self, path: Path, content_type: str):
+        body = path.read_bytes()
+        self.send_response(200)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', len(body))
+        self.end_headers()
+        self.wfile.write(body)
+
     def send_redirect(self, location: str):
         self.send_response(302)
         self.send_header('Location', location)
@@ -874,6 +1077,59 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'user_id': shop_context['user_id'],
                         'shop_id': shop_id,
                         'data': payload,
+                    },
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/etsy/test/seller-taxonomy/search':
+            try:
+                query = str(query_params.get('q', [''])[0] or '').strip()
+                taxonomy_id = str(query_params.get('taxonomy_id', [''])[0] or '').strip()
+                limit_raw = str(query_params.get('limit', ['20'])[0] or '20').strip()
+                force_refresh = str(query_params.get('refresh', [''])[0] or '').strip().lower() in {'1', 'true', 'yes'}
+                try:
+                    limit = max(1, min(int(limit_raw or '20'), 50))
+                except Exception:
+                    limit = 20
+
+                if force_refresh:
+                    get_cached_seller_taxonomy_entries(force_refresh=True)
+
+                if taxonomy_id:
+                    entry = get_seller_taxonomy_entry_by_id(taxonomy_id)
+                    if not entry:
+                        self.send_json(404, {'error': f'Taxonomy Etsy introuvable : {taxonomy_id}'})
+                        return
+                    self.send_json(200, {
+                        'ok': True,
+                        'endpoint': 'seller-taxonomy/search',
+                        'payload': {
+                            'query': query,
+                            'taxonomy_id': taxonomy_id,
+                            'limit': limit,
+                            'results': [entry],
+                        },
+                    })
+                    return
+
+                results = search_seller_taxonomy_entries(query, limit=limit)
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': 'seller-taxonomy/search',
+                    'payload': {
+                        'query': query,
+                        'limit': limit,
+                        'results': results,
                     },
                 })
             except ValueError as e:
@@ -1068,6 +1324,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_file(static)
             return
 
+        if path.startswith('/etsy/media-cache/'):
+            filename = path.removeprefix('/etsy/media-cache/').strip()
+            if not filename or '/' in filename or '\\' in filename:
+                self.send_json(400, {'error': 'Nom de fichier cache invalide'})
+                return
+
+            target = (ETSY_MEDIA_CACHE_DIR / filename).resolve()
+            try:
+                target.relative_to(ETSY_MEDIA_CACHE_DIR.resolve())
+            except ValueError:
+                self.send_json(403, {'error': 'Chemin cache non autorise'})
+                return
+
+            if not target.exists() or not target.is_file():
+                self.send_json(404, {'error': 'Media cache introuvable'})
+                return
+
+            ext = target.suffix.lower()
+            content_type = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.webp': 'image/webp',
+                '.gif': 'image/gif',
+            }.get(ext, 'application/octet-stream')
+            self.send_binary_file(target, content_type)
+            return
+
         # API : fetch URL externe — GET /fetch-url?url=https://...
         if path == '/fetch-url':
             target = query_params.get('url', [None])[0]
@@ -1113,6 +1397,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split('?')[0]
+
+        if path == '/etsy/media-cache/prepare':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                target_url = str(data.get('url') or '').strip()
+                if not target_url:
+                    self.send_json(400, {'error': 'URL image manquante'})
+                    return
+
+                filename = cache_etsy_media_url(target_url)
+                self.send_json(200, {
+                    'ok': True,
+                    'originalUrl': target_url,
+                    'cachedUrl': f'/etsy/media-cache/{filename}',
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                self.send_json(e.code, {'error': f'Lecture media Etsy impossible: {e.reason}'})
+            except urllib.error.URLError as e:
+                self.send_json(502, {'error': f'Lecture media Etsy impossible: {e.reason}'})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
 
         if path == '/anthropic/files/upload':
             length = int(self.headers.get('Content-Length', 0))
