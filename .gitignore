@@ -25,3 +25,5 @@ local-certs/
 src/**/*.bak*
 
 .etsy_oauth_tokens.json
+*.pem
+*.ps1
