@@ -5,9 +5,37 @@
   const CUSTOM_VARIATION_PROPERTY_IDS = Object.freeze(['513', '514']);
 
   const getMoneyNumber = EtsyData.getMoneyNumber || ((value) => {
+    if (value && typeof value === 'object') {
+      const amount = Number(value.amount);
+      const divisor = Number(value.divisor);
+      if (Number.isFinite(amount) && Number.isFinite(divisor) && divisor > 0) {
+        return amount / divisor;
+      }
+
+      const fallbackValue = Number(
+        value.value
+        ?? value.price
+        ?? value.amount_with_divisor
+        ?? value.amount_including_tax
+        ?? NaN
+      );
+      return Number.isFinite(fallbackValue) ? fallbackValue : 0;
+    }
+
     const raw = Number(value);
     return Number.isFinite(raw) ? raw : 0;
   });
+
+  function formatMoneyInput(value) {
+    const amount = getMoneyNumber(value);
+    return amount ? amount.toFixed(2).replace('.', ',') : '';
+  }
+
+  function parseMoneyInput(value) {
+    const normalized = String(value || '').replace(/\s+/g, '').replace(',', '.');
+    const numeric = Number(normalized);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
 
   function buildOptionValueLabel(propertyValue) {
     if (!propertyValue || typeof propertyValue !== 'object') return '';
@@ -233,6 +261,34 @@
     };
   }
 
+  function buildProductScopeKey(product, scopeIds, variations) {
+    const normalizedIds = normalizeVariationRuleIds(scopeIds, variations);
+    if (!normalizedIds.length) return '__all__';
+
+    const selectionMap = new Map((product?.selections || []).map((selection) => [String(selection.variationId || '').trim(), selection]));
+    return normalizedIds.map((variationId) => {
+      const selection = selectionMap.get(variationId);
+      return `${variationId}:${String(selection?.optionId || '').trim()}`;
+    }).join('|');
+  }
+
+  function updateScopedProducts(draft, sourceProductId, scopeIds, updater) {
+    const sourceProduct = (draft?.products || []).find((product) => product.id === sourceProductId);
+    if (!sourceProduct) return;
+
+    const scopeKey = buildProductScopeKey(sourceProduct, scopeIds, draft.variations || []);
+    (draft.products || []).forEach((product) => {
+      if (buildProductScopeKey(product, scopeIds, draft.variations || []) !== scopeKey) return;
+      updater(product, sourceProduct);
+    });
+  }
+
+  function getProductSelection(product, variationId) {
+    return (product?.selections || []).find((selection) => (
+      String(selection.variationId || '').trim() === String(variationId || '').trim()
+    )) || null;
+  }
+
   function rebuildOptionProducts(draft) {
     if (!draft) return draft;
 
@@ -333,6 +389,9 @@
   global.PipelineUIEtsyData = {
     ...EtsyData,
     CUSTOM_VARIATION_PROPERTY_IDS,
+    getMoneyNumber,
+    formatMoneyInput,
+    parseMoneyInput,
     buildOptionValueLabel,
     buildOptionVariationName,
     createDefaultOptionValue,
@@ -344,6 +403,9 @@
     parseVariationRuleValue,
     getVariationRuleLabel,
     buildVariationRuleOptions,
+    buildProductScopeKey,
+    updateScopedProducts,
+    getProductSelection,
     buildOptionsDraftFromPayload,
     rebuildOptionProducts,
     applyOptionsDraftToPayload,

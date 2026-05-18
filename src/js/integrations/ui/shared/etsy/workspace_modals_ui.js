@@ -2,16 +2,31 @@
   'use strict';
 
   const EtsyUI = global.PipelineUIEtsyUI || { shared: {}, tabletop: {}, collection: {} };
+  const LIGHTBOX_ID = 'etsyMediaLightbox';
+  const IMAGE_EDITOR_OVERLAY_ID = 'etsyImageEditorOverlay';
+  const CATEGORY_PICKER_OVERLAY_ID = 'etsyCategoryPickerOverlay';
+  const OPTIONS_MODAL_ID = 'etsyOptionsModal';
+  const OPTIONS_TYPE_PICKER_ID = 'etsyOptionsTypePicker';
+  const OPTIONS_EDITOR_ID = 'etsyOptionsEditor';
+  const getNode = (deps, id) => deps.getNode?.(id) || document.getElementById(id);
+  const getModalIds = (deps) => ({
+    lightboxId: deps.LIGHTBOX_ID || LIGHTBOX_ID,
+    imageEditorOverlayId: deps.IMAGE_EDITOR_OVERLAY_ID || IMAGE_EDITOR_OVERLAY_ID,
+    categoryPickerOverlayId: deps.CATEGORY_PICKER_OVERLAY_ID || CATEGORY_PICKER_OVERLAY_ID,
+    optionsModalId: deps.OPTIONS_MODAL_ID || OPTIONS_MODAL_ID,
+    optionsTypePickerId: deps.OPTIONS_TYPE_PICKER_ID || OPTIONS_TYPE_PICKER_ID,
+    optionsEditorId: deps.OPTIONS_EDITOR_ID || OPTIONS_EDITOR_ID,
+  });
 
   function closeOverlayById(id, deps = {}) {
-    const overlay = deps.getNode?.(id) || document.getElementById(id);
+    const overlay = getNode(deps, id);
     if (!overlay) return;
     overlay.classList.remove('visible');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
   function closeCategoryPickerOverlay(deps = {}) {
-    closeOverlayById(deps.CATEGORY_PICKER_OVERLAY_ID, deps);
+    closeOverlayById(getModalIds(deps).categoryPickerOverlayId, deps);
     if (global.PipelineUIEtsyWorkspace) {
       global.PipelineUIEtsyWorkspace.categoryPickerState = null;
     }
@@ -19,13 +34,14 @@
 
   function closeOptionsOverlays(deps = {}) {
     const modalState = deps.getOptionsModalState?.();
+    const modalIds = getModalIds(deps);
     if (modalState?.optionSortable?.destroy) {
       try {
         modalState.optionSortable.destroy();
       } catch (error) {}
     }
 
-    [deps.OPTIONS_MODAL_ID, deps.OPTIONS_TYPE_PICKER_ID, deps.OPTIONS_EDITOR_ID].forEach((id) => {
+    [modalIds.optionsModalId, modalIds.optionsTypePickerId, modalIds.optionsEditorId].forEach((id) => {
       closeOverlayById(id, deps);
     });
 
@@ -35,8 +51,8 @@
   }
 
   function closeImageEditorOverlay(deps = {}) {
-    const overlay = deps.getNode?.(deps.IMAGE_EDITOR_OVERLAY_ID);
-    const editorHost = deps.getNode?.('etsyImageEditorHost');
+    const overlay = getNode(deps, getModalIds(deps).imageEditorOverlayId);
+    const editorHost = getNode(deps, 'etsyImageEditorHost');
     const session = deps.getActiveEditorSession?.();
 
     if (session?.instance?.terminate) {
@@ -58,7 +74,7 @@
   }
 
   function closeMediaLightbox(deps = {}) {
-    const overlay = deps.getNode?.(deps.LIGHTBOX_ID);
+    const overlay = getNode(deps, getModalIds(deps).lightboxId);
     if (!overlay) return;
 
     overlay.classList.remove('visible');
@@ -73,7 +89,8 @@
   }
 
   function ensureMediaLightbox(deps = {}) {
-    const existing = deps.getNode?.(deps.LIGHTBOX_ID);
+    const { lightboxId } = getModalIds(deps);
+    const existing = getNode(deps, lightboxId);
     if (existing) {
       const hasEditButton = existing.querySelector('[data-js="etsy-media-lightbox-edit-image"]');
       const hasHeaderActions = existing.querySelector('#etsyMediaLightboxHeaderActions');
@@ -83,7 +100,7 @@
 
     const host = document.createElement('div');
     host.innerHTML = `
-<div id="${deps.LIGHTBOX_ID}" class="lb-overlay etsy-media-lightbox" aria-hidden="true">
+<div id="${lightboxId}" class="lb-overlay etsy-media-lightbox" aria-hidden="true">
   <div class="lb-box lb-box-wide etsy-media-lightbox-box" role="dialog" aria-modal="true" aria-labelledby="etsyMediaLightboxTitle">
     <div class="lb-header">
       <h3 id="etsyMediaLightboxTitle"><span data-svg-icon="image"></span><span class="ui-icon-label">MEDIA ETSY</span></h3>
@@ -137,14 +154,14 @@
     document.body.appendChild(host);
     global.PipelineUIIcons?.hydrateIcons?.(host);
 
-    const overlay = deps.getNode?.(deps.LIGHTBOX_ID);
+    const overlay = getNode(deps, lightboxId);
     overlay?.addEventListener('click', (event) => {
       if (event.target === overlay) deps.closeMediaLightbox?.();
     });
 
     overlay?.querySelector('[data-js="etsy-media-lightbox-close"]')?.addEventListener('click', deps.closeMediaLightbox);
 
-    deps.getNode?.('etsyMediaLightboxAltInput')?.addEventListener('input', (event) => {
+    getNode(deps, 'etsyMediaLightboxAltInput')?.addEventListener('input', (event) => {
       const active = deps.getActiveMediaSelection?.();
       if (!active) return;
       deps.setMediaAltText?.(active.prefix, active.mediaKey, String(event.target.value || ''));
@@ -154,7 +171,7 @@
       const active = deps.getActiveMediaSelection?.();
       if (!active) return;
       deps.setMediaAltText?.(active.prefix, active.mediaKey, '');
-      const input = deps.getNode?.('etsyMediaLightboxAltInput');
+      const input = getNode(deps, 'etsyMediaLightboxAltInput');
       if (input) {
         input.value = '';
         input.focus();
@@ -186,12 +203,86 @@
     });
   }
 
+  function fillMediaLightbox(prefix, mediaKey, deps = {}) {
+    const state = deps.getState?.(prefix);
+    const mediaItem = deps.getMediaItemByKey?.(state, mediaKey);
+    if (!state || !mediaItem) return false;
+
+    deps.ensureMediaLightbox?.();
+    const overlay = getNode(deps, getModalIds(deps).lightboxId);
+    const previewHost = getNode(deps, 'etsyMediaLightboxPreview');
+    const typeNode = getNode(deps, 'etsyMediaLightboxType');
+    const idNode = getNode(deps, 'etsyMediaLightboxId');
+    const resolutionNode = getNode(deps, 'etsyMediaLightboxResolution');
+    const sourceNode = getNode(deps, 'etsyMediaLightboxSource');
+    const altGroup = getNode(deps, 'etsyMediaLightboxAltGroup');
+    const altInput = getNode(deps, 'etsyMediaLightboxAltInput');
+    const imageActions = getNode(deps, 'etsyMediaLightboxImageActions');
+    const headerActions = getNode(deps, 'etsyMediaLightboxHeaderActions');
+    const resetImageButton = overlay?.querySelector('[data-js="etsy-media-lightbox-reset-image"]');
+    const resetImageHeaderButton = overlay?.querySelector('[data-js="etsy-media-lightbox-reset-image-header"]');
+    if (!overlay || !previewHost || !typeNode || !idNode || !resolutionNode || !sourceNode || !altGroup || !altInput || !imageActions || !headerActions || !resetImageButton || !resetImageHeaderButton) {
+      return false;
+    }
+
+    previewHost.innerHTML = '';
+    state.activeMediaKey = mediaKey;
+
+    if (mediaItem.kind === 'image') {
+      const preview = document.createElement('img');
+      preview.className = 'etsy-media-lightbox-preview-image';
+      preview.src = deps.getDisplayImageSource?.(prefix, mediaKey, mediaItem.value, mediaItem.isLocal) || '';
+      preview.alt = mediaItem.value.alt_text || 'Image Etsy';
+      previewHost.appendChild(preview);
+
+      typeNode.textContent = mediaItem.isLocal ? 'Image locale' : 'Image Etsy';
+      idNode.textContent = mediaItem.isLocal ? String(mediaItem.value.local_id || '-') : deps.getImageId?.(mediaItem.value);
+      resolutionNode.textContent = deps.formatResolution?.(
+        mediaItem.isLocal
+          ? { width: mediaItem.value.width || 0, height: mediaItem.value.height || 0 }
+          : deps.getImageResolution?.(mediaItem.value)
+      ) || '-';
+      sourceNode.textContent = mediaItem.isLocal ? 'Ajoutee au workspace' : (deps.getImageEditorSource?.(mediaItem) || '');
+      altGroup.style.display = '';
+      imageActions.style.display = '';
+      headerActions.style.display = '';
+      altInput.disabled = false;
+      altInput.value = mediaItem.value.alt_text || '';
+      const hasEditedVersion = !!deps.getEditedImageDataUrl?.(prefix, mediaKey);
+      resetImageButton.disabled = !hasEditedVersion;
+      resetImageHeaderButton.disabled = !hasEditedVersion;
+    } else {
+      const preview = document.createElement('video');
+      preview.className = 'etsy-media-lightbox-preview-video';
+      preview.src = mediaItem.value.video_url || '';
+      preview.poster = mediaItem.value.thumbnail_url || '';
+      preview.controls = true;
+      preview.preload = 'metadata';
+      previewHost.appendChild(preview);
+
+      typeNode.textContent = 'Video Etsy';
+      idNode.textContent = deps.getVideoId?.(mediaItem.value);
+      resolutionNode.textContent = deps.formatResolution?.(deps.getVideoResolution?.(mediaItem.value)) || '-';
+      sourceNode.textContent = 'Chargee depuis Etsy';
+      altGroup.style.display = 'none';
+      imageActions.style.display = 'none';
+      headerActions.style.display = 'none';
+      altInput.disabled = true;
+      altInput.value = '';
+    }
+
+    overlay.classList.add('visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    return true;
+  }
+
   function ensureImageEditorOverlay(deps = {}) {
-    if (deps.getNode?.(deps.IMAGE_EDITOR_OVERLAY_ID)) return;
+    const { imageEditorOverlayId } = getModalIds(deps);
+    if (getNode(deps, imageEditorOverlayId)) return;
 
     const host = document.createElement('div');
     host.innerHTML = `
-<div id="${deps.IMAGE_EDITOR_OVERLAY_ID}" class="lb-overlay etsy-image-editor-overlay" aria-hidden="true">
+<div id="${imageEditorOverlayId}" class="lb-overlay etsy-image-editor-overlay" aria-hidden="true">
   <div class="lb-box lb-box-wide etsy-image-editor-box" role="dialog" aria-modal="true" aria-labelledby="etsyImageEditorTitle">
     <div class="lb-header">
       <h3 id="etsyImageEditorTitle"><span data-svg-icon="crop"></span><span class="ui-icon-label">EDITEUR IMAGE ETSY</span></h3>
@@ -206,7 +297,7 @@
     document.body.appendChild(host);
     global.PipelineUIIcons?.hydrateIcons?.(host);
 
-    const overlay = deps.getNode?.(deps.IMAGE_EDITOR_OVERLAY_ID);
+    const overlay = getNode(deps, imageEditorOverlayId);
     overlay?.addEventListener('click', (event) => {
       if (event.target === overlay) deps.closeImageEditorOverlay?.();
     });
@@ -215,11 +306,12 @@
   }
 
   function ensureCategoryPickerOverlay(deps = {}) {
-    if (deps.getNode?.(deps.CATEGORY_PICKER_OVERLAY_ID)) return;
+    const { categoryPickerOverlayId } = getModalIds(deps);
+    if (getNode(deps, categoryPickerOverlayId)) return;
 
     const host = document.createElement('div');
     host.innerHTML = `
-<div id="${deps.CATEGORY_PICKER_OVERLAY_ID}" class="lb-overlay etsy-category-picker-overlay" aria-hidden="true">
+<div id="${categoryPickerOverlayId}" class="lb-overlay etsy-category-picker-overlay" aria-hidden="true">
   <div class="lb-box etsy-category-picker-box" role="dialog" aria-modal="true" aria-labelledby="etsyCategoryPickerTitle">
     <div class="lb-header">
       <h3 id="etsyCategoryPickerTitle"><span data-svg-icon="search"></span><span class="ui-icon-label">CATEGORIE ETSY</span></h3>
@@ -239,7 +331,7 @@
     document.body.appendChild(host);
     global.PipelineUIIcons?.hydrateIcons?.(host);
 
-    const overlay = deps.getNode?.(deps.CATEGORY_PICKER_OVERLAY_ID);
+    const overlay = getNode(deps, categoryPickerOverlayId);
     overlay?.addEventListener('click', (event) => {
       if (event.target === overlay) deps.closeCategoryPickerOverlay?.();
     });
@@ -250,10 +342,11 @@
   }
 
   function ensureOptionsOverlays(deps = {}) {
-    if (!deps.getNode?.(deps.OPTIONS_MODAL_ID)) {
+    const modalIds = getModalIds(deps);
+    if (!getNode(deps, modalIds.optionsModalId)) {
       const host = document.createElement('div');
       host.innerHTML = `
-<div id="${deps.OPTIONS_MODAL_ID}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
+<div id="${modalIds.optionsModalId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
   <div class="lb-box etsy-options-modal-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsModalTitle">
     <div class="lb-header">
       <h3 id="etsyOptionsModalTitle"><span data-svg-icon="settings"></span><span class="ui-icon-label">GERER LES VARIATIONS</span></h3>
@@ -271,7 +364,7 @@
     </div>
   </div>
 </div>
-<div id="${deps.OPTIONS_TYPE_PICKER_ID}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
+<div id="${modalIds.optionsTypePickerId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
   <div class="lb-box etsy-options-type-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsTypeTitle">
     <div class="lb-header">
       <h3 id="etsyOptionsTypeTitle"><span data-svg-icon="search"></span><span class="ui-icon-label">AJOUTER UNE VARIATION</span></h3>
@@ -285,7 +378,7 @@
     </div>
   </div>
 </div>
-<div id="${deps.OPTIONS_EDITOR_ID}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
+<div id="${modalIds.optionsEditorId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
   <div class="lb-box etsy-options-editor-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsEditorTitle">
     <div class="lb-header">
       <h3 id="etsyOptionsEditorTitle"><span data-svg-icon="settings"></span><span class="ui-icon-label">VARIATION PERSONNALISEE</span></h3>
@@ -327,8 +420,8 @@
       global.PipelineUIIcons?.hydrateIcons?.(host);
     }
 
-    [deps.OPTIONS_MODAL_ID, deps.OPTIONS_TYPE_PICKER_ID, deps.OPTIONS_EDITOR_ID].forEach((id) => {
-      const overlay = deps.getNode?.(id);
+    [modalIds.optionsModalId, modalIds.optionsTypePickerId, modalIds.optionsEditorId].forEach((id) => {
+      const overlay = getNode(deps, id);
       if (!overlay || overlay.dataset.bound === 'true') return;
       overlay.dataset.bound = 'true';
       overlay.addEventListener('click', (event) => {
@@ -336,7 +429,7 @@
       });
     });
 
-    const modalOverlay = deps.getNode?.(deps.OPTIONS_MODAL_ID);
+    const modalOverlay = getNode(deps, modalIds.optionsModalId);
     if (modalOverlay && modalOverlay.dataset.controlsBound !== 'true') {
       modalOverlay.dataset.controlsBound = 'true';
       modalOverlay.querySelector('[data-js="etsy-options-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
@@ -345,21 +438,21 @@
       modalOverlay.querySelector('[data-js="etsy-options-add-variation"]')?.addEventListener('click', deps.openOptionTypePicker);
     }
 
-    const typeOverlay = deps.getNode?.(deps.OPTIONS_TYPE_PICKER_ID);
+    const typeOverlay = getNode(deps, modalIds.optionsTypePickerId);
     if (typeOverlay && typeOverlay.dataset.controlsBound !== 'true') {
       typeOverlay.dataset.controlsBound = 'true';
       typeOverlay.querySelector('[data-js="etsy-options-type-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
       typeOverlay.querySelector('[data-js="etsy-options-open-custom"]')?.addEventListener('click', () => deps.openOptionEditor?.());
     }
 
-    const editorOverlay = deps.getNode?.(deps.OPTIONS_EDITOR_ID);
+    const editorOverlay = getNode(deps, modalIds.optionsEditorId);
     if (editorOverlay && editorOverlay.dataset.controlsBound !== 'true') {
       editorOverlay.dataset.controlsBound = 'true';
       editorOverlay.querySelector('[data-js="etsy-options-editor-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
       editorOverlay.querySelector('[data-js="etsy-options-editor-cancel"]')?.addEventListener('click', deps.closeOptionsOverlays);
       editorOverlay.querySelector('[data-js="etsy-options-editor-add-option"]')?.addEventListener('click', () => {
         const modalState = deps.getOptionsModalState?.();
-        const optionInput = deps.getNode?.('etsyOptionsEditorOptionInput');
+        const optionInput = getNode(deps, 'etsyOptionsEditorOptionInput');
         if (!modalState || !optionInput) return;
         const value = String(optionInput.value || '').trim();
         if (!value) return;
@@ -367,24 +460,24 @@
         optionInput.value = '';
         deps.renderOptionEditorState?.();
       });
-      deps.getNode?.('etsyOptionsEditorName')?.addEventListener('input', (event) => {
+      getNode(deps, 'etsyOptionsEditorName')?.addEventListener('input', (event) => {
         const modalState = deps.getOptionsModalState?.();
         if (!modalState?.workingVariation) return;
         modalState.workingVariation.name = String(event.target.value || '');
         deps.renderOptionEditorState?.();
       });
-      deps.getNode?.('etsyOptionsEditorPhotos')?.addEventListener('change', (event) => {
+      getNode(deps, 'etsyOptionsEditorPhotos')?.addEventListener('change', (event) => {
         const modalState = deps.getOptionsModalState?.();
         if (!modalState?.workingVariation) return;
         modalState.workingVariation.photosEnabled = !!event.target.checked;
         deps.renderOptionEditorState?.();
       });
-      deps.getNode?.('etsyOptionsEditorOptionInput')?.addEventListener('keydown', (event) => {
+      getNode(deps, 'etsyOptionsEditorOptionInput')?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
         event.preventDefault();
-        deps.getNode?.(deps.OPTIONS_EDITOR_ID)?.querySelector('[data-js="etsy-options-editor-add-option"]')?.click();
+        getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-add-option"]')?.click();
       });
-      deps.getNode?.(deps.OPTIONS_EDITOR_ID)?.querySelector('[data-js="etsy-options-editor-delete"]')?.addEventListener('click', () => {
+      getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-delete"]')?.addEventListener('click', () => {
         const modalState = deps.getOptionsModalState?.();
         const prefix = modalState?.prefix;
         const variationId = modalState?.workingVariation?.id;
@@ -395,7 +488,7 @@
         deps.closeOptionsOverlays?.();
         deps.renderOptionsStep?.(prefix);
       });
-      deps.getNode?.(deps.OPTIONS_EDITOR_ID)?.querySelector('[data-js="etsy-options-editor-save"]')?.addEventListener('click', () => {
+      getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-save"]')?.addEventListener('click', () => {
         const modalState = deps.getOptionsModalState?.();
         const prefix = modalState?.prefix;
         const variation = modalState?.workingVariation;
@@ -429,6 +522,7 @@
   EtsyUI.shared.modals = {
     ...(EtsyUI.shared.modals || {}),
     ensureMediaLightbox,
+    fillMediaLightbox,
     ensureImageEditorOverlay,
     ensureCategoryPickerOverlay,
     ensureOptionsOverlays,

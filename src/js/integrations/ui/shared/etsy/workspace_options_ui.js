@@ -2,13 +2,39 @@
   'use strict';
 
   const EtsyUI = global.PipelineUIEtsyUI || { shared: {}, tabletop: {}, collection: {} };
+  const getRuntime = () => global.PipelineUIEtsyRuntime || {};
+  const getData = () => global.PipelineUIEtsyData || {};
+  const OPTIONS_MODAL_ID = 'etsyOptionsModal';
+  const OPTIONS_TYPE_PICKER_ID = 'etsyOptionsTypePicker';
+  const OPTIONS_EDITOR_ID = 'etsyOptionsEditor';
+  const OPTION_TYPE_SUGGESTIONS = [
+    'Couleur principale',
+    'Couleur secondaire',
+    'Largeur',
+    'Hauteur',
+    'Profondeur',
+  ];
+  const getNodeById = (id) => document.getElementById(id);
+  const getNode = (deps, id) => deps.getNode?.(id) || getNodeById(id);
+  const getOptionsModalState = (deps) => deps.getOptionsModalState?.() || getRuntime().getOptionsModalState?.();
+  const setOptionsModalState = (deps, nextState) => deps.setOptionsModalState?.(nextState) || getRuntime().setOptionsModalState?.(nextState);
+  const ensureOptionsOverlays = (deps) => deps.ensureOptionsOverlays?.();
+  const updateOptionsDraft = (deps, prefix, mutator) => deps.updateOptionsDraft?.(prefix, mutator) || getRuntime().updateOptionsDraft?.(prefix, mutator);
+  const ensureOptionsDraft = (deps, state) => deps.ensureOptionsDraft?.(state) || getRuntime().ensureOptionsDraft?.(state);
+  const getCustomVariationPropertyIds = (deps) => deps.customVariationPropertyIds || getData().CUSTOM_VARIATION_PROPERTY_IDS || ['513', '514'];
+  const createDefaultOptionValue = (deps, label) => deps.createDefaultOptionValue?.(label) || getData().createDefaultOptionValue?.(label);
+  const getOptionIds = (deps) => ({
+    modalId: deps.OPTIONS_MODAL_ID || OPTIONS_MODAL_ID,
+    typePickerId: deps.OPTIONS_TYPE_PICKER_ID || OPTIONS_TYPE_PICKER_ID,
+    editorId: deps.OPTIONS_EDITOR_ID || OPTIONS_EDITOR_ID,
+  });
 
   function openOptionsModal(prefix, deps = {}) {
-    deps.ensureOptionsOverlays?.();
-    const overlay = deps.getNode?.(deps.OPTIONS_MODAL_ID);
+    ensureOptionsOverlays(deps);
+    const overlay = getNode(deps, getOptionIds(deps).modalId);
     if (!overlay) return;
 
-    deps.setOptionsModalState?.({
+    setOptionsModalState(deps, {
       prefix,
       workingVariation: null,
     });
@@ -18,16 +44,16 @@
   }
 
   function openOptionTypePicker(deps = {}) {
-    const modalState = deps.getOptionsModalState?.();
+    const modalState = getOptionsModalState(deps);
     const prefix = modalState?.prefix;
     if (!prefix) return;
 
-    deps.ensureOptionsOverlays?.();
-    const overlay = deps.getNode?.(deps.OPTIONS_TYPE_PICKER_ID);
-    const host = deps.getNode?.('etsyOptionsTypeContent');
+    ensureOptionsOverlays(deps);
+    const overlay = getNode(deps, getOptionIds(deps).typePickerId);
+    const host = getNode(deps, 'etsyOptionsTypeContent');
     if (!overlay || !host) return;
 
-    host.innerHTML = (deps.optionTypeSuggestions || []).map((label) => `
+    host.innerHTML = (deps.optionTypeSuggestions || OPTION_TYPE_SUGGESTIONS).map((label) => `
       <button class="etsy-options-type-item" type="button" data-js="etsy-options-preset" data-label="${label}">
         <span>${label}</span>
       </button>
@@ -41,7 +67,8 @@
   }
 
   function renderOptionEditorPhotos(prefix, workingVariation, photoAssignments, deps = {}) {
-    const imageChoices = deps.getWorkspaceImageChoices?.(prefix) || [];
+    const runtime = getRuntime();
+    const imageChoices = deps.getWorkspaceImageChoices?.(prefix) || runtime.getWorkspaceImageChoices?.(prefix) || [];
 
     if (!workingVariation.photosEnabled) {
       photoAssignments.innerHTML = '';
@@ -71,7 +98,7 @@
       </div>
       <div class="etsy-options-editor-photo-list">
         ${(workingVariation.options || []).map((option) => {
-          const assignedImage = deps.getOptionAssignedImage?.(prefix, option);
+          const assignedImage = deps.getOptionAssignedImage?.(prefix, option) || runtime.getOptionAssignedImage?.(prefix, option);
           return `
             <div class="etsy-options-editor-photo-row">
               <div class="etsy-options-editor-photo-copy">
@@ -93,19 +120,20 @@
         const option = (workingVariation.options || []).find((item) => item.id === select.dataset.optionId);
         if (!option) return;
         option.imageKey = String(event.target.value || '').trim();
-        deps.renderOptionEditorPhotos?.(prefix, workingVariation, photoAssignments);
+        (deps.renderOptionEditorPhotos || renderOptionEditorPhotos)?.(prefix, workingVariation, photoAssignments, deps);
       });
     });
   }
 
   function renderOptionEditorState(deps = {}) {
-    const modalState = deps.getOptionsModalState?.();
+    const modalState = getOptionsModalState(deps);
     const prefix = modalState?.prefix;
     const workingVariation = modalState?.workingVariation;
-    const list = deps.getNode?.('etsyOptionsEditorOptions');
-    const photoAssignments = deps.getNode?.('etsyOptionsEditorPhotoAssignments');
-    const addButton = deps.getNode?.(deps.OPTIONS_EDITOR_ID)?.querySelector('[data-js="etsy-options-editor-save"]');
-    const deleteButton = deps.getNode?.(deps.OPTIONS_EDITOR_ID)?.querySelector('[data-js="etsy-options-editor-delete"]');
+    const list = getNode(deps, 'etsyOptionsEditorOptions');
+    const photoAssignments = getNode(deps, 'etsyOptionsEditorPhotoAssignments');
+    const editorId = getOptionIds(deps).editorId;
+    const addButton = getNode(deps, editorId)?.querySelector('[data-js="etsy-options-editor-save"]');
+    const deleteButton = getNode(deps, editorId)?.querySelector('[data-js="etsy-options-editor-delete"]');
     if (!prefix || !workingVariation || !list || !photoAssignments) return;
 
     if (modalState.optionSortable?.destroy) {
@@ -130,11 +158,11 @@
     list.querySelectorAll('[data-js="etsy-options-editor-remove-option"]').forEach((button) => {
       button.addEventListener('click', () => {
         workingVariation.options = (workingVariation.options || []).filter((option) => option.id !== button.dataset.optionId);
-        deps.renderOptionEditorState?.();
+        (deps.renderOptionEditorState || renderOptionEditorState)?.(deps);
       });
     });
 
-    deps.renderOptionEditorPhotos?.(prefix, workingVariation, photoAssignments);
+    (deps.renderOptionEditorPhotos || renderOptionEditorPhotos)?.(prefix, workingVariation, photoAssignments, deps);
 
     if (deleteButton) {
       deleteButton.style.display = modalState?.isNewVariation ? 'none' : '';
@@ -144,7 +172,7 @@
       addButton.disabled = !String(workingVariation.name || '').trim() || !(workingVariation.options || []).length;
     }
 
-    const SortableCtor = deps.getSortableCtor?.();
+    const SortableCtor = deps.getSortableCtor?.() || global.Sortable || null;
     if (SortableCtor && workingVariation.options.length > 1) {
       modalState.optionSortable = SortableCtor.create(list, {
         animation: 160,
@@ -164,19 +192,21 @@
           if (!movedOption) return;
           nextOptions.splice(toIndex, 0, movedOption);
           workingVariation.options = nextOptions;
-          deps.renderOptionEditorPhotos?.(prefix, workingVariation, photoAssignments);
+          (deps.renderOptionEditorPhotos || renderOptionEditorPhotos)?.(prefix, workingVariation, photoAssignments, deps);
         },
       });
     }
   }
 
   function openOptionEditor(variationId = '', presetName = '', deps = {}) {
-    const modalState = deps.getOptionsModalState?.();
+    const runtime = getRuntime();
+    const data = getData();
+    const modalState = getOptionsModalState(deps);
     const prefix = modalState?.prefix;
     if (!prefix) return;
 
-    const state = deps.getState?.(prefix);
-    const draft = deps.ensureOptionsDraft?.(state);
+    const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
+    const draft = ensureOptionsDraft(deps, state);
     if (!draft) return;
 
     let workingVariation = variationId
@@ -189,7 +219,7 @@
       if (slot >= 2) return;
       workingVariation = {
         id: `variation-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        propertyId: deps.customVariationPropertyIds?.[slot] || `${slot + 1}`,
+        propertyId: getCustomVariationPropertyIds(deps)?.[slot] || data.CUSTOM_VARIATION_PROPERTY_IDS?.[slot] || `${slot + 1}`,
         slot,
         name: String(presetName || '').trim(),
         photosEnabled: false,
@@ -198,23 +228,23 @@
       };
     }
 
-    deps.setOptionsModalState?.({
+    setOptionsModalState(deps, {
       prefix,
       workingVariation,
       isNewVariation,
     });
 
-    deps.ensureOptionsOverlays?.();
-    const overlay = deps.getNode?.(deps.OPTIONS_EDITOR_ID);
-    const nameInput = deps.getNode?.('etsyOptionsEditorName');
-    const photosInput = deps.getNode?.('etsyOptionsEditorPhotos');
-    const optionInput = deps.getNode?.('etsyOptionsEditorOptionInput');
+    ensureOptionsOverlays(deps);
+    const overlay = getNode(deps, getOptionIds(deps).editorId);
+    const nameInput = getNode(deps, 'etsyOptionsEditorName');
+    const photosInput = getNode(deps, 'etsyOptionsEditorPhotos');
+    const optionInput = getNode(deps, 'etsyOptionsEditorOptionInput');
     if (!overlay || !nameInput || !photosInput || !optionInput) return;
 
     nameInput.value = workingVariation.name || '';
     photosInput.checked = !!workingVariation.photosEnabled;
     optionInput.value = '';
-    deps.renderOptionEditorState?.();
+    (deps.renderOptionEditorState || renderOptionEditorState)?.(deps);
 
     overlay.classList.add('visible');
     overlay.setAttribute('aria-hidden', 'false');
@@ -222,13 +252,15 @@
   }
 
   function renderOptionsModalState(prefix, deps = {}) {
-    const state = deps.getState?.(prefix);
-    const draft = deps.ensureOptionsDraft?.(state);
-    const host = deps.getNode?.('etsyOptionsModalContent');
+    const runtime = getRuntime();
+    const data = getData();
+    const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
+    const draft = ensureOptionsDraft(deps, state);
+    const host = getNode(deps, 'etsyOptionsModalContent');
     if (!host || !draft) return;
 
     const variations = Array.isArray(draft.variations) ? draft.variations : [];
-    const ruleOptions = deps.buildVariationRuleOptions?.(variations) || [];
+    const ruleOptions = deps.buildVariationRuleOptions?.(variations) || data.buildVariationRuleOptions?.(variations) || [];
     if (!variations.length) {
       host.innerHTML = `
         <div class="etsy-options-empty-state">
@@ -269,44 +301,46 @@
     host.innerHTML = `
       <div class="etsy-options-variation-list">${cards}</div>
       <div class="etsy-options-settings">
-        ${buildRuleRow('Les prix varient pour chaque', 'etsyOptionsPriceVaryEnabled', 'etsyOptionsPriceVary', deps.normalizeVariationRuleIds?.(draft.priceVariesByIds, variations) || [])}
-        ${buildRuleRow('Les profils de traitement varient', 'etsyOptionsProcessingVaryEnabled', 'etsyOptionsProcessingVary', deps.normalizeVariationRuleIds?.(draft.processingProfileVariesByIds, variations) || [])}
-        ${buildRuleRow('Les quantites varient', 'etsyOptionsQuantityVaryEnabled', 'etsyOptionsQuantityVary', deps.normalizeVariationRuleIds?.(draft.quantityVariesByIds, variations) || [])}
-        ${buildRuleRow('Les references varient pour chaque', 'etsyOptionsSkuVaryEnabled', 'etsyOptionsSkuVary', deps.normalizeVariationRuleIds?.(draft.skuVariesByIds, variations) || [])}
+        ${buildRuleRow('Les prix varient pour chaque', 'etsyOptionsPriceVaryEnabled', 'etsyOptionsPriceVary', deps.normalizeVariationRuleIds?.(draft.priceVariesByIds, variations) || data.normalizeVariationRuleIds?.(draft.priceVariesByIds, variations) || [])}
+        ${buildRuleRow('Les profils de traitement varient', 'etsyOptionsProcessingVaryEnabled', 'etsyOptionsProcessingVary', deps.normalizeVariationRuleIds?.(draft.processingProfileVariesByIds, variations) || data.normalizeVariationRuleIds?.(draft.processingProfileVariesByIds, variations) || [])}
+        ${buildRuleRow('Les quantites varient', 'etsyOptionsQuantityVaryEnabled', 'etsyOptionsQuantityVary', deps.normalizeVariationRuleIds?.(draft.quantityVariesByIds, variations) || data.normalizeVariationRuleIds?.(draft.quantityVariesByIds, variations) || [])}
+        ${buildRuleRow('Les references varient pour chaque', 'etsyOptionsSkuVaryEnabled', 'etsyOptionsSkuVary', deps.normalizeVariationRuleIds?.(draft.skuVariesByIds, variations) || data.normalizeVariationRuleIds?.(draft.skuVariesByIds, variations) || [])}
       </div>
     `;
 
     host.querySelectorAll('[data-js="etsy-options-edit-variation"]').forEach((button) => {
-      button.addEventListener('click', () => deps.openOptionEditor?.(button.dataset.variationId || ''));
+      button.addEventListener('click', () => (deps.openOptionEditor || openOptionEditor)?.(button.dataset.variationId || '', '', deps));
     });
 
     host.querySelectorAll('[data-js="etsy-options-delete-variation"]').forEach((button) => {
       button.addEventListener('click', () => {
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
           nextDraft.variations = (nextDraft.variations || []).filter((item) => item.id !== button.dataset.variationId);
         });
-        deps.renderOptionsModalState?.(prefix);
-        deps.renderOptionsStep?.(prefix);
+        (deps.renderOptionsModalState || renderOptionsModalState)?.(prefix, deps);
+        (deps.renderOptionsStep || renderOptionsStep)?.(prefix, deps);
       });
     });
 
     const bindRuleToggle = (toggleSelector, selectSelector, fieldName) => {
       host.querySelector(toggleSelector)?.addEventListener('change', (event) => {
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
           nextDraft[fieldName] = event.target.checked
-            ? deps.parseVariationRuleValue?.(host.querySelector(selectSelector)?.value || variations[0]?.id || '', variations)
+            ? (deps.parseVariationRuleValue?.(host.querySelector(selectSelector)?.value || variations[0]?.id || '', variations)
+              || data.parseVariationRuleValue?.(host.querySelector(selectSelector)?.value || variations[0]?.id || '', variations))
             : [];
         });
-        deps.renderOptionsModalState?.(prefix);
-        deps.renderOptionsStep?.(prefix);
+        (deps.renderOptionsModalState || renderOptionsModalState)?.(prefix, deps);
+        (deps.renderOptionsStep || renderOptionsStep)?.(prefix, deps);
       });
 
       host.querySelector(selectSelector)?.addEventListener('change', (event) => {
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
-          nextDraft[fieldName] = deps.parseVariationRuleValue?.(event.target.value || '', variations);
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
+          nextDraft[fieldName] = deps.parseVariationRuleValue?.(event.target.value || '', variations)
+            || data.parseVariationRuleValue?.(event.target.value || '', variations);
         });
-        deps.renderOptionsModalState?.(prefix);
-        deps.renderOptionsStep?.(prefix);
+        (deps.renderOptionsModalState || renderOptionsModalState)?.(prefix, deps);
+        (deps.renderOptionsStep || renderOptionsStep)?.(prefix, deps);
       });
     };
 
@@ -317,14 +351,16 @@
   }
 
   function renderOptionsStep(prefix, deps = {}) {
-    const state = deps.getState?.(prefix);
-    const host = deps.getNode?.(`etsyApiOptionsContent-${prefix}`);
+    const runtime = getRuntime();
+    const data = getData();
+    const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
+    const host = getNode(deps, `etsyApiOptionsContent-${prefix}`);
     if (!state || !host) return;
 
-    const draft = deps.ensureOptionsDraft?.(state);
-    deps.applyOptionsDraftToPayload?.(state);
-    deps.syncPayloadText?.(state);
-    deps.syncWorkspacePayloadView?.(prefix);
+    const draft = deps.ensureOptionsDraft?.(state) || runtime.ensureOptionsDraft?.(state);
+    (deps.applyOptionsDraftToPayload || runtime.applyOptionsDraftToPayload)?.(state);
+    (deps.syncPayloadText || runtime.syncPayloadText)?.(state);
+    (deps.syncWorkspacePayloadView || runtime.syncWorkspacePayloadView)?.(prefix);
 
     const variations = Array.isArray(draft?.variations) ? draft.variations : [];
     if (!variations.length) {
@@ -353,10 +389,10 @@
 
     const showPhotoColumn = variations.some((variation) => variation.photosEnabled);
     const rulesSummary = [
-      `Prix : ${deps.getVariationRuleLabel?.(draft.priceVariesByIds, variations)}`,
-      `References : ${deps.getVariationRuleLabel?.(draft.skuVariesByIds, variations)}`,
-      `Quantites : ${deps.getVariationRuleLabel?.(draft.quantityVariesByIds, variations)}`,
-      `Traitement : ${deps.getVariationRuleLabel?.(draft.processingProfileVariesByIds, variations)}`,
+      `Prix : ${deps.getVariationRuleLabel?.(draft.priceVariesByIds, variations) || data.getVariationRuleLabel?.(draft.priceVariesByIds, variations)}`,
+      `References : ${deps.getVariationRuleLabel?.(draft.skuVariesByIds, variations) || data.getVariationRuleLabel?.(draft.skuVariesByIds, variations)}`,
+      `Quantites : ${deps.getVariationRuleLabel?.(draft.quantityVariesByIds, variations) || data.getVariationRuleLabel?.(draft.quantityVariesByIds, variations)}`,
+      `Traitement : ${deps.getVariationRuleLabel?.(draft.processingProfileVariesByIds, variations) || data.getVariationRuleLabel?.(draft.processingProfileVariesByIds, variations)}`,
     ].map((label) => `<span class="etsy-options-chip">${label}</span>`).join('');
 
     const tableHead = `
@@ -373,16 +409,16 @@
     `;
 
     const rows = products.map((product) => {
-      const assignedImage = deps.getProductAssignedImage?.(prefix, draft, product);
+      const assignedImage = deps.getProductAssignedImage?.(prefix, draft, product) || runtime.getProductAssignedImage?.(prefix, draft, product);
       const rowClassName = product.enabled !== false ? '' : ' class="is-disabled"';
       return `
         <tr data-product-id="${product.id}"${rowClassName}>
-          ${variations.map((variation) => `<td class="etsy-api-options-static-cell">${deps.getProductSelection?.(product, variation.id)?.label || '-'}</td>`).join('')}
+          ${variations.map((variation) => `<td class="etsy-api-options-static-cell">${(deps.getProductSelection?.(product, variation.id) || data.getProductSelection?.(product, variation.id))?.label || '-'}</td>`).join('')}
           ${showPhotoColumn ? `<td class="etsy-api-options-edit-cell">${assignedImage ? `<img class="etsy-api-options-photo-thumb" src="${assignedImage.previewSrc}" alt="Photo variation">` : '<span class="etsy-api-options-photo-empty">-</span>'}</td>` : ''}
           <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-sku-v2" data-product-id="${product.id}" value="${product.sku || ''}"></td>
-          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="fr" data-product-id="${product.id}" value="${deps.formatMoneyInput?.(product.prices?.fr)}"></td>
-          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="us" data-product-id="${product.id}" value="${deps.formatMoneyInput?.(product.prices?.us)}"></td>
-          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="other" data-product-id="${product.id}" value="${deps.formatMoneyInput?.(product.prices?.other)}"></td>
+          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="fr" data-product-id="${product.id}" value="${(deps.formatMoneyInput || data.formatMoneyInput)?.(product.prices?.fr)}"></td>
+          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="us" data-product-id="${product.id}" value="${(deps.formatMoneyInput || data.formatMoneyInput)?.(product.prices?.us)}"></td>
+          <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-price-v2" data-price-scope="other" data-product-id="${product.id}" value="${(deps.formatMoneyInput || data.formatMoneyInput)?.(product.prices?.other)}"></td>
           <td class="etsy-api-options-edit-cell"><input type="text" data-js="etsy-option-product-quantity-v2" data-product-id="${product.id}" value="${String(product.quantity ?? '')}"></td>
           <td class="etsy-api-options-toggle-cell">
             <label class="etsy-api-options-switch" aria-label="Activer ou desactiver cette variation">
@@ -416,7 +452,7 @@
     host.querySelectorAll('[data-js="etsy-option-product-enabled-v2"]').forEach((input) => {
       input.addEventListener('change', (event) => {
         const productId = String(event.target.dataset.productId || '').trim();
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
           const product = (nextDraft.products || []).find((item) => item.id === productId);
           if (product) product.enabled = !!event.target.checked;
         });
@@ -426,8 +462,8 @@
     host.querySelectorAll('[data-js="etsy-option-product-sku-v2"]').forEach((input) => {
       input.addEventListener('input', (event) => {
         const productId = String(event.target.dataset.productId || '').trim();
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
-          deps.updateScopedProducts?.(nextDraft, productId, nextDraft.skuVariesByIds, (product) => {
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
+          (deps.updateScopedProducts || data.updateScopedProducts)?.(nextDraft, productId, nextDraft.skuVariesByIds, (product) => {
             product.sku = String(event.target.value || '');
           });
         });
@@ -438,9 +474,9 @@
       input.addEventListener('input', (event) => {
         const productId = String(event.target.dataset.productId || '').trim();
         const scope = String(event.target.dataset.priceScope || 'fr').trim();
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
-          deps.updateScopedProducts?.(nextDraft, productId, nextDraft.priceVariesByIds, (product) => {
-            product.prices[scope] = deps.parseMoneyInput?.(event.target.value);
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
+          (deps.updateScopedProducts || data.updateScopedProducts)?.(nextDraft, productId, nextDraft.priceVariesByIds, (product) => {
+            product.prices[scope] = (deps.parseMoneyInput || data.parseMoneyInput)?.(event.target.value);
           });
         });
       });
@@ -449,8 +485,8 @@
     host.querySelectorAll('[data-js="etsy-option-product-quantity-v2"]').forEach((input) => {
       input.addEventListener('input', (event) => {
         const productId = String(event.target.dataset.productId || '').trim();
-        deps.updateOptionsDraft?.(prefix, (nextDraft) => {
-          deps.updateScopedProducts?.(nextDraft, productId, nextDraft.quantityVariesByIds, (product) => {
+        (deps.updateOptionsDraft || runtime.updateOptionsDraft)?.(prefix, (nextDraft) => {
+          (deps.updateScopedProducts || data.updateScopedProducts)?.(nextDraft, productId, nextDraft.quantityVariesByIds, (product) => {
             product.quantity = Math.max(0, Number.parseInt(String(event.target.value || '0'), 10) || 0);
           });
         });

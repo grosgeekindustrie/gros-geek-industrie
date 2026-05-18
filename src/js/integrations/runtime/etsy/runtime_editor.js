@@ -3,9 +3,14 @@
 
   global.PipelineUI = global.PipelineUI || {};
   const EtsyRuntime = global.PipelineUIEtsyRuntime || {};
+  const IMAGE_EDITOR_OVERLAY_ID = 'etsyImageEditorOverlay';
 
   function getFilerobotCtor() {
     return global.FilerobotImageEditor || null;
+  }
+
+  function getRoutes(deps = {}) {
+    return deps.routes || global.PipelineUIEtsyRuntime?.getRoutes?.() || global.PipelineUIDataIntegrations?.etsyAuth?.routes || {};
   }
 
   function getImageEditorSource(mediaItem, deps = {}) {
@@ -20,7 +25,7 @@
     const cached = String(state.editorSourceUrls?.[mediaKey] || '').trim();
     if (cached) return cached;
 
-    const prepareRoute = String(deps.routes?.mediaCachePrepare || '').trim();
+    const prepareRoute = String(getRoutes(deps).mediaCachePrepare || '').trim();
     if (!prepareRoute) throw new Error('Route cache image indisponible');
 
     const response = await fetch(prepareRoute, {
@@ -98,7 +103,7 @@
       deps.ensureImageEditorOverlay?.();
       deps.closeImageEditorOverlay?.();
 
-      const overlay = deps.getNode?.(deps.IMAGE_EDITOR_OVERLAY_ID);
+      const overlay = deps.getNode?.(deps.IMAGE_EDITOR_OVERLAY_ID || IMAGE_EDITOR_OVERLAY_ID);
       const editorHost = deps.getNode?.('etsyImageEditorHost');
       if (!overlay || !editorHost) {
         global.showToast?.('Ouverture editeur impossible', '#ff4757');
@@ -119,7 +124,6 @@
         defaultSavedImageQuality: 1,
         useBackendTranslations: false,
         Crop: {
-          ratio: 'original',
           minWidth: 24,
           minHeight: 24,
         },

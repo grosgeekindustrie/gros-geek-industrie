@@ -2,6 +2,32 @@
   'use strict';
 
   const EtsyUI = global.PipelineUIEtsyUI || { shared: {}, tabletop: {}, collection: {} };
+  const getRuntime = () => global.PipelineUIEtsyRuntime || {};
+  const getData = () => global.PipelineUIEtsyData || {};
+  const getImageKey = (deps, image, index) => deps.getImageKey?.(image, index) || getData().getImageKey?.(image, index) || `image:${String(image?.listing_image_id || image?.image_id || index)}`;
+  const getVideoKey = (deps, video, index) => deps.getVideoKey?.(video, index) || getData().getVideoKey?.(video, index) || `video:${String(video?.video_id || video?.listing_video_id || index)}`;
+  const getLocalImageKey = (deps, image) => deps.getLocalImageKey?.(image) || getData().getLocalImageKey?.(image) || `local-image:${String(image?.local_id)}`;
+  const getDisplayImageSource = (deps, prefix, mediaKey, image, isLocal) => (
+    deps.getDisplayImageSource?.(prefix, mediaKey, image, isLocal)
+    || getRuntime().getDisplayImageSource?.(prefix, mediaKey, image, isLocal)
+    || (
+      isLocal
+        ? String(image?.data_url || '')
+        : String(
+            image?.url_fullxfull
+            || image?.full_url
+            || image?.url_570xN
+            || image?.url_570xn
+            || image?.src
+            || image?.url
+            || image?.url_170x135
+            || image?.url_75x75
+            || ''
+          )
+    )
+  );
+  const getOrderedMediaItems = (deps, state) => deps.getOrderedMediaItems?.(state) || getRuntime().getOrderedMediaItems?.(state) || [];
+  const getCreateToolbarButton = (deps) => deps.createToolbarButton || createToolbarButton;
 
   function renderPlaceholder(prefix, message, deps = {}) {
     const nodes = deps.getNodes?.(prefix);
@@ -21,7 +47,7 @@
     const actions = document.createElement('div');
     actions.className = 'field-action-row etsy-api-empty-actions';
     actions.appendChild(
-      deps.createToolbarButton?.('btn btn-muted btn-xs-inline', 'image', 'Ajouter images', () => deps.triggerAddImages?.(prefix))
+      getCreateToolbarButton(deps)?.('btn btn-muted btn-xs-inline', 'image', 'Ajouter images', () => deps.triggerAddImages?.(prefix))
     );
     empty.appendChild(actions);
 
@@ -102,14 +128,14 @@
     const card = document.createElement('article');
     card.className = 'image-thumb-card etsy-api-media-card etsy-api-media-card-visual';
     card.dataset.etsyMediaKind = 'image';
-    card.dataset.etsyMediaKey = mediaKey || (isLocal ? deps.getLocalImageKey?.(image) : deps.getImageKey?.(image, index));
+    card.dataset.etsyMediaKey = mediaKey || (isLocal ? getLocalImageKey(deps, image) : getImageKey(deps, image, index));
 
     const previewWrap = document.createElement('div');
     previewWrap.className = 'image-thumb-preview-wrap';
 
     const preview = document.createElement('img');
     preview.className = 'image-thumb-preview';
-    preview.src = deps.getDisplayImageSource?.(prefix, card.dataset.etsyMediaKey, image, isLocal) || '';
+    preview.src = getDisplayImageSource(deps, prefix, card.dataset.etsyMediaKey, image, isLocal);
     preview.alt = image.alt_text || `Image Etsy ${index + 1}`;
     preview.loading = 'lazy';
     previewWrap.appendChild(preview);
@@ -124,7 +150,7 @@
     const card = document.createElement('article');
     card.className = 'image-thumb-card etsy-api-media-card etsy-api-media-card-visual';
     card.dataset.etsyMediaKind = 'video';
-    card.dataset.etsyMediaKey = mediaKey || deps.getVideoKey?.(video, index);
+    card.dataset.etsyMediaKey = mediaKey || getVideoKey(deps, video, index);
 
     const previewWrap = document.createElement('div');
     previewWrap.className = 'image-thumb-preview-wrap etsy-api-video-card-preview';
@@ -136,6 +162,13 @@
     preview.preload = 'metadata';
     preview.muted = true;
     preview.playsInline = true;
+    preview.controls = true;
+    preview.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+    preview.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+    });
     previewWrap.appendChild(preview);
     previewWrap.appendChild(createInlineRemoveButton(prefix, card.dataset.etsyMediaKey, deps));
     bindPreviewLightbox(previewWrap, prefix, card.dataset.etsyMediaKey, deps);
@@ -178,7 +211,7 @@
     const grid = document.createElement('div');
     grid.className = 'image-thumb-grid etsy-api-media-grid';
 
-    deps.getOrderedMediaItems?.(state).forEach((item, index) => {
+    getOrderedMediaItems(deps, state).forEach((item, index) => {
       if (item.kind === 'image') {
         grid.appendChild(createImageCard(item.value, index, item.key, prefix, item.isLocal, deps));
         return;

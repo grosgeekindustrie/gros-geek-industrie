@@ -34,13 +34,43 @@
 
   function normalizeEtsyListingPayload(mediaPayload) {
     const payload = mediaPayload && typeof mediaPayload === 'object' ? mediaPayload : {};
-    const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
+    const rawData = payload.data && typeof payload.data === 'object' ? payload.data : {};
+    const data = Array.isArray(rawData.results) ? (rawData.results[0] || {}) : rawData;
+    const normalizeAssociationCollection = (value) => {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === 'object') {
+        if (Array.isArray(value.results)) return value.results;
+        if (Array.isArray(value.data)) return value.data;
+        if (Array.isArray(value.items)) return value.items;
+      }
+      return [];
+    };
+    const images = (
+      normalizeAssociationCollection(data.images).length ? normalizeAssociationCollection(data.images)
+      : normalizeAssociationCollection(data.Images).length ? normalizeAssociationCollection(data.Images)
+      : []
+    );
+    const videos = (
+      normalizeAssociationCollection(data.videos).length ? normalizeAssociationCollection(data.videos)
+      : normalizeAssociationCollection(data.Videos).length ? normalizeAssociationCollection(data.Videos)
+      : []
+    );
+    const inventory = (
+      data.inventory && typeof data.inventory === 'object' ? data.inventory
+      : data.Inventory && typeof data.Inventory === 'object' ? data.Inventory
+      : rawData.inventory && typeof rawData.inventory === 'object' ? rawData.inventory
+      : rawData.Inventory && typeof rawData.Inventory === 'object' ? rawData.Inventory
+      : {}
+    );
+
     return {
       ...payload,
       data: {
         ...data,
-        images: Array.isArray(data.images) ? data.images : [],
-        videos: Array.isArray(data.videos) ? data.videos : [],
+        listing_id: data.listing_id || rawData.listing_id || payload.listing_id || '',
+        inventory,
+        images,
+        videos,
       },
     };
   }

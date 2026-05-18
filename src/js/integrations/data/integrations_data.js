@@ -44,6 +44,23 @@
   }
 
   function getMoneyNumber(value) {
+    if (value && typeof value === 'object') {
+      const amount = Number(value.amount);
+      const divisor = Number(value.divisor);
+      if (Number.isFinite(amount) && Number.isFinite(divisor) && divisor > 0) {
+        return amount / divisor;
+      }
+
+      const fallbackValue = Number(
+        value.value
+        ?? value.price
+        ?? value.amount_with_divisor
+        ?? value.amount_including_tax
+        ?? NaN
+      );
+      return Number.isFinite(fallbackValue) ? fallbackValue : 0;
+    }
+
     const raw = Number(value);
     return Number.isFinite(raw) ? raw : 0;
   }

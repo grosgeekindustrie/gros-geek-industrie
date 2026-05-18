@@ -1560,7 +1560,7 @@
 }
 
 .etsy-api-media-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .etsy-api-media-card {
@@ -1584,6 +1584,16 @@
 .etsy-api-media-card-visual .image-thumb-preview-wrap {
   position: relative;
   border-radius: 0.75rem;
+}
+
+.etsy-api-media-card-visual[data-etsy-media-kind="image"] .image-thumb-preview {
+  display: block;
+  object-fit: contain;
+}
+
+.etsy-api-media-card-visual[data-etsy-media-kind="video"] .image-thumb-preview {
+  display: block;
+  object-fit: cover;
 }
 
 .etsy-api-media-preview-clickable {
