@@ -233,14 +233,6 @@
     return global.PipelineUIEtsyWorkspace?.categoryPickerState || null;
   }
 
-  function setOptionsModalState(nextState) {
-    global.PipelineUIEtsyWorkspace.optionsModalState = nextState;
-  }
-
-  function getOptionsModalState() {
-    return global.PipelineUIEtsyWorkspace?.optionsModalState || null;
-  }
-
   function renderCategoryPickerResults(entries, deps = {}) {
     const resultsNode = deps.getNode?.('etsyCategoryPickerResults');
     const statusNode = deps.getNode?.('etsyCategoryPickerStatus');
@@ -373,7 +365,6 @@
       const payload = await deps.fetchListingPayload?.(listingId);
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
-      deps.closeOptionsOverlays?.();
       state.listingId = listingId;
       state.payloadEnvelope = payload || null;
       state.mediaPayload = deps.normalizeListingPayload?.(payload?.payload || null);
@@ -399,7 +390,6 @@
       deps.destroySortable?.(prefix);
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
-      deps.closeOptionsOverlays?.();
       state.payloadEnvelope = null;
       state.mediaPayload = null;
       state.payloadText = '';
@@ -503,7 +493,7 @@
 
       const optionsManage = event.target.closest('[data-js="etsy-options-manage"]');
       if (optionsManage && nodes.panel.contains(optionsManage)) {
-        deps.openOptionsModal?.(prefix);
+        deps.handleOptionsManage?.(prefix);
       }
     });
 
@@ -536,6 +526,11 @@
     deps.renderWorkspace?.(prefix);
   }
 
+  function handleOptionsManage(prefix, deps = {}) {
+    deps.setWorkspaceActiveStep?.(prefix, 'options');
+    deps.setStatus?.(prefix, 'Parcours des variations en reconstruction.');
+  }
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     destroySortable,
@@ -557,8 +552,6 @@
     updateOptionsDraft,
     resolveDraftCategoryLabel,
     getCategoryPickerState,
-    setOptionsModalState,
-    getOptionsModalState,
     renderCategoryPickerResults,
     runCategoryPickerSearch,
     openCategoryPicker,
@@ -566,6 +559,7 @@
     loadEtsyWorkspaceMedia,
     copyEtsyWorkspacePayload,
     initEtsyWorkspaceContext,
+    handleOptionsManage,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

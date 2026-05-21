@@ -8,7 +8,6 @@
   const getUi = () => global.PipelineUIEtsyUI || {};
   const getSharedUi = () => getUi().shared || {};
   const getModalsUi = () => getSharedUi().modals || {};
-  const getOptionsUi = () => getSharedUi().options || {};
   const getNode = (id) => global.PipelineUIEtsyRuntime?.getNode?.(id) || document.getElementById(id);
   const getState = (prefix) => global.PipelineUIEtsyRuntime?.getWorkspaceState?.(prefix) || null;
 
@@ -72,28 +71,6 @@
     });
   }
 
-  function ensureOptionsOverlays() {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().ensureOptionsOverlays?.({
-      getNode,
-      closeOptionsOverlays,
-      openOptionTypePicker,
-      openOptionEditor,
-      getOptionsModalState: runtime.getOptionsModalState,
-      renderOptionEditorState,
-      updateOptionsDraft: runtime.updateOptionsDraft,
-      renderOptionsStep,
-    });
-  }
-
-  function closeOptionsOverlays() {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().closeOptionsOverlays?.({
-      getNode,
-      getOptionsModalState: runtime.getOptionsModalState,
-    });
-  }
-
   function closeImageEditorOverlay() {
     const runtime = global.PipelineUIEtsyRuntime || {};
     return getModalsUi().closeImageEditorOverlay?.({
@@ -132,44 +109,18 @@
     });
   }
 
-  function openOptionsModal(prefix) {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    return getOptionsUi().openOptionsModal?.(prefix, {
-      ensureOptionsOverlays,
-      getNode,
-      setOptionsModalState: runtime.setOptionsModalState,
-      renderOptionsModalState,
-    });
-  }
-
-  function openOptionTypePicker() {
-    return getOptionsUi().openOptionTypePicker?.({
-      ensureOptionsOverlays,
-      openOptionEditor,
-    });
-  }
-
-  function renderOptionEditorState() {
-    return getOptionsUi().renderOptionEditorState?.();
-  }
-
-  function openOptionEditor(variationId = '', presetName = '') {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    return getOptionsUi().openOptionEditor?.(variationId, presetName, {
-      setOptionsModalState: runtime.setOptionsModalState,
-      ensureOptionsOverlays,
-    });
-  }
-
-  function renderOptionsModalState(prefix) {
-    return getOptionsUi().renderOptionsModalState?.(prefix, {
-      renderOptionsModalState,
-      renderOptionsStep,
-    });
-  }
-
   function renderOptionsStep(prefix) {
-    return getOptionsUi().renderOptionsStep?.(prefix);
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    return getSharedUi().options?.renderOptionsStep?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getNode,
+      ensureOptionsDraft: runtime.ensureOptionsDraft,
+      applyOptionsDraftToPayload: runtime.applyOptionsDraftToPayload,
+      syncPayloadText: runtime.syncPayloadText,
+      syncWorkspacePayloadView: runtime.workspaceSyncWorkspacePayloadView || runtime.syncWorkspacePayloadView,
+      getProductAssignedImage: runtime.getProductAssignedImage,
+      updateOptionsDraft: runtime.updateOptionsDraft,
+    });
   }
 
   global.PipelineUIEtsyRuntime = {
@@ -178,16 +129,9 @@
     workspaceEnsureMediaLightbox: ensureMediaLightbox,
     workspaceEnsureImageEditorOverlay: ensureImageEditorOverlay,
     workspaceEnsureCategoryPickerOverlay: ensureCategoryPickerOverlay,
-    workspaceEnsureOptionsOverlays: ensureOptionsOverlays,
-    workspaceCloseOptionsOverlays: closeOptionsOverlays,
     workspaceCloseImageEditorOverlay: closeImageEditorOverlay,
     workspaceCloseMediaLightbox: closeMediaLightbox,
     workspaceFillMediaLightbox: fillMediaLightbox,
-    workspaceOpenOptionsModal: openOptionsModal,
-    workspaceOpenOptionTypePicker: openOptionTypePicker,
-    workspaceRenderOptionEditorState: renderOptionEditorState,
-    workspaceOpenOptionEditor: openOptionEditor,
-    workspaceRenderOptionsModalState: renderOptionsModalState,
     workspaceRenderOptionsStep: renderOptionsStep,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};

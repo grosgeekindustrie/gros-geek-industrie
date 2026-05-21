@@ -340,7 +340,6 @@
     if (deps.getActiveEditorSession?.()?.prefix === prefix) {
       deps.closeImageEditorOverlay?.();
     }
-    deps.closeOptionsOverlays?.();
 
     if (state.mediaPayload?.data) {
       state.mediaPayload.data.images = [];

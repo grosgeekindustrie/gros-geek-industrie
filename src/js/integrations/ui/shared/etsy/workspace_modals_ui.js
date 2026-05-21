@@ -5,17 +5,11 @@
   const LIGHTBOX_ID = 'etsyMediaLightbox';
   const IMAGE_EDITOR_OVERLAY_ID = 'etsyImageEditorOverlay';
   const CATEGORY_PICKER_OVERLAY_ID = 'etsyCategoryPickerOverlay';
-  const OPTIONS_MODAL_ID = 'etsyOptionsModal';
-  const OPTIONS_TYPE_PICKER_ID = 'etsyOptionsTypePicker';
-  const OPTIONS_EDITOR_ID = 'etsyOptionsEditor';
   const getNode = (deps, id) => deps.getNode?.(id) || document.getElementById(id);
   const getModalIds = (deps) => ({
     lightboxId: deps.LIGHTBOX_ID || LIGHTBOX_ID,
     imageEditorOverlayId: deps.IMAGE_EDITOR_OVERLAY_ID || IMAGE_EDITOR_OVERLAY_ID,
     categoryPickerOverlayId: deps.CATEGORY_PICKER_OVERLAY_ID || CATEGORY_PICKER_OVERLAY_ID,
-    optionsModalId: deps.OPTIONS_MODAL_ID || OPTIONS_MODAL_ID,
-    optionsTypePickerId: deps.OPTIONS_TYPE_PICKER_ID || OPTIONS_TYPE_PICKER_ID,
-    optionsEditorId: deps.OPTIONS_EDITOR_ID || OPTIONS_EDITOR_ID,
   });
 
   function closeOverlayById(id, deps = {}) {
@@ -29,24 +23,6 @@
     closeOverlayById(getModalIds(deps).categoryPickerOverlayId, deps);
     if (global.PipelineUIEtsyWorkspace) {
       global.PipelineUIEtsyWorkspace.categoryPickerState = null;
-    }
-  }
-
-  function closeOptionsOverlays(deps = {}) {
-    const modalState = deps.getOptionsModalState?.();
-    const modalIds = getModalIds(deps);
-    if (modalState?.optionSortable?.destroy) {
-      try {
-        modalState.optionSortable.destroy();
-      } catch (error) {}
-    }
-
-    [modalIds.optionsModalId, modalIds.optionsTypePickerId, modalIds.optionsEditorId].forEach((id) => {
-      closeOverlayById(id, deps);
-    });
-
-    if (global.PipelineUIEtsyWorkspace) {
-      global.PipelineUIEtsyWorkspace.optionsModalState = null;
     }
   }
 
@@ -341,183 +317,6 @@
     });
   }
 
-  function ensureOptionsOverlays(deps = {}) {
-    const modalIds = getModalIds(deps);
-    if (!getNode(deps, modalIds.optionsModalId)) {
-      const host = document.createElement('div');
-      host.innerHTML = `
-<div id="${modalIds.optionsModalId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
-  <div class="lb-box etsy-options-modal-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsModalTitle">
-    <div class="lb-header">
-      <h3 id="etsyOptionsModalTitle"><span data-svg-icon="settings"></span><span class="ui-icon-label">GERER LES VARIATIONS</span></h3>
-      <button class="lb-close" type="button" data-js="etsy-options-close"><span data-svg-icon="close"></span></button>
-    </div>
-    <div class="lb-body etsy-options-modal-body">
-      <div class="etsy-options-modal-toolbar">
-        <button class="btn btn-muted" type="button" data-js="etsy-options-add-variation"><span data-svg-icon="plus"></span><span class="ui-icon-label">Ajouter une variation</span></button>
-      </div>
-      <div id="etsyOptionsModalContent" class="etsy-options-modal-content"></div>
-      <div class="etsy-options-modal-footer">
-        <button class="btn btn-muted" type="button" data-js="etsy-options-cancel">Annuler</button>
-        <button class="btn btn-accent" type="button" data-js="etsy-options-apply">Appliquer</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div id="${modalIds.optionsTypePickerId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
-  <div class="lb-box etsy-options-type-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsTypeTitle">
-    <div class="lb-header">
-      <h3 id="etsyOptionsTypeTitle"><span data-svg-icon="search"></span><span class="ui-icon-label">AJOUTER UNE VARIATION</span></h3>
-      <button class="lb-close" type="button" data-js="etsy-options-type-close"><span data-svg-icon="close"></span></button>
-    </div>
-    <div class="lb-body etsy-options-type-body">
-      <div id="etsyOptionsTypeContent" class="etsy-options-type-list"></div>
-      <div class="etsy-options-type-footer">
-        <button class="btn btn-muted" type="button" data-js="etsy-options-open-custom">Créer votre propre variation</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div id="${modalIds.optionsEditorId}" class="lb-overlay etsy-options-overlay" aria-hidden="true">
-  <div class="lb-box etsy-options-editor-box" role="dialog" aria-modal="true" aria-labelledby="etsyOptionsEditorTitle">
-    <div class="lb-header">
-      <h3 id="etsyOptionsEditorTitle"><span data-svg-icon="settings"></span><span class="ui-icon-label">VARIATION PERSONNALISEE</span></h3>
-      <button class="lb-close" type="button" data-js="etsy-options-editor-close"><span data-svg-icon="close"></span></button>
-    </div>
-    <div class="lb-body etsy-options-editor-body">
-      <div class="fg full">
-        <label for="etsyOptionsEditorName">Nom</label>
-        <input type="text" id="etsyOptionsEditorName" placeholder="Nom de la variation"/>
-      </div>
-      <label class="social-check etsy-options-editor-toggle">
-        <input type="checkbox" id="etsyOptionsEditorPhotos"/>
-        <span>Associer des photos à cette variation</span>
-      </label>
-      <div class="etsy-options-editor-divider"></div>
-      <div class="etsy-options-editor-options-head">
-        <div>
-          <h4>Options</h4>
-          <p>Ajoutez au moins une option et reordonnez-les si besoin.</p>
-        </div>
-      </div>
-      <div class="etsy-options-editor-option-add">
-        <input type="text" id="etsyOptionsEditorOptionInput" placeholder="Indiquez une option..."/>
-        <button class="btn btn-muted" type="button" data-js="etsy-options-editor-add-option">Ajouter</button>
-      </div>
-      <div id="etsyOptionsEditorOptions" class="etsy-options-editor-options-list"></div>
-      <div id="etsyOptionsEditorPhotoAssignments" class="etsy-options-editor-photo-assignments" hidden></div>
-      <div class="etsy-options-editor-footer">
-        <button class="btn btn-error" type="button" data-js="etsy-options-editor-delete">Supprimer la variation</button>
-        <div class="etsy-options-editor-footer-actions">
-          <button class="btn btn-muted" type="button" data-js="etsy-options-editor-cancel">Annuler</button>
-          <button class="btn btn-accent" type="button" data-js="etsy-options-editor-save">Terminé</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>`;
-      document.body.appendChild(host);
-      global.PipelineUIIcons?.hydrateIcons?.(host);
-    }
-
-    [modalIds.optionsModalId, modalIds.optionsTypePickerId, modalIds.optionsEditorId].forEach((id) => {
-      const overlay = getNode(deps, id);
-      if (!overlay || overlay.dataset.bound === 'true') return;
-      overlay.dataset.bound = 'true';
-      overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) deps.closeOptionsOverlays?.();
-      });
-    });
-
-    const modalOverlay = getNode(deps, modalIds.optionsModalId);
-    if (modalOverlay && modalOverlay.dataset.controlsBound !== 'true') {
-      modalOverlay.dataset.controlsBound = 'true';
-      modalOverlay.querySelector('[data-js="etsy-options-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      modalOverlay.querySelector('[data-js="etsy-options-cancel"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      modalOverlay.querySelector('[data-js="etsy-options-apply"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      modalOverlay.querySelector('[data-js="etsy-options-add-variation"]')?.addEventListener('click', deps.openOptionTypePicker);
-    }
-
-    const typeOverlay = getNode(deps, modalIds.optionsTypePickerId);
-    if (typeOverlay && typeOverlay.dataset.controlsBound !== 'true') {
-      typeOverlay.dataset.controlsBound = 'true';
-      typeOverlay.querySelector('[data-js="etsy-options-type-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      typeOverlay.querySelector('[data-js="etsy-options-open-custom"]')?.addEventListener('click', () => deps.openOptionEditor?.());
-    }
-
-    const editorOverlay = getNode(deps, modalIds.optionsEditorId);
-    if (editorOverlay && editorOverlay.dataset.controlsBound !== 'true') {
-      editorOverlay.dataset.controlsBound = 'true';
-      editorOverlay.querySelector('[data-js="etsy-options-editor-close"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      editorOverlay.querySelector('[data-js="etsy-options-editor-cancel"]')?.addEventListener('click', deps.closeOptionsOverlays);
-      editorOverlay.querySelector('[data-js="etsy-options-editor-add-option"]')?.addEventListener('click', () => {
-        const modalState = deps.getOptionsModalState?.();
-        const optionInput = getNode(deps, 'etsyOptionsEditorOptionInput');
-        if (!modalState || !optionInput) return;
-        const value = String(optionInput.value || '').trim();
-        if (!value) return;
-        modalState.workingVariation.options.push(deps.createDefaultOptionValue?.(value));
-        optionInput.value = '';
-        deps.renderOptionEditorState?.();
-      });
-      getNode(deps, 'etsyOptionsEditorName')?.addEventListener('input', (event) => {
-        const modalState = deps.getOptionsModalState?.();
-        if (!modalState?.workingVariation) return;
-        modalState.workingVariation.name = String(event.target.value || '');
-        deps.renderOptionEditorState?.();
-      });
-      getNode(deps, 'etsyOptionsEditorPhotos')?.addEventListener('change', (event) => {
-        const modalState = deps.getOptionsModalState?.();
-        if (!modalState?.workingVariation) return;
-        modalState.workingVariation.photosEnabled = !!event.target.checked;
-        deps.renderOptionEditorState?.();
-      });
-      getNode(deps, 'etsyOptionsEditorOptionInput')?.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter') return;
-        event.preventDefault();
-        getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-add-option"]')?.click();
-      });
-      getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-delete"]')?.addEventListener('click', () => {
-        const modalState = deps.getOptionsModalState?.();
-        const prefix = modalState?.prefix;
-        const variationId = modalState?.workingVariation?.id;
-        if (!prefix || !variationId) return;
-        deps.updateOptionsDraft?.(prefix, (draft) => {
-          draft.variations = (draft.variations || []).filter((item) => item.id !== variationId);
-        });
-        deps.closeOptionsOverlays?.();
-        deps.renderOptionsStep?.(prefix);
-      });
-      getNode(deps, modalIds.optionsEditorId)?.querySelector('[data-js="etsy-options-editor-save"]')?.addEventListener('click', () => {
-        const modalState = deps.getOptionsModalState?.();
-        const prefix = modalState?.prefix;
-        const variation = modalState?.workingVariation;
-        if (!prefix || !variation) return;
-
-        const nameInput = deps.getNode?.('etsyOptionsEditorName');
-        const photosInput = deps.getNode?.('etsyOptionsEditorPhotos');
-        variation.name = String(nameInput?.value || '').trim();
-        variation.photosEnabled = !!photosInput?.checked;
-        variation.options = (variation.options || []).filter((option) => String(option.label || '').trim());
-        if (!variation.name || !variation.options.length) return;
-
-        deps.updateOptionsDraft?.(prefix, (draft) => {
-          const existingIndex = (draft.variations || []).findIndex((item) => item.id === variation.id);
-          if (existingIndex >= 0) {
-            draft.variations.splice(existingIndex, 1, variation);
-          } else {
-            draft.variations.push(variation);
-          }
-          if (draft.variations.length > 2) {
-            draft.variations = draft.variations.slice(0, 2);
-          }
-        });
-        deps.closeOptionsOverlays?.();
-        deps.renderOptionsStep?.(prefix);
-      });
-    }
-  }
-
   EtsyUI.shared = EtsyUI.shared || {};
   EtsyUI.shared.modals = {
     ...(EtsyUI.shared.modals || {}),
@@ -525,10 +324,8 @@
     fillMediaLightbox,
     ensureImageEditorOverlay,
     ensureCategoryPickerOverlay,
-    ensureOptionsOverlays,
     closeOverlayById,
     closeCategoryPickerOverlay,
-    closeOptionsOverlays,
     closeImageEditorOverlay,
     closeMediaLightbox,
   };
