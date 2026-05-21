@@ -9,13 +9,11 @@ Ce dossier contient le rendu UI commun Etsy, partage entre `tabletop` et `collec
 - `workspace_steps_ui.js`
   - source panel, progress, steps, sections details/options
 - `workspace_details_ui.js`
-  - categorie, titre, description, affichage details
+  - categorie, titre, description, affichage details, category picker
 - `workspace_media_ui.js`
-  - summary, toolbar, grid media, cartes image/video
-- `workspace_modals_ui.js`
-  - lightbox, category picker, options overlays, image editor overlay
+  - summary, toolbar, grid media, cartes image/video, lightbox, image editor overlay
 - `workspace_options_ui.js`
-  - variation modal, editor, tableau options/produits
+  - tableau options/produits
 
 ## Regles
 

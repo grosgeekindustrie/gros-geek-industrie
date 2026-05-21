@@ -7,7 +7,8 @@
 
   const getUi = () => global.PipelineUIEtsyUI || {};
   const getSharedUi = () => getUi().shared || {};
-  const getModalsUi = () => getSharedUi().modals || {};
+  const getMediaUi = () => getSharedUi().media || {};
+  const getDetailsUi = () => getSharedUi().details || {};
   const getNode = (id) => global.PipelineUIEtsyRuntime?.getNode?.(id) || document.getElementById(id);
   const getState = (prefix) => global.PipelineUIEtsyRuntime?.getWorkspaceState?.(prefix) || null;
 
@@ -37,12 +38,12 @@
   }
 
   function closeCategoryPickerOverlay() {
-    return getModalsUi().closeCategoryPickerOverlay?.({ getNode });
+    return getDetailsUi().closeCategoryPickerOverlay?.({ getNode });
   }
 
   function ensureMediaLightbox() {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().ensureMediaLightbox?.({
+    return getMediaUi().ensureMediaLightbox?.({
       getNode,
       closeMediaLightbox,
       getActiveMediaSelection: runtime.getActiveMediaSelection,
@@ -54,7 +55,7 @@
 
   function ensureImageEditorOverlay() {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().ensureImageEditorOverlay?.({
+    return getMediaUi().ensureImageEditorOverlay?.({
       getNode,
       closeImageEditorOverlay,
       getActiveEditorSession: runtime.getActiveEditorSession,
@@ -64,7 +65,7 @@
 
   function ensureCategoryPickerOverlay() {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().ensureCategoryPickerOverlay?.({
+    return getDetailsUi().ensureCategoryPickerOverlay?.({
       getNode,
       closeCategoryPickerOverlay,
       runCategoryPickerSearch: runtime.runCategoryPickerSearch,
@@ -73,7 +74,7 @@
 
   function closeImageEditorOverlay() {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().closeImageEditorOverlay?.({
+    return getMediaUi().closeImageEditorOverlay?.({
       getNode,
       getActiveEditorSession: runtime.getActiveEditorSession,
       setActiveEditorSession: runtime.setActiveEditorSession,
@@ -82,7 +83,7 @@
 
   function closeMediaLightbox() {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().closeMediaLightbox?.({
+    return getMediaUi().closeMediaLightbox?.({
       getNode,
       getActiveMediaSelection: runtime.getActiveMediaSelection,
       getState,
@@ -91,7 +92,7 @@
 
   function fillMediaLightbox(prefix, mediaKey) {
     const runtime = global.PipelineUIEtsyRuntime || {};
-    return getModalsUi().fillMediaLightbox?.(prefix, mediaKey, {
+    return getMediaUi().fillMediaLightbox?.(prefix, mediaKey, {
       getState,
       getMediaItemByKey: runtime.getMediaItemByKey,
       ensureMediaLightbox,

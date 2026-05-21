@@ -4,7 +4,56 @@
   const EtsyUI = global.PipelineUIEtsyUI || { shared: {}, tabletop: {}, collection: {} };
   const getRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getData = () => global.PipelineUIEtsyData || {};
+  const CATEGORY_PICKER_OVERLAY_ID = 'etsyCategoryPickerOverlay';
   const getNodeById = (id) => document.getElementById(id);
+  const getNode = (deps, id) => deps.getNode?.(id) || getNodeById(id);
+
+  function closeCategoryPickerOverlay(deps = {}) {
+    const overlay = getNode(deps, deps.CATEGORY_PICKER_OVERLAY_ID || CATEGORY_PICKER_OVERLAY_ID);
+    if (overlay) {
+      overlay.classList.remove('visible');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+    if (global.PipelineUIEtsyWorkspace) {
+      global.PipelineUIEtsyWorkspace.categoryPickerState = null;
+    }
+  }
+
+  function ensureCategoryPickerOverlay(deps = {}) {
+    const overlayId = deps.CATEGORY_PICKER_OVERLAY_ID || CATEGORY_PICKER_OVERLAY_ID;
+    if (getNode(deps, overlayId)) return;
+
+    const host = document.createElement('div');
+    host.innerHTML = `
+<div id="${overlayId}" class="lb-overlay etsy-category-picker-overlay" aria-hidden="true">
+  <div class="lb-box etsy-category-picker-box" role="dialog" aria-modal="true" aria-labelledby="etsyCategoryPickerTitle">
+    <div class="lb-header">
+      <h3 id="etsyCategoryPickerTitle"><span data-svg-icon="search"></span><span class="ui-icon-label">CATEGORIE ETSY</span></h3>
+      <button class="lb-close" type="button" data-js="etsy-category-picker-close"><span data-svg-icon="close"></span></button>
+    </div>
+    <div class="lb-body etsy-category-picker-body">
+      <div class="fg full">
+        <label for="etsyCategoryPickerInput">Rechercher une categorie</label>
+        <input type="text" id="etsyCategoryPickerInput" placeholder="ex: figurine, jouet, miniature"/>
+        <p id="etsyCategoryPickerStatus" class="etsy-api-field-hint">Tapez un mot-cle pour obtenir des suggestions Etsy.</p>
+      </div>
+      <div id="etsyCategoryPickerResults" class="etsy-category-picker-results"></div>
+    </div>
+  </div>
+</div>`;
+
+    document.body.appendChild(host);
+    global.PipelineUIIcons?.hydrateIcons?.(host);
+
+    const overlay = getNode(deps, overlayId);
+    overlay?.addEventListener('click', (event) => {
+      if (event.target === overlay) deps.closeCategoryPickerOverlay?.();
+    });
+    overlay?.querySelector('[data-js="etsy-category-picker-close"]')?.addEventListener('click', deps.closeCategoryPickerOverlay);
+    overlay?.querySelector('#etsyCategoryPickerInput')?.addEventListener('input', async (event) => {
+      await deps.runCategoryPickerSearch?.(String(event.target.value || ''));
+    });
+  }
 
   function autoResizeDescription(prefix, deps = {}) {
     const textarea = deps.getNode?.(`etsyApiDescriptionInput-${prefix}`) || getNodeById(`etsyApiDescriptionInput-${prefix}`);
@@ -80,6 +129,8 @@
   EtsyUI.shared = EtsyUI.shared || {};
   EtsyUI.shared.details = {
     ...(EtsyUI.shared.details || {}),
+    closeCategoryPickerOverlay,
+    ensureCategoryPickerOverlay,
     autoResizeDescription,
     renderTitleCounter,
     updateDetailsDraft,
