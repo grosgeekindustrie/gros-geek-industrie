@@ -14,6 +14,10 @@ prompt de transfert/
 
 # Local noise
 .env
+.env.local
+.env.*
+.envrc
+!.env.example
 .DS_Store
 FETCH_HEAD
 logs/
@@ -24,6 +28,13 @@ local-certs/
 *.bak_*
 src/**/*.bak*
 
+.etsy_oauth_pending.json
 .etsy_oauth_tokens.json
+.etsy_media_cache/
 *.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
 *.ps1
