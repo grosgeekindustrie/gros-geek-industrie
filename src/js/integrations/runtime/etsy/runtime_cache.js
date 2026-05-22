@@ -65,6 +65,13 @@
         active_step: state.activeStep || 'media',
         details_draft: state.detailsDraft || null,
         options_draft: state.optionsDraft || null,
+        attributes_draft: state.attributesDraft || null,
+        shipping_draft: state.shippingDraft || null,
+        settings_draft: state.settingsDraft || null,
+      },
+      debug: {
+        listing_properties_error: String(state.listingPropertiesError || ''),
+        listing_properties_payload: state.listingPropertiesPayload || null,
       },
     }, null, 2);
   }

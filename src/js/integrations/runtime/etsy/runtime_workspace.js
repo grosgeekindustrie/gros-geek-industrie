@@ -183,6 +183,10 @@
     deps.renderSummary?.(prefix, state.mediaPayload);
     deps.renderDetailsStep?.(prefix);
     deps.renderOptionsStep?.(prefix);
+    deps.renderAttributesStep?.(prefix);
+    deps.renderShippingStep?.(prefix);
+    deps.renderSettingsStep?.(prefix);
+    deps.renderPublicationStep?.(prefix);
     updateToolbarCount(prefix, deps);
   }
 
@@ -331,6 +335,10 @@
     deps.renderSummary?.(prefix, state.mediaPayload);
     deps.renderDetailsStep?.(prefix);
     deps.renderOptionsStep?.(prefix);
+    deps.renderAttributesStep?.(prefix);
+    deps.renderShippingStep?.(prefix);
+    deps.renderSettingsStep?.(prefix);
+    deps.renderPublicationStep?.(prefix);
 
     if (state.mediaPayload || state.localImages.length) {
       deps.renderMediaGrid?.(prefix, state.mediaPayload);
@@ -363,21 +371,47 @@
 
     try {
       const payload = await deps.fetchListingPayload?.(listingId);
+      let listingPropertiesPayload = null;
+      let listingPropertiesError = '';
+      try {
+        listingPropertiesPayload = await deps.fetchListingPropertiesPayload?.(listingId);
+      } catch (error) {
+        listingPropertiesError = String(error?.message || 'Lecture listing/properties impossible');
+      }
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
       state.listingId = listingId;
       state.payloadEnvelope = payload || null;
+      state.listingPropertiesPayload = listingPropertiesPayload || null;
+      state.listingPropertiesError = listingPropertiesError;
       state.mediaPayload = deps.normalizeListingPayload?.(payload?.payload || null);
+      if (listingPropertiesPayload) {
+        state.mediaPayload = deps.applyListingPropertyOverrides?.(state.mediaPayload, listingPropertiesPayload) || state.mediaPayload;
+      }
       state.activeStep = 'media';
       state.detailsDraft = deps.buildDetailsDraftFromPayload?.(state.mediaPayload);
       state.optionsDraft = deps.buildOptionsDraftFromPayload?.(state.mediaPayload);
+      state.attributesDraft = deps.buildAttributesDraftFromPayload?.(state.mediaPayload);
+      state.shippingDraft = deps.buildShippingDraftFromPayload?.(state.mediaPayload);
+      state.settingsDraft = deps.buildSettingsDraftFromPayload?.(state.mediaPayload);
       state.isEditingCategory = false;
+      state.isEditingShippingProfile = false;
+      state.shippingReferencesLoading = false;
+      state.shippingReferencesError = '';
+      state.settingsReferencesLoading = false;
+      state.settingsReferencesError = '';
+      state.publicationSubmitting = false;
+      state.publicationResult = null;
+      state.publicationError = '';
       state.mediaOrder = [];
       state.localImages = [];
       state.activeMediaKey = '';
       deps.resetWorkspaceEditedImages?.(prefix);
       deps.applyDetailsDraftToPayload?.(state);
       deps.applyOptionsDraftToPayload?.(state);
+      deps.applyAttributesDraftToPayload?.(state);
+      deps.applyShippingDraftToPayload?.(state);
+      deps.applySettingsDraftToPayload?.(state);
       state.mediaOrder = deps.buildDefaultMediaOrder?.(state) || [];
       deps.syncPayloadText?.(state);
 
@@ -393,10 +427,23 @@
       state.payloadEnvelope = null;
       state.mediaPayload = null;
       state.payloadText = '';
+      state.listingPropertiesPayload = null;
+      state.listingPropertiesError = '';
       state.activeStep = 'media';
       state.detailsDraft = null;
       state.optionsDraft = null;
+      state.attributesDraft = null;
+      state.shippingDraft = null;
+      state.settingsDraft = null;
       state.isEditingCategory = false;
+      state.isEditingShippingProfile = false;
+      state.shippingReferencesLoading = false;
+      state.shippingReferencesError = '';
+      state.settingsReferencesLoading = false;
+      state.settingsReferencesError = '';
+      state.publicationSubmitting = false;
+      state.publicationResult = null;
+      state.publicationError = '';
       state.mediaOrder = [];
       state.localImages = [];
       state.activeMediaKey = '';

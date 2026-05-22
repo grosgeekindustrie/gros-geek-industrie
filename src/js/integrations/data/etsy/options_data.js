@@ -258,6 +258,7 @@
       processingProfileVariesByIds: [],
       basePrice,
       baseQuantity: Number(baseOffering.quantity || 0) || 0,
+      autoRenew: data.should_auto_renew !== false,
     };
   }
 
@@ -383,6 +384,7 @@
       .map((variationId) => Number(variationMap.get(variationId)?.propertyId || variationId) || variationId);
 
     data.inventory = inventory;
+    data.should_auto_renew = draft.autoRenew !== false;
     return data;
   }
 

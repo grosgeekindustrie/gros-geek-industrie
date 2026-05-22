@@ -1,7 +1,7 @@
 (function initPipelineUIEtsyWorkspaceRenderBridge(global) {
   'use strict';
 
-  // Workspace bridge for Etsy shared render modules: steps, details and media.
+  // Workspace bridge for Etsy shared render modules: steps, details, attributes and media.
   global.PipelineUI = global.PipelineUI || {};
   const EtsyRuntime = global.PipelineUIEtsyRuntime || {};
 
@@ -10,6 +10,10 @@
   const getCoreUi = () => getSharedUi().core || {};
   const getMediaUi = () => getSharedUi().media || {};
   const getDetailsUi = () => getSharedUi().details || {};
+  const getAttributesUi = () => getSharedUi().attributes || {};
+  const getShippingUi = () => getSharedUi().shipping || {};
+  const getSettingsUi = () => getSharedUi().settings || {};
+  const getPublicationUi = () => getSharedUi().publication || {};
   const getStepsUi = () => getSharedUi().steps || {};
 
   function setTextContent(node, value) {
@@ -37,6 +41,12 @@
       syncWorkspacePayloadView: runtime.syncWorkspacePayloadView,
       renderDetailsStep: runtime.workspaceRenderDetailsStep,
       renderOptionsStep: runtime.workspaceRenderOptionsStep,
+      renderAttributesStep: runtime.workspaceRenderAttributesStep,
+      renderShippingStep: runtime.workspaceRenderShippingStep,
+      ensureShippingReferences: runtime.workspaceEnsureShippingReferences || runtime.ensureShippingReferences,
+      renderSettingsStep: runtime.workspaceRenderSettingsStep,
+      ensureSettingsReferences: runtime.workspaceEnsureSettingsReferences || runtime.ensureSettingsReferences,
+      renderPublicationStep: runtime.workspaceRenderPublicationStep,
     });
   }
 
@@ -95,6 +105,56 @@
     return getDetailsUi().renderDetailsStep?.(prefix);
   }
 
+  function renderAttributesStep(prefix) {
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    return getAttributesUi().renderAttributesStep?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getNode: runtime.getNode,
+      ensureAttributesDraft: runtime.ensureAttributesDraft,
+      applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
+      updateAttributesDraft: runtime.updateAttributesDraft,
+      syncPayloadText: runtime.syncPayloadText,
+      syncWorkspacePayloadView: runtime.workspaceSyncWorkspacePayloadView || runtime.syncWorkspacePayloadView,
+    });
+  }
+
+  function renderShippingStep(prefix) {
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    return getShippingUi().renderShippingStep?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getNode: runtime.getNode,
+      ensureShippingDraft: runtime.ensureShippingDraft,
+      applyShippingDraftToPayload: runtime.applyShippingDraftToPayload,
+      updateShippingDraft: runtime.updateShippingDraft,
+      setShippingProfileEditorOpen: runtime.setShippingProfileEditorOpen,
+      ensureShippingReferences: runtime.workspaceEnsureShippingReferences || runtime.ensureShippingReferences,
+      syncPayloadText: runtime.syncPayloadText,
+    });
+  }
+
+  function renderSettingsStep(prefix) {
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    return getSettingsUi().renderSettingsStep?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getNode: runtime.getNode,
+      ensureSettingsDraft: runtime.ensureSettingsDraft,
+      applySettingsDraftToPayload: runtime.applySettingsDraftToPayload,
+      updateSettingsDraft: runtime.updateSettingsDraft,
+      ensureSettingsReferences: runtime.workspaceEnsureSettingsReferences || runtime.ensureSettingsReferences,
+      syncPayloadText: runtime.syncPayloadText,
+    });
+  }
+
+  function renderPublicationStep(prefix) {
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    return getPublicationUi().renderPublicationStep?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getNode: runtime.getNode,
+      buildPublicationPayloadSnapshot: runtime.buildPublicationPayloadSnapshot,
+      publishDraftListing: runtime.workspacePublishDraftListing || runtime.publishDraftListing,
+    });
+  }
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     workspaceSetTextContent: setTextContent,
@@ -109,6 +169,10 @@
     workspaceRenderTitleCounter: renderTitleCounter,
     workspaceUpdateDetailsDraft: updateDetailsDraft,
     workspaceRenderDetailsStep: renderDetailsStep,
+    workspaceRenderAttributesStep: renderAttributesStep,
+    workspaceRenderShippingStep: renderShippingStep,
+    workspaceRenderSettingsStep: renderSettingsStep,
+    workspaceRenderPublicationStep: renderPublicationStep,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

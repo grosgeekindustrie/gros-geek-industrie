@@ -12,16 +12,20 @@
     }
   }
 
-  function ensureWorkspaceStepHeading(body) {
+  function ensureWorkspaceStepHeading(prefix, body) {
     if (!body) return null;
 
-    let stepSection = body.querySelector('.etsy-api-step-section');
+    let stepSection = body.querySelector(`#etsyApiStepMedia-${prefix}`);
+    if (!stepSection) {
+      stepSection = body.querySelector(`#etsyApiSummary-${prefix}`)?.closest('.etsy-api-step-section');
+    }
     if (!stepSection) {
       stepSection = document.createElement('div');
       stepSection.className = 'etsy-api-step-section';
-      stepSection.dataset.etsyStep = 'media';
-      body.appendChild(stepSection);
+      body.prepend(stepSection);
     }
+    stepSection.id = `etsyApiStepMedia-${prefix}`;
+    stepSection.className = 'etsy-api-step-section';
     stepSection.dataset.etsyStep = 'media';
     stepSection.hidden = false;
 
@@ -45,11 +49,12 @@
     const body = nodes?.panel?.querySelector?.('.etsy-api-body');
     if (!body) return null;
 
-    let detailsSection = body.querySelector(`.etsy-api-step-section[data-etsy-step="details"]`);
+    let detailsSection = body.querySelector(`#etsyApiStepDetails-${prefix}`);
+    if (!detailsSection) {
+      detailsSection = body.querySelector(`#etsyApiTitleInput-${prefix}`)?.closest('.etsy-api-step-section');
+    }
     if (!detailsSection) {
       detailsSection = document.createElement('section');
-      detailsSection.className = 'etsy-api-step-section';
-      detailsSection.dataset.etsyStep = 'details';
       detailsSection.innerHTML = `
         <div class="etsy-api-step-heading">
           <span class="collection-stepper-kicker">Step 02 · Détails de l'article</span>
@@ -94,6 +99,9 @@
       body.appendChild(detailsSection);
     }
 
+    detailsSection.id = `etsyApiStepDetails-${prefix}`;
+    detailsSection.className = 'etsy-api-step-section';
+    detailsSection.dataset.etsyStep = 'details';
     detailsSection.hidden = true;
 
     return detailsSection;
@@ -104,11 +112,12 @@
     const body = nodes?.panel?.querySelector?.('.etsy-api-body');
     if (!body) return null;
 
-    let section = body.querySelector(`.etsy-api-step-section[data-etsy-step="options"]`);
+    let section = body.querySelector(`#etsyApiStepOptions-${prefix}`);
+    if (!section) {
+      section = body.querySelector(`#etsyApiOptionsContent-${prefix}`)?.closest('.etsy-api-step-section');
+    }
     if (!section) {
       section = document.createElement('section');
-      section.className = 'etsy-api-step-section';
-      section.dataset.etsyStep = 'options';
       section.innerHTML = `
         <div class="etsy-api-step-heading">
           <span class="collection-stepper-kicker">Step 03 · Options de l'article</span>
@@ -129,6 +138,133 @@
       body.appendChild(section);
     }
 
+    section.id = `etsyApiStepOptions-${prefix}`;
+    section.className = 'etsy-api-step-section';
+    section.dataset.etsyStep = 'options';
+    section.hidden = true;
+    return section;
+  }
+
+  function ensureWorkspaceAttributesSection(prefix, deps = {}) {
+    const nodes = deps.getNodes?.(prefix);
+    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
+    if (!body) return null;
+
+    let section = body.querySelector(`#etsyApiStepAttributes-${prefix}`);
+    if (!section) {
+      section = body.querySelector(`#etsyApiAttributesContent-${prefix}`)?.closest('.etsy-api-step-section');
+    }
+    if (!section) {
+      section = document.createElement('section');
+      section.innerHTML = `
+        <div class="etsy-api-step-heading">
+          <span class="collection-stepper-kicker">Step 04 · Attributs</span>
+          <h3 class="etsy-api-step-title">Attributs</h3>
+          <p class="etsy-api-step-subtitle">Preparez les tags, les dimensions produit et les attributs simples utilises en duplication Etsy.</p>
+        </div>
+        <div class="form-section etsy-api-attributes-panel">
+          <div id="etsyApiAttributesContent-${prefix}" class="etsy-api-attributes-content"></div>
+        </div>
+      `;
+      body.appendChild(section);
+    }
+
+    section.id = `etsyApiStepAttributes-${prefix}`;
+    section.className = 'etsy-api-step-section';
+    section.dataset.etsyStep = 'attributes';
+    section.hidden = true;
+    return section;
+  }
+
+  function ensureWorkspaceShippingSection(prefix, deps = {}) {
+    const nodes = deps.getNodes?.(prefix);
+    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
+    if (!body) return null;
+
+    let section = body.querySelector(`#etsyApiStepShipping-${prefix}`);
+    if (!section) {
+      section = body.querySelector(`#etsyApiShippingContent-${prefix}`)?.closest('.etsy-api-step-section');
+    }
+    if (!section) {
+      section = document.createElement('section');
+      section.innerHTML = `
+        <div class="etsy-api-step-heading">
+          <span class="collection-stepper-kicker">Step 05 Â· Livraison</span>
+          <h3 class="etsy-api-step-title">Livraison</h3>
+          <p class="etsy-api-step-subtitle">Selectionnez les profils Etsy existants utiles au futur draft, sans reproduire l'edition complete d'Etsy.</p>
+        </div>
+        <div class="form-section etsy-api-shipping-panel">
+          <div id="etsyApiShippingContent-${prefix}" class="etsy-api-shipping-content"></div>
+        </div>
+      `;
+      body.appendChild(section);
+    }
+
+    section.id = `etsyApiStepShipping-${prefix}`;
+    section.className = 'etsy-api-step-section';
+    section.dataset.etsyStep = 'shipping';
+    section.hidden = true;
+    return section;
+  }
+
+  function ensureWorkspaceSettingsSection(prefix, deps = {}) {
+    const nodes = deps.getNodes?.(prefix);
+    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
+    if (!body) return null;
+
+    let section = body.querySelector(`#etsyApiStepSettings-${prefix}`);
+    if (!section) {
+      section = body.querySelector(`#etsyApiSettingsContent-${prefix}`)?.closest('.etsy-api-step-section');
+    }
+    if (!section) {
+      section = document.createElement('section');
+      section.innerHTML = `
+        <div class="etsy-api-step-heading">
+          <span class="collection-stepper-kicker">Step 06 Â· Parametres</span>
+          <h3 class="etsy-api-step-title">Parametres</h3>
+          <p class="etsy-api-step-subtitle">Sections de boutique, mise en avant, publicite Etsy et renouvellement du draft.</p>
+        </div>
+        <div class="form-section etsy-api-settings-panel">
+          <div id="etsyApiSettingsContent-${prefix}" class="etsy-api-settings-content"></div>
+        </div>
+      `;
+      body.appendChild(section);
+    }
+
+    section.id = `etsyApiStepSettings-${prefix}`;
+    section.className = 'etsy-api-step-section';
+    section.dataset.etsyStep = 'settings';
+    section.hidden = true;
+    return section;
+  }
+
+  function ensureWorkspacePublicationSection(prefix, deps = {}) {
+    const nodes = deps.getNodes?.(prefix);
+    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
+    if (!body) return null;
+
+    let section = body.querySelector(`#etsyApiStepPublication-${prefix}`);
+    if (!section) {
+      section = body.querySelector(`#etsyApiPublicationContent-${prefix}`)?.closest('.etsy-api-step-section');
+    }
+    if (!section) {
+      section = document.createElement('section');
+      section.innerHTML = `
+        <div class="etsy-api-step-heading">
+          <span class="collection-stepper-kicker">Step 07 Â· Publication</span>
+          <h3 class="etsy-api-step-title">Publication</h3>
+          <p class="etsy-api-step-subtitle">Previsualisez le payload de creation de draft et testez un envoi Etsy en conditions reelles.</p>
+        </div>
+        <div class="form-section etsy-api-publication-panel">
+          <div id="etsyApiPublicationContent-${prefix}" class="etsy-api-publication-content"></div>
+        </div>
+      `;
+      body.appendChild(section);
+    }
+
+    section.id = `etsyApiStepPublication-${prefix}`;
+    section.className = 'etsy-api-step-section';
+    section.dataset.etsyStep = 'publication';
     section.hidden = true;
     return section;
   }
@@ -143,9 +279,9 @@
       "Détails de l'article",
       'Options',
       'Attributs',
-      'Prix et stock',
       'Livraison',
       'Paramètres',
+      'Publication',
     ];
     const buttons = Array.from(progress.querySelectorAll('.collection-stepper-pill'));
 
@@ -160,10 +296,12 @@
       if (labelNode) labelNode.textContent = labels[index];
       if (indexNode) indexNode.textContent = String(index + 1).padStart(2, '0');
 
-      if (index < 3) {
+      if (index < 7) {
         button.disabled = false;
         button.dataset.js = 'etsy-step-trigger';
-        button.dataset.etsyStep = index === 0 ? 'media' : (index === 1 ? 'details' : 'options');
+        button.dataset.etsyStep = index === 0
+          ? 'media'
+          : (index === 1 ? 'details' : (index === 2 ? 'options' : (index === 3 ? 'attributes' : (index === 4 ? 'shipping' : (index === 5 ? 'settings' : 'publication')))));
         button.classList.remove('is-disabled');
       } else {
         button.disabled = true;
@@ -180,7 +318,7 @@
     if (!state || !panel) return;
 
     const allowedStep = String(nextStep || '').trim();
-    const step = allowedStep === 'details' || allowedStep === 'options' ? allowedStep : 'media';
+    const step = ['media', 'details', 'options', 'attributes', 'shipping', 'settings', 'publication'].includes(allowedStep) ? allowedStep : 'media';
     state.activeStep = step;
     deps.syncPayloadText?.(state);
     deps.syncWorkspacePayloadView?.(prefix);
@@ -207,6 +345,24 @@
 
     if (step === 'options') {
       deps.renderOptionsStep?.(prefix);
+    }
+
+    if (step === 'attributes') {
+      deps.renderAttributesStep?.(prefix);
+    }
+
+    if (step === 'shipping') {
+      deps.renderShippingStep?.(prefix);
+      if (state.mediaPayload) deps.ensureShippingReferences?.(prefix);
+    }
+
+    if (step === 'settings') {
+      deps.renderSettingsStep?.(prefix);
+      if (state.mediaPayload) deps.ensureSettingsReferences?.(prefix);
+    }
+
+    if (step === 'publication') {
+      deps.renderPublicationStep?.(prefix);
     }
   }
 
@@ -246,7 +402,7 @@
       sourcePanel.appendChild(progress);
     }
 
-    const stepSection = ensureWorkspaceStepHeading(body);
+    const stepSection = ensureWorkspaceStepHeading(prefix, body);
     if (!stepSection) return;
 
     const summary = nodes.summary;
@@ -268,6 +424,10 @@
     renameWorkspaceLoadButton(prefix, deps);
     ensureWorkspaceDetailsSection(prefix, deps);
     ensureWorkspaceOptionsSection(prefix, deps);
+    ensureWorkspaceAttributesSection(prefix, deps);
+    ensureWorkspaceShippingSection(prefix, deps);
+    ensureWorkspaceSettingsSection(prefix, deps);
+    ensureWorkspacePublicationSection(prefix, deps);
     configureWorkspaceProgress(prefix, deps);
   }
 
@@ -278,6 +438,10 @@
     ensureWorkspaceStepHeading,
     ensureWorkspaceDetailsSection,
     ensureWorkspaceOptionsSection,
+    ensureWorkspaceAttributesSection,
+    ensureWorkspaceShippingSection,
+    ensureWorkspaceSettingsSection,
+    ensureWorkspacePublicationSection,
     configureWorkspaceProgress,
     setWorkspaceActiveStep,
     ensureWorkspaceSourcePanel,

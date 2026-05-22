@@ -885,7 +885,7 @@
 }
 
 .etsy-api-progress {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .etsy-api-step-section {
@@ -1001,6 +1001,30 @@
   gap: 1rem;
 }
 
+.etsy-api-attributes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-publication-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .etsy-api-options-header {
   display: flex;
   align-items: center;
@@ -1024,6 +1048,318 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.etsy-api-attributes-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-publication-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-settings-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-publication-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-shipping-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-settings-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-publication-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-attributes-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-shipping-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-settings-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-publication-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-attributes-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-shipping-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-settings-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-publication-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-attributes-card-head p,
+.etsy-api-attributes-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-settings-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-publication-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-current {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-api-shipping-current-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-current-value {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.etsy-api-shipping-current-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.etsy-api-settings-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.etsy-api-settings-switch-row:last-child {
+  border-bottom: 0;
+}
+
+.etsy-api-settings-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.etsy-api-settings-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.etsy-api-publication-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.etsy-api-publication-meta-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.03);
+  color: var(--text2);
+}
+
+.etsy-api-publication-notes,
+.etsy-api-publication-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+}
+
+.etsy-api-publication-notes {
+  border: 1px solid rgba(126,184,247,.22);
+  background: rgba(126,184,247,.06);
+}
+
+.etsy-api-publication-errors {
+  border: 1px solid rgba(245,66,74,.24);
+  background: rgba(245,66,74,.08);
+  color: #ffb0b5;
+}
+
+.etsy-api-publication-notes p,
+.etsy-api-publication-errors p {
+  margin: 0;
+}
+
+.etsy-api-publication-json {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(8,10,14,.72);
+  color: #f3f6fb;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.etsy-api-attributes-meta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.03);
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.etsy-api-attribute-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.etsy-api-attribute-tag-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: min(100%, 18rem);
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-api-attribute-tag-item input {
+  min-width: 0;
+  min-height: 2.75rem;
+}
+
+.etsy-api-attribute-tag-remove {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.etsy-api-attributes-dimensions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
 .etsy-api-options-overview {
@@ -1088,6 +1424,32 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.etsy-api-options-stock-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.etsy-api-options-stock-grid input[type="number"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.7rem 0.85rem;
+}
+
+.etsy-api-options-stock-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 46px;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
 }
 
 .etsy-api-options-table-wrap {
@@ -1653,9 +2015,20 @@
   }
 
   .etsy-api-category-card,
-  .etsy-api-title-meta {
+  .etsy-api-title-meta,
+  .etsy-api-options-stock-toggle {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .etsy-api-progress {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .etsy-api-attributes-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1694,6 +2067,12 @@
 }
 
 @media (max-width: 640px) {
+  .etsy-api-options-stock-grid,
+  .etsy-api-attribute-tag-item,
+  .etsy-api-attributes-dimensions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .etsy-media-lightbox-meta {
     grid-template-columns: minmax(0, 1fr);
   }

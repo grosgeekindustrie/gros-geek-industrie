@@ -75,6 +75,176 @@
     };
   }
 
+  function extractListingPropertyEntries(payload) {
+    const source = payload && typeof payload === 'object' ? payload : {};
+    const candidates = [
+      source?.payload?.data?.results,
+      source?.payload?.data?.properties,
+      source?.payload?.data,
+      source?.payload?.results,
+      source?.results,
+      source?.data,
+      source?.properties,
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) return candidate.filter((entry) => entry && typeof entry === 'object');
+      if (candidate && typeof candidate === 'object') {
+        if (Array.isArray(candidate.results)) return candidate.results.filter((entry) => entry && typeof entry === 'object');
+        if (Array.isArray(candidate.properties)) return candidate.properties.filter((entry) => entry && typeof entry === 'object');
+        if (Array.isArray(candidate.items)) return candidate.items.filter((entry) => entry && typeof entry === 'object');
+      }
+    }
+
+    return [];
+  }
+
+  function getListingPropertyLabel(entry) {
+    return String(
+      entry?.property_name
+      || entry?.name
+      || entry?.display_name
+      || entry?.formatted_name
+      || ''
+    ).trim();
+  }
+
+  function getListingPropertyScale(entry) {
+    return String(
+      entry?.scale_name
+      || entry?.selected_scale_name
+      || entry?.scale?.display_name
+      || entry?.scale?.name
+      || ''
+    ).trim();
+  }
+
+  function getListingPropertyFirstValue(entry) {
+    const directValues = Array.isArray(entry?.values) ? entry.values : [];
+    if (directValues.length) {
+      const firstValue = directValues[0];
+      if (firstValue && typeof firstValue === 'object') {
+        return String(
+          firstValue.value
+          || firstValue.name
+          || firstValue.formatted_name
+          || firstValue.display_name
+          || ''
+        ).trim();
+      }
+      return String(firstValue || '').trim();
+    }
+
+    const valueObjects = Array.isArray(entry?.property_values) ? entry.property_values : [];
+    if (valueObjects.length) {
+      const firstValue = valueObjects[0];
+      if (firstValue && typeof firstValue === 'object') {
+        const nestedValues = Array.isArray(firstValue.values) ? firstValue.values : [];
+        if (nestedValues.length) {
+          const nestedFirst = nestedValues[0];
+          if (nestedFirst && typeof nestedFirst === 'object') {
+            return String(
+              nestedFirst.value
+              || nestedFirst.name
+              || nestedFirst.formatted_name
+              || nestedFirst.display_name
+              || ''
+            ).trim();
+          }
+          return String(nestedFirst || '').trim();
+        }
+
+        return String(
+          firstValue.value
+          || firstValue.name
+          || firstValue.formatted_name
+          || firstValue.display_name
+          || ''
+        ).trim();
+      }
+    }
+
+    return String(entry?.value || '').trim();
+  }
+
+  function getListingPropertyNumber(entry) {
+    const rawValue = getListingPropertyFirstValue(entry).replace(',', '.');
+    const parsed = Number.parseFloat(rawValue);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  function inferDimensionOverridesFromProperties(payload) {
+    const entries = extractListingPropertyEntries(payload);
+    if (!entries.length) return {};
+
+    const overrides = {};
+    const unitCandidates = [];
+
+    entries.forEach((entry) => {
+      const label = getListingPropertyLabel(entry).toLowerCase();
+      if (!label) return;
+
+      const numericValue = getListingPropertyNumber(entry);
+      const scaleName = getListingPropertyScale(entry).toLowerCase();
+      if (scaleName) unitCandidates.push(scaleName);
+
+      if (numericValue !== null) {
+        if (!Number.isFinite(overrides.item_height) && (label.includes('height') || label.includes('hauteur'))) {
+          overrides.item_height = numericValue;
+        } else if (!Number.isFinite(overrides.item_width) && (label.includes('width') || label.includes('largeur'))) {
+          overrides.item_width = numericValue;
+        } else if (!Number.isFinite(overrides.item_length) && (
+          label.includes('depth')
+          || label.includes('profondeur')
+          || label.includes('length')
+          || label.includes('longueur')
+        )) {
+          overrides.item_length = numericValue;
+        }
+      }
+    });
+
+    const normalizedUnit = unitCandidates
+      .map((value) => value.toLowerCase())
+      .find((value) => ['mm', 'millimetre', 'millimetres', 'millimeter', 'millimeters', 'cm', 'centimetre', 'centimetres', 'centimeter', 'centimeters'].includes(value));
+
+    if (normalizedUnit) {
+      overrides.item_dimensions_unit = normalizedUnit.startsWith('mm') || normalizedUnit.startsWith('milli') ? 'mm' : 'cm';
+    }
+
+    return overrides;
+  }
+
+  function applyListingPropertyOverrides(mediaPayload, propertiesPayload) {
+    const normalizedPayload = normalizeEtsyListingPayload(mediaPayload);
+    const data = normalizedPayload?.data;
+    if (!data || !propertiesPayload) return normalizedPayload;
+
+    const overrides = inferDimensionOverridesFromProperties(propertiesPayload);
+    const hasDimensionValue = (value) => (
+      value !== null
+      && value !== undefined
+      && String(value).trim() !== ''
+      && Number.isFinite(Number(value))
+      && Number(value) > 0
+    );
+
+    if (Object.prototype.hasOwnProperty.call(overrides, 'item_height') && !hasDimensionValue(data.item_height)) {
+      data.item_height = overrides.item_height;
+    }
+    if (Object.prototype.hasOwnProperty.call(overrides, 'item_width') && !hasDimensionValue(data.item_width)) {
+      data.item_width = overrides.item_width;
+    }
+    if (Object.prototype.hasOwnProperty.call(overrides, 'item_length') && !hasDimensionValue(data.item_length)) {
+      data.item_length = overrides.item_length;
+    }
+    if (overrides.item_dimensions_unit && !String(data.item_dimensions_unit || '').trim()) {
+      data.item_dimensions_unit = overrides.item_dimensions_unit;
+    }
+
+    return normalizedPayload;
+  }
+
   function buildDetailsDraftFromPayload(mediaPayload) {
     const normalizedPayload = normalizeEtsyListingPayload(mediaPayload);
     const data = normalizedPayload.data || {};
@@ -128,6 +298,9 @@
     splitCategoryPath,
     getCategoryPathParts,
     normalizeEtsyListingPayload,
+    extractListingPropertyEntries,
+    inferDimensionOverridesFromProperties,
+    applyListingPropertyOverrides,
     buildDetailsDraftFromPayload,
     applyDetailsDraftToPayload,
   };

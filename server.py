@@ -35,7 +35,7 @@ SOLO_EXPORT_ROOT = 'export'
 ETSY_API_BASE_URL = 'https://api.etsy.com/v3'
 ETSY_OAUTH_CONNECT_URL = 'https://www.etsy.com/oauth/connect'
 ETSY_OAUTH_TOKEN_URL = f'{ETSY_API_BASE_URL}/public/oauth/token'
-ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r')
+ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w')
 ETSY_OAUTH_PENDING_FILE = ROOT / '.etsy_oauth_pending.json'
 ETSY_OAUTH_TOKEN_FILE = ROOT / '.etsy_oauth_tokens.json'
 ETSY_OAUTH_CALLBACK_ROUTE = '/etsy/oauth/callback'
@@ -362,12 +362,26 @@ def exchange_etsy_authorization_code(code: str, pending_payload: dict) -> dict:
         return decode_json_bytes(response.read())
 
 
-def persist_etsy_token_payload(token_payload: dict):
+def extract_etsy_token_scopes(token_payload: dict, fallback_scopes: list[str] | None = None) -> list[str]:
+    if isinstance(token_payload, dict):
+        raw_scope = token_payload.get('scope')
+        if isinstance(raw_scope, str) and raw_scope.strip():
+            return [part.strip() for part in raw_scope.split() if part.strip()]
+
+        raw_scopes = token_payload.get('scopes')
+        if isinstance(raw_scopes, list) and raw_scopes:
+            return [str(part or '').strip() for part in raw_scopes if str(part or '').strip()]
+
+    return list(fallback_scopes or [])
+
+
+def persist_etsy_token_payload(token_payload: dict, fallback_scopes: list[str] | None = None):
     access_token = str(token_payload.get('access_token') or '').strip()
     user_id, _, raw_token = access_token.partition('.')
     expires_in = int(token_payload.get('expires_in') or 0)
     now = datetime.now(timezone.utc)
     expires_at = (now.timestamp() + expires_in) if expires_in > 0 else 0
+    granted_scopes = extract_etsy_token_scopes(token_payload, fallback_scopes)
 
     payload = {
         'access_token': access_token,
@@ -378,7 +392,7 @@ def persist_etsy_token_payload(token_payload: dict):
         'expires_at': datetime.fromtimestamp(expires_at, timezone.utc).isoformat() if expires_at else '',
         'created_at': now.isoformat(),
         'user_id': user_id,
-        'scopes': list(ETSY_OAUTH_SCOPES),
+        'scopes': granted_scopes,
     }
     save_json_file(ETSY_OAUTH_TOKEN_FILE, payload)
     if ETSY_OAUTH_PENDING_FILE.exists():
@@ -447,7 +461,10 @@ def refresh_etsy_access_token(token_data: dict | None = None) -> dict:
     with urllib.request.urlopen(request, timeout=30) as response:
         refreshed_payload = decode_json_bytes(response.read())
 
-    persist_etsy_token_payload(refreshed_payload)
+    persist_etsy_token_payload(
+        refreshed_payload,
+        fallback_scopes=list(current_token_data.get('scopes') or []),
+    )
     return get_etsy_oauth_token_data()
 
 
@@ -500,6 +517,144 @@ def perform_etsy_get_request(path: str, *, include_oauth: bool) -> dict:
     )
     with urllib.request.urlopen(request, timeout=20) as response:
         return decode_json_bytes(response.read())
+
+
+def encode_etsy_form_items(form_data: dict) -> list[tuple[str, str]]:
+    encoded_items: list[tuple[str, str]] = []
+
+    for key, value in (form_data or {}).items():
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            encoded_items.append((key, 'true' if value else 'false'))
+            continue
+        if isinstance(value, (list, tuple)):
+            normalized_list = [str(item).strip() for item in value if str(item).strip()]
+            if not normalized_list:
+                continue
+            encoded_items.append((key, ','.join(normalized_list)))
+            continue
+
+        normalized_value = str(value).strip()
+        if not normalized_value:
+            continue
+        encoded_items.append((key, normalized_value))
+
+    return encoded_items
+
+
+def perform_etsy_form_request(path: str, form_data: dict, *, include_oauth: bool, method: str = 'POST') -> dict:
+    url = f'{ETSY_API_BASE_URL}/application/{path.lstrip("/")}'
+    encoded_items = encode_etsy_form_items(form_data)
+    request_body = urllib.parse.urlencode(encoded_items).encode('utf-8')
+    headers = build_etsy_request_headers(include_oauth=include_oauth)
+    headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
+
+    request = urllib.request.Request(
+        url,
+        data=request_body,
+        method=method.upper(),
+        headers=headers,
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return decode_json_bytes(response.read())
+
+
+def perform_etsy_post_form_request(path: str, form_data: dict, *, include_oauth: bool) -> dict:
+    return perform_etsy_form_request(path, form_data, include_oauth=include_oauth, method='POST')
+
+
+def perform_etsy_put_form_request(path: str, form_data: dict, *, include_oauth: bool) -> dict:
+    return perform_etsy_form_request(path, form_data, include_oauth=include_oauth, method='PUT')
+
+
+def perform_etsy_patch_form_request(path: str, form_data: dict, *, include_oauth: bool) -> dict:
+    return perform_etsy_form_request(path, form_data, include_oauth=include_oauth, method='PATCH')
+
+
+def perform_etsy_put_json_request(path: str, payload: dict, *, include_oauth: bool) -> dict:
+    url = f'{ETSY_API_BASE_URL}/application/{path.lstrip("/")}'
+    headers = build_etsy_request_headers(include_oauth=include_oauth)
+    headers['Content-Type'] = 'application/json; charset=utf-8'
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload or {}, ensure_ascii=False).encode('utf-8'),
+        method='PUT',
+        headers=headers,
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return decode_json_bytes(response.read())
+
+
+def get_etsy_granted_scopes() -> list[str]:
+    token_data = get_etsy_oauth_token_data()
+    return [str(scope or '').strip() for scope in token_data.get('scopes') or [] if str(scope or '').strip()]
+
+
+def require_etsy_scope(scope_name: str):
+    granted_scopes = set(get_etsy_granted_scopes())
+    if not granted_scopes:
+        return
+    if scope_name not in granted_scopes:
+        raise ValueError(f'Scope Etsy manquant : {scope_name}. Reconnecter OAuth avec ce scope.')
+
+
+def extract_etsy_listing_id(payload: dict) -> str:
+    if not isinstance(payload, dict):
+        return ''
+
+    direct_id = str(payload.get('listing_id') or payload.get('listingId') or '').strip()
+    if direct_id:
+        return direct_id
+
+    results = payload.get('results')
+    if isinstance(results, list) and results:
+        first_result = results[0]
+        if isinstance(first_result, dict):
+            return str(first_result.get('listing_id') or first_result.get('listingId') or '').strip()
+
+    nested = payload.get('data')
+    if isinstance(nested, dict):
+        return extract_etsy_listing_id(nested)
+
+    return ''
+
+
+def pause_etsy_publication_requests():
+    time.sleep(0.35)
+
+
+def decode_data_url_payload(data_url: str) -> tuple[str, bytes]:
+    raw_value = str(data_url or '').strip()
+    match = re.match(r'^data:(?P<media_type>[\w.+/-]+);base64,(?P<data>.+)$', raw_value, re.IGNORECASE)
+    if not match:
+        raise ValueError('Data URL image invalide')
+
+    media_type = str(match.group('media_type') or '').strip().lower() or 'application/octet-stream'
+    try:
+        payload = base64.b64decode(match.group('data'), validate=True)
+    except Exception as exc:
+        raise ValueError('Base64 image invalide') from exc
+    return media_type, payload
+
+
+def fetch_publication_image_payload(remote_url: str) -> tuple[str, bytes]:
+    target_url = str(remote_url or '').strip()
+    if not target_url.startswith('https://'):
+        raise ValueError('URL image distante invalide')
+    if 'etsyimg.com' not in target_url and 'etsystatic.com' not in target_url:
+        raise ValueError('URL image distante non autorisee')
+
+    request = urllib.request.Request(
+        target_url,
+        headers={'User-Agent': 'Mozilla/5.0 (compatible; EtsyPipeline/1.1)'},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        media_type = str(response.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        if not media_type.startswith('image/'):
+            raise ValueError(f'Ressource distante non image: {media_type or "type inconnu"}')
+        payload = response.read()
+    return media_type, payload
 
 
 def _flatten_taxonomy_nodes(nodes, parents: list[str] | None = None) -> list[dict]:
@@ -603,6 +758,101 @@ def search_seller_taxonomy_entries(query: str, *, limit: int = 20) -> list[dict]
         if len(results) >= limit:
             break
     return results
+
+
+def get_seller_taxonomy_properties(taxonomy_id: str) -> list[dict]:
+    normalized = str(taxonomy_id or '').strip()
+    if not normalized:
+        return []
+
+    payload = perform_etsy_get_request(f'seller-taxonomy/nodes/{normalized}/properties', include_oauth=False)
+    results = []
+    if isinstance(payload, dict):
+        raw_results = payload.get('results')
+        if isinstance(raw_results, list):
+            results = raw_results
+    elif isinstance(payload, list):
+        results = payload
+    return [entry for entry in results if isinstance(entry, dict)]
+
+
+def find_taxonomy_property_by_names(properties: list[dict], names: list[str]) -> dict | None:
+    normalized_names = [str(name or '').strip().lower() for name in names if str(name or '').strip()]
+    for entry in properties:
+        haystack = ' '.join([
+            str(entry.get('name') or '').strip().lower(),
+            str(entry.get('display_name') or '').strip().lower(),
+        ]).strip()
+        if any(name in haystack for name in normalized_names):
+            return entry
+    return None
+
+
+def find_taxonomy_property_value(property_entry: dict, aliases: list[str]) -> dict | None:
+    normalized_aliases = [str(alias or '').strip().lower() for alias in aliases if str(alias or '').strip()]
+    for entry in property_entry.get('possible_values') or []:
+        if not isinstance(entry, dict):
+            continue
+        haystack = str(entry.get('name') or '').strip().lower()
+        if haystack in normalized_aliases or any(alias in haystack for alias in normalized_aliases):
+            return entry
+    return None
+
+
+def resolve_occasion_taxonomy_assignment(taxonomy_id: str, occasion_value: str) -> dict | None:
+    normalized_occasion = str(occasion_value or '').strip().lower()
+    if not taxonomy_id or not normalized_occasion:
+        return None
+
+    properties = get_seller_taxonomy_properties(taxonomy_id)
+    if not properties:
+        return None
+
+    holiday_property = find_taxonomy_property_by_names(properties, ['holiday', 'occasion', 'recipient'])
+    if not holiday_property:
+        return None
+
+    alias_map = {
+        'christmas': ['christmas', 'noel', 'noël', 'xmas'],
+        'halloween': ['halloween'],
+        'birthday': ['birthday', 'anniversaire'],
+    }
+    selected_value = find_taxonomy_property_value(holiday_property, alias_map.get(normalized_occasion, [normalized_occasion]))
+    if not selected_value:
+        return None
+
+    assignment = {
+        'property_id': int(holiday_property.get('property_id') or 0) or 0,
+        'property_name': str(holiday_property.get('display_name') or holiday_property.get('name') or '').strip(),
+        'value_id': int(selected_value.get('value_id') or 0) or 0,
+        'value_name': str(selected_value.get('name') or '').strip(),
+    }
+    scale_id = int(selected_value.get('scale_id') or 0) or int(holiday_property.get('scale_id') or 0) or 0
+    if scale_id:
+        assignment['scale_id'] = scale_id
+    return assignment if assignment['property_id'] and assignment['value_id'] else None
+
+
+def build_listing_property_payload(property_entry: dict) -> dict:
+    payload = {}
+    value_ids = [
+        int(value) for value in (property_entry.get('value_ids') or [])
+        if str(value).strip().isdigit()
+    ]
+    values = [
+        str(value or '').strip()
+        for value in (property_entry.get('values') or [])
+        if str(value or '').strip()
+    ]
+    scale_id = int(property_entry.get('scale_id') or 0) or 0
+
+    if value_ids:
+        payload['value_ids'] = value_ids
+    if values:
+        payload['values'] = values
+    if scale_id:
+        payload['scale_id'] = scale_id
+    return payload
 
 
 def get_seller_taxonomy_entry_by_id(taxonomy_id: str) -> dict:
@@ -766,6 +1016,74 @@ def build_multipart_file_body(filename: str, media_type: str, payload: bytes, bo
     ).encode('utf-8')
     tail = f"\r\n--{boundary}--\r\n".encode('utf-8')
     return head + payload + tail
+
+
+def build_multipart_form_body(
+    boundary: str,
+    fields: dict[str, object] | None = None,
+    *,
+    file_field_name: str | None = None,
+    filename: str | None = None,
+    media_type: str | None = None,
+    payload: bytes | None = None,
+) -> bytes:
+    body_parts: list[bytes] = []
+
+    for key, value in (fields or {}).items():
+        normalized_value = str(value or '').strip()
+        if not normalized_value:
+            continue
+        body_parts.extend([
+            f"--{boundary}\r\n".encode('utf-8'),
+            f"Content-Disposition: form-data; name=\"{key}\"\r\n\r\n".encode('utf-8'),
+            normalized_value.encode('utf-8'),
+            b"\r\n",
+        ])
+
+    if file_field_name and filename and media_type and payload is not None:
+        body_parts.extend([
+            f"--{boundary}\r\n".encode('utf-8'),
+            f"Content-Disposition: form-data; name=\"{file_field_name}\"; filename=\"{filename}\"\r\n".encode('utf-8'),
+            f"Content-Type: {media_type}\r\n\r\n".encode('utf-8'),
+            payload,
+            b"\r\n",
+        ])
+
+    body_parts.append(f"--{boundary}--\r\n".encode('utf-8'))
+    return b''.join(body_parts)
+
+
+def perform_etsy_post_multipart_request(
+    path: str,
+    *,
+    include_oauth: bool,
+    fields: dict[str, object] | None = None,
+    file_field_name: str | None = None,
+    filename: str | None = None,
+    media_type: str | None = None,
+    payload: bytes | None = None,
+) -> dict:
+    url = f'{ETSY_API_BASE_URL}/application/{path.lstrip("/")}'
+    boundary = f"----EtsyPipeline{uuid.uuid4().hex}"
+    body = build_multipart_form_body(
+        boundary,
+        fields or {},
+        file_field_name=file_field_name,
+        filename=filename,
+        media_type=media_type,
+        payload=payload,
+    )
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method='POST',
+        headers={
+            **build_etsy_request_headers(include_oauth=include_oauth),
+            'Content-Type': f'multipart/form-data; boundary={boundary}',
+        },
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return decode_json_bytes(resp.read())
 
 
 def upload_image_to_anthropic(api_key: str, filename: str, media_type: str, payload: bytes) -> dict:
@@ -1091,6 +1409,64 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(e)})
             return
 
+        if path == '/etsy/test/shipping-profiles':
+            try:
+                shop_context = get_etsy_shop_context()
+                shop_id = shop_context['shop_id']
+                payload = perform_etsy_get_request(
+                    f'shops/{shop_id}/shipping-profiles',
+                    include_oauth=True,
+                )
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': f'shops/{shop_id}/shipping-profiles',
+                    'payload': {
+                        'user_id': shop_context['user_id'],
+                        'shop_id': shop_id,
+                        'data': payload,
+                    },
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/etsy/test/readiness-states':
+            try:
+                shop_context = get_etsy_shop_context()
+                shop_id = shop_context['shop_id']
+                payload = perform_etsy_get_request(
+                    f'shops/{shop_id}/readiness-state-definitions',
+                    include_oauth=True,
+                )
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': f'shops/{shop_id}/readiness-state-definitions',
+                    'payload': {
+                        'user_id': shop_context['user_id'],
+                        'shop_id': shop_id,
+                        'data': payload,
+                    },
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
         if path == '/etsy/test/seller-taxonomy/search':
             try:
                 query = str(query_params.get('q', [''])[0] or '').strip()
@@ -1271,7 +1647,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
             try:
                 token_payload = exchange_etsy_authorization_code(code, pending_payload)
-                persist_etsy_token_payload(token_payload)
+                persist_etsy_token_payload(
+                    token_payload,
+                    fallback_scopes=list(ETSY_OAUTH_SCOPES),
+                )
                 self.send_redirect(build_home_redirect_url('success', 'Boutique Etsy autorisée'))
             except urllib.error.HTTPError as e:
                 try:
@@ -1509,6 +1888,323 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 files = data.get('files', [])
                 saved = self.save_export_files(files, SOLO_EXPORT_ROOT)
                 self.send_json(200, {'ok': True, 'saved': saved, 'count': len(saved)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/etsy/test/listing/draft':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                if isinstance(data.get('payload'), dict):
+                    listing_payload = data.get('payload') or {}
+                    update_payload = data.get('updatePayload') or {}
+                    inventory_payload = data.get('inventory') or {}
+                    images_payload = data.get('images') or []
+                    attributes_payload = data.get('attributes') or {}
+                else:
+                    listing_payload = data.get('createPayload') or {}
+                    update_payload = data.get('updatePayload') or {}
+                    inventory_payload = data.get('inventory') or {}
+                    images_payload = data.get('images') or []
+                    attributes_payload = data.get('attributes') or {}
+
+                if not isinstance(listing_payload, dict):
+                    self.send_json(400, {'error': 'Payload draft Etsy invalide'})
+                    return
+                if update_payload and not isinstance(update_payload, dict):
+                    self.send_json(400, {'error': 'Payload update Etsy invalide'})
+                    return
+                if inventory_payload and not isinstance(inventory_payload, dict):
+                    self.send_json(400, {'error': 'Payload inventory Etsy invalide'})
+                    return
+                if images_payload and not isinstance(images_payload, list):
+                    self.send_json(400, {'error': 'Payload images Etsy invalide'})
+                    return
+                if attributes_payload and not isinstance(attributes_payload, dict):
+                    self.send_json(400, {'error': 'Payload attributs Etsy invalide'})
+                    return
+
+                require_etsy_scope('listings_w')
+                shop_context = get_etsy_shop_context()
+                shop_id = shop_context['shop_id']
+
+                create_payload = {
+                    key: value
+                    for key, value in listing_payload.items()
+                    if key not in {'listing_id', 'state', 'inventory', 'images', 'videos'}
+                }
+
+                create_response = perform_etsy_post_form_request(
+                    f'shops/{shop_id}/listings',
+                    create_payload,
+                    include_oauth=True,
+                )
+                created_listing_id = extract_etsy_listing_id(create_response)
+                if not created_listing_id:
+                    raise ValueError('Listing draft cree, mais listing_id introuvable dans la reponse Etsy')
+
+                operations = [{
+                    'step': 'create_draft_listing',
+                    'endpoint': f'shops/{shop_id}/listings',
+                    'listing_id': created_listing_id,
+                    'payload_sent': create_payload,
+                    'response': create_response,
+                }]
+
+                normalized_update_payload = {
+                    key: value
+                    for key, value in (update_payload or {}).items()
+                    if key not in {'listing_id', 'state', 'inventory', 'images', 'videos'}
+                }
+                if normalized_update_payload:
+                    pause_etsy_publication_requests()
+                    update_response = perform_etsy_patch_form_request(
+                        f'shops/{shop_id}/listings/{created_listing_id}',
+                        normalized_update_payload,
+                        include_oauth=True,
+                    )
+                    operations.append({
+                        'step': 'update_listing',
+                        'endpoint': f'shops/{shop_id}/listings/{created_listing_id}',
+                        'payload_sent': normalized_update_payload,
+                        'response': update_response,
+                    })
+
+                inventory_products = inventory_payload.get('products') if isinstance(inventory_payload, dict) else None
+                if isinstance(inventory_products, list) and inventory_products:
+                    normalized_inventory_payload = {
+                        'products': [],
+                        'price_on_property': [
+                            int(value) for value in (inventory_payload.get('price_on_property') or [])
+                            if str(value).strip().isdigit()
+                        ],
+                        'sku_on_property': [
+                            int(value) for value in (inventory_payload.get('sku_on_property') or [])
+                            if str(value).strip().isdigit()
+                        ],
+                        'quantity_on_property': [
+                            int(value) for value in (inventory_payload.get('quantity_on_property') or [])
+                            if str(value).strip().isdigit()
+                        ],
+                        'readiness_state_on_property': [
+                            int(value) for value in (inventory_payload.get('readiness_state_on_property') or [])
+                            if str(value).strip().isdigit()
+                        ],
+                    }
+                    fallback_readiness_state_id = int(create_payload.get('readiness_state_id') or 0) or None
+
+                    for product in inventory_products:
+                        if not isinstance(product, dict):
+                            continue
+                        offerings = []
+                        for offering in (product.get('offerings') or []):
+                            if not isinstance(offering, dict):
+                                continue
+                            normalized_offering = {
+                                'price': float(offering.get('price') or 0),
+                                'quantity': int(offering.get('quantity') or 0),
+                                'is_enabled': bool(offering.get('is_enabled', True)),
+                            }
+                            readiness_state_id = int(offering.get('readiness_state_id') or fallback_readiness_state_id or 0) or 0
+                            if readiness_state_id:
+                                normalized_offering['readiness_state_id'] = readiness_state_id
+                            offerings.append(normalized_offering)
+
+                        property_values = []
+                        for property_value in (product.get('property_values') or []):
+                            if not isinstance(property_value, dict):
+                                continue
+                            normalized_property_value = {
+                                'property_id': int(property_value.get('property_id') or 0),
+                                'property_name': str(property_value.get('property_name') or '').strip(),
+                                'values': [
+                                    str(value or '').strip()
+                                    for value in (property_value.get('values') or [])
+                                    if str(value or '').strip()
+                                ],
+                            }
+                            scale_id = int(property_value.get('scale_id') or 0) or 0
+                            if scale_id:
+                                normalized_property_value['scale_id'] = scale_id
+                            value_ids = [
+                                int(value) for value in (property_value.get('value_ids') or [])
+                                if str(value).strip().isdigit()
+                            ]
+                            if value_ids:
+                                normalized_property_value['value_ids'] = value_ids
+                            if normalized_property_value['property_id'] or normalized_property_value['values']:
+                                property_values.append(normalized_property_value)
+
+                        if offerings:
+                            normalized_inventory_payload['products'].append({
+                                'sku': str(product.get('sku') or '').strip(),
+                                'property_values': property_values,
+                                'offerings': offerings,
+                            })
+
+                    if normalized_inventory_payload['products']:
+                        pause_etsy_publication_requests()
+                        inventory_response = perform_etsy_put_json_request(
+                            f'listings/{created_listing_id}/inventory',
+                            normalized_inventory_payload,
+                            include_oauth=True,
+                        )
+                        operations.append({
+                            'step': 'update_listing_inventory',
+                            'endpoint': f'listings/{created_listing_id}/inventory',
+                            'payload_sent': normalized_inventory_payload,
+                            'response': inventory_response,
+                        })
+
+                uploaded_images = []
+                for image_index, image_entry in enumerate(images_payload):
+                    if not isinstance(image_entry, dict):
+                        continue
+
+                    mode = str(image_entry.get('mode') or '').strip().lower()
+                    if mode == 'upload':
+                        media_type, image_bytes = decode_data_url_payload(str(image_entry.get('data_url') or ''))
+                    elif mode == 'upload_remote':
+                        media_type, image_bytes = fetch_publication_image_payload(str(image_entry.get('remote_url') or ''))
+                    else:
+                        continue
+
+                    filename_hint = guess_filename(str(image_entry.get('filename') or f'etsy-image-{image_index + 1}'), media_type)
+                    image_fields = {
+                        'rank': int(image_entry.get('order') or image_index + 1),
+                        'alt_text': str(image_entry.get('alt_text') or '').strip(),
+                    }
+                    pause_etsy_publication_requests()
+                    image_response = perform_etsy_post_multipart_request(
+                        f'shops/{shop_id}/listings/{created_listing_id}/images',
+                        include_oauth=True,
+                        fields=image_fields,
+                        file_field_name='image',
+                        filename=filename_hint,
+                        media_type=media_type,
+                        payload=image_bytes,
+                    )
+
+                    uploaded_images.append({
+                        'index': image_index + 1,
+                        'mode': mode,
+                        'fields_sent': image_fields,
+                        'response': image_response,
+                    })
+
+                if uploaded_images:
+                    operations.append({
+                        'step': 'upload_listing_images',
+                        'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/images',
+                        'count': len(uploaded_images),
+                        'images': uploaded_images,
+                    })
+
+                occasion_value = str(attributes_payload.get('occasion') or '').strip().lower()
+                taxonomy_id = str(create_payload.get('taxonomy_id') or '').strip()
+                dimension_properties = attributes_payload.get('dimension_properties') if isinstance(attributes_payload, dict) else None
+                if isinstance(dimension_properties, list):
+                    for property_entry in dimension_properties:
+                        if not isinstance(property_entry, dict):
+                            continue
+                        property_id = int(property_entry.get('property_id') or 0) or 0
+                        property_payload = build_listing_property_payload(property_entry)
+                        if not property_id or not property_payload:
+                            continue
+
+                        try:
+                            pause_etsy_publication_requests()
+                            property_response = perform_etsy_put_form_request(
+                                f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
+                                property_payload,
+                                include_oauth=True,
+                            )
+                            operations.append({
+                                'step': 'update_listing_property_dimension',
+                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
+                                'payload_sent': property_payload,
+                                'response': property_response,
+                                'property_name': str(property_entry.get('property_name') or '').strip(),
+                            })
+                        except urllib.error.HTTPError as property_error:
+                            try:
+                                property_error_payload = decode_json_bytes(property_error.read())
+                            except Exception:
+                                property_error_payload = {'error': str(property_error)}
+                            operations.append({
+                                'step': 'update_listing_property_dimension',
+                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
+                                'payload_sent': property_payload,
+                                'status': 'failed',
+                                'error_status': property_error.code,
+                                'error_payload': property_error_payload,
+                                'property_name': str(property_entry.get('property_name') or '').strip(),
+                            })
+
+                if taxonomy_id and occasion_value:
+                    assignment = resolve_occasion_taxonomy_assignment(taxonomy_id, occasion_value)
+                    if assignment:
+                        property_payload = {
+                            'value_ids': [assignment['value_id']],
+                            'values': [assignment['value_name']],
+                        }
+                        if assignment.get('scale_id'):
+                            property_payload['scale_id'] = assignment['scale_id']
+
+                        try:
+                            pause_etsy_publication_requests()
+                            property_response = perform_etsy_put_form_request(
+                                f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
+                                property_payload,
+                                include_oauth=True,
+                            )
+                            operations.append({
+                                'step': 'update_listing_property_occasion',
+                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
+                                'payload_sent': property_payload,
+                                'response': property_response,
+                                'resolved_property': assignment,
+                            })
+                        except urllib.error.HTTPError as property_error:
+                            try:
+                                property_error_payload = decode_json_bytes(property_error.read())
+                            except Exception:
+                                property_error_payload = {'error': str(property_error)}
+                            operations.append({
+                                'step': 'update_listing_property_occasion',
+                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
+                                'payload_sent': property_payload,
+                                'status': 'failed',
+                                'error_status': property_error.code,
+                                'error_payload': property_error_payload,
+                                'resolved_property': assignment,
+                            })
+                    else:
+                        operations.append({
+                            'step': 'update_listing_property_occasion',
+                            'status': 'skipped',
+                            'reason': f'Property/value introuvable pour occasion={occasion_value} taxonomy_id={taxonomy_id}',
+                        })
+
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': f'shops/{shop_id}/listings',
+                    'mode': 'create_draft_listing_copy',
+                    'listing_id': created_listing_id,
+                    'payload_sent': create_payload,
+                    'payload': create_response,
+                    'operations': operations,
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
             return
