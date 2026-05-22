@@ -20,7 +20,7 @@
     getJumpButtons: () => Array.from(document.querySelectorAll('[data-js="dnd-stepper-jump"]')),
     getPrevButton: () => document.querySelector('[data-js="dnd-stepper-prev"]'),
     getNextButton: () => document.querySelector('[data-js="dnd-stepper-next"]'),
-    getRunButton: () => document.querySelector('[data-js="dnd-stepper"] #runBtn-tt'),
+    getRunButton: () => document.querySelector('[data-js="dnd-stepper"] [data-pipeline-action="launch"][data-pipeline-prefix="tt"]'),
     getWarningBox: () => document.getElementById('imgWarning-tt'),
     getFooterLabel: () => document.querySelector('[data-js="dnd-stepper-footer-label"]'),
     getTitle: () => document.querySelector('[data-js="dnd-stepper-title"]'),

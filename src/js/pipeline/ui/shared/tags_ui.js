@@ -99,7 +99,7 @@
     itemEl.classList.add('regen-pending');
     const textSpan = itemEl.querySelector('.titre-text');
     const originalText = textSpan?.textContent || tag;
-    if (textSpan) textSpan.textContent = '⟳ remplacement…';
+    if (textSpan) textSpan.textContent = 'remplacement…';
 
     try {
       const ctx = global.buildCtx('tags');

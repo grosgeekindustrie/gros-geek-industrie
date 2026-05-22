@@ -1,7 +1,7 @@
 'use strict';
 
-// Données déclaratives des modes pipeline.
-// Source de vérité pour les labels, racines UI et mappings shell/tab/stepper.
+// Donnees declaratives des modes pipeline.
+// Source de verite pour les labels, racines UI et mappings shell/tab/stepper.
 
 (function initPipelineUIDataModes(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -21,9 +21,9 @@
     [PIPELINE_MODES.TABLETOP]: {
       mode: PIPELINE_MODES.TABLETOP,
       prefix: PIPELINE_PREFIXES.TABLETOP,
-      formLabel: '🎲 Tabletop DnD',
-      pageTitle: '🎲 Etsy Pipeline DnD v1.2',
-      headerTitle: '🎲 Etsy Pipeline DnD',
+      formLabel: 'Tabletop DnD',
+      pageTitle: 'Etsy Pipeline DnD v1.2',
+      headerTitle: 'Etsy Pipeline DnD',
       headerModeLabel: 'DnD Tabletop',
       uiRootId: 'ui-tt',
       panelIds: ['pipeline-tt', 'finalOutput-tt', 'socialSection-tt', 'socialOutput-tt', 'reseauxOnlySection-tt'],
@@ -43,9 +43,9 @@
     [PIPELINE_MODES.COLLECTION]: {
       mode: PIPELINE_MODES.COLLECTION,
       prefix: PIPELINE_PREFIXES.COLLECTION,
-      formLabel: '🖼️ Collection',
-      pageTitle: '🖼️ Etsy Pipeline Collection v1.2',
-      headerTitle: '🖼️ Etsy Pipeline Collection',
+      formLabel: 'Collection',
+      pageTitle: 'Etsy Pipeline Collection v1.2',
+      headerTitle: 'Etsy Pipeline Collection',
       headerModeLabel: 'Collection',
       uiRootId: 'ui-col',
       panelIds: ['pipeline-col', 'finalOutput-col', 'socialSection-col', 'socialOutput-col', 'reseauxOnlySection-col'],

@@ -1,4 +1,4 @@
-(function initPipelineUIApp(global) {
+﻿(function initPipelineUIApp(global) {
 
 // Couche application transverse.
 // Navigation des vues, toasts, header context, settings panel et actions globales.
@@ -65,7 +65,6 @@
   const PIPELINE_STEP_SEPARATOR = '&rsaquo;';
   const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
   const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
-  const AGENT_TITLE_EMOJI_PATTERN = /[🔍🖼️📊🔖🏷️📝]/gu;
 
   const buildPipelineActionRequest = (trigger) => ({
     action: String(trigger.dataset.pipelineAction || '').trim(),
@@ -101,6 +100,19 @@
     'copy-cache-debug-report': () => global.copyCacheDebugReport?.(),
     'open-settings': () => openSettings(),
     'close-settings': () => closeSettings(),
+    'start-etsy-auth': () => global.startEtsyAuth?.(),
+    'refresh-etsy-auth-status': () => global.refreshEtsyAuthStatus?.(),
+    'run-etsy-ping': () => global.runEtsyPingProbe?.(),
+    'run-etsy-identity': () => global.runEtsyIdentityProbe?.(),
+    'run-etsy-shop': () => global.runEtsyShopProbe?.(),
+    'run-etsy-listings': () => global.runEtsyListingsProbe?.(),
+    'run-etsy-sections': () => global.runEtsySectionsProbe?.(),
+    'run-etsy-listing': () => global.runEtsyListingProbe?.(),
+    'run-etsy-listing-properties': () => global.runEtsyListingPropertiesProbe?.(),
+    'run-etsy-listing-variation-images': () => global.runEtsyListingVariationImagesProbe?.(),
+    'copy-etsy-output': () => global.copyEtsyOutput?.(),
+    'load-etsy-workspace-media': (prefix) => global.loadEtsyWorkspaceMedia?.(prefix),
+    'copy-etsy-workspace-payload': (prefix) => global.copyEtsyWorkspacePayload?.(prefix),
     'open-biblio-from-settings': () => {
       global.openBiblioLightbox?.();
       closeSettings();
@@ -224,7 +236,7 @@
 
     const isExecuting = isPipelineExecutionActive();
     backBtn.classList.toggle('is-cancel', isExecuting);
-    backBtn.textContent = isExecuting ? BACK_BUTTON_LABELS.cancel : BACK_BUTTON_LABELS.back;
+    global.PipelineUIIcons?.setIconLabel?.(backBtn, 'back', isExecuting ? BACK_BUTTON_LABELS.cancel : BACK_BUTTON_LABELS.back);
     backBtn.title = isExecuting
       ? BACK_BUTTON_TITLES.cancel
       : BACK_BUTTON_TITLES.back;
@@ -416,7 +428,7 @@
       (i > 0 ? `<span class="pipeline-step-sep">${PIPELINE_STEP_SEPARATOR}</span>` : '') +
       `<span class="pipeline-step" id="tl-step-${agent.id}" data-timeline-step="${agent.id}">` +
       `<span class="pipeline-step-dot" id="tl-dot-${agent.id}" data-timeline-dot="${agent.id}"></span>` +
-      `<span class="pipeline-step-label">${agent.title.replace(AGENT_TITLE_PREFIX_PATTERN, '').split(AGENT_TITLE_PART_SEPARATOR)[0].replace(AGENT_TITLE_EMOJI_PATTERN, '').trim()}</span>` +
+      `<span class="pipeline-step-label">${agent.title.replace(AGENT_TITLE_PREFIX_PATTERN, '').split(AGENT_TITLE_PART_SEPARATOR)[0].trim()}</span>` +
       '</span>'
     ).join('');
   }
@@ -441,15 +453,6 @@
   function closeSettings() {
     (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
     (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
-
-    const apiKey = (dom.getByData?.('js', 'api-key-input') || document.getElementById('apiKey'))?.value;
-    if (!apiKey) return;
-
-    try {
-      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
-      settings.apiKey = apiKey;
-      localStorage.setItem('pipeline.settings', JSON.stringify(settings));
-    } catch (error) {}
   }
 
 

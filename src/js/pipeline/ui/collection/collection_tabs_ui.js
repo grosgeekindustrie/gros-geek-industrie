@@ -52,6 +52,7 @@
       document.getElementById('socialOutput-col'),
       document.getElementById('reseauxOnlySection-col'),
     ].some(Boolean),
+    hasEtsyPanel: () => Boolean(document.getElementById('etsyApiPanel-col')),
     onActiveTabChange: ({ tabId }) => {
       if (tabId === 'social') ensureSocialTabContentVisibility();
     },

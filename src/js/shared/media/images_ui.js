@@ -11,6 +11,8 @@
   const getState = () => global.state;
   const imageTools = () => global.PipelineUIImageTools || {};
   const imageDb = () => global.PipelineUIIndexedDb || {};
+  const sortableByPrefix = new Map();
+  const getSortableCtor = () => global.Sortable || null;
 
   const stopEvent = (event) => {
     event.preventDefault();
@@ -35,6 +37,14 @@
     } catch (error) {
       logger?.warn?.(`Persist images failed for ${prefix}`, error);
     }
+  };
+
+  const destroyThumbSortable = (prefix) => {
+    const sortable = sortableByPrefix.get(prefix);
+    if (!sortable) return;
+
+    sortable.destroy();
+    sortableByPrefix.delete(prefix);
   };
 
   const buildDuplicateName = (name) => {
@@ -217,6 +227,7 @@
   const renderThumbCard = (imageRecord, imageIndex, prefix) => {
     const card = document.createElement('article');
     card.className = 'image-thumb-card';
+    card.dataset.imageThumbId = String(imageRecord.id || `${prefix}-${imageIndex}`);
     card.addEventListener('click', stopEvent);
 
     const previewWrap = document.createElement('div');
@@ -265,7 +276,7 @@
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
     removeButton.className = 'btn btn-error image-thumb-action-btn image-thumb-action-btn-danger';
-    removeButton.textContent = '✕';
+    removeButton.innerHTML = global.PipelineUIIcons?.renderIcon('close') || 'Retirer';
     removeButton.title = 'Retirer';
     removeButton.addEventListener('click', (event) => {
       stopEvent(event);
@@ -284,6 +295,72 @@
     return card;
   };
 
+  const clearAllImages = async (prefix) => {
+    const state = getState();
+    if (!state?.images?.[prefix]) return;
+    if (!state.images[prefix].length) return;
+
+    destroyThumbSortable(prefix);
+    state.images[prefix] = [];
+    renderThumbs(prefix);
+    await imageDb().clearWorkspaceImages?.(prefix);
+  };
+
+  const reorderImagesFromGrid = async (prefix, grid) => {
+    const state = getState();
+    const images = Array.isArray(state?.images?.[prefix]) ? state.images[prefix] : [];
+    if (!grid || images.length < 2) return false;
+
+    const imageMap = new Map(
+      images.map((imageRecord, index) => [
+        String(imageRecord.id || `${prefix}-${index}`),
+        imageRecord,
+      ])
+    );
+
+    const orderedIds = [...grid.querySelectorAll('[data-image-thumb-id]')]
+      .map((node) => String(node.dataset.imageThumbId || '').trim())
+      .filter(Boolean);
+
+    if (orderedIds.length !== images.length) return false;
+
+    const nextImages = orderedIds
+      .map((id) => imageMap.get(id))
+      .filter(Boolean);
+
+    if (nextImages.length !== images.length) return false;
+
+    state.images[prefix] = nextImages;
+    await persistImages(prefix);
+    return true;
+  };
+
+  const setupThumbSortable = (prefix, grid) => {
+    const state = getState();
+    const SortableCtor = getSortableCtor();
+    const imageCount = Array.isArray(state?.images?.[prefix]) ? state.images[prefix].length : 0;
+
+    destroyThumbSortable(prefix);
+    if (!grid || !SortableCtor || imageCount < 2) return;
+
+    grid.classList.add('is-sortable');
+    const sortable = SortableCtor.create(grid, {
+      animation: 180,
+      draggable: '.image-thumb-card[data-image-thumb-id]',
+      ghostClass: 'image-thumb-sortable-ghost',
+      chosenClass: 'image-thumb-sortable-chosen',
+      dragClass: 'image-thumb-sortable-drag',
+      onEnd: async () => {
+        const didReorder = await reorderImagesFromGrid(prefix, grid);
+        if (!didReorder) return;
+        global.showToast?.('Ordre des images mis a jour');
+        renderThumbs(prefix);
+      },
+    });
+
+    sortableByPrefix.set(prefix, sortable);
+  };
+
   const renderThumbs = (prefix) => {
     const state = getState();
     if (!state?.images?.[prefix]) return;
@@ -297,7 +374,10 @@
 
     const hasImages = state.images[prefix].length > 0;
     if (placeholder) placeholder.style.display = hasImages ? 'none' : '';
-    if (!hasImages) return;
+    if (!hasImages) {
+      destroyThumbSortable(prefix);
+      return;
+    }
 
     const toolbar = document.createElement('div');
     toolbar.className = 'image-thumb-toolbar';
@@ -306,6 +386,10 @@
     const count = document.createElement('span');
     count.className = 'image-thumb-toolbar-count';
     count.textContent = `${state.images[prefix].length} image(s)`;
+
+    const toolbarActions = document.createElement('div');
+    toolbarActions.className = 'image-thumb-toolbar-actions';
+    toolbarActions.addEventListener('click', stopEvent);
 
     const debugButton = document.createElement('button');
     debugButton.type = 'button';
@@ -316,8 +400,19 @@
       openPayloadDebug(prefix);
     });
 
+    const clearAllButton = document.createElement('button');
+    clearAllButton.type = 'button';
+    clearAllButton.className = 'btn btn-error btn-xs-inline image-thumb-clear-all-btn';
+    clearAllButton.textContent = 'Tout supprimer';
+    clearAllButton.addEventListener('click', async (event) => {
+      stopEvent(event);
+      await clearAllImages(prefix);
+    });
+
     toolbar.appendChild(count);
-    toolbar.appendChild(debugButton);
+    toolbarActions.appendChild(debugButton);
+    toolbarActions.appendChild(clearAllButton);
+    toolbar.appendChild(toolbarActions);
 
     const grid = document.createElement('div');
     grid.className = 'image-thumb-grid';
@@ -329,6 +424,7 @@
 
     strip.appendChild(toolbar);
     strip.appendChild(grid);
+    setupThumbSortable(prefix, grid);
   };
 
   const removeImageAt = async (imageIndex, prefix) => {
@@ -347,6 +443,7 @@
   };
 
   global.PipelineUIImages = {
+    clearAllImages,
     setupImageHandlers,
     processImages,
     renderThumbs,

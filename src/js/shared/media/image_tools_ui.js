@@ -70,7 +70,7 @@
         <h3 id="imageCropModalTitle" class="image-tools-modal-title">Crop image</h3>
         <div id="imageCropModalMeta" class="image-tools-modal-meta"></div>
       </div>
-      <button type="button" class="lb-close" data-js="image-crop-close">✕</button>
+      <button type="button" class="lb-close" data-js="image-crop-close"><span data-svg-icon="close"></span></button>
     </div>
     <div class="image-tools-modal-body image-tools-modal-body-crop">
       <div class="image-crop-stage">
@@ -104,7 +104,7 @@
         <h3 id="imagePayloadDebugTitle" class="image-tools-modal-title">Debug images envoyées</h3>
         <div id="imagePayloadDebugMeta" class="image-tools-modal-meta"></div>
       </div>
-      <button type="button" class="lb-close" data-js="image-debug-close">✕</button>
+      <button type="button" class="lb-close" data-js="image-debug-close"><span data-svg-icon="close"></span></button>
     </div>
     <div class="image-tools-modal-body image-tools-modal-body-debug">
       <div id="imagePayloadDebugList" class="image-payload-debug-list"></div>
@@ -117,6 +117,7 @@
 `;
 
     document.body.appendChild(host);
+    global.PipelineUIIcons?.hydrateIcons?.(host);
 
     const cropModal = document.getElementById('imageCropModal');
     const debugModal = document.getElementById('imagePayloadDebugModal');

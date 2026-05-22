@@ -2,6 +2,7 @@
 
 (function initPipelineUIIrisRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  let irisOutputEditingBound = false;
 
   function getIrisRuntimeRefs(prefix = 'col') {
     return {
@@ -10,12 +11,29 @@
     };
   }
 
+  function syncIrisOutputState(prefix = 'col') {
+    const refs = getIrisRuntimeRefs(prefix);
+    if (!refs.output) return;
+    global.state.outputs.iris = refs.output.textContent || '';
+  }
+
+  function bindIrisOutputEditing() {
+    if (irisOutputEditingBound) return;
+    irisOutputEditingBound = true;
+
+    document.addEventListener('input', (event) => {
+      const editor = event.target.closest?.('[data-iris-output-editor]');
+      if (!editor) return;
+      syncIrisOutputState(editor.dataset.prefix || 'col');
+    });
+  }
+
   function beginIrisSemanticSearch(prefix = 'col') {
     const refs = getIrisRuntimeRefs(prefix);
 
     if (refs.button) {
       refs.button.disabled = true;
-      refs.button.textContent = '⟳ Recherche...';
+      global.PipelineUIIcons?.setIconLabel?.(refs.button, 'refresh', 'Recherche...');
     }
 
     if (refs.output) {
@@ -32,18 +50,18 @@
     global.syncCacheIndicator(response?.usage || null);
 
     if (refs.output) refs.output.textContent = response?.text || '';
-    global.showToast('Recherche sémantique Iris générée ✓');
+    global.showToast('Recherche sémantique Iris générée');
   }
 
   function finalizeIrisSemanticSearchError(refs = {}, error) {
-    if (refs.output) refs.output.textContent = `❌ ${error.message}`;
-    global.showToast(`❌ ${error.message}`, '#ff4757');
+    if (refs.output) refs.output.textContent = `Erreur: ${error.message}`;
+    global.showToast(`Erreur: ${error.message}`, '#ff4757');
   }
 
   function endIrisSemanticSearch(refs = {}) {
     if (refs.button) {
       refs.button.disabled = false;
-      refs.button.textContent = '▶ Lancer Iris';
+      global.PipelineUIIcons?.setIconLabel?.(refs.button, 'play', 'Lancer Iris');
     }
   }
 
@@ -82,6 +100,8 @@
     runCollectionIrisSemanticSearch,
     runTabletopIrisSemanticSearch,
   };
+
+  bindIrisOutputEditing();
 
   global.PipelineUI.runtimeIris = global.PipelineUI.runtimeIris || {};
   Object.assign(global.PipelineUI.runtimeIris, global.PipelineUIIrisRuntime);

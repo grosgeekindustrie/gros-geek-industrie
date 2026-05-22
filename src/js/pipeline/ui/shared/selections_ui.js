@@ -19,6 +19,7 @@
 
   const TAG_SELECTION_MAX = 13;
   const AUXILIARY_RETRY_COUNT = 1;
+  const COMMON_PRODUCT_TAGS = global.PipelineUIDataTagsCommon?.COMMON_PRODUCT_TAGS || [];
 
   function escapeAttr(value) {
     return String(value || '')
@@ -240,17 +241,19 @@
     };
   }
 
-  function buildTagsSelectionRowMarkup(tag, index) {
+  function buildTagsSelectionRowMarkup(tag, index, source = 'generated') {
     const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
+    const validateIcon = global.PipelineUIIcons?.renderIcon('check') || 'Valider';
+    const blacklistIcon = global.PipelineUIIcons?.renderIcon('close') || 'Blacklister';
     return `
-      <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item>
+      <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item data-tags-source="${escapeAttr(source)}">
         <label class="tags-selection-checkbox-wrap">
           <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" data-tags-checkbox />
         </label>
         <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" data-tags-input />
         <span class="tags-selection-length" data-tags-length>0</span>
-        <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">✓</button>
-        <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">✕</button>
+        <button class="btn btn-muted tags-selection-row-btn" type="button" data-tags-action="validate-library" aria-label="Ajouter aux tags validés" title="Ajouter aux tags validés">${validateIcon}</button>
+        <button class="btn btn-muted tags-selection-row-btn tags-selection-row-btn-danger" type="button" data-tags-action="blacklist-library" aria-label="Blacklister ce tag" title="Blacklister ce tag">${blacklistIcon}</button>
       </article>`;
   }
 
@@ -278,6 +281,14 @@
       .map((row) => ({ row, state: getTagsSelectionRowState(row, rows, libraryState) }))
       .filter(({ state }) => (onlyValid ? state.isRowValid : true))
       .map(({ state }) => state.value)
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }));
+  }
+
+  function getAllGeneratedTagValues() {
+    return getTagsSelectionRows()
+      .filter((row) => String(row?.dataset?.tagsSource || 'generated') === 'generated')
+      .map((row) => getTagsSelectionRowValue(row))
       .filter(Boolean);
   }
 
@@ -286,30 +297,14 @@
     global.showToast(successMessage);
   }
 
-  function copyTagsSelectionColumn(columnIndex) {
-    const column = dom.getByData?.('tagsColumn', String(columnIndex), getTagsSelectionRuntimeRoot()) || document.getElementById(`${getPfx()}-tags-column-${columnIndex}`);
-    if (!column) return;
-
-    const values = (dom.getAllByData?.('tags-input', null, column) || [])
-      .map((input) => normalizeTagInputValue(input.value))
-      .filter(Boolean);
-
+  function copyAllGeneratedTags() {
+    const values = getAllGeneratedTagValues();
     if (!values.length) {
-      global.showToast('Aucun tag à copier dans cette liste', '#ff4757');
+      global.showToast('Aucun tag généré à copier', '#ff4757');
       return;
     }
 
-    copyTagsSelectionValues(values, `Liste brute ${columnIndex} copiée ✓`);
-  }
-
-  function copyTagsSelectionFinalOutput() {
-    const values = getTagsSelectedValues();
-    if (!values.length) {
-      global.showToast('Aucun tag sélectionné à copier', '#ff4757');
-      return;
-    }
-
-    copyTagsSelectionValues(values, 'Sortie finale tags copiée ✓');
+    copyTagsSelectionValues(values, 'Tous les tags générés copiés');
   }
 
   function updateTagsSelectionSummary() {
@@ -424,11 +419,7 @@
       if (!button) return;
 
       if (button.dataset.tagsCopy) {
-        if (button.dataset.tagsCopy === 'final') {
-          copyTagsSelectionFinalOutput();
-        } else {
-          copyTagsSelectionColumn(button.dataset.tagsCopy);
-        }
+        copyAllGeneratedTags();
         return;
       }
 
@@ -474,19 +465,19 @@
       return;
     }
 
+    const [commonLeftColumn, commonRightColumn] = splitTagsIntoColumns(COMMON_PRODUCT_TAGS);
     const [leftColumn, rightColumn] = splitTagsIntoColumns(tags);
+    const commonTagStartIndex = tags.length;
 
     runtimeRoot.innerHTML = `
       <div class="tags-selection-shell">
         <div class="tags-selection-topbar">
           <div class="tags-selection-heading">
-            <div class="tags-selection-title">🔖 Sélection manuelle</div>
+            <div class="tags-selection-title">Selection manuelle</div>
             <div class="tags-selection-subtitle">2 colonnes · ${TAG_SELECTION_MAX} tags max · une ligne par tag.</div>
           </div>
           <div class="tags-selection-toolbar">
-            <button class="btn btn-muted" type="button" data-tags-copy="1">📋 Liste 1</button>
-            <button class="btn btn-muted" type="button" data-tags-copy="2">📋 Liste 2</button>
-            <button class="btn btn-accent" type="button" data-tags-copy="final">📋 Sortie finale</button>
+            <button class="btn btn-accent" type="button" data-tags-copy="all">Copier tous les tags</button>
           </div>
         </div>
         <div class="tags-selection-stats">
@@ -507,6 +498,20 @@
             <span class="tags-selection-stat-value" id="${p}-tags-stat-invalid" data-tags-stat="invalid">0</span>
           </div>
         </div>
+        <section class="tags-selection-common">
+          <div class="tags-selection-common-head">
+            <span class="tags-selection-common-title">Tronc commun à toutes les fiches produits</span>
+            <span class="tags-selection-common-meta">Sélection manuelle prioritaire</span>
+          </div>
+          <div class="tags-selection-columns tags-selection-columns-common">
+            <section class="tags-selection-column">
+              <div class="tags-selection-list">${commonLeftColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, commonTagStartIndex + index, 'common')).join('')}</div>
+            </section>
+            <section class="tags-selection-column">
+              <div class="tags-selection-list">${commonRightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, commonTagStartIndex + commonLeftColumn.length + index, 'common')).join('')}</div>
+            </section>
+          </div>
+        </section>
         <div class="tags-selection-columns">
           <section class="tags-selection-column" id="${p}-tags-column-1" data-tags-column="1">
             <div class="tags-selection-column-head">
@@ -520,7 +525,7 @@
               <span>Valid</span>
               <span>Invalid</span>
             </div>
-            <div class="tags-selection-list">${leftColumn.map(buildTagsSelectionRowMarkup).join('')}</div>
+            <div class="tags-selection-list">${leftColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index, 'generated')).join('')}</div>
           </section>
           <section class="tags-selection-column" id="${p}-tags-column-2" data-tags-column="2">
             <div class="tags-selection-column-head">
@@ -534,7 +539,7 @@
               <span>Valid</span>
               <span>Invalid</span>
             </div>
-            <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length)).join('')}</div>
+            <div class="tags-selection-list">${rightColumn.map((tag, index) => buildTagsSelectionRowMarkup(tag, index + leftColumn.length, 'generated')).join('')}</div>
           </section>
         </div>
         <section class="tags-selection-preview">
@@ -575,7 +580,7 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       global.state.bibliosByMode[global.currentMode].tags = updated;
       document.dispatchEvent(new CustomEvent('pipeline:tags-library-updated'));
-      global.showToast(`👍 "${normalizedTag}" validé`);
+      global.showToast(`"${normalizedTag}" validé`);
     } catch (error) {
       global.showToast('Erreur sauvegarde', '#ff4757');
     }
@@ -628,7 +633,7 @@
       zone.classList.add('is-validated');
     }
     if (status) {
-      status.textContent = '✓ sélection validée';
+      status.textContent = 'sélection validée';
       status.className = 'agent-status s-done';
     }
 
@@ -651,13 +656,16 @@
   function buildExplorerTagMarkup(tag, index) {
     const itemId = `exp-tag-${index}`;
     const safeTag = escapeAttr(tag);
+    const validateIcon = global.PipelineUIIcons?.renderIcon('check') || 'Valider';
+    const blacklistIcon = global.PipelineUIIcons?.renderIcon('close') || 'Blacklister';
+    const rerollIcon = global.PipelineUIIcons?.renderIcon('refresh') || 'Relancer';
     return `<div class="titre-item" id="${itemId}" data-selection-item="tag-explorer">
         <span class="titre-text" data-selection-text-node>${tag}</span>
         <span class="titre-char" data-selection-char data-char-tone="${tag.length > 30 ? 'danger' : 'success'}">${tag.length}</span>
         <div class="titre-actions">
-          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘</button>
-          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ‘Ž</button>
-          <button class="titre-thumb" type="button" data-selection-role="reroll" data-selection-action="reroll-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">ðŸ”„</button>
+          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${validateIcon}</button>
+          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${blacklistIcon}</button>
+          <button class="titre-thumb" type="button" data-selection-role="reroll" data-selection-action="reroll-tag-explorer" data-selection-text="${safeTag}" data-item-id="${itemId}">${rerollIcon}</button>
         </div>
       </div>`;
   }
@@ -670,8 +678,6 @@
       <span class="titre-text" data-selection-text-node>${text}</span>
       <span class="titre-char" data-selection-char data-char-tone="${getCharTone(chars)}">${chars}</span>
       <div class="titre-actions">
-        <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
-        <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" data-selection-source="main" aria-label="Blacklister ce titre">NO</button>
         <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
         <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-segment" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="${agentId}" aria-label="Regenerer ce titre">Relance</button>
       </div></div>`;
@@ -691,8 +697,6 @@
         <span class="titre-text" data-selection-text-node>${titre.text}</span>
         <span class="titre-char" data-selection-char data-char-tone="${getCharTone(titre.chars)}">${titre.chars}</span>
         <div class="titre-actions">
-          <button class="titre-thumb" type="button" data-selection-role="validate" data-selection-action="validate-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" aria-label="Valider ce titre">OK</button>
-          <button class="titre-thumb" type="button" data-selection-role="blacklist" data-selection-action="blacklist-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" data-selection-source="explorer" aria-label="Blacklister ce titre">NO</button>
           <button class="titre-copy" type="button" data-selection-role="copy" data-selection-action="copy-titre-line" data-selection-text="${safeText}" aria-label="Copier ce titre">Copier</button>
           <button class="titre-copy" type="button" data-selection-role="reroll" data-selection-action="reroll-titre-explorer" data-selection-text="${safeText}" data-item-id="${itemId}" data-agent-id="titre" aria-label="Regenerer ce titre">Relance</button>
         </div>
@@ -725,21 +729,6 @@
       }
       if (action === 'select-titre') {
         selectTitre(Number(trigger.dataset.selectionIndex || 0), trigger.dataset.agentId || 'titre', trigger);
-        return;
-      }
-      if (action === 'validate-titre-segment' || action === 'validate-titre-explorer') {
-        await validateTitreSegment(getSelectionText(trigger));
-        item?.classList.add('validated');
-        return;
-      }
-      if (action === 'blacklist-titre-segment' || action === 'blacklist-titre-explorer') {
-        item?.classList.add('invalidated');
-        await invalidateTitreSegment(
-          getSelectionText(trigger),
-          trigger.dataset.itemId || null,
-          trigger.dataset.agentId || 'titre',
-          trigger.dataset.selectionSource || 'main'
-        );
         return;
       }
       if (action === 'reroll-titre-segment' || action === 'reroll-titre-explorer') {
@@ -790,7 +779,7 @@
     const btn = getSelectionExplorerButton('tags');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⟳ Exploration...';
+      global.PipelineUIIcons?.setIconLabel?.(btn, 'refresh', 'Exploration...');
     }
 
     const ctx = global.buildCtx('tags');
@@ -812,9 +801,9 @@
       const excludedCount = tags.length - filteredTags.length;
 
       const explorerNodes = getExplorerNodes();
-      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TAGS';
+      if (explorerNodes.title) explorerNodes.title.textContent = 'Exploration tags';
       if (explorerNodes.count) explorerNodes.count.textContent = `${filteredTags.length} tags`;
-      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Tags générés hors biblio — 👍 valider · 👎 blacklister';
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Tags générés hors biblio — valider, blacklister ou relancer';
       if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
@@ -826,13 +815,13 @@
         : '<div class="titre-item"><span class="titre-text">Aucun tag exploitable hors biblio.</span></div>';
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(excludedCount > 0 ? `Exploration terminée ✓ (${excludedCount} exclus via biblio)` : 'Exploration terminée ✓', '#e8c547');
+      global.showToast(excludedCount > 0 ? `Exploration terminée (${excludedCount} exclus via biblio)` : 'Exploration terminée', '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔭 Explorer';
+        btn.textContent = 'Explorer';
       }
     }
   }
@@ -909,44 +898,15 @@
     }
   }
 
-  async function validateTitreSegment(text) {
-    const parsed = global.parseBiblioTitres(global.getBiblio('titres'));
-    const validated = parsed.validated || [];
-    const blacklisted = parsed.blacklisted || [];
-    if (validated.includes(text)) return;
-
-    validated.push(text);
-    const updated = global.buildBiblioTitresRaw(validated, blacklisted);
-    try {
-      const res = await fetch(`/files/biblios/${global.currentMode}/titres.md`, { method: 'PUT', body: updated });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      global.state.bibliosByMode[global.currentMode].titres = updated;
-      global.showToast('👍 Titre ajouté aux exemples validés');
-    } catch (error) {
-      global.showToast('Erreur sauvegarde titres', '#ff4757');
-    }
-  }
-
-  async function invalidateTitreSegment(text, itemId, agentId, source = 'main') {
-    modals().openLibraryBlacklistModal({
-      kind: 'titres',
-      currentValue: helpers().normalizeTitreValue ? helpers().normalizeTitreValue(text) : String(text || '').trim(),
-      itemId,
-      source,
-      agentId: agentId || 'titre',
-    });
-  }
-
   function copyTitreLine(text) {
     navigator.clipboard.writeText(text);
-    global.showToast('Titre copié ✓');
+    global.showToast('Titre copié');
   }
 
   async function validateTitre(agentId) {
     const p = getPfx();
     const input = getTitreManualInput(agentId);
     const titre = input?.value.trim() || '';
-    const selectedTitre = String(global.state.selectedTitre || '').trim();
     if (!titre) {
       alert('Choisis ou saisis un titre.');
       return;
@@ -955,13 +915,9 @@
     global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
     global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
-    if (titre !== selectedTitre) {
-      validateTitreSegment(titre);
-      global.showToast('✅ Titre manuel ajouté aux exemples validés');
-    }
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
-    document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ titre validé';
+    document.getElementById(`${p}-stat-${agentId}`).textContent = 'titre validé';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
     await continueAfterSelection(agentId);
@@ -985,7 +941,7 @@
           continue;
         }
         if (!pastTechnique) continue;
-        const hasEmoji = /^[\u{1F300}-\u{1FFFF}⚡🎯⚔️🎨🏆💫🎁🔥✨🏅💎🌑👀⏳🎲🖌️🎭]/u.test(line);
+        const hasEmoji = /^\p{Extended_Pictographic}/u.test(line);
         if (hasEmoji && choices.length < 5) choices.push({ num: String(choices.length + 1), text: line });
         if (line.includes('Conseils de peinture')) break;
       }
@@ -1001,7 +957,7 @@
         }
         if (!pastConseils) continue;
         if (line.startsWith('🎭') || line.includes('Fan Art')) break;
-        const hasEmoji = /^[\u{1F300}-\u{1FFFF}⚡🎯⚔️🎨🏆💫🎁🔥✨🏅💎🌑👀⏳🎲🖌️🎭]/u.test(line);
+        const hasEmoji = /^\p{Extended_Pictographic}/u.test(line);
         if (hasEmoji && count < 5) {
           choices.push({ num: String(count + 1), text: line });
           count++;
@@ -1088,7 +1044,7 @@
     });
     document.getElementById(`${p}-sel-accroche-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-sel-cta-${agentId}`).classList.remove('visible');
-    document.getElementById(`${p}-stat-${agentId}`).textContent = '✓ sélection validée';
+    document.getElementById(`${p}-stat-${agentId}`).textContent = 'sélection validée';
     document.getElementById(`${p}-stat-${agentId}`).className = 'agent-status s-done';
 
     await continueAfterSelection(agentId);
@@ -1099,7 +1055,7 @@
     const btn = getSelectionExplorerButton('titre');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '⟳ Exploration...';
+      global.PipelineUIIcons?.setIconLabel?.(btn, 'refresh', 'Exploration...');
     }
 
     const ctx = global.buildCtx('titre');
@@ -1133,9 +1089,9 @@
       });
 
       const explorerNodes = getExplorerNodes();
-      if (explorerNodes.title) explorerNodes.title.textContent = '🔭 EXPLORATION TITRES';
+      if (explorerNodes.title) explorerNodes.title.textContent = 'Exploration titres';
       if (explorerNodes.count) explorerNodes.count.textContent = `${titres.length} titres`;
-      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — 👍 valider · 👎 blacklister';
+      if (explorerNodes.listLabel) explorerNodes.listLabel.textContent = 'Titres générés — copier ou relancer';
       if (explorerNodes.conversation) explorerNodes.conversation.value = result;
 
       modals().ensureLibraryModals();
@@ -1145,13 +1101,13 @@
       if (list) list.innerHTML = titres.map((titre, i) => buildExplorerTitreMarkup(titre, i)).join('');
 
       explorerNodes.root?.classList.add('visible');
-      global.showToast(cached ? 'Exploration titres reusee depuis la session' : 'Exploration terminée ✓', cached ? '#7eb8f7' : '#e8c547');
+      global.showToast(cached ? 'Exploration titres reusée depuis la session' : 'Exploration terminée', cached ? '#7eb8f7' : '#e8c547');
     } catch (error) {
       global.showToast(`Erreur: ${error.message}`, '#ff4757');
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = '🔭 Explorer';
+        btn.textContent = 'Explorer';
       }
     }
   }
@@ -1169,8 +1125,6 @@
     selectTitre,
     updateTitreCounter,
     pasteSelectedTitre,
-    validateTitreSegment,
-    invalidateTitreSegment,
     copyTitreLine,
     validateTitre,
     parseChoices,
@@ -1184,17 +1138,3 @@
   Object.assign(global.PipelineUI.selections, global.PipelineUISelections);
   Object.assign(global, global.PipelineUISelections);
 })(window);
-
-
-
-
-
-
-
-
-
-
-
-
-
-

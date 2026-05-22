@@ -10,16 +10,22 @@
 
   const abortControllers = {};
   const AGENT_MODELS = {
-    alt: 'claude-sonnet-4-20250514',
-    marche: 'claude-sonnet-4-20250514',
-    tags: 'claude-sonnet-4-20250514',
-    titre: 'claude-sonnet-4-20250514',
-    description: 'claude-sonnet-4-20250514',
-    social: 'claude-sonnet-4-20250514',
-    camille: 'claude-sonnet-4-20250514',
-    iris: 'claude-sonnet-4-20250514',
-    cache_aware: 'claude-sonnet-4-20250514',
+    alt: 'claude-sonnet-4-5',
+    marche: 'claude-sonnet-4-5',
+    tags: 'claude-sonnet-4-5',
+    titre: 'claude-sonnet-4-5',
+    description: 'claude-sonnet-4-5',
+    social: 'claude-sonnet-4-5',
+    camille: 'claude-sonnet-4-5',
+    iris: 'claude-sonnet-4-5',
+    cache_aware: 'claude-sonnet-4-5',
   };
+
+  function getActiveAgentModel(agentId = '') {
+    const selectedModel = String(global.getSelectedClaudeModel?.() || '').trim();
+    if (selectedModel) return selectedModel;
+    return String(AGENT_MODELS[agentId] || 'claude-sonnet-4-5').trim();
+  }
 
   const PIPELINE_STATUS_DONE = 'terminé';
   const PIPELINE_STATUS_ERROR = 'erreur';
@@ -156,7 +162,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('continuePipelineAfterSelection failed', error);
-      global.showToast(`❌ Suite du pipeline: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur suite du pipeline: ${error.message}`, '#ff4757');
     } finally {
       finalizePipelineContinuation(prefix, lastAgentId, lastStatus);
     }
@@ -206,7 +212,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('rerunAgent failed', error);
-      global.showToast(`❌ Relance agent: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur relance agent: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);
       finalizeResumeLaunchState(prefix, agent.id, lastStatus);
@@ -247,7 +253,7 @@
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
       logger?.error?.('rerunSuite failed', error);
-      global.showToast(`❌ Suite agents: ${error.message}`, '#ff4757');
+      global.showToast(`Erreur suite agents: ${error.message}`, '#ff4757');
     } finally {
       setResumePipelineExecutionActive(false);
       finalizeResumeLaunchState(prefix, lastAgentId, lastStatus);
@@ -302,6 +308,7 @@
   global.PipelineUIAgentRuntime = {
     abortControllers,
     AGENT_MODELS,
+    getActiveAgentModel,
     PIPELINE_STATUS_DONE,
     PIPELINE_STATUS_ERROR,
     PIPELINE_STATUS_SELECTION_REQUIRED,

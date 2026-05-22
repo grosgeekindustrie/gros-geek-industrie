@@ -4,6 +4,7 @@
 + Râ, Le Roi Des Sables DéChu - Rescale miniatures, miniatures pharaon fantasy à peindre, garage kit imprimé en 3D pour DnD Tabletop TTRPG
 + Elder Blue Dragon - Rescale miniatures, figurine dragon ancien à peindre, garage kit imprimé en 3D pour DnD, Tabletop et TTRPG fantasy
 + Elzebe - Nerikson miniature 32mm 75mm 90mm en résine à peindre imprimé en 3D pour DnD, TTRPG, figurine the warrior queen
++ Shattered King - Nerikson, miniature maître des goules et nécromancien à peindre, garage kit imprimé en 3D pour DnD et Tabletop TTRPG
 
 ## BLACKLISTÉS
 

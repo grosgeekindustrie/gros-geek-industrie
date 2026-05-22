@@ -13,6 +13,8 @@
   const DEFAULT_POSE_NAME = 'MUSEUM';
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
+  const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
+  const CLAUDE_MODEL_SELECT_IDS = Object.freeze(['tt-launch-model', 'col-launch-model']);
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -41,10 +43,13 @@
     'col-fResumePersonnage',
     'col-fLienPerso',
     'col-fConnexesPrioritaires',
+    'col-fArchetypes',
+    'col-fArchSeo',
   ];
   const BIBLIO_FILES = ['tags', 'accroches', 'objectif', 'psycho', 'titres', 'bibliotheque-semantique'];
   const formFieldsData = global.PipelineUIDataFormFields || {};
   const formCatalogsData = global.PipelineUIDataFormCatalogs || {};
+  const PROMPT_FLAG_BY_FIELD_ID = formFieldsData.PROMPT_FLAG_BY_FIELD_ID || {};
 
   const TABLETOP_FORM_FIELDS = formFieldsData.TABLETOP_FORM_FIELDS || [
     'tt-fNom',
@@ -74,6 +79,8 @@
     'col-fPieces',
     'col-fDescriptionFigurine',
     'col-fPose',
+    'col-fArchetypes',
+    'col-fArchSeo',
   ];
 
   const TABLETOP_FORM_CATALOGS = formCatalogsData.TABLETOP_FORM_CATALOGS || {};
@@ -331,9 +338,18 @@
     renderCollectionMediumMeta({ shouldSave: false });
   };
 
+  function applyPromptFlagAttributes() {
+    Object.entries(PROMPT_FLAG_BY_FIELD_ID).forEach(([fieldId, promptFlag]) => {
+      const element = getElementById(fieldId);
+      if (!element) return;
+      element.dataset.promptFlag = String(promptFlag || '').trim();
+    });
+  }
+
   function renderDeclarativeFormCatalogs({ shouldSave = false } = {}) {
     renderTabletopCatalogs();
     renderCollectionCatalogs();
+    applyPromptFlagAttributes();
     if (shouldSave) saveFormState();
   }
 
@@ -364,23 +380,32 @@
     writeAppSettings(settings);
   };
 
+  function syncClaudeModelSelects(nextValue = '', sourceId = '') {
+    const normalizedValue = String(nextValue || '').trim() || DEFAULT_CLAUDE_MODEL;
+    CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+      if (!id || id === sourceId) return;
+      const select = getElementById(id);
+      if (select) select.value = normalizedValue;
+    });
+  }
+
+  function getSelectedClaudeModel() {
+    const currentPrefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
+    const currentSelect = getElementById(`${currentPrefix}-launch-model`);
+    const currentValue = String(currentSelect?.value || '').trim();
+    if (currentValue) return currentValue;
+
+    const settingsValue = String(readAppSettings().selectedClaudeModel || '').trim();
+    return settingsValue || DEFAULT_CLAUDE_MODEL;
+  }
+
   function getArchetypes() {
-    if (getCurrentMode() !== 'tabletop') return '';
-
-    const archetypes = getElementValue('tt-fArchetypes')
+    const prefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
+    const archetypes = getElementValue(`${prefix}-fArchetypes`)
       .split(',')
       .map((value) => value.trim())
       .filter(Boolean);
-    const seo = getElementValue('tt-fArchSeo')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const parts = [];
-
-    if (archetypes.length) parts.push(`Archetypes: ${archetypes.join(', ')}`);
-    if (seo.length) parts.push(`SEO elargi: ${seo.join(', ')}`);
-
-    return parts.join(' | ') || '';
+    return archetypes.join(', ');
   }
 
   function getMediums() {
@@ -405,9 +430,11 @@
 
   const getTabletopData = () => {
     const genres = formatCommaList(getTabletopGenreValues());
+    const type = getElementValue('tt-fType', 'SOLO');
 
     return {
-      type: getElementValue('tt-fType', 'SOLO'),
+      type,
+      typePiece: type,
       version: getElementValue('tt-fVersion', DEFAULT_VERSION_LABEL),
       presentationVisuelle: getElementValue('tt-fPresentationVisuelle'),
       natureSujet: getElementValue('tt-fNatureSujet', 'HUMANOIDE'),
@@ -427,12 +454,17 @@
   };
 
   function getCollectionData() {
+    const typePiece = getElementValue('col-fType', DEFAULT_VERSION_LABEL);
+
     return {
-      typePiece: getElementValue('col-fType', DEFAULT_VERSION_LABEL),
+      type: typePiece,
+      typePiece,
       medium: getMediums(),
       ...getCollectionMediumMetaData(),
       license: isElementChecked('col-fLicense') ? 'oui' : 'non',
       particularites: getElementValue('col-fParticularites'),
+      archetypesManuels: getElementValue('col-fArchetypes'),
+      seoElargies: getElementValue('col-fArchSeo'),
       descriptionFigurine: getElementValue('col-fDescriptionFigurine'),
       resumePersonnage: getElementValue('col-fResumePersonnage'),
       connexesPrioritaires: getElementValue('col-fConnexesPrioritaires'),
@@ -578,6 +610,8 @@
       data._mediumSubcategories = getCollectionMediumSubcategoryValues();
       data._genres = getCollectionGenreValues();
       data._particularites = getElementValue('col-fParticularites');
+      data._archetypesManuels = getElementValue('col-fArchetypes');
+      data._seoElargies = getElementValue('col-fArchSeo');
       data._descriptionFigurine = getElementValue('col-fDescriptionFigurine');
       data._resumePersonnage = getElementValue('col-fResumePersonnage');
       data._connexesPrioritaires = getElementValue('col-fConnexesPrioritaires');
@@ -662,6 +696,14 @@
           setElementValue('col-fParticularites', data._particularites);
         }
 
+        if (data._archetypesManuels !== undefined) {
+          setElementValue('col-fArchetypes', data._archetypesManuels);
+        }
+
+        if (data._seoElargies !== undefined) {
+          setElementValue('col-fArchSeo', data._seoElargies);
+        }
+
         if (data._descriptionFigurine !== undefined) {
           setElementValue('col-fDescriptionFigurine', data._descriptionFigurine);
         }
@@ -690,25 +732,29 @@
           setElementValue('col-fBuzzCollectionNote', data._buzzNote);
         }
 
-        if (Array.isArray(data._customEchelles)) {
-          data._customEchelles.forEach((entry, index) => {
-            const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
-            const checkbox = getElementById(`col-ec${scaleIndex}`);
-            if (entry.label) setElementValue(`col-elabel${scaleIndex}`, entry.label);
-            if (checkbox && entry.checked) {
-              checkbox.checked = true;
-              global.toggleEch(scaleIndex, { shouldSave: false });
-            }
-            if (entry.dim) setElementValue(`col-ed${scaleIndex}`, entry.dim);
-            if (entry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
-              global.PipelineUIEchelles.setRowDimensionSource(scaleIndex, entry.source);
-            }
-          });
+        const collectionScaleList = echellesApi.ECHELLES_COLLECTION || [];
+        const legacyOneFifthEntry = Array.isArray(data._customEchelles)
+          ? data._customEchelles.find((entry) => String(entry?.label || '').trim() === '1/5')
+          : null;
+        const oneFifthIndex = collectionScaleList.findIndex((label) => String(label || '').trim() === '1/5');
+
+        if (legacyOneFifthEntry && oneFifthIndex >= 0) {
+          const checkbox = getElementById(`col-ec${oneFifthIndex}`);
+          if (checkbox && legacyOneFifthEntry.checked) {
+            checkbox.checked = true;
+            global.toggleEch(oneFifthIndex, { shouldSave: false });
+          }
+          if (legacyOneFifthEntry.dim) setElementValue(`col-ed${oneFifthIndex}`, legacyOneFifthEntry.dim);
+          if (legacyOneFifthEntry.source && typeof global.PipelineUIEchelles?.setRowDimensionSource === 'function') {
+            global.PipelineUIEchelles.setRowDimensionSource(oneFifthIndex, legacyOneFifthEntry.source);
+          }
         }
 
         if (Number.isInteger(data._originEchelleIndex)) {
           global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
         }
+
+        echellesApi.refreshCollectionAutoDimensions?.({ shouldSave: false, force: true });
       }
     } catch (error) {}
   }
@@ -718,14 +764,16 @@
     COLLECTION_FORM_FIELDS.forEach(attachSaveListener);
     COLLECTION_PERSISTED_TEXT_FIELDS.forEach(attachSaveListener);
 
-    const apiKeyEl = getElementById('apiKey');
-    if (apiKeyEl) {
-      apiKeyEl.addEventListener('input', () => {
+    CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+      const select = getElementById(id);
+      if (!select) return;
+      select.addEventListener('change', () => {
         const settings = readAppSettings();
-        settings.apiKey = apiKeyEl.value;
+        settings.selectedClaudeModel = String(select.value || '').trim() || DEFAULT_CLAUDE_MODEL;
         writeAppSettings(settings);
+        syncClaudeModelSelects(settings.selectedClaudeModel, id);
       });
-    }
+    });
 
     const shopUrlEl = getElementById('shopUrl');
     if (shopUrlEl) shopUrlEl.addEventListener('input', persistShopUrl);
@@ -743,11 +791,14 @@
 
     try {
       const settings = readAppSettings();
-      const apiKeyEl = getElementById('apiKey');
-      if (apiKeyEl && settings.apiKey) apiKeyEl.value = settings.apiKey;
-
       const shopUrlEl = getElementById('shopUrl');
       if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
+
+      const selectedClaudeModel = String(settings.selectedClaudeModel || '').trim() || DEFAULT_CLAUDE_MODEL;
+      CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+        const select = getElementById(id);
+        if (select) select.value = selectedClaudeModel;
+      });
 
       if (settings.mode && settings.mode !== getCurrentMode()) {
         global.currentMode = settings.mode;
@@ -828,12 +879,14 @@
     TABLETOP_FORM_FIELDS,
     COLLECTION_FORM_FIELDS,
     getArchetypes,
+    getSelectedClaudeModel,
     getMediums,
     getCollectionData,
     getCollectionMediumSubcategoryValues,
     getCollectionGenreValues,
     renderCollectionMediumMeta,
     renderDeclarativeFormCatalogs,
+    applyPromptFlagAttributes,
     toggleBuzz,
     toggleLicense,
     toggleBuzzCollection,

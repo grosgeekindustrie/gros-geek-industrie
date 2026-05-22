@@ -1,0 +1,65 @@
+.ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.ui-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ui-icon-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn .ui-icon,
+.settings-action .ui-icon,
+.validate-btn .ui-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.app-logo .ui-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.app-settings-btn .ui-icon,
+.app-back-btn .ui-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.home-card-icon .ui-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.badge-rules .ui-icon,
+.badge-img .ui-icon,
+.chevron .ui-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.pipe-arrow .ui-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.di .ui-icon {
+  width: 2rem;
+  height: 2rem;
+}

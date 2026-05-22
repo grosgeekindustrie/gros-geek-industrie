@@ -162,6 +162,48 @@
   margin-top: 4px;
 }
 
+.launch-model-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+
+.launch-model-picker-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.launch-model-select {
+  min-width: 220px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  color-scheme: dark;
+}
+
+.launch-model-select:focus {
+  outline: none;
+  border-color: rgba(126,184,247,.5);
+  background: rgba(126,184,247,.08);
+}
+
+.launch-model-select option,
+.launch-model-select optgroup {
+  background: #171b22;
+  color: #f3f6fb;
+}
+
 .fetch-status {
   font-size: 10px;
   color: var(--muted);
@@ -444,7 +486,7 @@
 
 .collection-solo-tabs-nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.75rem;
   width: 100%;
 }
@@ -706,6 +748,14 @@
   flex-wrap: wrap;
 }
 
+.image-thumb-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .image-thumb-toolbar-count {
   font-size: 0.72rem;
   color: var(--muted);
@@ -727,6 +777,15 @@
   border: 0.0625rem solid var(--border);
   border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.02);
+}
+
+.image-thumb-grid.is-sortable .image-thumb-card[data-image-thumb-id] {
+  cursor: grab;
+}
+
+.image-thumb-grid.is-sortable .image-thumb-card[data-image-thumb-id]:active,
+.image-thumb-grid.is-sortable .image-thumb-card.image-thumb-sortable-chosen {
+  cursor: grabbing;
 }
 
 .image-thumb-preview-wrap {
@@ -790,6 +849,1249 @@
   white-space: nowrap;
 }
 
+.image-thumb-clear-all-btn {
+  white-space: nowrap;
+}
+
+.image-thumb-sortable-ghost {
+  opacity: 0.35;
+}
+
+.image-thumb-sortable-chosen {
+  border-color: rgba(126, 184, 247, 0.45);
+  box-shadow: 0 0 0 1px rgba(126, 184, 247, 0.18);
+}
+
+.image-thumb-sortable-drag {
+  transform: rotate(1.25deg);
+}
+
+.etsy-api-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-source-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-progress {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.etsy-api-step-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-step-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.etsy-api-step-section[hidden] {
+  display: none;
+}
+
+.etsy-api-step-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.15;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.etsy-api-step-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-field-hint {
+  margin: 0.2rem 0 0.45rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.etsy-api-category-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-api-category-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.etsy-api-category-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.etsy-api-category-meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.etsy-api-category-editor {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.etsy-api-title-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+}
+
+.etsy-api-title-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.etsy-api-title-count.is-overflow,
+.etsy-api-title-warning {
+  color: var(--error);
+}
+
+.etsy-api-title-warning {
+  font-size: 0.8rem;
+}
+
+.etsy-api-description-input {
+  min-height: 220px;
+  resize: vertical;
+  overflow: hidden;
+}
+
+.etsy-api-options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-publication-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-options-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-options-heading {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.etsy-api-options-copy,
+.etsy-api-options-group-head p,
+.etsy-api-options-empty-copy {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-options-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-publication-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-shipping-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-settings-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-publication-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.etsy-api-attributes-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-shipping-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-settings-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-publication-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.etsy-api-attributes-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-shipping-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-settings-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-publication-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-attributes-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-shipping-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-settings-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-publication-card-head h4 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-attributes-card-head p,
+.etsy-api-attributes-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-settings-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-publication-card-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-current {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-api-shipping-current-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.etsy-api-shipping-current-value {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.etsy-api-shipping-current-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.etsy-api-settings-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.etsy-api-settings-switch-row:last-child {
+  border-bottom: 0;
+}
+
+.etsy-api-settings-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.etsy-api-settings-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.etsy-api-publication-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.etsy-api-publication-meta-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.03);
+  color: var(--text2);
+}
+
+.etsy-api-publication-notes,
+.etsy-api-publication-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+}
+
+.etsy-api-publication-notes {
+  border: 1px solid rgba(126,184,247,.22);
+  background: rgba(126,184,247,.06);
+}
+
+.etsy-api-publication-errors {
+  border: 1px solid rgba(245,66,74,.24);
+  background: rgba(245,66,74,.08);
+  color: #ffb0b5;
+}
+
+.etsy-api-publication-notes p,
+.etsy-api-publication-errors p {
+  margin: 0;
+}
+
+.etsy-api-publication-json {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(8,10,14,.72);
+  color: #f3f6fb;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.etsy-api-attributes-meta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.03);
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.etsy-api-attribute-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.etsy-api-attribute-tag-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: min(100%, 18rem);
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-api-attribute-tag-item input {
+  min-width: 0;
+  min-height: 2.75rem;
+}
+
+.etsy-api-attribute-tag-remove {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.etsy-api-attributes-dimensions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.etsy-api-options-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.etsy-api-options-summary-card {
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.etsy-api-options-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-options-summary-head h5,
+.etsy-api-options-group-head h5 {
+  margin: 0 0 0.2rem;
+}
+
+.etsy-api-options-summary-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.etsy-api-options-summary-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(126, 184, 247, 0.28);
+  background: rgba(126, 184, 247, 0.08);
+  color: var(--accent);
+  font-size: 0.74rem;
+}
+
+.etsy-api-options-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.etsy-api-options-group {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-api-options-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.etsy-api-options-stock-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.etsy-api-options-stock-grid input[type="number"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.7rem 0.85rem;
+}
+
+.etsy-api-options-stock-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 46px;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-api-options-table-wrap {
+  overflow: auto;
+}
+
+.etsy-api-options-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 840px;
+}
+
+.etsy-api-options-table th,
+.etsy-api-options-table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.etsy-api-options-table input[type="text"] {
+  width: 100%;
+  min-width: 150px;
+  min-height: 46px;
+  padding: 0.7rem 0.85rem;
+}
+
+.etsy-api-options-products-table th {
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.etsy-api-options-products-table th[data-column="price"],
+.etsy-api-options-products-table th[data-column="quantity"],
+.etsy-api-options-products-table td[data-column="price"],
+.etsy-api-options-products-table td[data-column="quantity"] {
+  text-align: center;
+}
+
+.etsy-api-options-products-table td[data-column="price"] input[type="text"] {
+  min-width: 8rem;
+  text-align: center;
+}
+
+.etsy-api-options-products-table td[data-column="quantity"] input[type="text"] {
+  width: min(100%, 5.5rem);
+  min-width: 0;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.etsy-api-options-photo-thumb {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.etsy-api-options-photo-empty {
+  color: var(--muted);
+}
+
+.etsy-api-options-toggle-cell {
+  text-align: right;
+}
+
+.etsy-api-options-static-cell {
+  vertical-align: middle;
+}
+
+.etsy-api-options-edit-cell {
+  transition: opacity .16s ease, visibility .16s ease;
+}
+
+.etsy-api-options-products-table tr.is-disabled .etsy-api-options-edit-cell {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.etsy-api-options-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.9rem;
+  height: 2.15rem;
+  cursor: pointer;
+}
+
+.etsy-api-options-switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.etsy-api-options-switch-ui {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  transition: background .16s ease, border-color .16s ease;
+}
+
+.etsy-api-options-switch-ui::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 999px;
+  background: #f4f7fb;
+  box-shadow: 0 2px 10px rgba(0,0,0,.28);
+  transition: transform .16s ease, background .16s ease;
+}
+
+.etsy-api-options-switch input:checked + .etsy-api-options-switch-ui {
+  background: rgba(255, 154, 87, 0.22);
+  border-color: rgba(255, 154, 87, 0.38);
+}
+
+.etsy-api-options-switch input:checked + .etsy-api-options-switch-ui::after {
+  transform: translateX(1.7rem);
+  background: #ff9a57;
+}
+
+.etsy-api-options-switch input:focus-visible + .etsy-api-options-switch-ui {
+  outline: 2px solid rgba(126, 184, 247, 0.65);
+  outline-offset: 2px;
+}
+
+.etsy-api-options-simple-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.etsy-api-options-simple-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.etsy-api-options-simple-row:last-child {
+  border-bottom: 0;
+}
+
+.etsy-api-options-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.etsy-api-options-empty-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.etsy-options-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-options-variation-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.etsy-category-picker-box {
+  width: min(760px, calc(100vw - 2rem));
+  max-width: min(760px, calc(100vw - 2rem));
+}
+
+.etsy-category-picker-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-category-picker-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: min(60vh, 560px);
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.etsy-category-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  text-align: left;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.etsy-category-picker-item:hover {
+  border-color: rgba(126, 184, 247, 0.45);
+  background: rgba(126, 184, 247, 0.06);
+  transform: translateY(-1px);
+}
+
+.etsy-category-picker-item-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.etsy-category-picker-item-meta,
+.etsy-category-picker-empty {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.etsy-category-picker-empty {
+  padding: 0.9rem 0.15rem;
+}
+
+.etsy-api-media-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.etsy-api-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-api-summary-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.etsy-api-summary-value {
+  font-size: 0.92rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.etsy-api-media-strip {
+  min-height: 8rem;
+}
+
+.etsy-api-media-strip.is-dragover,
+.etsy-api-panel.is-dragover .etsy-api-media-strip {
+  outline: 2px dashed rgba(126, 184, 247, 0.5);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+.etsy-api-empty-state {
+  min-height: 10rem;
+}
+
+.etsy-api-empty-actions {
+  justify-content: center;
+  margin-top: 0.85rem;
+}
+
+.etsy-api-media-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.etsy-api-media-card {
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-api-media-grid.is-sortable .etsy-api-media-card[data-etsy-media-key] {
+  cursor: grab;
+}
+
+.etsy-api-media-grid.is-sortable .etsy-api-media-card[data-etsy-media-key]:active,
+.etsy-api-media-grid.is-sortable .etsy-api-media-card.etsy-api-sortable-chosen {
+  cursor: grabbing;
+}
+
+.etsy-api-media-card-visual {
+  gap: 0;
+  padding: 0.5rem;
+}
+
+.etsy-api-media-card-visual .image-thumb-preview-wrap {
+  position: relative;
+  border-radius: 0.75rem;
+}
+
+.etsy-api-media-card-visual[data-etsy-media-kind="image"] .image-thumb-preview {
+  display: block;
+  object-fit: contain;
+}
+
+.etsy-api-media-card-visual[data-etsy-media-kind="video"] .image-thumb-preview {
+  display: block;
+  object-fit: cover;
+}
+
+.etsy-api-media-preview-clickable {
+  cursor: pointer;
+}
+
+.etsy-api-media-preview-clickable:focus-visible {
+  outline: 2px solid rgba(126, 184, 247, 0.65);
+  outline-offset: 2px;
+}
+
+.etsy-api-media-inline-action {
+  position: absolute;
+  left: 0.55rem;
+  bottom: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(245, 66, 74, 0.28);
+  border-radius: 999px;
+  background: rgba(11, 12, 16, 0.86);
+  color: #ff8d97;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .16s ease, transform .16s ease, border-color .16s ease;
+  z-index: 2;
+}
+
+.etsy-api-media-inline-action:hover {
+  border-color: rgba(245, 66, 74, 0.5);
+  background: rgba(20, 21, 26, 0.94);
+}
+
+.etsy-api-media-inline-action .ui-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.etsy-api-media-card:hover .etsy-api-media-inline-action,
+.etsy-api-media-card:focus-within .etsy-api-media-inline-action {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.etsy-api-sortable-ghost {
+  opacity: 0.35;
+}
+
+.etsy-api-sortable-chosen {
+  border-color: rgba(126, 184, 247, 0.45);
+  box-shadow: 0 0 0 1px rgba(126, 184, 247, 0.18);
+}
+
+.etsy-api-sortable-drag {
+  transform: rotate(1.25deg);
+}
+
+.etsy-api-media-caption {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.etsy-api-video-preview {
+  object-fit: cover;
+  background: #0f1115;
+}
+
+.etsy-api-payload {
+  margin-top: 0;
+}
+
+.etsy-media-lightbox .lb-box {
+  max-width: 1120px;
+}
+
+.etsy-media-lightbox-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.etsy-media-lightbox-header-buttons {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.etsy-media-lightbox-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.etsy-media-lightbox-stage {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(0,0,0,.18);
+}
+
+.etsy-media-lightbox-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255,255,255,.02);
+}
+
+.etsy-media-lightbox-preview-image,
+.etsy-media-lightbox-preview-video {
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  display: block;
+}
+
+.etsy-media-lightbox-preview-video {
+  background: #0f1115;
+}
+
+.etsy-media-lightbox-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.etsy-media-lightbox-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.etsy-media-lightbox-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+
+.etsy-media-lightbox-meta-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.etsy-media-lightbox-meta-value {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.etsy-media-lightbox-alt-group {
+  margin-top: 0;
+}
+
+.etsy-media-lightbox-alt-actions {
+  margin-top: 0.35rem;
+}
+
+.etsy-media-lightbox-image-actions {
+  margin-top: 0;
+  flex-wrap: wrap;
+}
+
+.etsy-image-editor-overlay .lb-box {
+  width: min(920px, calc(100vw - 2rem));
+  max-width: min(920px, calc(100vw - 2rem));
+  max-height: min(92vh, 960px);
+}
+
+.etsy-image-editor-stage {
+  min-width: 0;
+  height: 74vh;
+  min-height: 74vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.etsy-image-editor-host {
+  height: 100%;
+  min-height: 74vh;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(8,10,14,.96);
+}
+
+.etsy-image-editor-host .FIE_main-container {
+  height: 100% !important;
+  min-height: 74vh;
+}
+
+.etsy-image-editor-host .FIE_main-container > div {
+  height: 100%;
+}
+
+.etsy-image-editor-host .FIE_editor-content {
+  height: 100% !important;
+}
+
+.etsy-image-editor-host .FIE_editor-content > div {
+  height: 100%;
+}
+
+.etsy-image-editor-host .konvajs-content {
+  margin: 0 auto;
+}
+
+.etsy-image-editor-host button {
+  font-family: inherit;
+}
+
+
+@media (max-width: 1200px) {
+  .etsy-api-media-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .etsy-api-media-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etsy-api-category-card,
+  .etsy-api-title-meta,
+  .etsy-api-options-stock-toggle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .etsy-api-progress {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .etsy-api-attributes-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .etsy-api-media-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .etsy-api-media-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .etsy-api-media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .etsy-media-lightbox-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etsy-media-lightbox-header-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .etsy-media-lightbox-header-buttons {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .etsy-api-options-stock-grid,
+  .etsy-api-attribute-tag-item,
+  .etsy-api-attributes-dimensions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etsy-media-lightbox-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etsy-media-lightbox-preview {
+    min-height: 260px;
+  }
+
+  .etsy-image-editor-stage,
+  .etsy-image-editor-host {
+    height: 66vh;
+    min-height: 66vh;
+  }
+
+  .etsy-image-editor-host .FIE_main-container {
+    min-height: 66vh;
+  }
+}
+
 
 .iris-action-row {
   align-items: center;
@@ -806,11 +2108,14 @@
 /* ═══ FINAL OUTPUT EDITABLES ═══ */
 .final-editable-output {
   cursor: text;
-  white-space: pre-wrap;
 }
 
 .final-editable-output:focus {
   outline: none;
   border-color: rgba(126, 184, 247, 0.45);
   box-shadow: 0 0 0 0.125rem rgba(126, 184, 247, 0.10);
+}
+
+.final-editable-output .fs-content {
+  margin: 0;
 }

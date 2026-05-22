@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="pageTitle">🎲 Etsy Pipeline DnD v1.2</title>
+<title id="pageTitle">Etsy Pipeline DnD v1.2</title>
 <link rel="stylesheet" href="css/00-var.css">
 <link rel="stylesheet" href="css/01-legacy-base.css">
 <link rel="stylesheet" href="css/02-ui-pro.css">
@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="css/05-library-gpt.css">
 <link rel="stylesheet" href="css/06-inline-merged.css">
 <link rel="stylesheet" href="css/07-tags-selection.css">
+<link rel="stylesheet" href="css/08-icons.css">
+<link rel="stylesheet" href="css/09-integrations.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -25,10 +27,10 @@
 <header class="app-header" id="appHeader" data-js="app-header">
   <!-- LEFT -->
   <div class="app-header-left">
-    <span class="app-logo" title="Annuler et revenir à l'accueil" data-ui-action="cancel-to-home">🎲</span>
+    <span class="app-logo" title="Annuler et revenir à l'accueil" data-ui-action="cancel-to-home" data-svg-icon="tabletop"></span>
     <span class="hbadge">v1.2</span>
-    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cost" title="Cliquer pour copier le rapport coûts/tokens session" data-ui-action="copy-token-report" aria-label="Copier le rapport coûts/tokens session">💰 0.00¢</button>
-    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cache" title="Cliquer pour copier le rapport cache complet" data-ui-action="copy-cache-debug-report" aria-label="Copier le rapport cache complet">🧠 cache —</button>
+    <button type="button" id="session-cost" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cost" title="Cliquer pour copier le rapport coûts/tokens session" data-ui-action="copy-token-report" aria-label="Copier le rapport coûts/tokens session"><span data-svg-icon="coins"></span><span class="ui-icon-label">0.00¢</span></button>
+    <button type="button" id="session-cache" class="app-cost btn btn-muted btn-xs-inline" data-js="session-cache" title="Cliquer pour copier le rapport cache complet" data-ui-action="copy-cache-debug-report" aria-label="Copier le rapport cache complet"><span data-svg-icon="layers"></span><span class="ui-icon-label">cache —</span></button>
   </div>
   <!-- CENTER -->
   <div class="app-header-center">
@@ -36,8 +38,8 @@
   </div>
   <!-- RIGHT -->
   <div class="app-header-right">
-    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home">↩️ Retour</button>
-    <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres">⚙</button>
+    <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home"><span data-svg-icon="back"></span><span class="ui-icon-label">Retour</span></button>
+    <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres" data-svg-icon="settings"></button>
   </div>
 </header>
 
@@ -46,30 +48,26 @@
 <div class="settings-panel" id="settingsPanel" data-js="settings-panel">
   <div class="settings-header">
     <span class="settings-title">Paramètres</span>
-    <button class="lb-close" type="button" data-ui-action="close-settings">✕</button>
+    <button class="lb-close" type="button" data-ui-action="close-settings"><span data-svg-icon="close"></span></button>
   </div>
   <div class="settings-body">
-    <div class="settings-section">
-      <label class="settings-label">Clé API Anthropic</label>
-      <input type="password" id="apiKey" class="settings-input" data-js="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off"/>
-    </div>
-    <div class="settings-section">
+        <div class="settings-section">
       <label class="settings-label">URL boutique Etsy</label>
       <input type="text" id="shopUrl" class="settings-input" value="https://grosgeekindustrie.etsy.com" autocomplete="off"/>
     </div>
     <div class="settings-sep"></div>
     <div class="settings-section">
       <label class="settings-label">Bibliothèques sémantiques</label>
-      <button class="settings-action" type="button" data-ui-action="open-biblio-from-settings">Éditer ↗</button>
+      <button class="settings-action" type="button" data-ui-action="open-biblio-from-settings"><span data-svg-icon="externalLink"></span><span class="ui-icon-label">Éditer</span></button>
     </div>
     <div class="settings-section">
       <label class="settings-label">Rapport tokens session</label>
-      <button class="settings-action" type="button" data-ui-action="copy-token-report-from-settings">Copier ↗</button>
+      <button class="settings-action" type="button" data-ui-action="copy-token-report-from-settings"><span data-svg-icon="externalLink"></span><span class="ui-icon-label">Copier</span></button>
     </div>
     <div class="settings-sep"></div>
     <div class="settings-section">
       <label class="settings-label settings-label-danger">Vider le cache local</label>
-      <button class="settings-action settings-action-danger" type="button" data-ui-action="clear-storage">Reset ↗</button>
+      <button class="settings-action settings-action-danger" type="button" data-ui-action="clear-storage"><span data-svg-icon="externalLink"></span><span class="ui-icon-label">Reset</span></button>
     </div>
   </div>
 </div>
@@ -79,23 +77,88 @@
   <div id="view-home-inner" class="home-view-center">
     <div class="home-inner">
       <div class="home-headline">
-        <h2>🎲 Etsy Pipeline</h2>
+        <h2>Etsy Pipeline</h2>
         <p>Génération de fiches produit IA — Tabletop &amp; Collection</p>
       </div>
       <div class="home-cards home-cards-dual">
         <div class="home-card" data-ui-action="select-mode" data-action-arg="tabletop">
-          <div class="home-card-icon">🎲</div>
+          <div class="home-card-icon" data-svg-icon="tabletop"></div>
           <div class="home-card-title">Tabletop DnD</div>
           <div class="home-card-desc">Miniatures RPG, D&amp;D, TTRPG.<br>Pipeline Marcus → Claire.</div>
           <div class="home-card-tag">6 agents · Nerikson · Rescale</div>
         </div>
         <div class="home-card" data-ui-action="select-mode" data-action-arg="collection">
-          <div class="home-card-icon">🖼️</div>
+          <div class="home-card-icon" data-svg-icon="collection"></div>
           <div class="home-card-title">Collection</div>
           <div class="home-card-desc">Figurines fan art, garage kits,<br>statues résine à peindre.</div>
           <div class="home-card-tag">6 agents · Jules → Eden</div>
         </div>
       </div>
+      <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
+        <div class="home-integration-panel-header">
+          <div>
+            <p class="home-integration-kicker">POC API</p>
+            <h3 id="etsyAuthHomeTitle">Connexion Etsy OAuth</h3>
+          </div>
+          <div class="home-integration-panel-icon" data-svg-icon="collection"></div>
+        </div>
+        <p class="home-integration-panel-copy">Première fondation d’intégration : autoriser la boutique Etsy, vérifier la configuration OAuth, puis préparer les lectures d’endpoints.</p>
+        <div class="home-integration-grid">
+          <div class="home-integration-item">
+            <span class="home-integration-label">Configuration</span>
+            <span class="home-integration-value" id="etsyAuthConfigured">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Connexion</span>
+            <span class="home-integration-value" id="etsyAuthConnected">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Demande OAuth</span>
+            <span class="home-integration-value" id="etsyAuthPending">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Expiration token</span>
+            <span class="home-integration-value" id="etsyAuthExpiresAt">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Redirect URI</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthRedirectUri">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Scopes</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthScopes">—</span>
+          </div>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthDetails">En attente de la première autorisation OAuth Etsy.</pre>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-accent" type="button" id="etsyAuthStartBtn" data-ui-action="start-etsy-auth" disabled><span data-svg-icon="play"></span><span class="ui-icon-label">Autoriser la boutique</span></button>
+          <button class="btn btn-muted" type="button" id="etsyAuthRefreshBtn" data-ui-action="refresh-etsy-auth-status"><span data-svg-icon="refresh"></span><span class="ui-icon-label">Actualiser l’état</span></button>
+          <button class="btn btn-muted" type="button" id="etsyPingBtn" data-ui-action="run-etsy-ping" disabled><span data-svg-icon="search"></span><span class="ui-icon-label">Lire ping</span></button>
+          <button class="btn btn-muted" type="button" id="etsyIdentityBtn" data-ui-action="run-etsy-identity" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire identité OAuth</span></button>
+          <button class="btn btn-muted" type="button" id="etsyShopBtn" data-ui-action="run-etsy-shop" disabled><span data-svg-icon="collection"></span><span class="ui-icon-label">Lire boutique</span></button>
+          <button class="btn btn-muted" type="button" id="etsyListingsBtn" data-ui-action="run-etsy-listings" disabled><span data-svg-icon="tag"></span><span class="ui-icon-label">Lire listings</span></button>
+          <button class="btn btn-muted" type="button" id="etsySectionsBtn" data-ui-action="run-etsy-sections" disabled><span data-svg-icon="book"></span><span class="ui-icon-label">Lire sections</span></button>
+        </div>
+        <div class="home-integration-listing-tools">
+          <label class="settings-label" for="etsyListingReferenceInput">Référence fiche Etsy</label>
+          <input
+            type="text"
+            id="etsyListingReferenceInput"
+            class="settings-input"
+            placeholder="Colle un listing_id ou une URL Etsy"
+            autocomplete="off"
+          />
+          <div class="field-action-row home-integration-actions">
+            <button class="btn btn-muted" type="button" id="etsyListingBtn" data-ui-action="run-etsy-listing" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire fiche</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingPropertiesBtn" data-ui-action="run-etsy-listing-properties" disabled><span data-svg-icon="settings"></span><span class="ui-icon-label">Lire attributs</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingVariationImagesBtn" data-ui-action="run-etsy-listing-variation-images" disabled><span data-svg-icon="image"></span><span class="ui-icon-label">Lire images variations</span></button>
+          </div>
+        </div>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-muted" type="button" id="etsyCopyOutputBtn" data-ui-action="copy-etsy-output"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier la sortie API</span></button>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthOutput">Les réponses des endpoints de test Etsy apparaîtront ici.</pre>
+      </section>
     </div>
   </div>
 </div>
@@ -104,7 +167,7 @@
 <!-- Vue de saisie : les blocs Tabletop et Collection restent volontairement séparés tant qu’aucune abstraction stable n’est validée. -->
 <div class="view" id="view-form" data-js="view" data-view="form">
 
-  <span id="formModeLabel" class="is-hidden" data-js="form-mode-label">🎲 Tabletop DnD</span>
+  <span id="formModeLabel" class="is-hidden" data-js="form-mode-label">Tabletop DnD</span>
   <div class="form-view-body" id="formViewBody">
 
 <!-- ═══════════════════════════════════════ BLOC TABLETOP ═══════════════════════════════════════ -->
@@ -130,6 +193,10 @@
         <span class="collection-solo-tab-label">Réseaux sociaux</span>
         <span class="collection-solo-tab-state" data-dnd-tab-state="social">Indispo</span>
       </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="etsy">
+        <span class="collection-solo-tab-label">Etsy API</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="etsy">Disponible</span>
+      </button>
     </div>
 
     <div class="collection-solo-status" data-js="dnd-solo-status" aria-live="polite">
@@ -148,13 +215,6 @@
             <span class="collection-stepper-kicker">Tabletop DnD · Formulaire guidé</span>
             <h2 class="collection-stepper-title" data-js="dnd-stepper-title">Images</h2>
             <p class="collection-stepper-subtitle" data-js="dnd-stepper-subtitle">Ajoute les visuels qui serviront à l'analyse du pipeline.</p>
-          </div>
-          <div class="collection-stepper-header-actions">
-            <button class="run-btn collection-stepper-run-btn collection-stepper-header-run-btn" type="button" id="runBtn-tt" data-pipeline-action="launch" data-pipeline-prefix="tt" title="Lancer le pipeline" aria-label="Lancer le pipeline" aria-hidden="true">
-              <svg class="collection-stepper-header-run-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M8 5.14v13.72L19 12 8 5.14Z"></path>
-              </svg>
-            </button>
           </div>
         </div>
         <div class="collection-stepper-progress" data-js="dnd-stepper-progress" aria-label="Progression du formulaire Tabletop DnD">
@@ -186,7 +246,7 @@
           <div class="form-full-row">
             <div class="drop-zone collection-stepper-drop-zone" id="dropZone-tt" data-js="image-drop-zone" data-prefix="tt">
               <div class="dz-placeholder" id="dzPlaceholder-tt">
-                <div class="di">🖼️</div>
+                <div class="di" data-svg-icon="image"></div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
               </div>
               <div class="thumb-strip" id="thumbStrip-tt"></div>
@@ -357,11 +417,13 @@
                 <div class="fg full">
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
-                    <button class="btn btn-accent" type="button" id="runIrisBtn-tt" data-ui-action="run-iris" data-action-arg="tt">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-tt" data-ui-action="run-iris" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer Iris</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris"><span data-svg-icon="settings"></span><span class="ui-icon-label">Prompt</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier</span></button>
                   </div>
-                  <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
+                  <div class="iris-output-editor" contenteditable="true" spellcheck="false" data-iris-output-editor data-prefix="tt">
+                    <pre class="output-box empty iris-output-box" id="out-iris-tt">— pas encore généré —</pre>
+                  </div>
                 </div>
               </div>
             </div>
@@ -384,7 +446,19 @@
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
-                <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="tt">▶ Lancer le pipeline complet</button>
+                <label class="launch-model-picker" for="tt-launch-model">
+                  <span class="launch-model-picker-label">Modèle Claude</span>
+                  <select id="tt-launch-model" class="launch-model-select">
+                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
+                    <option value="claude-opus-4-5-20251101">Claude Opus 4.5</option>
+                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
+                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
+                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
+                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
+                  </select>
+                </label>
+                <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer le pipeline complet</span></button>
               </div>
               <pre class="output-box" id="launchStatus-tt">Pipeline : complet
 Étape courante : —
@@ -399,7 +473,7 @@ Cache : —</pre>
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="dnd-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
           <span class="collection-stepper-footer-label" data-js="dnd-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
-          <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-tt">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
+          <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-tt"><span data-svg-icon="alert"></span><span class="ui-icon-label">Charge au moins une image avant de lancer le pipeline.</span></div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="dnd-stepper-next">Suivant →</button>
       </div>
@@ -415,40 +489,40 @@ Cache : —</pre>
 
   <div id="finalOutput-tt" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
-      <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Etsy — Output final</span>
+      <span class="panel-toolbar-title panel-toolbar-title-success"><span data-svg-icon="check"></span><span class="ui-icon-label">Fiche Etsy — Output final</span></span>
       <div class="toolbar-actions">
-        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs">🔍 Review globale</button>
-        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="export-final-outputs" data-action-arg="tt">💾 Export</button>
-        <button class="copy-all-btn copy-all-btn-compact" type="button" data-ui-action="copy-all-final">📋 Tout copier</button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs"><span data-svg-icon="search"></span><span class="ui-icon-label">Review globale</span></button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="export-final-outputs" data-action-arg="tt"><span data-svg-icon="save"></span><span class="ui-icon-label">Export</span></button>
+        <button class="copy-all-btn copy-all-btn-compact" type="button" data-ui-action="copy-all-final"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
       </div>
     </div>
     <div class="final-section is-hidden" id="fs-titre-tt">
       <div class="fs-header">
-        <span>🏷️ Titre validé</span>
-        <button type="button" data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
+        <span>Titre validé</span>
+        <button type="button" data-ui-action="copy-section" data-action-arg="titre_valide"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-titre-tt" data-final-prefix="tt" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="titre_valide" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-titre-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-tags-tt">
       <div class="fs-header">
-        <span>🔖 Tags</span>
-        <button type="button" data-ui-action="copy-section" data-action-arg="tags">📋</button>
+        <span>Tags</span>
+        <button type="button" data-ui-action="copy-section" data-action-arg="tags"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-tags-tt" data-final-prefix="tt" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="tags" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-tags-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-description-tt">
       <div class="fs-header">
-        <span>📝 Description</span>
-        <button type="button" data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
+        <span>Description</span>
+        <button type="button" data-ui-action="copy-section" data-action-arg="description_assembled"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-description-tt" data-final-prefix="tt" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="description_assembled" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-description-tt"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-alt-tt">
       <div class="fs-header">
-        <span>🖼️ Balise ALT</span>
-        <button type="button" data-ui-action="copy-section" data-action-arg="alt">📋</button>
+        <span>Balise ALT</span>
+        <button type="button" data-ui-action="copy-section" data-action-arg="alt"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-alt-tt" data-final-prefix="tt" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="tt" data-final-key="alt" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-alt-tt"></pre></div>
     </div>
   </div>
       </section>
@@ -458,72 +532,72 @@ Cache : —</pre>
   <!-- RÉSEAUX SOCIAUX TABLETOP -->
   <div class="form-section social-section social-section-tt is-hidden" id="socialSection-tt">
     <div class="section-header-inline">
-      <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="tt" id="toggleReseauxOnlyBtn-tt">📋 Fiche déjà publiée</button>
+      <h2 class="section-title-inline"><span data-svg-icon="message"></span><span class="ui-icon-label">Réseaux sociaux — optionnel</span></h2>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="tt" id="toggleReseauxOnlyBtn-tt"><span data-svg-icon="copy"></span><span class="ui-icon-label">Fiche déjà publiée</span></button>
     </div>
     <div class="section-stack-md">
       <div class="agent-card" id="card-social-tt">
         <div class="agent-header" data-card-toggle="social-tt">
-          <span class="agent-num">○</span>
-          <span class="agent-title">📸 Léo · Réseaux sociaux</span>
-          <span class="badge-rules is-hidden" id="brul-social-tt">📌</span>
+          <span class="agent-num"><span data-svg-icon="dot"></span></span>
+          <span class="agent-title">Léo · Réseaux sociaux</span>
+          <span class="badge-rules is-hidden" id="brul-social-tt"><span data-svg-icon="pin"></span></span>
           <span class="agent-status s-wait" id="stat-social-tt">en attente</span>
-          <span class="chevron" id="chev-social-tt">▾</span>
+          <span class="chevron" id="chev-social-tt"><span data-svg-icon="chevronDown"></span></span>
         </div>
         <div class="agent-body" id="body-social-tt">
           <div class="social-platform-row">
             <label class="social-check">
               <input type="checkbox" id="soc-insta-tt" checked/>
-              📸 Instagram / TikTok
+              Instagram / TikTok
             </label>
             <label class="social-check">
               <input type="checkbox" id="soc-fb-tt" checked/>
-              👥 Facebook
+              Facebook
             </label>
             <label class="social-check">
               <input type="checkbox" id="soc-marketplace-tt"/>
-              🛍️ FB Marketplace
+              FB Marketplace
             </label>
           </div>
           <div class="output-box empty" id="out-social-tt">— pas encore généré —</div>
           <div class="correction-area">
-            <label>💬 Correction ponctuelle</label>
+            <label>Correction ponctuelle</label>
             <textarea id="cor-social-tt" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runLeoBtn-tt" type="button" data-ui-action="run-leo-agent" data-action-arg="tt">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="tt">⏹</button>
-            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
-            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
+            <button class="btn btn-accent" id="runLeoBtn-tt" type="button" data-ui-action="run-leo-agent" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Générer</span></button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-tt" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="tt"><span data-svg-icon="stop"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social"><span data-svg-icon="copy"></span></button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
       <div class="agent-card" id="card-camille-tt">
         <div class="agent-header" data-card-toggle="camille-tt">
-          <span class="agent-num">○</span>
-          <span class="agent-title">📌 Camille · Pinterest</span>
-          <span class="badge-rules is-hidden" id="brul-camille-tt">📌</span>
+          <span class="agent-num"><span data-svg-icon="dot"></span></span>
+          <span class="agent-title">Camille · Pinterest</span>
+          <span class="badge-rules is-hidden" id="brul-camille-tt"><span data-svg-icon="pin"></span></span>
           <span class="agent-status s-wait" id="stat-camille-tt">en attente</span>
-          <span class="chevron" id="chev-camille-tt">▾</span>
+          <span class="chevron" id="chev-camille-tt"><span data-svg-icon="chevronDown"></span></span>
         </div>
         <div class="agent-body" id="body-camille-tt">
           <div class="social-platform-row">
             <label class="social-check">
               <input type="checkbox" id="soc-pinterest-tt" checked/>
-              📌 Pinterest
+              Pinterest
             </label>
           </div>
           <div class="output-box empty" id="out-camille-tt">— pas encore généré —</div>
           <div class="correction-area">
-            <label>💬 Correction ponctuelle</label>
+            <label>Correction ponctuelle</label>
             <textarea id="cor-camille-tt" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runCamilleBtn-tt" type="button" data-ui-action="run-camille-agent" data-action-arg="tt">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="tt">⏹</button>
-            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
-            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
+            <button class="btn btn-accent" id="runCamilleBtn-tt" type="button" data-ui-action="run-camille-agent" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Générer</span></button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-tt" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="tt"><span data-svg-icon="stop"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille"><span data-svg-icon="copy"></span></button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
           </div>
         </div>
@@ -532,7 +606,7 @@ Cache : —</pre>
   </div>
 
   <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-tt">
-    <h2>📱 Réseaux only — Fiche déjà publiée</h2>
+    <h2><span data-svg-icon="message"></span><span class="ui-icon-label">Réseaux only — Fiche déjà publiée</span></h2>
     <div class="form-grid">
       <div class="fg full">
         <label>Accroche validée</label>
@@ -564,66 +638,129 @@ Cache : —</pre>
       </div>
     </div>
     <div class="reseaux-only-actions">
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="tt">📸 Léo</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="tt">📌 Camille</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="tt">📱 Les deux</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Léo</span></button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-tt" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Camille</span></button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Les deux</span></button>
     </div>
   </div>
 
   <div id="socialOutput-tt" class="social-output-panel is-hidden">
     <div class="panel-toolbar">
-      <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
-      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" type="button" data-ui-action="copy-social">📋 Tout copier</button>
+      <span class="panel-toolbar-title panel-toolbar-title-accent"><span data-svg-icon="message"></span><span class="ui-icon-label">Posts Réseaux Sociaux</span></span>
+      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" type="button" data-ui-action="copy-social"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
     </div>
     <div class="final-section is-hidden" id="ss-insta-tt">
       <div class="fs-header">
-        <span>📸 Instagram / TikTok</span>
-        <button type="button" data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
+        <span>Instagram / TikTok</span>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="insta"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-insta-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-fb-tt">
       <div class="fs-header">
-        <span>👥 Facebook</span>
-        <button type="button" data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
+        <span>Facebook</span>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="fb"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-fb-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-marketplace-tt">
       <div class="fs-header">
-        <span>🛍️ Facebook Marketplace</span>
-        <button type="button" data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
+        <span>Facebook Marketplace</span>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="marketplace"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-marketplace-tt"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-pinterest-tt">
       <div class="fs-header">
-        <span>📌 Pinterest</span>
-        <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
+        <span>Pinterest</span>
+        <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterest"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout</span></button>
       </div>
       <div id="sc-pinterest-titre-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Titre Pinterest</span>
-          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestTitre"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-t-tt"></pre>
       </div>
       <div id="sc-pinterest-desc-wrap-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Description Pinterest</span>
-          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestDesc"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-d-tt"></pre>
       </div>
       <div id="sc-pinterest-alt-wrap-tt" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-tt">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
-          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
+          <button type="button" data-ui-action="copy-social-section" data-action-arg="pinterestAlt"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-a-tt"></pre>
       </div>
     </div>
   </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="etsy" hidden>
+        <div class="form-section etsy-api-panel" id="etsyApiPanel-tt" data-etsy-workspace-prefix="tt">
+          <div class="collection-stepper-header etsy-api-header">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Etsy API · Chantier parallèle</span>
+              <h2 class="collection-stepper-title">Photo et vidéo</h2>
+              <p class="collection-stepper-subtitle">Charge une fiche Etsy source, récupère ses médias, puis prépare la future duplication draft bloc par bloc.</p>
+            </div>
+            <div class="collection-stepper-progress etsy-api-progress" aria-label="Étapes Etsy API">
+              <button class="collection-stepper-pill is-current" type="button" disabled>
+                <span class="collection-stepper-pill-index">01</span>
+                <span class="collection-stepper-pill-label">Photo et vidéo</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">02</span>
+                <span class="collection-stepper-pill-label">Catégorie</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">03</span>
+                <span class="collection-stepper-pill-label">Détails</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">04</span>
+                <span class="collection-stepper-pill-label">Options</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">05</span>
+                <span class="collection-stepper-pill-label">Attributs</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">06</span>
+                <span class="collection-stepper-pill-label">Prix et stock</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">07</span>
+                <span class="collection-stepper-pill-label">Livraison</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">08</span>
+                <span class="collection-stepper-pill-label">Paramètres</span>
+              </button>
+            </div>
+          </div>
+          <div class="etsy-api-body">
+            <div class="fg full">
+              <label for="etsyApiListingRef-tt">Référence fiche Etsy</label>
+              <input type="text" id="etsyApiListingRef-tt" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" data-ui-action="load-etsy-workspace-media" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="copy-etsy-workspace-payload" data-action-arg="tt"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier le payload</span></button>
+              </div>
+              <p class="fetch-status" id="etsyApiStatus-tt">En attente d’une fiche source.</p>
+            </div>
+            <div class="etsy-api-media-summary" id="etsyApiSummary-tt"></div>
+            <div class="image-thumb-strip etsy-api-media-strip" id="etsyApiMediaStrip-tt"></div>
+            <details class="form-optional">
+              <summary><span class="form-optional-toggle">Payload brut</span></summary>
+              <pre class="home-integration-details etsy-api-payload" id="etsyApiPayload-tt">Aucun payload chargé.</pre>
+            </details>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -653,6 +790,10 @@ Cache : —</pre>
         <span class="collection-solo-tab-label">Réseaux sociaux</span>
         <span class="collection-solo-tab-state" data-collection-tab-state="social">Indispo</span>
       </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="etsy">
+        <span class="collection-solo-tab-label">Etsy API</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="etsy">Disponible</span>
+      </button>
     </div>
 
     <div class="collection-solo-status" data-js="collection-solo-status" aria-live="polite">
@@ -671,13 +812,6 @@ Cache : —</pre>
             <span class="collection-stepper-kicker">Collection · Formulaire guidé</span>
             <h2 class="collection-stepper-title" data-js="collection-stepper-title">Images</h2>
             <p class="collection-stepper-subtitle" data-js="collection-stepper-subtitle">Ajoute les visuels qui serviront à l'analyse du pipeline.</p>
-          </div>
-          <div class="collection-stepper-header-actions">
-            <button class="run-btn collection-stepper-run-btn collection-stepper-header-run-btn" type="button" id="runBtn-col" data-pipeline-action="launch" data-pipeline-prefix="col" title="Lancer le pipeline" aria-label="Lancer le pipeline" aria-hidden="false">
-  <svg class="collection-stepper-header-run-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path d="M8 5.14v13.72L19 12 8 5.14Z"></path>
-  </svg>
-</button>
           </div>
         </div>
         <div class="collection-stepper-progress" data-js="collection-stepper-progress" aria-label="Progression du formulaire Collection">
@@ -709,7 +843,7 @@ Cache : —</pre>
           <div class="form-full-row">
             <div class="drop-zone collection-stepper-drop-zone" id="dropZone-col" data-js="image-drop-zone" data-prefix="col">
               <div class="dz-placeholder" id="dzPlaceholder-col">
-                <div class="di">🖼️</div>
+                <div class="di" data-svg-icon="image"></div>
                 <p>Glisse tes images ici ou clique pour choisir</p>
               </div>
               <div class="thumb-strip" id="thumbStrip-col"></div>
@@ -841,10 +975,18 @@ Cache : —</pre>
   />
 </div>
                     <div class="fg full">
+                      <label>Archétypes <span class="fg-hint">→ classes, rôles, fonctions</span></label>
+                      <input type="text" id="col-fArchetypes" placeholder="ex: heroine, rival, anti-hero"/>
+                    </div>
+                    <div class="fg full">
+                      <label>SEO élargies <span class="fg-hint">→ connexes plus larges, séparés par virgules</span></label>
+                      <input type="text" id="col-fArchSeo" placeholder="ex: arcane statue, fan art collectible, resin garage kit"/>
+                    </div>
+                    <div class="fg full">
                       <label>Lien personnage <span class="fg-hint">→ Wikipedia, fandom…</span></label>
                       <div class="field-action-row">
                         <input type="url" id="col-fLienPerso" class="field-flex-1" placeholder="https://fr.wikipedia.org/wiki/..."/>
-                        <button class="btn btn-accent" id="fetchBtn-col" type="button" data-ui-action="fetch-personnage">🔍 Fetch</button>
+                        <button class="btn btn-accent" id="fetchBtn-col" type="button" data-ui-action="fetch-personnage"><span data-svg-icon="search"></span><span class="ui-icon-label">Fetch</span></button>
                       </div>
                       <div id="fetchStatus-col" class="fetch-status is-hidden"></div>
                     </div>
@@ -859,11 +1001,13 @@ Cache : —</pre>
                 <div class="fg full">
                   <label>Iris · recherche sémantique <span class="fg-hint">→ agent autonome hors pipeline global</span></label>
                   <div class="field-action-row iris-action-row">
-                    <button class="btn btn-accent" type="button" id="runIrisBtn-col" data-ui-action="run-iris" data-action-arg="col">▶ Lancer Iris</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris">⚙️ Prompt</button>
-                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris">📋 Copier</button>
+                    <button class="btn btn-accent" type="button" id="runIrisBtn-col" data-ui-action="run-iris" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer Iris</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="iris"><span data-svg-icon="settings"></span><span class="ui-icon-label">Prompt</span></button>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-section" data-action-arg="iris"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier</span></button>
                   </div>
-                  <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
+                  <div class="iris-output-editor" contenteditable="true" spellcheck="false" data-iris-output-editor data-prefix="col">
+                    <pre class="output-box empty iris-output-box" id="out-iris-col">— pas encore généré —</pre>
+                  </div>
                 </div>
                 <div class="fg full">
                   <label>Description figurine <span class="fg-hint">→ pièce vendue, options, variantes, socle, FX</span></label>
@@ -880,7 +1024,19 @@ Cache : —</pre>
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
-                <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="col">▶ Lancer le pipeline complet</button>
+                <label class="launch-model-picker" for="col-launch-model">
+                  <span class="launch-model-picker-label">Modèle Claude</span>
+                  <select id="col-launch-model" class="launch-model-select">
+                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
+                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
+                    <option value="claude-opus-4-5-20251101">Claude Opus 4.5</option>
+                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
+                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
+                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
+                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
+                  </select>
+                </label>
+                <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer le pipeline complet</span></button>
               </div>
               <pre class="output-box" id="launchStatus-col">Pipeline : complet
 Étape courante : —
@@ -895,7 +1051,7 @@ Cache : —</pre>
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
           <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
-          <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col">⚠️ Charge au moins une image avant de lancer le pipeline.</div>
+          <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col"><span data-svg-icon="alert"></span><span class="ui-icon-label">Charge au moins une image avant de lancer le pipeline.</span></div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>
       </div>
@@ -911,40 +1067,40 @@ Cache : —</pre>
 
   <div id="finalOutput-col" class="final-output-panel is-hidden">
     <div class="panel-toolbar">
-      <span class="panel-toolbar-title panel-toolbar-title-success">✅ Fiche Collection — Output final</span>
+      <span class="panel-toolbar-title panel-toolbar-title-success"><span data-svg-icon="check"></span><span class="ui-icon-label">Fiche Collection — Output final</span></span>
       <div class="toolbar-actions">
-        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs">🔍 Review globale</button>
-        <button class="btn btn-muted btn-compact-text" data-ui-action="export-final-outputs" data-action-arg="col">💾 Export</button>
-        <button class="copy-all-btn copy-all-btn-compact" data-ui-action="copy-all-final">📋 Tout copier</button>
+        <button class="btn btn-muted btn-compact-text" type="button" data-ui-action="copy-all-outputs"><span data-svg-icon="search"></span><span class="ui-icon-label">Review globale</span></button>
+        <button class="btn btn-muted btn-compact-text" data-ui-action="export-final-outputs" data-action-arg="col"><span data-svg-icon="save"></span><span class="ui-icon-label">Export</span></button>
+        <button class="copy-all-btn copy-all-btn-compact" data-ui-action="copy-all-final"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
       </div>
     </div>
     <div class="final-section is-hidden" id="fs-titre-col">
       <div class="fs-header">
-        <span>🏷️ Titre validé</span>
-        <button data-ui-action="copy-section" data-action-arg="titre_valide">📋</button>
+        <span>Titre validé</span>
+        <button data-ui-action="copy-section" data-action-arg="titre_valide"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-titre-col" data-final-prefix="col" data-final-key="titre_valide" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="titre_valide" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-titre-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-tags-col">
       <div class="fs-header">
-        <span>🔖 Tags</span>
-        <button data-ui-action="copy-section" data-action-arg="tags">📋</button>
+        <span>Tags</span>
+        <button data-ui-action="copy-section" data-action-arg="tags"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-tags-col" data-final-prefix="col" data-final-key="tags" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="tags" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-tags-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-description-col">
       <div class="fs-header">
-        <span>📝 Description</span>
-        <button data-ui-action="copy-section" data-action-arg="description_assembled">📋</button>
+        <span>Description</span>
+        <button data-ui-action="copy-section" data-action-arg="description_assembled"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-description-col" data-final-prefix="col" data-final-key="description_assembled" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="description_assembled" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-description-col"></pre></div>
     </div>
     <div class="final-section is-hidden" id="fs-alt-col">
       <div class="fs-header">
-        <span>🖼️ Balise ALT</span>
-        <button data-ui-action="copy-section" data-action-arg="alt">📋</button>
+        <span>Balise ALT</span>
+        <button data-ui-action="copy-section" data-action-arg="alt"><span data-svg-icon="copy"></span></button>
       </div>
-      <pre class="fs-content final-editable-output" id="fc-alt-col" data-final-prefix="col" data-final-key="alt" contenteditable="true" spellcheck="false"></pre>
+      <div class="final-editable-output" data-final-prefix="col" data-final-key="alt" contenteditable="true" spellcheck="false"><pre class="fs-content" id="fc-alt-col"></pre></div>
     </div>
   </div>
       </section>
@@ -954,72 +1110,72 @@ Cache : —</pre>
   <!-- RÉSEAUX SOCIAUX COLLECTION -->
   <div class="form-section social-section social-section-col is-hidden" id="socialSection-col">
     <div class="section-header-inline">
-      <h2 class="section-title-inline">📱 Réseaux sociaux — optionnel</h2>
-      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="col" id="toggleReseauxOnlyBtn-col">📋 Fiche déjà publiée</button>
+      <h2 class="section-title-inline"><span data-svg-icon="message"></span><span class="ui-icon-label">Réseaux sociaux — optionnel</span></h2>
+      <button class="btn btn-orange btn-compact-text" type="button" data-ui-action="toggle-reseaux-only" data-action-arg="col" id="toggleReseauxOnlyBtn-col"><span data-svg-icon="copy"></span><span class="ui-icon-label">Fiche déjà publiée</span></button>
     </div>
     <div class="section-stack-md">
       <div class="agent-card" id="card-social-col">
         <div class="agent-header" data-card-toggle="social-col">
-          <span class="agent-num">○</span>
-          <span class="agent-title">📸 Theo · Réseaux sociaux</span>
-          <span class="badge-rules is-hidden" id="brul-social-col">📌</span>
+          <span class="agent-num"><span data-svg-icon="dot"></span></span>
+          <span class="agent-title">Theo · Réseaux sociaux</span>
+          <span class="badge-rules is-hidden" id="brul-social-col"><span data-svg-icon="pin"></span></span>
           <span class="agent-status s-wait" id="stat-social-col">en attente</span>
-          <span class="chevron" id="chev-social-col">▾</span>
+          <span class="chevron" id="chev-social-col"><span data-svg-icon="chevronDown"></span></span>
         </div>
         <div class="agent-body" id="body-social-col">
           <div class="social-platform-row">
             <label class="social-check">
               <input type="checkbox" id="soc-insta-col" checked/>
-              📸 Instagram / TikTok
+              Instagram / TikTok
             </label>
             <label class="social-check">
               <input type="checkbox" id="soc-fb-col" checked/>
-              👥 Facebook
+              Facebook
             </label>
             <label class="social-check">
               <input type="checkbox" id="soc-marketplace-col"/>
-              🛍️ FB Marketplace
+              FB Marketplace
             </label>
           </div>
           <div class="output-box empty" id="out-social-col">— pas encore généré —</div>
           <div class="correction-area">
-            <label>💬 Correction ponctuelle</label>
+            <label>Correction ponctuelle</label>
             <textarea id="cor-social-col" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runLeoBtn-col" type="button" data-ui-action="run-leo-agent" data-action-arg="col">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="col">⏹</button>
-            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social">⚙️</button>
-            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social">📋</button>
+            <button class="btn btn-accent" id="runLeoBtn-col" type="button" data-ui-action="run-leo-agent" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Générer</span></button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-social-col" type="button" data-social-action="stop-agent" data-agent-id="social" data-prefix="col"><span data-svg-icon="stop"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="social"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="social"><span data-svg-icon="copy"></span></button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="social">&lt;/&gt;</button>
           </div>
         </div>
       </div>
       <div class="agent-card" id="card-camille-col">
         <div class="agent-header" data-card-toggle="camille-col">
-          <span class="agent-num">○</span>
-          <span class="agent-title">📌 Zoe · Pinterest</span>
-          <span class="badge-rules is-hidden" id="brul-camille-col">📌</span>
+          <span class="agent-num"><span data-svg-icon="dot"></span></span>
+          <span class="agent-title">Zoe · Pinterest</span>
+          <span class="badge-rules is-hidden" id="brul-camille-col"><span data-svg-icon="pin"></span></span>
           <span class="agent-status s-wait" id="stat-camille-col">en attente</span>
-          <span class="chevron" id="chev-camille-col">▾</span>
+          <span class="chevron" id="chev-camille-col"><span data-svg-icon="chevronDown"></span></span>
         </div>
         <div class="agent-body" id="body-camille-col">
           <div class="social-platform-row">
             <label class="social-check">
               <input type="checkbox" id="soc-pinterest-col" checked/>
-              📌 Pinterest
+              Pinterest
             </label>
           </div>
           <div class="output-box empty" id="out-camille-col">— pas encore généré —</div>
           <div class="correction-area">
-            <label>💬 Correction ponctuelle</label>
+            <label>Correction ponctuelle</label>
             <textarea id="cor-camille-col" placeholder="Pour cette fiche uniquement..."></textarea>
           </div>
           <div class="agent-actions">
-            <button class="btn btn-accent" id="runCamilleBtn-col" type="button" data-ui-action="run-camille-agent" data-action-arg="col">▶ Générer</button>
-            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="col">⏹</button>
-            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille">⚙️</button>
-            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille">📋</button>
+            <button class="btn btn-accent" id="runCamilleBtn-col" type="button" data-ui-action="run-camille-agent" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Générer</span></button>
+            <button class="btn btn-agent-stop is-hidden" id="bstop-camille-col" type="button" data-social-action="stop-agent" data-agent-id="camille" data-prefix="col"><span data-svg-icon="stop"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="camille"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="camille"><span data-svg-icon="copy"></span></button>
             <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="camille">&lt;/&gt;</button>
           </div>
         </div>
@@ -1028,7 +1184,7 @@ Cache : —</pre>
   </div>
 
   <div class="form-section reseaux-only-section is-hidden" id="reseauxOnlySection-col">
-    <h2>📱 Réseaux only — Fiche déjà publiée</h2>
+    <h2><span data-svg-icon="message"></span><span class="ui-icon-label">Réseaux only — Fiche déjà publiée</span></h2>
     <div class="form-grid">
       <div class="fg full">
         <label>Accroche validée</label>
@@ -1060,66 +1216,129 @@ Cache : —</pre>
       </div>
     </div>
     <div class="reseaux-only-actions">
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="col">📸 Theo</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="col">📌 Zoe</button>
-      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="col">📱 Les deux</button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="leo" data-action-arg2="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Theo</span></button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-col" type="button" data-ui-action="run-reseaux-only" data-action-arg="camille" data-action-arg2="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Zoe</span></button>
+      <button class="run-btn reseaux-only-btn reseaux-only-btn-both" type="button" data-ui-action="run-reseaux-only" data-action-arg="both" data-action-arg2="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Les deux</span></button>
     </div>
   </div>
 
   <div id="socialOutput-col" class="social-output-panel is-hidden">
     <div class="panel-toolbar">
-      <span class="panel-toolbar-title panel-toolbar-title-accent">📱 Posts Réseaux Sociaux</span>
-      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" data-ui-action="copy-social">📋 Tout copier</button>
+      <span class="panel-toolbar-title panel-toolbar-title-accent"><span data-svg-icon="message"></span><span class="ui-icon-label">Posts Réseaux Sociaux</span></span>
+      <button class="copy-all-btn copy-all-btn-compact copy-all-btn-accent" data-ui-action="copy-social"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
     </div>
     <div class="final-section is-hidden" id="ss-insta-col">
       <div class="fs-header">
-        <span>📸 Instagram / TikTok</span>
-        <button data-ui-action="copy-social-section" data-action-arg="insta">📋</button>
+        <span>Instagram / TikTok</span>
+        <button data-ui-action="copy-social-section" data-action-arg="insta"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-insta-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-fb-col">
       <div class="fs-header">
-        <span>👥 Facebook</span>
-        <button data-ui-action="copy-social-section" data-action-arg="fb">📋</button>
+        <span>Facebook</span>
+        <button data-ui-action="copy-social-section" data-action-arg="fb"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-fb-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-marketplace-col">
       <div class="fs-header">
-        <span>🛍️ Facebook Marketplace</span>
-        <button data-ui-action="copy-social-section" data-action-arg="marketplace">📋</button>
+        <span>Facebook Marketplace</span>
+        <button data-ui-action="copy-social-section" data-action-arg="marketplace"><span data-svg-icon="copy"></span></button>
       </div>
       <pre class="fs-content" id="sc-marketplace-col"></pre>
     </div>
     <div class="final-section is-hidden" id="ss-pinterest-col">
       <div class="fs-header">
-        <span>📌 Pinterest</span>
-        <button data-ui-action="copy-social-section" data-action-arg="pinterest">📋 Tout</button>
+        <span>Pinterest</span>
+        <button data-ui-action="copy-social-section" data-action-arg="pinterest"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout</span></button>
       </div>
       <div id="sc-pinterest-titre-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Titre Pinterest</span>
-          <button data-ui-action="copy-social-section" data-action-arg="pinterestTitre">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestTitre"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-t-col"></pre>
       </div>
       <div id="sc-pinterest-desc-wrap-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Description Pinterest</span>
-          <button data-ui-action="copy-social-section" data-action-arg="pinterestDesc">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestDesc"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-d-col"></pre>
       </div>
       <div id="sc-pinterest-alt-wrap-col" class="is-hidden">
         <div class="fs-header pinterest-subheader pinterest-subheader-col">
           <span class="pinterest-subtitle">Balise ALT Pinterest</span>
-          <button data-ui-action="copy-social-section" data-action-arg="pinterestAlt">📋</button>
+          <button data-ui-action="copy-social-section" data-action-arg="pinterestAlt"><span data-svg-icon="copy"></span></button>
         </div>
         <pre class="fs-content" id="sc-pinterest-a-col"></pre>
       </div>
     </div>
   </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="etsy" hidden>
+        <div class="form-section etsy-api-panel" id="etsyApiPanel-col" data-etsy-workspace-prefix="col">
+          <div class="collection-stepper-header etsy-api-header">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Etsy API · Chantier parallèle</span>
+              <h2 class="collection-stepper-title">Photo et vidéo</h2>
+              <p class="collection-stepper-subtitle">Charge une fiche Etsy source, récupère ses médias, puis prépare la future duplication draft bloc par bloc.</p>
+            </div>
+            <div class="collection-stepper-progress etsy-api-progress" aria-label="Étapes Etsy API">
+              <button class="collection-stepper-pill is-current" type="button" disabled>
+                <span class="collection-stepper-pill-index">01</span>
+                <span class="collection-stepper-pill-label">Photo et vidéo</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">02</span>
+                <span class="collection-stepper-pill-label">Catégorie</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">03</span>
+                <span class="collection-stepper-pill-label">Détails</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">04</span>
+                <span class="collection-stepper-pill-label">Options</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">05</span>
+                <span class="collection-stepper-pill-label">Attributs</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">06</span>
+                <span class="collection-stepper-pill-label">Prix et stock</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">07</span>
+                <span class="collection-stepper-pill-label">Livraison</span>
+              </button>
+              <button class="collection-stepper-pill" type="button" disabled>
+                <span class="collection-stepper-pill-index">08</span>
+                <span class="collection-stepper-pill-label">Paramètres</span>
+              </button>
+            </div>
+          </div>
+          <div class="etsy-api-body">
+            <div class="fg full">
+              <label for="etsyApiListingRef-col">Référence fiche Etsy</label>
+              <input type="text" id="etsyApiListingRef-col" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row">
+                <button class="btn btn-accent" type="button" data-ui-action="load-etsy-workspace-media" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="copy-etsy-workspace-payload" data-action-arg="col"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier le payload</span></button>
+              </div>
+              <p class="fetch-status" id="etsyApiStatus-col">En attente d’une fiche source.</p>
+            </div>
+            <div class="etsy-api-media-summary" id="etsyApiSummary-col"></div>
+            <div class="image-thumb-strip etsy-api-media-strip" id="etsyApiMediaStrip-col"></div>
+            <details class="form-optional">
+              <summary><span class="form-optional-toggle">Payload brut</span></summary>
+              <pre class="home-integration-details etsy-api-payload" id="etsyApiPayload-col">Aucun payload chargé.</pre>
+            </details>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -1133,7 +1352,7 @@ Cache : —</pre>
 <!-- Vue d’exécution : certains blocs de formulaire sont déplacés ici dynamiquement par JS pendant le pipeline. -->
 <div class="view" id="view-pipeline" data-js="view" data-view="pipeline">
   <div class="pipeline-view-header" id="pipelineViewHeader">
-    <span id="pipelineViewTitle" class="pipeline-view-title">🎲 Pipeline en cours...</span>
+    <span id="pipelineViewTitle" class="pipeline-view-title"><span data-svg-icon="tabletop"></span><span class="ui-icon-label">Pipeline en cours...</span></span>
     <div class="pipeline-timeline" id="pipelineTimeline" data-js="pipeline-timeline"></div>
   </div>
   <div class="pipeline-view-body" id="pipelineViewBody">
@@ -1149,25 +1368,25 @@ Cache : —</pre>
 <div class="lb-overlay" id="biblioLightbox" data-overlay-close="close-biblio-lightbox">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
-      <h3>📚 BIBLIOTHÈQUES SÉMANTIQUES</h3>
-      <button class="lb-close" type="button" data-ui-action="close-biblio-lightbox">✕</button>
+      <h3><span data-svg-icon="book"></span><span class="ui-icon-label">BIBLIOTHÈQUES SÉMANTIQUES</span></h3>
+      <button class="lb-close" type="button" data-ui-action="close-biblio-lightbox"><span data-svg-icon="close"></span></button>
     </div>
     <div class="lb-body lb-body-flush">
       <div class="lb-tabs-row">
-        <button class="biblio-tab active" id="btab-tags" type="button" data-ui-action="switch-biblio-tab" data-action-arg="tags">🔖 Tags</button>
-        <button class="biblio-tab" id="btab-accroches" type="button" data-ui-action="switch-biblio-tab" data-action-arg="accroches">🎯 Accroches</button>
-        <button class="biblio-tab" id="btab-objectif" type="button" data-ui-action="switch-biblio-tab" data-action-arg="objectif">🎯 Objectif</button>
-        <button class="biblio-tab" id="btab-psycho" type="button" data-ui-action="switch-biblio-tab" data-action-arg="psycho">🧠 Psychologie</button>
-        <button class="biblio-tab" id="btab-titres" type="button" data-ui-action="switch-biblio-tab" data-action-arg="titres">🏷️ Titres validés</button>
-        <button class="biblio-tab" id="btab-bibliotheque-semantique" type="button" data-ui-action="switch-biblio-tab" data-action-arg="bibliotheque-semantique">📚 Sémantique</button>
+        <button class="biblio-tab active" id="btab-tags" type="button" data-ui-action="switch-biblio-tab" data-action-arg="tags"><span data-svg-icon="tag"></span><span class="ui-icon-label">Tags</span></button>
+        <button class="biblio-tab" id="btab-accroches" type="button" data-ui-action="switch-biblio-tab" data-action-arg="accroches"><span data-svg-icon="target"></span><span class="ui-icon-label">Accroches</span></button>
+        <button class="biblio-tab" id="btab-objectif" type="button" data-ui-action="switch-biblio-tab" data-action-arg="objectif"><span data-svg-icon="target"></span><span class="ui-icon-label">Objectif</span></button>
+        <button class="biblio-tab" id="btab-psycho" type="button" data-ui-action="switch-biblio-tab" data-action-arg="psycho"><span class="ui-icon-label">Psychologie</span></button>
+        <button class="biblio-tab" id="btab-titres" type="button" data-ui-action="switch-biblio-tab" data-action-arg="titres"><span data-svg-icon="tag"></span><span class="ui-icon-label">Titres validés</span></button>
+        <button class="biblio-tab" id="btab-bibliotheque-semantique" type="button" data-ui-action="switch-biblio-tab" data-action-arg="bibliotheque-semantique"><span data-svg-icon="book"></span><span class="ui-icon-label">Sémantique</span></button>
       </div>
       <div class="lb-body-block">
         <textarea id="biblio-textarea" spellcheck="false"></textarea>
       </div>
     </div>
     <div class="lb-footer">
-      <button class="btn btn-success" type="button" data-ui-action="save-biblio">💾 Sauvegarder</button>
-      <button class="btn btn-error" type="button" data-ui-action="reset-biblio">↺ Reset</button>
+      <button class="btn btn-success" type="button" data-ui-action="save-biblio"><span data-svg-icon="save"></span><span class="ui-icon-label">Sauvegarder</span></button>
+      <button class="btn btn-error" type="button" data-ui-action="reset-biblio"><span data-svg-icon="refresh"></span><span class="ui-icon-label">Reset</span></button>
     </div>
   </div>
 </div>
@@ -1176,16 +1395,16 @@ Cache : —</pre>
 <div class="lb-overlay" id="promptLightbox" data-overlay-close="close-prompt-lightbox">
   <div class="lb-box">
     <div class="lb-header">
-      <h3 id="lbTitle">⚙️ PROMPT AGENT</h3>
-      <button class="lb-close" type="button" data-ui-action="close-prompt-lightbox">✕</button>
+      <h3 id="lbTitle"><span data-svg-icon="settings"></span><span class="ui-icon-label">PROMPT AGENT</span></h3>
+      <button class="lb-close" type="button" data-ui-action="close-prompt-lightbox"><span data-svg-icon="close"></span></button>
     </div>
     <div class="lb-body">
       <textarea id="lbTextarea" spellcheck="false"></textarea>
-      <p class="lb-info">💡 Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[PRESENTATION_VISUELLE]], [[NATURE_SUJET]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[DESCRIPTION]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[DESCRIPTION_FIGURINE]], [[RESUME_PERSONNAGE]], [[NOTES]], [[BUZZ_COLLECTION]], [[ACCROCHE]], [[CTA]], [[URL]], [[PROFIL_DOMINANT]], [[SOCIAL_FORMATS]]</p>
+      <p class="lb-info">Placeholders: [[NOM]], [[SCULPTEUR]], [[ECHELLES]], [[POSE]], [[VERSION]], [[TYPE]], [[PRESENTATION_VISUELLE]], [[NATURE_SUJET]], [[UNIVERS]], [[PIECES]], [[ANALYSE]], [[MARCHE]], [[TAGS]], [[TITRE_VALIDE]], [[DESCRIPTION]], [[OBJECTIF]], [[PSYCHO]], [[MEDIUM]], [[LICENSE]], [[PARTICULARITES]], [[DESCRIPTION_FIGURINE]], [[RESUME_PERSONNAGE]], [[NOTES]], [[BUZZ_COLLECTION]], [[ACCROCHE]], [[CTA]], [[URL]], [[PROFIL_DOMINANT]], [[SOCIAL_FORMATS]]</p>
     </div>
     <div class="lb-footer">
-      <button class="btn btn-success" type="button" data-ui-action="save-prompt-lightbox">💾 Sauvegarder</button>
-      <button class="btn btn-error" type="button" data-ui-action="reset-prompt-lightbox">↺ Reset</button>
+      <button class="btn btn-success" type="button" data-ui-action="save-prompt-lightbox"><span data-svg-icon="save"></span><span class="ui-icon-label">Sauvegarder</span></button>
+      <button class="btn btn-error" type="button" data-ui-action="reset-prompt-lightbox"><span data-svg-icon="refresh"></span><span class="ui-icon-label">Reset</span></button>
     </div>
   </div>
 </div>
@@ -1197,8 +1416,8 @@ Cache : —</pre>
       <h3 id="rawInputTitle" data-js="raw-input-title">&lt;/&gt; INPUT BRUT</h3>
       <div class="modal-meta-row">
         <span id="rawInputCount" class="modal-meta-count" data-js="raw-input-count"></span>
-        <button class="btn btn-muted btn-xs-inline" type="button" data-ui-action="copy-raw-input">📋</button>
-        <button class="lb-close" type="button" data-ui-action="close-raw-input">✕</button>
+        <button class="btn btn-muted btn-xs-inline" type="button" data-ui-action="copy-raw-input"><span data-svg-icon="copy"></span></button>
+        <button class="lb-close" type="button" data-ui-action="close-raw-input"><span data-svg-icon="close"></span></button>
       </div>
     </div>
     <div class="lb-body">
@@ -1211,15 +1430,15 @@ Cache : —</pre>
 <div class="lb-overlay" id="explorerLightbox" data-js="explorer-lightbox" data-overlay-close="close-explorer">
   <div class="lb-box lb-box-wide">
     <div class="lb-header">
-      <h3 id="explorerTitle" data-js="explorer-title">🔭 EXPLORATION</h3>
+      <h3 id="explorerTitle" data-js="explorer-title"><span data-svg-icon="search"></span><span class="ui-icon-label">EXPLORATION</span></h3>
       <div class="modal-meta-row">
         <span id="explorerCount" class="modal-meta-count" data-js="explorer-count"></span>
-        <button class="lb-close" type="button" data-ui-action="close-explorer">✕</button>
+        <button class="lb-close" type="button" data-ui-action="close-explorer"><span data-svg-icon="close"></span></button>
       </div>
     </div>
     <div class="lb-body explorer-body">
       <div class="explorer-pane explorer-pane-top">
-        <div class="explorer-label">💬 Conversation agents</div>
+        <div class="explorer-label"><span data-svg-icon="message"></span><span class="ui-icon-label">Conversation agents</span></div>
         <textarea id="explorerConversation" class="explorer-conversation" data-js="explorer-conversation" spellcheck="false" readonly></textarea>
       </div>
       <div class="explorer-pane explorer-pane-bottom">

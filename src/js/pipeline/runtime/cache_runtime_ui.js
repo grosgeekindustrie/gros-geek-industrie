@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 (function initPipelineUICacheRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -141,7 +141,7 @@
     const freshness = getPromptCacheFreshnessInfo(resolvedPrefix);
     const status = getLastCacheStatus(resolvedPrefix);
     cacheNode.classList.remove(...(global.CACHE_FRESHNESS_CLASSES || []));
-    cacheNode.textContent = `cache ${status}`;
+    global.PipelineUIIcons?.setIconLabel?.(cacheNode, 'layers', `cache ${status}`);
 
     if (!freshness.hasEstimate) {
       cacheNode.title = `Cliquer pour copier le rapport cache complet · dernier statut : ${status}`;
@@ -292,23 +292,15 @@
     const normalizedText = String(text || '').trim();
     if (!normalizedText) return 0;
 
-    const apiKey = document.getElementById('apiKey')?.value?.trim();
-    if (!apiKey) throw new Error('Cle API manquante');
-
     const runtimeDebug = getRuntimeDebugState();
-    const resolvedModel = String(model || 'claude-sonnet-4-20250514').trim();
+    const resolvedModel = String(model || 'claude-sonnet-4-5').trim();
     const cacheKey = getTokenCountCacheKey(resolvedModel, normalizedText);
     const cachedValue = runtimeDebug.tokenCountCache[cacheKey];
     if (typeof cachedValue === 'number') return cachedValue;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages/count_tokens', {
+    const response = await fetch('/anthropic/messages/count_tokens', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: resolvedModel,
         messages: [{
@@ -373,7 +365,7 @@
 
   async function buildEventTokenSections(event = {}) {
     const sectionTexts = getEventSectionTexts(event);
-    const model = global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-20250514';
+    const model = global.getActiveAgentModel?.(event.agentId) || global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
     const sectionEntries = Object.entries(sectionTexts);
     const tokenSections = {};
 
@@ -611,7 +603,6 @@
   function syncStandaloneLaunchButtons(prefix) {
     const launchState = getPipelineLaunchState(prefix);
     const buttons = document.querySelectorAll(`[data-pipeline-action="launch"][data-pipeline-prefix="${prefix}"]`);
-    const launchButtonLabel = `▶ ${global.PIPELINE_LAUNCH_LABEL}`;
 
     buttons.forEach((button) => {
       button.disabled = launchState.isRunning;
@@ -621,7 +612,7 @@
         return;
       }
 
-      button.textContent = launchButtonLabel;
+      global.PipelineUIIcons?.setIconLabel?.(button, 'play', global.PIPELINE_LAUNCH_LABEL);
     });
   }
 

@@ -48,7 +48,7 @@
       if (!res.ok) throw new Error((await res.json()).error);
       getState().bibliosByMode[mode][key] = value;
       closeBiblioLightbox();
-      showToast(`${label} sauvegardé ✓`);
+      showToast(`${label} sauvegardé`);
     } catch (e) {
       showToast(`Erreur: ${e.message}`, '#ff4757');
     }
@@ -65,7 +65,7 @@
       const txt = await res.text();
       getState().bibliosByMode[mode][key] = txt;
       document.getElementById('biblio-textarea').value = txt;
-      showToast(`${label} rechargé ✓`);
+      showToast(`${label} rechargé`);
     } catch (e) {
       showToast(`Erreur: ${e.message}`, '#ff4757');
     }
@@ -81,7 +81,8 @@
     const agents = getConfig().getPipelineAgents();
     const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
 
-    document.getElementById('lbTitle').textContent = `⚙️ PROMPT — ${label}`;
+    const titleEl = document.getElementById('lbTitle');
+    global.PipelineUIIcons?.setIconLabel?.(titleEl, 'settings', `Prompt — ${label}`);
     document.getElementById('lbTextarea').value = getState().promptsByMode[getCurrentMode()][id] || '';
     document.getElementById('promptLightbox').classList.add('visible');
   }
@@ -106,7 +107,7 @@
       if (!res.ok) throw new Error((await res.json()).error);
       getState().promptsByMode[mode][currentLbAgentId] = val;
       closePromptLightbox();
-      showToast('Prompt sauvegardé ✓');
+      showToast('Prompt sauvegardé');
     } catch (e) {
       showToast(`Erreur: ${e.message}`, '#ff4757');
     }
@@ -127,7 +128,7 @@
       const txt = await res.text();
       getState().promptsByMode[mode][currentLbAgentId] = txt;
       document.getElementById('lbTextarea').value = txt;
-      showToast('Rechargé depuis le fichier ✓');
+      showToast('Rechargé depuis le fichier');
     } catch (e) {
       showToast(`Erreur: ${e.message}`, '#ff4757');
     }

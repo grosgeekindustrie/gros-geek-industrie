@@ -309,7 +309,7 @@
         if (accepted.length) {
           await saveTagsLibrary([...validated, ...accepted], blacklisted);
         }
-        global.showToast(`✅ ${accepted.length} tag(s) validé(s) ajouté(s)`);
+        global.showToast(`${accepted.length} tag(s) validé(s) ajouté(s)`);
       } else {
         const { validated, blacklisted } = global.parseBiblioTitres(global.getBiblio('titres'));
         const accepted = [];
@@ -323,7 +323,7 @@
         if (accepted.length) {
           await saveTitresLibrary([...validated, ...accepted], blacklisted);
         }
-        global.showToast(`✅ ${accepted.length} titre(s) validé(s) ajouté(s)`);
+        global.showToast(`${accepted.length} titre(s) validé(s) ajouté(s)`);
       }
 
       closeLibraryValidatedModal();
@@ -426,4 +426,3 @@
   global.PipelineUI.modals = global.PipelineUI.modals || {};
   Object.assign(global.PipelineUI.modals, global.PipelineUIModals);
 })(window);
-

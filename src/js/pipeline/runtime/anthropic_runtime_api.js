@@ -385,7 +385,7 @@
     if (card) card.classList.add(statusClass);
   }
 
-  async function ensureAnthropicImageFiles(prefix, apiKey) {
+  async function ensureAnthropicImageFiles(prefix) {
     const images = Array.isArray(global.state?.images?.[prefix]) ? global.state.images[prefix] : [];
     const requestedImages = images.filter((image) => image?.base64);
     if (!requestedImages.length) return buildFilesApiResult();
@@ -441,7 +441,6 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        apiKey,
         images: uploadCandidates.map(({ image, index }) => buildAnthropicUploadImagePayload(image, index)),
       }),
     });
@@ -584,8 +583,8 @@
     });
   }
 
-  async function buildRequestImageBlocks(prefix, apiKey) {
-    const result = await ensureAnthropicImageFiles(prefix, apiKey);
+  async function buildRequestImageBlocks(prefix) {
+    const result = await ensureAnthropicImageFiles(prefix);
     const images = Array.isArray(result?.images) ? result.images : [];
     const debug = createFilesApiDebug(result?.debug);
 
@@ -604,9 +603,6 @@
   }
 
   async function callClaude(agentId, promptData, useImages, retries = 3) {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    if (!apiKey) throw new Error('Clé API manquante');
-
     const controller = new AbortController();
     const normalizedPromptData = normalizePromptDataForClaude(agentId, promptData);
     const {
@@ -628,7 +624,7 @@
     });
 
     if (hasRequestedImages) {
-      const imageRequest = await buildRequestImageBlocks(prefix, apiKey);
+      const imageRequest = await buildRequestImageBlocks(prefix);
       imageContentBlocks = imageRequest.blocks;
       filesApiDebug = imageRequest.debug || filesApiDebug;
     }
@@ -647,20 +643,15 @@
 
     for (let attempt = 1; attempt <= retries; attempt += 1) {
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch('/anthropic/messages', {
           method: 'POST',
           signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-beta': getAnthropicBetaHeader({ useFiles: imageContentBlocks.length > 0 }),
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: global.AGENT_MODELS[agentId] || 'claude-sonnet-4-20250514',
+            model: global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
             max_tokens: 2000,
             messages: [{ role: 'user', content }],
+            useFilesBeta: imageContentBlocks.length > 0,
           }),
         });
 

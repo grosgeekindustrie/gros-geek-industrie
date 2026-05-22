@@ -25,8 +25,12 @@
       .filter(Boolean);
   }
 
+  function sortTagValues(tags = []) {
+    return [...tags].sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }));
+  }
+
   function formatTagsForDisplay(text) {
-    const tags = splitTagValues(text);
+    const tags = sortTagValues(splitTagValues(text));
     return tags.map((tag, index) => `${tag}${index < tags.length - 1 ? ',' : ''}`).join('\n');
   }
 
@@ -36,7 +40,15 @@
 
   function normalizeFinalOutputText(key, text) {
     if (key !== 'tags') return String(text || '').trim();
-    return splitTagValues(text).join(', ');
+    return sortTagValues(splitTagValues(text)).join(', ');
+  }
+
+  function getFinalOutputContentNode(node) {
+    return node?.querySelector?.('.fs-content') || node;
+  }
+
+  function readFinalOutputText(node) {
+    return getFinalOutputContentNode(node)?.textContent || '';
   }
 
   function syncFinalOutputEdit(node) {
@@ -45,7 +57,7 @@
     const runtimeState = getRuntimeState();
     if (!stateKey || !runtimeState?.outputs) return;
 
-    const value = normalizeFinalOutputText(key, node.textContent || '');
+    const value = normalizeFinalOutputText(key, readFinalOutputText(node));
     runtimeState.outputs[stateKey] = value;
 
     if (key === 'tags') {
@@ -57,8 +69,9 @@
     const key = node?.dataset?.finalKey || '';
     if (key !== 'tags') return;
 
-    const formatted = formatTagsForDisplay(node.textContent || '');
-    if (node.textContent !== formatted) node.textContent = formatted;
+    const contentNode = getFinalOutputContentNode(node);
+    const formatted = formatTagsForDisplay(readFinalOutputText(node));
+    if (contentNode && contentNode.textContent !== formatted) contentNode.textContent = formatted;
   }
 
   function bindFinalOutputEditing() {
@@ -131,7 +144,7 @@
     };
 
     const contentNode = document.getElementById(contentIdMap[key] || '');
-    if (contentNode) contentNode.textContent = formatFinalOutputText(key, text);
+    if (contentNode) setNodeText(contentNode, formatFinalOutputText(key, text));
 
     const sectionNode = document.getElementById(sectionIdMap[key] || '');
     if (sectionNode) sectionNode.style.display = text ? '' : 'none';
@@ -150,11 +163,11 @@
     const tagRows = dom.getAllByData?.('tagsItem', null, selectionZone) || [];
 
     if (tagRows.length) {
-      return tagRows
+      return sortTagValues(tagRows
         .filter((row) => dom.getByData?.('tagsCheckbox', null, row)?.checked)
         .map((row) => dom.getByData?.('tagsInput', null, row)?.value || '')
         .map((tag) => (global.PipelineUIHelpers?.normalizeTagValue ? global.PipelineUIHelpers.normalizeTagValue(tag) : String(tag || '').trim()))
-        .filter(Boolean);
+        .filter(Boolean));
     }
 
     const selectors = [
@@ -168,7 +181,7 @@
       const nodes = [...document.querySelectorAll(selector)]
         .map((node) => node.textContent.trim())
         .filter(Boolean);
-      if (nodes.length) return nodes;
+      if (nodes.length) return sortTagValues(nodes);
     }
     return [];
   }
@@ -208,7 +221,7 @@
       const signature = `${p}:${normalized}`;
       if (lastTagsDuplicateSignature !== signature) {
         lastTagsDuplicateSignature = signature;
-        global.showToast?.(`⚠️ ${duplicateCount} doublon(s) tag détecté(s) dans la sélection`, '#ff4757', 5000);
+        global.showToast?.(`${duplicateCount} doublon(s) tag détecté(s) dans la sélection`, '#ff4757', 5000);
       }
     } else {
       lastTagsDuplicateSignature = '';

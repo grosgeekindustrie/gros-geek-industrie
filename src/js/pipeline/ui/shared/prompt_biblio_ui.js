@@ -238,6 +238,7 @@
       .replace(/\[\[POSE\]\]/g, ctx.pose)
       .replace(/\[\[VERSION\]\]/g, ctx.version || '')
       .replace(/\[\[TYPE\]\]/g, ctx.type || '')
+      .replace(/\[\[TYPE_PIECE\]\]/g, ctx.typePiece || ctx.type || '')
       .replace(/\[\[PRESENTATION_VISUELLE\]\]/g, ctx.presentationVisuelle || '')
       .replace(/\[\[NATURE_SUJET\]\]/g, ctx.natureSujet || '')
       .replace(/\[\[BUZZ\]\]/g, ctx.buzz ? `OUI${ctx.buzzNote ? ' — ' + ctx.buzzNote : ''}` : 'NON')

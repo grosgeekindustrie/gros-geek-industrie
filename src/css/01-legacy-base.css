@@ -107,28 +107,6 @@ header h1 {
   flex-wrap:wrap;
 }
 
-.apikey-row {
-  display:flex;
-  gap:10px;
-  margin-bottom:20px;
-}
-
-.apikey-row input {
-  flex:1;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:8px;
-  color:var(--text);
-  padding:10px 14px;
-  font-family:'Space Mono',monospace;
-  font-size:12px;
-}
-
-.apikey-row input:focus {
-  outline:none;
-  border-color:var(--accent);
-}
-
 .form-section {
   background:var(--surface);
   border:2px dashed var(--border);
@@ -1307,28 +1285,6 @@ body.mode-collection .home-card::before {
   margin-top:auto;
 }
 
-.home-apikey {
-  margin-top:40px;
-  display:flex;
-  gap:10px;
-}
-
-.home-apikey input {
-  flex:1;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:8px;
-  color:var(--text);
-  padding:10px 14px;
-  font-family:'Space Mono',monospace;
-  font-size:12px;
-}
-
-.home-apikey input:focus {
-  outline:none;
-  border-color:var(--accent);
-}
-
 /* ═══ FORM VIEW ═══ */
 
 #view-form {
@@ -1446,4 +1402,3 @@ body.mode-collection .home-card::before {
   margin:0 auto;
   width:100%;
 }
-
