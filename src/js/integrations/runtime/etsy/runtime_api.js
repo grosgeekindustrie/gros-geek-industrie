@@ -21,18 +21,6 @@
     return String(getRoutes().sellerTaxonomySearch || '').trim();
   }
 
-  function getShippingProfilesRoute() {
-    return String(getRoutes().shippingProfiles || '').trim();
-  }
-
-  function getReadinessStatesRoute() {
-    return String(getRoutes().readinessStates || '').trim();
-  }
-
-  function getSectionsRoute() {
-    return String(getRoutes().sections || '').trim();
-  }
-
   function getDraftListingRoute() {
     return String(getRoutes().draftListing || '').trim();
   }
@@ -95,24 +83,6 @@
     return readJson(`${route}?listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
-  async function fetchShopShippingProfiles() {
-    const route = getShippingProfilesRoute();
-    if (!route) throw new Error('Route profils livraison Etsy indisponible');
-    return readJson(route);
-  }
-
-  async function fetchShopReadinessStates() {
-    const route = getReadinessStatesRoute();
-    if (!route) throw new Error('Route profils traitement Etsy indisponible');
-    return readJson(route);
-  }
-
-  async function fetchShopSections() {
-    const route = getSectionsRoute();
-    if (!route) throw new Error('Route sections Etsy indisponible');
-    return readJson(route);
-  }
-
   async function createDraftListing(publicationRequest) {
     const route = getDraftListingRoute();
     if (!route) throw new Error('Route publication draft Etsy indisponible');
@@ -122,9 +92,11 @@
           updatePayload: publicationRequest.updatePayload || {},
           inventory: publicationRequest.inventory || {},
           images: Array.isArray(publicationRequest.images) ? publicationRequest.images : [],
+          videos: Array.isArray(publicationRequest.videos) ? publicationRequest.videos : [],
+          mediaPlan: publicationRequest.mediaPlan || {},
           attributes: publicationRequest.attributes || {},
         }
-      : { payload: {}, updatePayload: {}, inventory: {}, images: [], attributes: {} };
+      : { payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {} };
 
     const response = await fetch(route, {
       method: 'POST',
@@ -147,9 +119,6 @@
     ...EtsyRuntime,
     getRoutes,
     getCategorySearchRoute,
-    getShippingProfilesRoute,
-    getReadinessStatesRoute,
-    getSectionsRoute,
     getDraftListingRoute,
     getListingPropertiesRoute,
     extractApiErrorMessage,
@@ -157,9 +126,6 @@
     fetchTaxonomySearch,
     fetchListingPayload,
     fetchListingPropertiesPayload,
-    fetchShopShippingProfiles,
-    fetchShopReadinessStates,
-    fetchShopSections,
     createDraftListing,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};

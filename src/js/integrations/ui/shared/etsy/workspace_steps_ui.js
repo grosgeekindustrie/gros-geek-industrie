@@ -34,9 +34,9 @@
       heading = document.createElement('div');
       heading.className = 'etsy-api-step-heading';
       heading.innerHTML = `
-        <span class="collection-stepper-kicker">Step 01 · Données déjà chargées</span>
-        <h3 class="etsy-api-step-title">Photo et vidéo</h3>
-        <p class="etsy-api-step-subtitle">Ce step liste simplement les médias déjà chargés depuis la fiche source Etsy.</p>
+        <span class="collection-stepper-kicker">Step 01 · Donnees deja chargees</span>
+        <h3 class="etsy-api-step-title">Photo et video</h3>
+        <p class="etsy-api-step-subtitle">Ce step liste simplement les medias deja charges depuis la fiche source Etsy.</p>
       `;
       stepSection.prepend(heading);
     }
@@ -57,9 +57,9 @@
       detailsSection = document.createElement('section');
       detailsSection.innerHTML = `
         <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 02 · Détails de l'article</span>
-          <h3 class="etsy-api-step-title">Détails de l'article</h3>
-          <p class="etsy-api-step-subtitle">Aidez les acheteurs à mieux comprendre l'article source Etsy avant la future duplication draft.</p>
+          <span class="collection-stepper-kicker">Step 02 · Details de l'article</span>
+          <h3 class="etsy-api-step-title">Details de l'article</h3>
+          <p class="etsy-api-step-subtitle">Aidez les acheteurs a mieux comprendre l'article source Etsy avant la future duplication draft.</p>
         </div>
         <div class="form-section etsy-api-details-panel">
           <div class="fg full">
@@ -82,7 +82,7 @@
           </div>
           <div class="fg full">
             <label for="etsyApiTitleInput-${prefix}">Titre</label>
-            <p class="etsy-api-field-hint">Le titre Etsy est limit&eacute; &agrave; 140 caract&egrave;res.</p>
+            <p class="etsy-api-field-hint">Le titre Etsy est limite a 140 caracteres.</p>
             <input type="text" id="etsyApiTitleInput-${prefix}" maxlength="220" placeholder="Titre Etsy source"/>
             <div class="etsy-api-title-meta">
               <span id="etsyApiTitleCount-${prefix}" class="etsy-api-title-count">0 / 140</span>
@@ -107,44 +107,6 @@
     return detailsSection;
   }
 
-  function ensureWorkspaceOptionsSection(prefix, deps = {}) {
-    const nodes = deps.getNodes?.(prefix);
-    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
-    if (!body) return null;
-
-    let section = body.querySelector(`#etsyApiStepOptions-${prefix}`);
-    if (!section) {
-      section = body.querySelector(`#etsyApiOptionsContent-${prefix}`)?.closest('.etsy-api-step-section');
-    }
-    if (!section) {
-      section = document.createElement('section');
-      section.innerHTML = `
-        <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 03 · Options de l'article</span>
-          <h3 class="etsy-api-step-title">Options de l'article</h3>
-          <p class="etsy-api-step-subtitle">Présentez les variations disponibles et préparez les références, prix et visibilités du futur draft.</p>
-        </div>
-        <div class="form-section etsy-api-options-panel">
-          <div class="etsy-api-options-header">
-            <div>
-              <h4 class="etsy-api-options-heading">Variations</h4>
-              <p class="etsy-api-options-copy">Ajoutez les options disponibles, de taille et de couleur par exemple.</p>
-            </div>
-            <button class="btn btn-muted" type="button" data-js="etsy-options-manage" data-prefix="${prefix}">Gérer les variations</button>
-          </div>
-          <div id="etsyApiOptionsContent-${prefix}" class="etsy-api-options-content"></div>
-        </div>
-      `;
-      body.appendChild(section);
-    }
-
-    section.id = `etsyApiStepOptions-${prefix}`;
-    section.className = 'etsy-api-step-section';
-    section.dataset.etsyStep = 'options';
-    section.hidden = true;
-    return section;
-  }
-
   function ensureWorkspaceAttributesSection(prefix, deps = {}) {
     const nodes = deps.getNodes?.(prefix);
     const body = nodes?.panel?.querySelector?.('.etsy-api-body');
@@ -158,7 +120,7 @@
       section = document.createElement('section');
       section.innerHTML = `
         <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 04 · Attributs</span>
+          <span class="collection-stepper-kicker">Step 03 · Attributs</span>
           <h3 class="etsy-api-step-title">Attributs</h3>
           <p class="etsy-api-step-subtitle">Preparez les tags, les dimensions produit et les attributs simples utilises en duplication Etsy.</p>
         </div>
@@ -176,68 +138,6 @@
     return section;
   }
 
-  function ensureWorkspaceShippingSection(prefix, deps = {}) {
-    const nodes = deps.getNodes?.(prefix);
-    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
-    if (!body) return null;
-
-    let section = body.querySelector(`#etsyApiStepShipping-${prefix}`);
-    if (!section) {
-      section = body.querySelector(`#etsyApiShippingContent-${prefix}`)?.closest('.etsy-api-step-section');
-    }
-    if (!section) {
-      section = document.createElement('section');
-      section.innerHTML = `
-        <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 05 Â· Livraison</span>
-          <h3 class="etsy-api-step-title">Livraison</h3>
-          <p class="etsy-api-step-subtitle">Selectionnez les profils Etsy existants utiles au futur draft, sans reproduire l'edition complete d'Etsy.</p>
-        </div>
-        <div class="form-section etsy-api-shipping-panel">
-          <div id="etsyApiShippingContent-${prefix}" class="etsy-api-shipping-content"></div>
-        </div>
-      `;
-      body.appendChild(section);
-    }
-
-    section.id = `etsyApiStepShipping-${prefix}`;
-    section.className = 'etsy-api-step-section';
-    section.dataset.etsyStep = 'shipping';
-    section.hidden = true;
-    return section;
-  }
-
-  function ensureWorkspaceSettingsSection(prefix, deps = {}) {
-    const nodes = deps.getNodes?.(prefix);
-    const body = nodes?.panel?.querySelector?.('.etsy-api-body');
-    if (!body) return null;
-
-    let section = body.querySelector(`#etsyApiStepSettings-${prefix}`);
-    if (!section) {
-      section = body.querySelector(`#etsyApiSettingsContent-${prefix}`)?.closest('.etsy-api-step-section');
-    }
-    if (!section) {
-      section = document.createElement('section');
-      section.innerHTML = `
-        <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 06 Â· Parametres</span>
-          <h3 class="etsy-api-step-title">Parametres</h3>
-          <p class="etsy-api-step-subtitle">Sections de boutique, mise en avant, publicite Etsy et renouvellement du draft.</p>
-        </div>
-        <div class="form-section etsy-api-settings-panel">
-          <div id="etsyApiSettingsContent-${prefix}" class="etsy-api-settings-content"></div>
-        </div>
-      `;
-      body.appendChild(section);
-    }
-
-    section.id = `etsyApiStepSettings-${prefix}`;
-    section.className = 'etsy-api-step-section';
-    section.dataset.etsyStep = 'settings';
-    section.hidden = true;
-    return section;
-  }
-
   function ensureWorkspacePublicationSection(prefix, deps = {}) {
     const nodes = deps.getNodes?.(prefix);
     const body = nodes?.panel?.querySelector?.('.etsy-api-body');
@@ -251,7 +151,7 @@
       section = document.createElement('section');
       section.innerHTML = `
         <div class="etsy-api-step-heading">
-          <span class="collection-stepper-kicker">Step 07 Â· Publication</span>
+          <span class="collection-stepper-kicker">Step 04 · Publication</span>
           <h3 class="etsy-api-step-title">Publication</h3>
           <p class="etsy-api-step-subtitle">Previsualisez le payload de creation de draft et testez un envoi Etsy en conditions reelles.</p>
         </div>
@@ -275,14 +175,12 @@
     if (!progress) return;
 
     const labels = [
-      'Photo et vidéo',
-      "Détails de l'article",
-      'Options',
+      'Photo et video',
+      "Details de l'article",
       'Attributs',
-      'Livraison',
-      'Paramètres',
       'Publication',
     ];
+    const stepIds = ['media', 'details', 'attributes', 'publication'];
     const buttons = Array.from(progress.querySelectorAll('.collection-stepper-pill'));
 
     buttons.forEach((button, index) => {
@@ -296,18 +194,10 @@
       if (labelNode) labelNode.textContent = labels[index];
       if (indexNode) indexNode.textContent = String(index + 1).padStart(2, '0');
 
-      if (index < 7) {
-        button.disabled = false;
-        button.dataset.js = 'etsy-step-trigger';
-        button.dataset.etsyStep = index === 0
-          ? 'media'
-          : (index === 1 ? 'details' : (index === 2 ? 'options' : (index === 3 ? 'attributes' : (index === 4 ? 'shipping' : (index === 5 ? 'settings' : 'publication')))));
-        button.classList.remove('is-disabled');
-      } else {
-        button.disabled = true;
-        delete button.dataset.js;
-        button.removeAttribute('data-etsy-step');
-      }
+      button.disabled = false;
+      button.dataset.js = 'etsy-step-trigger';
+      button.dataset.etsyStep = stepIds[index];
+      button.classList.remove('is-disabled');
     });
   }
 
@@ -318,7 +208,7 @@
     if (!state || !panel) return;
 
     const allowedStep = String(nextStep || '').trim();
-    const step = ['media', 'details', 'options', 'attributes', 'shipping', 'settings', 'publication'].includes(allowedStep) ? allowedStep : 'media';
+    const step = ['media', 'details', 'attributes', 'publication'].includes(allowedStep) ? allowedStep : 'media';
     state.activeStep = step;
     deps.syncPayloadText?.(state);
     deps.syncWorkspacePayloadView?.(prefix);
@@ -343,22 +233,8 @@
       deps.renderDetailsStep?.(prefix);
     }
 
-    if (step === 'options') {
-      deps.renderOptionsStep?.(prefix);
-    }
-
     if (step === 'attributes') {
       deps.renderAttributesStep?.(prefix);
-    }
-
-    if (step === 'shipping') {
-      deps.renderShippingStep?.(prefix);
-      if (state.mediaPayload) deps.ensureShippingReferences?.(prefix);
-    }
-
-    if (step === 'settings') {
-      deps.renderSettingsStep?.(prefix);
-      if (state.mediaPayload) deps.ensureSettingsReferences?.(prefix);
     }
 
     if (step === 'publication') {
@@ -383,9 +259,9 @@
     const kicker = heading.querySelector('.collection-stepper-kicker');
     const sourceLabel = sourceBlock.querySelector('label');
     deps.setTextContent?.(title, 'Fiche source');
-    deps.setTextContent?.(kicker, 'Etsy API · Chantier parallèle');
-    deps.setTextContent?.(subtitle, 'Charge une fiche Etsy source une seule fois, puis laisse chaque step consommer les données dont il a besoin.');
-    deps.setTextContent?.(sourceLabel, 'Référence fiche Etsy');
+    deps.setTextContent?.(kicker, 'Etsy API · Chantier parallele');
+    deps.setTextContent?.(subtitle, 'Charge une fiche Etsy source une seule fois, puis laisse chaque step consommer les donnees dont il a besoin.');
+    deps.setTextContent?.(sourceLabel, 'Reference fiche Etsy');
 
     let sourcePanel = panel.querySelector('.etsy-api-source-panel');
     if (!sourcePanel) {
@@ -400,6 +276,18 @@
 
     if (progress.parentElement !== sourcePanel) {
       sourcePanel.appendChild(progress);
+    }
+
+    let sourceActions = sourcePanel.querySelector('.etsy-api-source-actions');
+    if (!sourceActions) {
+      sourceActions = document.createElement('div');
+      sourceActions.className = 'etsy-api-source-actions field-action-row';
+      sourceActions.innerHTML = `
+        <button class="btn btn-muted btn-xs-inline" type="button" data-js="etsy-pipeline-import" data-prefix="${prefix}">
+          Recuperer titre + tags + description + alt du pipeline
+        </button>
+      `;
+      sourcePanel.appendChild(sourceActions);
     }
 
     const stepSection = ensureWorkspaceStepHeading(prefix, body);
@@ -423,10 +311,7 @@
 
     renameWorkspaceLoadButton(prefix, deps);
     ensureWorkspaceDetailsSection(prefix, deps);
-    ensureWorkspaceOptionsSection(prefix, deps);
     ensureWorkspaceAttributesSection(prefix, deps);
-    ensureWorkspaceShippingSection(prefix, deps);
-    ensureWorkspaceSettingsSection(prefix, deps);
     ensureWorkspacePublicationSection(prefix, deps);
     configureWorkspaceProgress(prefix, deps);
   }
@@ -437,10 +322,7 @@
     renameWorkspaceLoadButton,
     ensureWorkspaceStepHeading,
     ensureWorkspaceDetailsSection,
-    ensureWorkspaceOptionsSection,
     ensureWorkspaceAttributesSection,
-    ensureWorkspaceShippingSection,
-    ensureWorkspaceSettingsSection,
     ensureWorkspacePublicationSection,
     configureWorkspaceProgress,
     setWorkspaceActiveStep,

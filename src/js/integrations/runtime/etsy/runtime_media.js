@@ -130,6 +130,42 @@
     state.mediaOrder = [...existing, ...mediaKeys];
   }
 
+  function getSelectedPipelineAltMediaKeys(prefix, deps = {}) {
+    const state = deps.getState?.(prefix) || getRuntime().getWorkspaceState?.(prefix);
+    if (!state) return [];
+    return Array.isArray(state.selectedPipelineAltMediaKeys)
+      ? state.selectedPipelineAltMediaKeys.filter(Boolean)
+      : [];
+  }
+
+  function togglePipelineAltMediaSelection(prefix, mediaKey, deps = {}) {
+    const state = deps.getState?.(prefix) || getRuntime().getWorkspaceState?.(prefix);
+    if (!state || !mediaKey) return;
+
+    const selected = new Set(getSelectedPipelineAltMediaKeys(prefix, deps));
+    if (selected.has(mediaKey)) selected.delete(mediaKey);
+    else selected.add(mediaKey);
+    state.selectedPipelineAltMediaKeys = [...selected];
+    deps.syncPayloadText?.(state);
+  }
+
+  function setAllPipelineAltMediaSelections(prefix, enabled, deps = {}) {
+    const state = deps.getState?.(prefix) || getRuntime().getWorkspaceState?.(prefix);
+    if (!state) return;
+
+    if (!enabled) {
+      state.selectedPipelineAltMediaKeys = [];
+      deps.syncPayloadText?.(state);
+      return;
+    }
+
+    const selectedKeys = getOrderedMediaItems(state, deps)
+      .filter((item) => item.kind === 'image')
+      .map((item) => item.key);
+    state.selectedPipelineAltMediaKeys = selectedKeys;
+    deps.syncPayloadText?.(state);
+  }
+
   function getWorkspaceImageChoices(prefix, deps = {}) {
     const state = deps.getState?.(prefix) || getRuntime().getWorkspaceState?.(prefix);
     if (!state) return [];
@@ -289,6 +325,9 @@
     }
 
     deps.removeMediaKeyFromOrder?.(state, mediaKey);
+    if (state?.selectedPipelineAltMediaKeys?.length) {
+      state.selectedPipelineAltMediaKeys = state.selectedPipelineAltMediaKeys.filter((key) => key !== mediaKey);
+    }
     deps.clearEditedImageState?.(prefix, mediaKey);
     if (state.activeMediaKey === mediaKey) deps.closeMediaLightbox?.();
     deps.syncPayloadText?.(state);
@@ -327,6 +366,10 @@
       return;
     }
 
+    if (state?.selectedPipelineAltMediaKeys?.length) {
+      state.selectedPipelineAltMediaKeys = state.selectedPipelineAltMediaKeys.filter((key) => key !== mediaKey);
+    }
+
     cardNode?.remove();
     deps.syncWorkspacePanels?.(prefix);
     deps.refreshSortableBinding?.(prefix);
@@ -348,7 +391,7 @@
 
     state.localImages = [];
     state.mediaOrder = [];
-    state.optionsDraft = null;
+    state.selectedPipelineAltMediaKeys = [];
     deps.resetWorkspaceEditedImages?.(prefix);
     if (state.activeMediaKey) deps.closeMediaLightbox?.();
     deps.syncPayloadText?.(state);
@@ -365,6 +408,9 @@
     getMediaItemByKey,
     removeMediaKeyFromOrder,
     appendMediaKeysToOrder,
+    getSelectedPipelineAltMediaKeys,
+    togglePipelineAltMediaSelection,
+    setAllPipelineAltMediaSelections,
     getWorkspaceImageChoices,
     getOptionAssignedImage,
     getProductAssignedImage,

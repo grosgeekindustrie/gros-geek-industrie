@@ -284,6 +284,9 @@
         global.state.outputs.tags = '';
       } else {
         global.state.outputs[agent.id] = result;
+        if (agent.id === 'alt') {
+          global.persistPipelineSeedSnapshot?.(prefix);
+        }
       }
 
       if (!agent.hasSelection) {

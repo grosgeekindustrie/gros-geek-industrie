@@ -6,6 +6,69 @@
   const EtsyData = global.PipelineUIEtsyData || {};
   const CATEGORY_PICKER_OVERLAY_ID = 'etsyCategoryPickerOverlay';
 
+  function applyPipelineSeedToWorkspaceState(state, seed) {
+    if (!state?.mediaPayload?.data) return;
+    if (!seed) return;
+
+    if (seed.title && state.detailsDraft) {
+      state.detailsDraft = {
+        ...state.detailsDraft,
+        title: seed.title,
+      };
+    }
+
+    if (seed.tagsCsv && state.attributesDraft) {
+      state.attributesDraft = {
+        ...state.attributesDraft,
+        tags: EtsyData.parseAttributeTagsInput?.(seed.tagsCsv) || state.attributesDraft.tags || [],
+      };
+    }
+
+    if (seed.descriptionText && state.detailsDraft) {
+      state.detailsDraft = {
+        ...state.detailsDraft,
+        description: String(seed.descriptionText || '').trim(),
+      };
+    }
+  }
+
+  function importPipelineSeedToWorkspace(prefix, deps = {}) {
+    const state = deps.getState?.(prefix);
+    if (!state?.mediaPayload?.data) {
+      deps.setStatus?.(prefix, 'Charge d abord une fiche source avant de recuperer les donnees du pipeline.');
+      global.showToast?.('Charge d abord une fiche source', '#ff4757');
+      return;
+    }
+
+    const seed = deps.getPipelineSeedForEtsy?.(prefix);
+    if (!seed) {
+      deps.setStatus?.(prefix, 'Aucune sortie pipeline persistante detectee pour ce contexte.');
+      global.showToast?.('Aucune donnee pipeline disponible', '#ff4757');
+      return;
+    }
+
+    const selectedMediaKeys = deps.getSelectedPipelineAltMediaKeys?.(prefix) || [];
+    applyPipelineSeedToWorkspaceState(state, seed);
+    let appliedAltCount = 0;
+    if (seed.altText && selectedMediaKeys.length) {
+      selectedMediaKeys.forEach((mediaKey) => {
+        const mediaItem = deps.getMediaItemByKey?.(state, mediaKey);
+        if (!mediaItem || mediaItem.kind !== 'image') return;
+        mediaItem.value.alt_text = seed.altText;
+        appliedAltCount += 1;
+      });
+    }
+    deps.applyDetailsDraftToPayload?.(state);
+    deps.applyAttributesDraftToPayload?.(state);
+    deps.syncPayloadText?.(state);
+    deps.renderWorkspace?.(prefix);
+    deps.setStatus?.(prefix, appliedAltCount > 0
+      ? `Titre, tags, description et ALT recuperes depuis le pipeline (${appliedAltCount} image(s)).`
+      : 'Titre, tags et description recuperes depuis le pipeline.'
+    );
+    global.showToast?.(appliedAltCount > 0 ? 'Donnees pipeline injectees avec ALT' : 'Donnees pipeline injectees');
+  }
+
   function applyDetailsDraftToPayload(state) {
     const data = state?.mediaPayload?.data;
     const draft = state?.detailsDraft;
@@ -44,59 +107,6 @@
     applyDetailsDraftToPayload(state);
     (deps.syncPayloadText || global.PipelineUIEtsyRuntime?.syncPayloadText)?.(state);
     (deps.syncWorkspacePayloadView || global.PipelineUIEtsyRuntime?.syncWorkspacePayloadView)?.(prefix);
-  }
-
-  function ensureOptionsDraft(state) {
-    if (!state) return null;
-    if (!state.optionsDraft) {
-      state.optionsDraft = EtsyData.buildOptionsDraftFromPayload?.(state.mediaPayload) || null;
-    }
-    return state.optionsDraft;
-  }
-
-  function applyOptionsDraftToPayload(state) {
-    const data = state?.mediaPayload?.data;
-    const draft = state?.optionsDraft;
-    if (!data || !draft) return;
-    EtsyData.applyOptionsDraftToPayload?.(data, draft);
-  }
-
-  function updateOptionsDraft(prefix, mutator, deps = {}) {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    const data = global.PipelineUIEtsyData || {};
-    const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
-    if (!state) return;
-
-    const draft = ensureOptionsDraft(state);
-    if (!draft) return;
-    mutator(draft);
-    draft.variations = (draft.variations || []).slice(0, 2);
-    draft.variations = draft.variations.map((variation, index) => ({
-      ...variation,
-      slot: index,
-      options: (variation.options || []).map((option) => ({
-        ...option,
-        imageKey: String(option.imageKey || '').trim(),
-      })),
-    }));
-    draft.priceVariesByIds = data.normalizeVariationRuleIds?.(draft.priceVariesByIds, draft.variations || []) || [];
-    draft.skuVariesByIds = data.normalizeVariationRuleIds?.(draft.skuVariesByIds, draft.variations || []) || [];
-    draft.quantityVariesByIds = data.normalizeVariationRuleIds?.(draft.quantityVariesByIds, draft.variations || []) || [];
-    draft.processingProfileVariesByIds = data.normalizeVariationRuleIds?.(draft.processingProfileVariesByIds, draft.variations || []) || [];
-
-    const validImageKeys = new Set((runtime.getWorkspaceImageChoices?.(prefix) || []).map((item) => item.key));
-    draft.variations.forEach((variation) => {
-      variation.options = (variation.options || []).filter((option) => String(option.label || '').trim());
-      variation.options.forEach((option) => {
-        if (option.imageKey && !validImageKeys.has(option.imageKey)) {
-          option.imageKey = '';
-        }
-      });
-    });
-
-    applyOptionsDraftToPayload(state);
-    runtime.syncPayloadText?.(state);
-    runtime.syncWorkspacePayloadView?.(prefix);
   }
 
   function destroySortable(prefix, deps = {}) {
@@ -182,10 +192,7 @@
     if (nodes.payload) nodes.payload.textContent = state.payloadText || 'Aucun payload charge.';
     deps.renderSummary?.(prefix, state.mediaPayload);
     deps.renderDetailsStep?.(prefix);
-    deps.renderOptionsStep?.(prefix);
     deps.renderAttributesStep?.(prefix);
-    deps.renderShippingStep?.(prefix);
-    deps.renderSettingsStep?.(prefix);
     deps.renderPublicationStep?.(prefix);
     updateToolbarCount(prefix, deps);
   }
@@ -334,10 +341,7 @@
     }
     deps.renderSummary?.(prefix, state.mediaPayload);
     deps.renderDetailsStep?.(prefix);
-    deps.renderOptionsStep?.(prefix);
     deps.renderAttributesStep?.(prefix);
-    deps.renderShippingStep?.(prefix);
-    deps.renderSettingsStep?.(prefix);
     deps.renderPublicationStep?.(prefix);
 
     if (state.mediaPayload || state.localImages.length) {
@@ -390,16 +394,8 @@
       }
       state.activeStep = 'media';
       state.detailsDraft = deps.buildDetailsDraftFromPayload?.(state.mediaPayload);
-      state.optionsDraft = deps.buildOptionsDraftFromPayload?.(state.mediaPayload);
       state.attributesDraft = deps.buildAttributesDraftFromPayload?.(state.mediaPayload);
-      state.shippingDraft = deps.buildShippingDraftFromPayload?.(state.mediaPayload);
-      state.settingsDraft = deps.buildSettingsDraftFromPayload?.(state.mediaPayload);
       state.isEditingCategory = false;
-      state.isEditingShippingProfile = false;
-      state.shippingReferencesLoading = false;
-      state.shippingReferencesError = '';
-      state.settingsReferencesLoading = false;
-      state.settingsReferencesError = '';
       state.publicationSubmitting = false;
       state.publicationResult = null;
       state.publicationError = '';
@@ -408,10 +404,7 @@
       state.activeMediaKey = '';
       deps.resetWorkspaceEditedImages?.(prefix);
       deps.applyDetailsDraftToPayload?.(state);
-      deps.applyOptionsDraftToPayload?.(state);
       deps.applyAttributesDraftToPayload?.(state);
-      deps.applyShippingDraftToPayload?.(state);
-      deps.applySettingsDraftToPayload?.(state);
       state.mediaOrder = deps.buildDefaultMediaOrder?.(state) || [];
       deps.syncPayloadText?.(state);
 
@@ -431,16 +424,8 @@
       state.listingPropertiesError = '';
       state.activeStep = 'media';
       state.detailsDraft = null;
-      state.optionsDraft = null;
       state.attributesDraft = null;
-      state.shippingDraft = null;
-      state.settingsDraft = null;
       state.isEditingCategory = false;
-      state.isEditingShippingProfile = false;
-      state.shippingReferencesLoading = false;
-      state.shippingReferencesError = '';
-      state.settingsReferencesLoading = false;
-      state.settingsReferencesError = '';
       state.publicationSubmitting = false;
       state.publicationResult = null;
       state.publicationError = '';
@@ -538,10 +523,12 @@
         return;
       }
 
-      const optionsManage = event.target.closest('[data-js="etsy-options-manage"]');
-      if (optionsManage && nodes.panel.contains(optionsManage)) {
-        deps.handleOptionsManage?.(prefix);
+      const importPipelineButton = event.target.closest('[data-js="etsy-pipeline-import"]');
+      if (importPipelineButton && nodes.panel.contains(importPipelineButton)) {
+        deps.importPipelineSeedToWorkspace?.(prefix);
+        return;
       }
+
     });
 
     nodes.panel.addEventListener('input', (event) => {
@@ -573,11 +560,6 @@
     deps.renderWorkspace?.(prefix);
   }
 
-  function handleOptionsManage(prefix, deps = {}) {
-    deps.setWorkspaceActiveStep?.(prefix, 'options');
-    deps.setStatus?.(prefix, 'Parcours des variations en reconstruction.');
-  }
-
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     destroySortable,
@@ -594,9 +576,8 @@
     applyDetailsDraftToPayload,
     ensureDetailsDraft,
     updateDetailsDraft,
-    ensureOptionsDraft,
-    applyOptionsDraftToPayload,
-    updateOptionsDraft,
+    applyPipelineSeedToWorkspaceState,
+    importPipelineSeedToWorkspace,
     resolveDraftCategoryLabel,
     getCategoryPickerState,
     renderCategoryPickerResults,
@@ -606,7 +587,6 @@
     loadEtsyWorkspaceMedia,
     copyEtsyWorkspacePayload,
     initEtsyWorkspaceContext,
-    handleOptionsManage,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

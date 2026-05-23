@@ -1,7 +1,7 @@
 (function initPipelineUIEtsyWorkspaceModalsBridge(global) {
   'use strict';
 
-  // Workspace bridge for Etsy shared modals and options UI modules.
+  // Workspace bridge for Etsy shared media/details overlays.
   global.PipelineUI = global.PipelineUI || {};
   const EtsyRuntime = global.PipelineUIEtsyRuntime || {};
 
@@ -110,20 +110,6 @@
     });
   }
 
-  function renderOptionsStep(prefix) {
-    const runtime = global.PipelineUIEtsyRuntime || {};
-    return getSharedUi().options?.renderOptionsStep?.(prefix, {
-      getState: runtime.getWorkspaceState,
-      getNode,
-      ensureOptionsDraft: runtime.ensureOptionsDraft,
-      applyOptionsDraftToPayload: runtime.applyOptionsDraftToPayload,
-      syncPayloadText: runtime.syncPayloadText,
-      syncWorkspacePayloadView: runtime.workspaceSyncWorkspacePayloadView || runtime.syncWorkspacePayloadView,
-      getProductAssignedImage: runtime.getProductAssignedImage,
-      updateOptionsDraft: runtime.updateOptionsDraft,
-    });
-  }
-
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     workspaceCloseCategoryPickerOverlay: closeCategoryPickerOverlay,
@@ -133,7 +119,6 @@
     workspaceCloseImageEditorOverlay: closeImageEditorOverlay,
     workspaceCloseMediaLightbox: closeMediaLightbox,
     workspaceFillMediaLightbox: fillMediaLightbox,
-    workspaceRenderOptionsStep: renderOptionsStep,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

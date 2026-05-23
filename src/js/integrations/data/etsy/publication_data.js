@@ -3,20 +3,14 @@
 
   const EtsyData = global.PipelineUIEtsyData || {};
 
-  function getPublicationBasePrice(data, optionsDraft) {
-    const basePrice = Number(optionsDraft?.basePrice);
-    if (Number.isFinite(basePrice) && basePrice > 0) return basePrice;
-
+  function getPublicationBasePrice(data) {
     const inventoryProduct = Array.isArray(data?.inventory?.products) ? data.inventory.products[0] : null;
     const inventoryOffering = Array.isArray(inventoryProduct?.offerings) ? inventoryProduct.offerings[0] : null;
     const moneyValue = EtsyData.getMoneyNumber?.(inventoryOffering?.price ?? data?.price ?? 0);
     return Number.isFinite(moneyValue) ? moneyValue : 0;
   }
 
-  function getPublicationBaseQuantity(data, optionsDraft) {
-    const baseQuantity = Number(optionsDraft?.baseQuantity);
-    if (Number.isFinite(baseQuantity) && baseQuantity >= 0) return baseQuantity;
-
+  function getPublicationBaseQuantity(data) {
     const inventoryProduct = Array.isArray(data?.inventory?.products) ? data.inventory.products[0] : null;
     const inventoryOffering = Array.isArray(inventoryProduct?.offerings) ? inventoryProduct.offerings[0] : null;
     const quantity = Number(inventoryOffering?.quantity ?? data?.quantity ?? 0);
@@ -27,19 +21,26 @@
     return `image:${String(image?.listing_image_id || image?.image_id || index)}`;
   }
 
+  function resolveRemoteVideoKey(video, index) {
+    return `video:${String(video?.video_id || video?.listing_video_id || index)}`;
+  }
+
   function resolveLocalImageKey(image) {
     return `local-image:${String(image?.local_id || '')}`;
   }
 
-  function getOrderedPublicationImages(state) {
+  function getOrderedPublicationMedia(state) {
     const data = state?.mediaPayload?.data || {};
     const remoteImages = Array.isArray(data.images) ? data.images : [];
+    const remoteVideos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
     const editedImageDataUrls = state?.editedImageDataUrls || {};
     const remoteMap = new Map(remoteImages.map((image, index) => [resolveRemoteImageKey(image, index), image]));
+    const videoMap = new Map(remoteVideos.map((video, index) => [resolveRemoteVideoKey(video, index), video]));
     const localMap = new Map(localImages.map((image) => [resolveLocalImageKey(image), image]));
     const defaultOrder = [
       ...remoteImages.map((image, index) => resolveRemoteImageKey(image, index)),
+      ...remoteVideos.map((video, index) => resolveRemoteVideoKey(video, index)),
       ...localImages.map((image) => resolveLocalImageKey(image)),
     ];
     const activeOrder = Array.isArray(state?.mediaOrder) && state.mediaOrder.length ? state.mediaOrder : defaultOrder;
@@ -51,9 +52,18 @@
       if (remoteMap.has(key)) {
         ordered.push({
           key,
-          kind: 'remote',
-          image: remoteMap.get(key),
+          kind: 'image',
+          value: remoteMap.get(key),
           editedDataUrl: String(editedImageDataUrls[key] || '').trim(),
+        });
+        seen.add(key);
+        return;
+      }
+      if (videoMap.has(key)) {
+        ordered.push({
+          key,
+          kind: 'video',
+          value: videoMap.get(key),
         });
         seen.add(key);
         return;
@@ -61,8 +71,8 @@
       if (localMap.has(key)) {
         ordered.push({
           key,
-          kind: 'local',
-          image: localMap.get(key),
+          kind: 'local-image',
+          value: localMap.get(key),
           editedDataUrl: String(editedImageDataUrls[key] || '').trim(),
         });
         seen.add(key);
@@ -73,12 +83,18 @@
   }
 
   function buildPublicationImagesPlan(state) {
-    return getOrderedPublicationImages(state).map((entry, index) => {
-      const altText = String(entry.image?.alt_text || '').trim();
+    const orderedEntries = getOrderedPublicationMedia(state);
+    const sourceImages = Array.isArray(state?.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
+    const sourceVideos = Array.isArray(state?.mediaPayload?.data?.videos) ? state.mediaPayload.data.videos : [];
+    const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+
+    const images = orderedEntries.filter((entry) => entry.kind === 'image' || entry.kind === 'local-image').map((entry, index) => {
+      const image = entry.value;
+      const altText = String(image?.alt_text || '').trim();
       const filename = String(
-        entry.image?.name
-        || entry.image?.filename
-        || entry.image?.title
+        image?.name
+        || image?.filename
+        || image?.title
         || `etsy-image-${index + 1}.jpg`
       ).trim() || `etsy-image-${index + 1}.jpg`;
 
@@ -92,13 +108,13 @@
         };
       }
 
-      if (entry.kind === 'local') {
+      if (entry.kind === 'local-image') {
         return {
           order: index + 1,
           mode: 'upload',
           filename,
           alt_text: altText,
-          data_url: String(entry.image?.data_url || ''),
+          data_url: String(image?.data_url || ''),
         };
       }
 
@@ -108,12 +124,12 @@
         filename,
         alt_text: altText,
         remote_url: String(
-          entry.image?.url_fullxfull
-          || entry.image?.full_url
-          || entry.image?.url_570xN
-          || entry.image?.url_570xn
-          || entry.image?.src
-          || entry.image?.url
+          image?.url_fullxfull
+          || image?.full_url
+          || image?.url_570xN
+          || image?.url_570xn
+          || image?.src
+          || image?.url
           || ''
         ).trim(),
       };
@@ -122,6 +138,35 @@
       if (imagePlan.mode === 'upload_remote') return !!imagePlan.remote_url;
       return false;
     });
+
+    const videos = orderedEntries.filter((entry) => entry.kind === 'video').map((entry, index) => {
+      const video = entry.value;
+      return {
+        order: index + 1,
+        mode: 'upload_remote',
+        filename: String(
+          video?.name
+          || video?.filename
+          || video?.title
+          || `etsy-video-${index + 1}.mp4`
+        ).trim() || `etsy-video-${index + 1}.mp4`,
+        remote_url: String(video?.video_url || '').trim(),
+      };
+    }).filter((videoPlan) => !!videoPlan.remote_url);
+
+    return {
+      images,
+      videos,
+      mediaPlan: {
+        sourceImageCount: sourceImages.length,
+        sourceVideoCount: sourceVideos.length,
+        localImageCount: localImages.length,
+        orderedMediaCount: orderedEntries.length,
+        plannedImageCount: images.length,
+        plannedVideoCount: videos.length,
+        skippedVideoCount: Math.max(0, sourceVideos.length - videos.length),
+      },
+    };
   }
 
   function buildPublicationInventoryPayload(data) {
@@ -216,16 +261,14 @@
 
   function buildDraftPublicationPayload(state) {
     const data = state?.mediaPayload?.data || {};
-    const optionsDraft = state?.optionsDraft || null;
     const attributesDraft = state?.attributesDraft || null;
-    const settingsDraft = state?.settingsDraft || null;
     const hasVideos = Array.isArray(data.videos) && data.videos.length > 0;
 
     const createPayload = {
-      quantity: getPublicationBaseQuantity(data, optionsDraft),
+      quantity: getPublicationBaseQuantity(data),
       title: String(data.title || '').trim(),
       description: String(data.description || ''),
-      price: getPublicationBasePrice(data, optionsDraft),
+      price: getPublicationBasePrice(data),
       who_made: String(data.who_made || '').trim(),
       when_made: String(data.when_made || '').trim(),
       taxonomy_id: Number(data.taxonomy_id || 0) || 0,
@@ -264,15 +307,10 @@
     if (updatePayload.item_dimensions_unit) createPayload.item_dimensions_unit = updatePayload.item_dimensions_unit;
 
     const inventory = buildPublicationInventoryPayload(data);
-    const images = buildPublicationImagesPlan(state);
+    const imagePlan = buildPublicationImagesPlan(state);
+    const images = imagePlan.images;
+    const videos = imagePlan.videos;
     const dimensionProperties = buildPublicationDimensionProperties(state, attributesDraft);
-    const hasRegionalPriceDiff = Array.isArray(optionsDraft?.products) && optionsDraft.products.some((product) => {
-      const fr = Number(product?.prices?.fr);
-      const us = Number(product?.prices?.us);
-      const other = Number(product?.prices?.other);
-      if (!Number.isFinite(fr)) return false;
-      return (Number.isFinite(us) && us !== fr) || (Number.isFinite(other) && other !== fr);
-    });
     const validationErrors = [];
 
     if (!Number.isFinite(createPayload.quantity)) validationErrors.push('quantity manquante');
@@ -300,16 +338,12 @@
       warnings.push('Aucune image ne sera envoyee sur ce test de duplication.');
     }
     if (hasVideos) {
-      warnings.push('Les videos de la fiche source ne sont pas encore republiees.');
+      if (!videos.length) {
+        warnings.push('Aucune video publishable n a ete preparee depuis la fiche source.');
+      }
     }
     if (attributesDraft?.occasion) {
       warnings.push(`Fete locale preparee pour publication : ${attributesDraft.occasion}.`);
-    }
-    if (optionsDraft?.variations?.some((variation) => variation.photosEnabled)) {
-      warnings.push('Les associations images de variations ne sont pas encore recopiees sur cette passe.');
-    }
-    if (hasRegionalPriceDiff) {
-      warnings.push('Des prix US/autres pays differents de FR existent dans le draft local, mais l inventaire Etsy publie un seul price par offering.');
     }
 
     return {
@@ -318,6 +352,8 @@
         updatePayload,
         inventory,
         images,
+        videos,
+        mediaPlan: imagePlan.mediaPlan,
         attributes: {
           occasion: String(attributesDraft?.occasion || '').trim(),
           dimension_properties: dimensionProperties,

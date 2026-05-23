@@ -1768,6 +1768,17 @@
   border-radius: 0.75rem;
 }
 
+.etsy-api-media-select-input {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  z-index: 3;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  cursor: pointer;
+}
+
 .etsy-api-media-card-visual[data-etsy-media-kind="image"] .image-thumb-preview {
   display: block;
   object-fit: contain;
@@ -2118,4 +2129,23 @@
 
 .final-editable-output .fs-content {
   margin: 0;
+}
+
+.fs-header-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.fs-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+}
+
+.fs-meta-ok {
+  color: #4cd964;
+}
+
+.fs-meta-over {
+  color: #ff5a5f;
 }

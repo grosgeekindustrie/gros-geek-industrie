@@ -193,10 +193,7 @@
       getNodes: runtime.getWorkspaceNodes,
       renderSummary: runtime.workspaceRenderSummary,
       renderDetailsStep: runtime.workspaceRenderDetailsStep,
-      renderOptionsStep: runtime.workspaceRenderOptionsStep,
       renderAttributesStep: runtime.workspaceRenderAttributesStep,
-      renderShippingStep: runtime.workspaceRenderShippingStep,
-      renderSettingsStep: runtime.workspaceRenderSettingsStep,
       renderPublicationStep: runtime.workspaceRenderPublicationStep,
     });
   }
@@ -219,10 +216,7 @@
       ensureWorkspaceSourcePanel: runtime.workspaceEnsureWorkspaceSourcePanel,
       renderSummary: runtime.workspaceRenderSummary,
       renderDetailsStep: runtime.workspaceRenderDetailsStep,
-      renderOptionsStep: runtime.workspaceRenderOptionsStep,
       renderAttributesStep: runtime.workspaceRenderAttributesStep,
-      renderShippingStep: runtime.workspaceRenderShippingStep,
-      renderSettingsStep: runtime.workspaceRenderSettingsStep,
       renderPublicationStep: runtime.workspaceRenderPublicationStep,
       renderMediaGrid: runtime.workspaceRenderMediaGrid,
       setWorkspaceActiveStep: runtime.workspaceSetWorkspaceActiveStep,
@@ -246,18 +240,29 @@
       normalizeListingPayload: global.PipelineUIEtsyData?.normalizeEtsyListingPayload,
       applyListingPropertyOverrides: global.PipelineUIEtsyData?.applyListingPropertyOverrides,
       buildDetailsDraftFromPayload: global.PipelineUIEtsyData?.buildDetailsDraftFromPayload,
-      buildOptionsDraftFromPayload: global.PipelineUIEtsyData?.buildOptionsDraftFromPayload,
       buildAttributesDraftFromPayload: global.PipelineUIEtsyData?.buildAttributesDraftFromPayload,
-      buildShippingDraftFromPayload: global.PipelineUIEtsyData?.buildShippingDraftFromPayload,
-      buildSettingsDraftFromPayload: global.PipelineUIEtsyData?.buildSettingsDraftFromPayload,
+      getPipelineSeedForEtsy: runtime.getPipelineSeedForEtsy,
       resetWorkspaceEditedImages: runtime.resetWorkspaceEditedImages,
       applyDetailsDraftToPayload: runtime.applyDetailsDraftToPayload,
-      applyOptionsDraftToPayload: runtime.applyOptionsDraftToPayload,
-      applyShippingDraftToPayload: runtime.applyShippingDraftToPayload,
-      applySettingsDraftToPayload: runtime.applySettingsDraftToPayload,
+      applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
       buildDefaultMediaOrder: runtime.buildDefaultMediaOrder,
       syncPayloadText: runtime.syncPayloadText,
       destroySortable: runtime.destroySortable,
+    });
+  }
+
+  function importPipelineSeedToWorkspace(prefix) {
+    const runtime = getRuntime();
+    return runtime.importPipelineSeedToWorkspace?.(prefix, {
+      getState: runtime.getWorkspaceState,
+      getPipelineSeedForEtsy: runtime.getPipelineSeedForEtsy,
+      getSelectedPipelineAltMediaKeys: runtime.getSelectedPipelineAltMediaKeys,
+      getMediaItemByKey: runtime.getMediaItemByKey,
+      applyDetailsDraftToPayload: runtime.applyDetailsDraftToPayload,
+      applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
+      syncPayloadText: runtime.syncPayloadText,
+      renderWorkspace,
+      setStatus: runtime.workspaceSetStatus,
     });
   }
 
@@ -267,30 +272,12 @@
     });
   }
 
-  function ensureShippingReferences(prefix) {
-    const runtime = getRuntime();
-    return runtime.ensureShippingReferences?.(prefix, {
-      getState: runtime.getWorkspaceState,
-      fetchShopShippingProfiles: runtime.fetchShopShippingProfiles,
-      fetchShopReadinessStates: runtime.fetchShopReadinessStates,
-    });
-  }
-
-  function ensureSettingsReferences(prefix) {
-    const runtime = getRuntime();
-    return runtime.ensureSettingsReferences?.(prefix, {
-      getState: runtime.getWorkspaceState,
-      fetchShopSections: runtime.fetchShopSections,
-    });
-  }
-
   function publishDraftListing(prefix) {
     const runtime = getRuntime();
     return runtime.publishDraftListing?.(prefix, {
       getState: runtime.getWorkspaceState,
       createDraftListing: runtime.createDraftListing,
       applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
-      applySettingsDraftToPayload: runtime.applySettingsDraftToPayload,
     });
   }
 
@@ -307,19 +294,14 @@
       extractListingId: global.PipelineUIEtsyData?.extractListingId,
       setStatus: runtime.workspaceSetStatus,
       loadEtsyWorkspaceMedia,
+      importPipelineSeedToWorkspace,
       setWorkspaceActiveStep: runtime.workspaceSetWorkspaceActiveStep,
       openCategoryPicker,
-      handleOptionsManage: runtime.handleOptionsManage,
       updateDetailsDraft: runtime.workspaceUpdateDetailsDraft,
       renderTitleCounter: runtime.workspaceRenderTitleCounter,
       autoResizeDescription: runtime.workspaceAutoResizeDescription,
       restoreListingReference: runtime.restoreListingReference,
-      ensureShippingReferences,
-      ensureSettingsReferences,
       publishDraftListing,
-      fetchShopShippingProfiles: runtime.fetchShopShippingProfiles,
-      fetchShopReadinessStates: runtime.fetchShopReadinessStates,
-      fetchShopSections: runtime.fetchShopSections,
     });
   }
 
@@ -343,9 +325,8 @@
     workspaceRefreshSortableBinding: refreshSortableBinding,
     workspaceRenderWorkspace: renderWorkspace,
     workspaceLoadEtsyWorkspaceMedia: loadEtsyWorkspaceMedia,
+    workspaceImportPipelineSeedToWorkspace: importPipelineSeedToWorkspace,
     workspaceCopyEtsyWorkspacePayload: copyEtsyWorkspacePayload,
-    workspaceEnsureShippingReferences: ensureShippingReferences,
-    workspaceEnsureSettingsReferences: ensureSettingsReferences,
     workspacePublishDraftListing: publishDraftListing,
     workspaceInitEtsyWorkspaceContext: initEtsyWorkspaceContext,
   };

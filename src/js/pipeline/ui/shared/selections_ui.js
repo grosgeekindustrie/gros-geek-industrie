@@ -20,6 +20,48 @@
   const TAG_SELECTION_MAX = 13;
   const AUXILIARY_RETRY_COUNT = 1;
   const COMMON_PRODUCT_TAGS = global.PipelineUIDataTagsCommon?.COMMON_PRODUCT_TAGS || [];
+  const PIPELINE_SEED_STORAGE_PREFIX = 'pipeline.seed.';
+
+  function getPipelineSeedStorageKey(prefix = getPfx()) {
+    return `${PIPELINE_SEED_STORAGE_PREFIX}${String(prefix || '').trim()}`;
+  }
+
+  function buildPipelineSeedSnapshot(prefix = getPfx()) {
+    const outputs = global.state?.outputs || {};
+    return {
+      prefix: String(prefix || '').trim(),
+      title: String(outputs.titre_valide || '').trim(),
+      tagsCsv: String(outputs.tags || '').trim(),
+      descriptionText: String(outputs.description_final || outputs.description_assembled || '').trim(),
+      altText: String(outputs.alt || '').trim(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function persistPipelineSeedSnapshot(prefix = getPfx()) {
+    const snapshot = buildPipelineSeedSnapshot(prefix);
+    try {
+      localStorage.setItem(getPipelineSeedStorageKey(prefix), JSON.stringify(snapshot));
+    } catch (error) {}
+    return snapshot;
+  }
+
+  function readPipelineSeedSnapshot(prefix = getPfx()) {
+    try {
+      const raw = localStorage.getItem(getPipelineSeedStorageKey(prefix));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function clearPipelineSeedSnapshot(prefix = getPfx()) {
+    try {
+      localStorage.removeItem(getPipelineSeedStorageKey(prefix));
+    } catch (error) {}
+  }
 
   function escapeAttr(value) {
     return String(value || '')
@@ -623,6 +665,7 @@
     global.state.selectedTags = selectedTags;
     global.state.outputs.tags = finalCsv;
     global.setPipelineRunEntry(p, agentId, finalCsv, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
+    persistPipelineSeedSnapshot(p);
     global.PipelineUIRender.syncSelectionField('tags', finalCsv, p);
     global.PipelineUIRender.syncFinalPre('tags', finalCsv, p);
 
@@ -915,6 +958,7 @@
     global.state.selectedTitre = titre;
     global.state.outputs.titre_valide = titre;
     global.setPipelineRunEntry(p, agentId, titre, { quality: 'net', validation: 'valide', origin: 'manuel', sourceAgentId: agentId });
+    persistPipelineSeedSnapshot(p);
 
     document.getElementById(`${p}-sel-${agentId}`).classList.remove('visible');
     document.getElementById(`${p}-stat-${agentId}`).textContent = 'titre validé';
@@ -1115,6 +1159,11 @@
   bindSelectionDelegation();
 
   global.PipelineUISelections = {
+    getPipelineSeedStorageKey,
+    buildPipelineSeedSnapshot,
+    persistPipelineSeedSnapshot,
+    readPipelineSeedSnapshot,
+    clearPipelineSeedSnapshot,
     buildTagsUI,
     validateTag,
     invalidateTag,

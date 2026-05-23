@@ -26,6 +26,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/data/stepper_steps_data.js',
     'pipeline/data/echelles_data.js',
     'pipeline/data/form_catalogs_data.js',
+    'pipeline/data/description_templates_data.js',
     'pipeline/data/tags_common_data.js',
   ]),
   runtimePrelude: Object.freeze([
@@ -52,6 +53,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/runtime/agent_runtime_ui.js',
     'pipeline/runtime/cache_runtime_ui.js',
     'pipeline/runtime/cost_runtime_ui.js',
+    'pipeline/runtime/description_assembly_runtime_ui.js',
     'pipeline/runtime/iris_runtime_ui.js',
     'pipeline/runtime/launch_runtime_ui.js',
     'pipeline/runtime/output_runtime_ui.js',

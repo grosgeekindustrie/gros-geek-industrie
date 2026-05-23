@@ -622,7 +622,7 @@
     global.resetSocialRuntimePanels(prefix);
     global.resetFinalOutputPanels(prefix);
 
-    ['titre_valide', 'description_assembled', 'tags', 'tags_raw', 'alt'].forEach((key) => {
+    ['titre_valide', 'description_assembled', 'description_final', 'tags', 'tags_raw', 'alt'].forEach((key) => {
       global.state.outputs[key] = '';
     });
 
@@ -683,6 +683,7 @@
     global.state.selectedTitre = null;
     global.state.selectedTags = [];
     global.state.outputs.iris = '';
+    global.clearPipelineSeedSnapshot?.(prefix);
     if (!preserveRunState) resetPipelineRunState(prefix);
     if (!skipCacheRunInit) {
       global.beginCacheDebugRun(prefix, pipelineAgents, {

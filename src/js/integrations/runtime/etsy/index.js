@@ -4,8 +4,6 @@ const etsyRuntimeScriptPaths = Object.freeze([
   'integrations/runtime/etsy/runtime_cache.js',
   'integrations/runtime/etsy/runtime_helpers.js',
   'integrations/runtime/etsy/runtime_attributes.js',
-  'integrations/runtime/etsy/runtime_shipping.js',
-  'integrations/runtime/etsy/runtime_settings.js',
   'integrations/runtime/etsy/runtime_publication.js',
   'integrations/runtime/etsy/runtime_editor.js',
   'integrations/runtime/etsy/runtime_media.js',

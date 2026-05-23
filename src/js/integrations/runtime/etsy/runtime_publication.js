@@ -20,7 +20,6 @@
     if (!state) return;
 
     deps.applyAttributesDraftToPayload?.(state);
-    deps.applySettingsDraftToPayload?.(state);
     runtime.syncPayloadText?.(state);
 
     const snapshot = buildPublicationPayloadSnapshot(state);

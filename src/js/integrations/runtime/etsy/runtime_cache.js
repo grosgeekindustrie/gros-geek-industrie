@@ -61,13 +61,11 @@
       payload: state.mediaPayload,
       ui_state: {
         media_order: state.mediaOrder,
+        selected_pipeline_alt_media_keys: state.selectedPipelineAltMediaKeys || [],
         local_images: buildLocalImagePayload(state),
         active_step: state.activeStep || 'media',
         details_draft: state.detailsDraft || null,
-        options_draft: state.optionsDraft || null,
         attributes_draft: state.attributesDraft || null,
-        shipping_draft: state.shippingDraft || null,
-        settings_draft: state.settingsDraft || null,
       },
       debug: {
         listing_properties_error: String(state.listingPropertiesError || ''),

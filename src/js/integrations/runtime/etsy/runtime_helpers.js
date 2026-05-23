@@ -127,6 +127,25 @@
     return width > 0 && height > 0 ? `${width} x ${height}` : '-';
   }
 
+  function getPipelineSeedForEtsy(prefix) {
+    const seed = global.readPipelineSeedSnapshot?.(prefix) || null;
+    if (!seed || typeof seed !== 'object') return null;
+
+    const title = String(seed.title || '').trim();
+    const tagsCsv = String(seed.tagsCsv || '').trim();
+    const descriptionText = global.stripLeadingDescriptionHeading?.(seed.descriptionText) || String(seed.descriptionText || '').trim();
+    const altText = String(seed.altText || '').trim();
+    if (!title && !tagsCsv && !descriptionText && !altText) return null;
+
+    return {
+      title,
+      tagsCsv,
+      descriptionText,
+      altText,
+      updatedAt: String(seed.updatedAt || '').trim(),
+    };
+  }
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     getNode,
@@ -147,6 +166,7 @@
     getImageResolution,
     getVideoResolution,
     formatResolution,
+    getPipelineSeedForEtsy,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

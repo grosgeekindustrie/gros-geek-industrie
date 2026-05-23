@@ -638,12 +638,12 @@ def decode_data_url_payload(data_url: str) -> tuple[str, bytes]:
     return media_type, payload
 
 
-def fetch_publication_image_payload(remote_url: str) -> tuple[str, bytes]:
+def fetch_publication_remote_media_payload(remote_url: str, expected_kind: str) -> tuple[str, bytes]:
     target_url = str(remote_url or '').strip()
     if not target_url.startswith('https://'):
-        raise ValueError('URL image distante invalide')
-    if 'etsyimg.com' not in target_url and 'etsystatic.com' not in target_url:
-        raise ValueError('URL image distante non autorisee')
+        raise ValueError(f'URL {expected_kind} distante invalide')
+    if not any(domain in target_url for domain in ('etsyimg.com', 'etsystatic.com', 'etsy.com')):
+        raise ValueError(f'URL {expected_kind} distante non autorisee')
 
     request = urllib.request.Request(
         target_url,
@@ -651,10 +651,19 @@ def fetch_publication_image_payload(remote_url: str) -> tuple[str, bytes]:
     )
     with urllib.request.urlopen(request, timeout=20) as response:
         media_type = str(response.headers.get('Content-Type') or '').split(';')[0].strip().lower()
-        if not media_type.startswith('image/'):
-            raise ValueError(f'Ressource distante non image: {media_type or "type inconnu"}')
+        expected_prefix = f'{expected_kind}/'
+        if not media_type.startswith(expected_prefix):
+            raise ValueError(f'Ressource distante non {expected_kind}: {media_type or "type inconnu"}')
         payload = response.read()
     return media_type, payload
+
+
+def fetch_publication_image_payload(remote_url: str) -> tuple[str, bytes]:
+    return fetch_publication_remote_media_payload(remote_url, 'image')
+
+
+def fetch_publication_video_payload(remote_url: str) -> tuple[str, bytes]:
+    return fetch_publication_remote_media_payload(remote_url, 'video')
 
 
 def _flatten_taxonomy_nodes(nodes, parents: list[str] | None = None) -> list[dict]:
@@ -1902,12 +1911,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     update_payload = data.get('updatePayload') or {}
                     inventory_payload = data.get('inventory') or {}
                     images_payload = data.get('images') or []
+                    videos_payload = data.get('videos') or []
+                    media_plan_payload = data.get('mediaPlan') or {}
                     attributes_payload = data.get('attributes') or {}
                 else:
                     listing_payload = data.get('createPayload') or {}
                     update_payload = data.get('updatePayload') or {}
                     inventory_payload = data.get('inventory') or {}
                     images_payload = data.get('images') or []
+                    videos_payload = data.get('videos') or []
+                    media_plan_payload = data.get('mediaPlan') or {}
                     attributes_payload = data.get('attributes') or {}
 
                 if not isinstance(listing_payload, dict):
@@ -1921,6 +1934,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return
                 if images_payload and not isinstance(images_payload, list):
                     self.send_json(400, {'error': 'Payload images Etsy invalide'})
+                    return
+                if videos_payload and not isinstance(videos_payload, list):
+                    self.send_json(400, {'error': 'Payload videos Etsy invalide'})
+                    return
+                if media_plan_payload and not isinstance(media_plan_payload, dict):
+                    self.send_json(400, {'error': 'Payload mediaPlan Etsy invalide'})
                     return
                 if attributes_payload and not isinstance(attributes_payload, dict):
                     self.send_json(400, {'error': 'Payload attributs Etsy invalide'})
@@ -1952,6 +1971,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     'payload_sent': create_payload,
                     'response': create_response,
                 }]
+
+                if media_plan_payload:
+                    operations.append({
+                        'step': 'prepare_listing_media',
+                        'source_image_count': int(media_plan_payload.get('sourceImageCount') or 0),
+                        'source_video_count': int(media_plan_payload.get('sourceVideoCount') or 0),
+                        'local_image_count': int(media_plan_payload.get('localImageCount') or 0),
+                        'ordered_media_count': int(media_plan_payload.get('orderedMediaCount') or 0),
+                        'planned_image_count': int(media_plan_payload.get('plannedImageCount') or 0),
+                        'planned_video_count': int(media_plan_payload.get('plannedVideoCount') or 0),
+                        'skipped_video_count': int(media_plan_payload.get('skippedVideoCount') or 0),
+                    })
 
                 normalized_update_payload = {
                     key: value
@@ -2098,8 +2129,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     operations.append({
                         'step': 'upload_listing_images',
                         'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/images',
-                        'count': len(uploaded_images),
+                        'requested_count': len(images_payload),
+                        'uploaded_count': len(uploaded_images),
                         'images': uploaded_images,
+                    })
+
+                uploaded_videos = []
+                for video_index, video_entry in enumerate(videos_payload):
+                    if not isinstance(video_entry, dict):
+                        continue
+
+                    mode = str(video_entry.get('mode') or '').strip().lower()
+                    if mode != 'upload_remote':
+                        continue
+
+                    media_type, video_bytes = fetch_publication_video_payload(str(video_entry.get('remote_url') or ''))
+                    filename_hint = guess_filename(str(video_entry.get('filename') or f'etsy-video-{video_index + 1}'), media_type)
+                    video_fields = {
+                        'name': filename_hint,
+                    }
+                    pause_etsy_publication_requests()
+                    video_response = perform_etsy_post_multipart_request(
+                        f'shops/{shop_id}/listings/{created_listing_id}/videos',
+                        include_oauth=True,
+                        fields=video_fields,
+                        file_field_name='video',
+                        filename=filename_hint,
+                        media_type=media_type,
+                        payload=video_bytes,
+                    )
+
+                    uploaded_videos.append({
+                        'index': video_index + 1,
+                        'mode': mode,
+                        'fields_sent': video_fields,
+                        'response': video_response,
+                    })
+
+                if uploaded_videos:
+                    operations.append({
+                        'step': 'upload_listing_videos',
+                        'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/videos',
+                        'requested_count': len(videos_payload),
+                        'uploaded_count': len(uploaded_videos),
+                        'videos': uploaded_videos,
                     })
 
                 occasion_value = str(attributes_payload.get('occasion') or '').strip().lower()

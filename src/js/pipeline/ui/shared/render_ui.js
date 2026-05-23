@@ -10,7 +10,7 @@
   const FINAL_OUTPUT_STATE_KEYS = {
     tags: 'tags',
     titre_valide: 'titre_valide',
-    description_assembled: 'description_assembled',
+    description_final: 'description_final',
     alt: 'alt',
   };
 
@@ -47,6 +47,16 @@
     return node?.querySelector?.('.fs-content') || node;
   }
 
+  function updateAltLengthMeta(prefix, text) {
+    const metaNode = document.getElementById(`fc-alt-meta-${prefix}`);
+    if (!metaNode) return;
+
+    const length = String(text || '').length;
+    metaNode.textContent = `${length} / 500`;
+    metaNode.classList.toggle('fs-meta-ok', length <= 500);
+    metaNode.classList.toggle('fs-meta-over', length > 500);
+  }
+
   function readFinalOutputText(node) {
     return getFinalOutputContentNode(node)?.textContent || '';
   }
@@ -63,6 +73,12 @@
     if (key === 'tags') {
       runtimeState.selectedTags = splitTagValues(value);
     }
+
+    if (key === 'alt') {
+      updateAltLengthMeta(node?.dataset?.finalPrefix || global.pfx(), value);
+    }
+
+    global.persistPipelineSeedSnapshot?.(global.pfx?.());
   }
 
   function formatEditableFinalOutput(node) {
@@ -133,18 +149,20 @@
     const contentIdMap = {
       tags: `fc-tags-${p}`,
       titre_valide: `fc-titre-${p}`,
-      description_assembled: `fc-description-${p}`,
+      description_final: `fc-description-${p}`,
       alt: `fc-alt-${p}`,
     };
     const sectionIdMap = {
       tags: `fs-tags-${p}`,
       titre_valide: `fs-titre-${p}`,
-      description_assembled: `fs-description-${p}`,
+      description_final: `fs-description-${p}`,
       alt: `fs-alt-${p}`,
     };
 
     const contentNode = document.getElementById(contentIdMap[key] || '');
     if (contentNode) setNodeText(contentNode, formatFinalOutputText(key, text));
+
+    if (key === 'alt') updateAltLengthMeta(p, text);
 
     const sectionNode = document.getElementById(sectionIdMap[key] || '');
     if (sectionNode) sectionNode.style.display = text ? '' : 'none';
@@ -237,6 +255,7 @@
     syncFinalPre,
     syncTagsOutputFromUI,
     formatFinalOutputText,
+    updateAltLengthMeta,
   };
 
   global.PipelineUI.render = global.PipelineUI.render || {};

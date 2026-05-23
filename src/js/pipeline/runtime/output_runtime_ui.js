@@ -11,7 +11,7 @@
     col: 'collection',
   });
   const SOLO_EXPORT_FALLBACK_AUTHOR = 'unknown_sculptor';
-  const getFinalDescriptionOutput = () => global.state.outputs.description_assembled || '';
+  const getFinalDescriptionOutput = () => global.state.outputs.description_final || global.state.outputs.description_assembled || '';
 
   function getOutputText(prefix, agentId) {
     const outputNode = document.getElementById(`${prefix}-out-${agentId}`);
@@ -75,6 +75,8 @@
       const element = document.getElementById(id);
       if (element) element.style.display = 'none';
     });
+
+    global.PipelineUIRender?.updateAltLengthMeta?.(prefix, '');
   }
 
   function moveFinalOutputPanelToPipelineBody(prefix, pipelineBody) {
@@ -87,17 +89,21 @@
     const prefix = global.pfx();
     const titre = global.state.outputs.titre_valide || '';
     const tags = global.state.outputs.tags || '';
-    const desc = getFinalDescriptionOutput();
+    const dynamicDescription = global.state.outputs.description_assembled || '';
+    const desc = global.buildFinalPipelineDescription?.(prefix, dynamicDescription) || dynamicDescription;
     const alt = global.state.outputs.alt || '';
 
     if (!titre && !tags && !desc && !alt) return;
 
+    global.state.outputs.description_final = desc;
+
     setFinalSectionContent(`fs-titre-${prefix}`, `fc-titre-${prefix}`, titre, 'titre_valide');
     setFinalSectionContent(`fs-tags-${prefix}`, `fc-tags-${prefix}`, tags, 'tags');
-    setFinalSectionContent(`fs-description-${prefix}`, `fc-description-${prefix}`, desc, 'description_assembled');
+    setFinalSectionContent(`fs-description-${prefix}`, `fc-description-${prefix}`, desc, 'description_final');
     setFinalSectionContent(`fs-alt-${prefix}`, `fc-alt-${prefix}`, alt, 'alt');
 
     revealFinalOutput(prefix);
+    global.persistPipelineSeedSnapshot?.(prefix);
     if (alt) global.showSocialEntryPanel(prefix);
     refreshFinalOutputTabs(prefix);
   }
