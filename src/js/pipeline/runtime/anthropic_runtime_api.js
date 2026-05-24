@@ -59,11 +59,20 @@
     PIPELINE_PREFIXES.TABLETOP,
     PIPELINE_PREFIXES.COLLECTION,
   ]);
+  const AGENT_MAX_TOKENS = Object.freeze({
+    traduction_listing_en: 4000,
+    traduction_listing_de: 4000,
+    traduction_listing_es: 4000,
+  });
 
   function getAnthropicBetaHeader({ useFiles = false } = {}) {
     return useFiles
       ? `${ANTHROPIC_PROMPT_CACHING_BETA},${ANTHROPIC_FILES_API_BETA}`
       : ANTHROPIC_PROMPT_CACHING_BETA;
+  }
+
+  function getMaxTokensForAgent(agentId = '') {
+    return Number(AGENT_MAX_TOKENS[String(agentId || '').trim()]) || 2000;
   }
 
   function shouldUseImagesForAgent(agent) {
@@ -649,7 +658,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
-            max_tokens: 2000,
+            max_tokens: getMaxTokensForAgent(agentId),
             messages: [{ role: 'user', content }],
             useFilesBeta: imageContentBlocks.length > 0,
           }),

@@ -277,6 +277,7 @@
     return runtime.publishDraftListing?.(prefix, {
       getState: runtime.getWorkspaceState,
       createDraftListing: runtime.createDraftListing,
+      updateExistingListing: runtime.updateExistingListing,
       applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
     });
   }

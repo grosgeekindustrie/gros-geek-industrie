@@ -125,6 +125,8 @@
       getState: runtime.getWorkspaceState,
       getNode: runtime.getNode,
       buildPublicationPayloadSnapshot: runtime.buildPublicationPayloadSnapshot,
+      getPublicationMode: runtime.getPublicationMode,
+      setPublicationMode: runtime.setPublicationMode,
       publishDraftListing: runtime.workspacePublishDraftListing || runtime.publishDraftListing,
     });
   }

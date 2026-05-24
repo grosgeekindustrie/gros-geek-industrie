@@ -197,6 +197,10 @@
         <span class="collection-solo-tab-label">Etsy API</span>
         <span class="collection-solo-tab-state" data-dnd-tab-state="etsy">Disponible</span>
       </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="translation">
+        <span class="collection-solo-tab-label">Traduction</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="translation">Disponible</span>
+      </button>
     </div>
 
     <div class="collection-solo-status" data-js="dnd-solo-status" aria-live="polite">
@@ -765,6 +769,360 @@ Cache : —</pre>
           </div>
         </div>
       </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="translation" hidden>
+        <div class="form-section translation-en-panel" id="translationEnPanel-tt">
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction · Workflow multi-langue</span>
+            <h2 class="collection-stepper-title">FR source puis EN</h2>
+            <p class="collection-stepper-subtitle">Prépare d’abord la matière FR, puis passe sur l’anglais pour le contrôle sémantique et la traduction.</p>
+          </div>
+          <div class="translation-en-subtabs" role="tablist" aria-label="Sous-onglets traduction">
+            <button class="translation-en-subtab is-active" type="button" id="tt-translation-subtab-fr" role="tab" aria-selected="true">FR source</button>
+            <button class="translation-en-subtab" type="button" id="tt-translation-subtab-en" role="tab" aria-selected="false">EN</button>
+            <button class="translation-en-subtab" type="button" id="tt-translation-subtab-de" role="tab" aria-selected="false">DE</button>
+            <button class="translation-en-subtab" type="button" id="tt-translation-subtab-es" role="tab" aria-selected="false">ES</button>
+          </div>
+
+          <div class="translation-en-subpanel is-active" id="tt-translation-subpanel-fr">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction · Source FR</span>
+              <h3 class="collection-stepper-title">Charger et corriger la fiche source</h3>
+              <p class="collection-stepper-subtitle">Cette matière FR servira ensuite directement à la traduction anglaise.</p>
+            </div>
+            <div class="fg full">
+              <label for="tt-translation-en-listing-ref">Référence fiche Etsy</label>
+              <input type="text" id="tt-translation-en-listing-ref" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row translation-en-actions">
+                <button class="btn btn-accent" type="button" id="tt-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+              </div>
+              <p class="fetch-status" id="tt-translation-en-source-status">En attente d’une fiche Etsy source.</p>
+            </div>
+            <div class="translation-en-grid translation-en-grid-single">
+              <div class="fg full">
+                <div class="translation-en-label-row">
+                  <label for="tt-translation-en-source-title">Titre source FR</label>
+                  <div class="translation-en-label-actions">
+                    <span class="translation-en-metric" id="tt-translation-en-source-title-meta">0 / 140</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="source-title"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <input type="text" id="tt-translation-en-source-title" placeholder="Titre source Etsy" autocomplete="off"/>
+              </div>
+              <div class="fg full">
+                <div class="translation-en-label-row">
+                  <label for="tt-translation-en-source-tags-input">Tags source FR</label>
+                  <div class="translation-en-label-actions">
+                    <span class="translation-en-metric" id="tt-translation-en-source-tags-meta">0 tag(s) · 0 hors limite</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="source-tags"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <input type="text" id="tt-translation-en-source-tags-input" placeholder="ex: resin statue, alita figure" autocomplete="off"/>
+                <p class="etsy-api-field-hint">Appuie sur Entrée pour valider la liste. Tu peux ensuite éditer, supprimer ou réécrire les tags.</p>
+                <div class="etsy-api-attribute-tags" id="tt-translation-en-source-tags-list"></div>
+              </div>
+              <div class="fg full" style="grid-column: 1 / -1;">
+                <div class="translation-en-label-row">
+                  <label for="tt-translation-en-source-description">Description source FR</label>
+                  <div class="translation-en-label-actions">
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="source-description"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <textarea id="tt-translation-en-source-description" class="translation-en-textarea" placeholder="Description source Etsy"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="tt-translation-subpanel-en" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction EN · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> EN</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction anglaise à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="tt-translation-en-character-fr">Nom personnage FR</label>
+              <input type="text" id="tt-translation-en-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-en-universe-fr">Univers / licence FR</label>
+              <input type="text" id="tt-translation-en-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-en-character-en">Nom personnage EN</label>
+              <input type="text" id="tt-translation-en-character-en" placeholder="ex: Alita" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-en-universe-en">Univers / licence EN</label>
+              <input type="text" id="tt-translation-en-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="tt-translation-en-run" data-ui-action="run-translation-en-check" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> EN</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_en"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-input" data-action-arg="tt">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="tt-translation-en-status">En attente d’un check FR -> EN.</p>
+          <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_en">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_en.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction EN · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction anglaise</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet précédent est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="tt-translation-en-translate" data-ui-action="run-translation-en-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_en"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-listing-input" data-action-arg="tt">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="tt-translation-en-translation-status">En attente d’une traduction EN.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction EN · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description EN</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-en-translated-title">Titre EN</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-en-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-en-translated-title" placeholder="Titre EN genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-en-translated-tags-input">Tags EN</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-en-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-en-translated-tags-input" placeholder="ex: resin statue, battle angel alita" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="tt-translation-en-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-en-translated-description">Description EN</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="tt-translation-en-translated-description" class="translation-en-textarea" placeholder="Description EN generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_listing_en">— pas encore traduit —</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_en.md</code>.</p>
+          </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="tt-translation-subpanel-de" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction DE · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> DE</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction allemande à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="tt-translation-de-character-fr">Nom personnage FR</label>
+              <input type="text" id="tt-translation-de-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-de-universe-fr">Univers / licence FR</label>
+              <input type="text" id="tt-translation-de-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-de-character-en">Nom personnage DE</label>
+              <input type="text" id="tt-translation-de-character-en" placeholder="ex: Alita" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-de-universe-en">Univers / licence DE</label>
+              <input type="text" id="tt-translation-de-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="tt-translation-de-run" data-ui-action="run-translation-de-check" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> DE</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_de"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-input" data-action-arg="tt">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="tt-translation-de-status">En attente d’un check FR -> DE.</p>
+          <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_de">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_de.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction DE · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction allemande</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet source est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="tt-translation-de-translate" data-ui-action="run-translation-de-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_de"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-listing-input" data-action-arg="tt">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="tt-translation-de-translation-status">En attente d’une traduction DE.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction DE · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description DE</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-de-translated-title">Titre DE</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-de-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-de-translated-title" placeholder="Titre DE genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-de-translated-tags-input">Tags DE</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-de-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="tt" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-de-translated-tags-input" placeholder="ex: harz statue, alita figur" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="tt-translation-de-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-de-translated-description">Description DE</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="tt" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="tt-translation-de-translated-description" class="translation-en-textarea" placeholder="Description DE generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_listing_de">— pas encore traduit —</pre>
+              </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse DE</summary>
+                <pre class="output-box translation-en-output-box" id="tt-translation-de-debug">Aucun debug disponible.</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_de.md</code>.</p>
+          </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="tt-translation-subpanel-es" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction ES · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> ES</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction espagnole à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="tt-translation-es-character-fr">Nom personnage FR</label>
+              <input type="text" id="tt-translation-es-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-es-universe-fr">Univers / licence FR</label>
+              <input type="text" id="tt-translation-es-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-es-character-en">Nom personnage ES</label>
+              <input type="text" id="tt-translation-es-character-en" placeholder="ex: Gally" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="tt-translation-es-universe-en">Univers / licence ES</label>
+              <input type="text" id="tt-translation-es-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="tt-translation-es-run" data-ui-action="run-translation-es-check" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> ES</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_es"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-input" data-action-arg="tt">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="tt-translation-es-status">En attente d’un check FR -> ES.</p>
+          <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_es">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_es.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction ES · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction espagnole</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet source est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="tt-translation-es-translate" data-ui-action="run-translation-es-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_es"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-listing-input" data-action-arg="tt">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="tt-translation-es-translation-status">En attente d’une traduction ES.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction ES · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description ES</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-es-translated-title">Titre ES</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-es-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-es-translated-title" placeholder="Titre ES genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-es-translated-tags-input">Tags ES</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="tt-translation-es-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="tt" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="tt-translation-es-translated-tags-input" placeholder="ex: estatua resina, figura alita" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="tt-translation-es-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="tt-translation-es-translated-description">Description ES</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="tt" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="tt-translation-es-translated-description" class="translation-en-textarea" placeholder="Description ES generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_listing_es">— pas encore traduit —</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
+          </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </div><!-- /ui-tt -->
@@ -796,6 +1154,10 @@ Cache : —</pre>
       <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="etsy">
         <span class="collection-solo-tab-label">Etsy API</span>
         <span class="collection-solo-tab-state" data-collection-tab-state="etsy">Disponible</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="translation">
+        <span class="collection-solo-tab-label">Traduction</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="translation">Disponible</span>
       </button>
     </div>
 
@@ -1343,6 +1705,360 @@ Cache : —</pre>
               <summary><span class="form-optional-toggle">Payload brut</span></summary>
               <pre class="home-integration-details etsy-api-payload" id="etsyApiPayload-col">Aucun payload chargé.</pre>
             </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="translation" hidden>
+        <div class="form-section translation-en-panel" id="translationEnPanel-col">
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction · Workflow multi-langue</span>
+            <h2 class="collection-stepper-title">FR source puis EN</h2>
+            <p class="collection-stepper-subtitle">Prépare d’abord la matière FR, puis passe sur l’anglais pour le contrôle sémantique et la traduction.</p>
+          </div>
+          <div class="translation-en-subtabs" role="tablist" aria-label="Sous-onglets traduction">
+            <button class="translation-en-subtab is-active" type="button" id="col-translation-subtab-fr" role="tab" aria-selected="true">FR source</button>
+            <button class="translation-en-subtab" type="button" id="col-translation-subtab-en" role="tab" aria-selected="false">EN</button>
+            <button class="translation-en-subtab" type="button" id="col-translation-subtab-de" role="tab" aria-selected="false">DE</button>
+            <button class="translation-en-subtab" type="button" id="col-translation-subtab-es" role="tab" aria-selected="false">ES</button>
+          </div>
+
+          <div class="translation-en-subpanel is-active" id="col-translation-subpanel-fr">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction · Source FR</span>
+              <h3 class="collection-stepper-title">Charger et corriger la fiche source</h3>
+              <p class="collection-stepper-subtitle">Cette matière FR servira ensuite directement à la traduction anglaise.</p>
+            </div>
+            <div class="fg full">
+              <label for="col-translation-en-listing-ref">Référence fiche Etsy</label>
+              <input type="text" id="col-translation-en-listing-ref" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
+              <div class="field-action-row translation-en-actions">
+                <button class="btn btn-accent" type="button" id="col-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+              </div>
+              <p class="fetch-status" id="col-translation-en-source-status">En attente d’une fiche Etsy source.</p>
+            </div>
+            <div class="translation-en-grid translation-en-grid-single">
+              <div class="fg full">
+                <div class="translation-en-label-row">
+                  <label for="col-translation-en-source-title">Titre source FR</label>
+                  <div class="translation-en-label-actions">
+                    <span class="translation-en-metric" id="col-translation-en-source-title-meta">0 / 140</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="source-title"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <input type="text" id="col-translation-en-source-title" placeholder="Titre source Etsy" autocomplete="off"/>
+              </div>
+              <div class="fg full">
+                <div class="translation-en-label-row">
+                  <label for="col-translation-en-source-tags-input">Tags source FR</label>
+                  <div class="translation-en-label-actions">
+                    <span class="translation-en-metric" id="col-translation-en-source-tags-meta">0 tag(s) · 0 hors limite</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="source-tags"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <input type="text" id="col-translation-en-source-tags-input" placeholder="ex: resin statue, alita figure" autocomplete="off"/>
+                <p class="etsy-api-field-hint">Appuie sur Entrée pour valider la liste. Tu peux ensuite éditer, supprimer ou réécrire les tags.</p>
+                <div class="etsy-api-attribute-tags" id="col-translation-en-source-tags-list"></div>
+              </div>
+              <div class="fg full" style="grid-column: 1 / -1;">
+                <div class="translation-en-label-row">
+                  <label for="col-translation-en-source-description">Description source FR</label>
+                  <div class="translation-en-label-actions">
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="source-description"><span data-svg-icon="copy"></span></button>
+                  </div>
+                </div>
+                <textarea id="col-translation-en-source-description" class="translation-en-textarea" placeholder="Description source Etsy"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="col-translation-subpanel-en" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction EN · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> EN</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction anglaise à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="col-translation-en-character-fr">Nom personnage FR</label>
+              <input type="text" id="col-translation-en-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-en-universe-fr">Univers / licence FR</label>
+              <input type="text" id="col-translation-en-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-en-character-en">Nom personnage EN</label>
+              <input type="text" id="col-translation-en-character-en" placeholder="ex: Alita" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-en-universe-en">Univers / licence EN</label>
+              <input type="text" id="col-translation-en-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="col-translation-en-run" data-ui-action="run-translation-en-check" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> EN</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_en"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-input" data-action-arg="col">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="col-translation-en-status">En attente d’un check FR -> EN.</p>
+          <pre class="output-box empty translation-en-output-box" id="col-out-traduction_en">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_en.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction EN · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction anglaise</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet précédent est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="col-translation-en-translate" data-ui-action="run-translation-en-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_en"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-listing-input" data-action-arg="col">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="col-translation-en-translation-status">En attente d’une traduction EN.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction EN · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description EN</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-en-translated-title">Titre EN</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-en-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-en-translated-title" placeholder="Titre EN genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-en-translated-tags-input">Tags EN</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-en-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-en-translated-tags-input" placeholder="ex: resin statue, battle angel alita" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="col-translation-en-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-en-translated-description">Description EN</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="col-translation-en-translated-description" class="translation-en-textarea" placeholder="Description EN generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="col-out-traduction_listing_en">— pas encore traduit —</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_en.md</code>.</p>
+          </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="col-translation-subpanel-de" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction DE · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> DE</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction allemande à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="col-translation-de-character-fr">Nom personnage FR</label>
+              <input type="text" id="col-translation-de-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-de-universe-fr">Univers / licence FR</label>
+              <input type="text" id="col-translation-de-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-de-character-en">Nom personnage DE</label>
+              <input type="text" id="col-translation-de-character-en" placeholder="ex: Alita" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-de-universe-en">Univers / licence DE</label>
+              <input type="text" id="col-translation-de-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="col-translation-de-run" data-ui-action="run-translation-de-check" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> DE</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_de"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-input" data-action-arg="col">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="col-translation-de-status">En attente d’un check FR -> DE.</p>
+          <pre class="output-box empty translation-en-output-box" id="col-out-traduction_de">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_de.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction DE · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction allemande</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet source est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="col-translation-de-translate" data-ui-action="run-translation-de-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_de"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-listing-input" data-action-arg="col">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="col-translation-de-translation-status">En attente d’une traduction DE.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction DE · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description DE</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-de-translated-title">Titre DE</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-de-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-de-translated-title" placeholder="Titre DE genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-de-translated-tags-input">Tags DE</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-de-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="col" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-de-translated-tags-input" placeholder="ex: harz statue, alita figur" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="col-translation-de-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-de-translated-description">Description DE</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="col" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="col-translation-de-translated-description" class="translation-en-textarea" placeholder="Description DE generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="col-out-traduction_listing_de">— pas encore traduit —</pre>
+              </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse DE</summary>
+                <pre class="output-box translation-en-output-box" id="col-translation-de-debug">Aucun debug disponible.</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_de.md</code>.</p>
+          </div>
+          </div>
+
+          <div class="translation-en-subpanel" id="col-translation-subpanel-es" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker">Traduction ES · Contrôle sémantique</span>
+            <h2 class="collection-stepper-title">Correspondance FR -> ES</h2>
+            <p class="collection-stepper-subtitle">Vérifie les cas sensibles de personnage et d’univers, puis lance la traduction espagnole à partir de la source FR chargée.</p>
+          </div>
+          <div class="translation-en-grid">
+            <div class="fg">
+              <label for="col-translation-es-character-fr">Nom personnage FR</label>
+              <input type="text" id="col-translation-es-character-fr" placeholder="ex: Gali" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-es-universe-fr">Univers / licence FR</label>
+              <input type="text" id="col-translation-es-universe-fr" placeholder="ex: Gunnm" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-es-character-en">Nom personnage ES</label>
+              <input type="text" id="col-translation-es-character-en" placeholder="ex: Gally" autocomplete="off"/>
+            </div>
+            <div class="fg">
+              <label for="col-translation-es-universe-en">Univers / licence ES</label>
+              <input type="text" id="col-translation-es-universe-en" placeholder="ex: Battle Angel Alita" autocomplete="off"/>
+            </div>
+          </div>
+          <div class="field-action-row translation-en-actions">
+            <button class="btn btn-accent" type="button" id="col-translation-es-run" data-ui-action="run-translation-es-check" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Verifier FR -> ES</span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_es"><span data-svg-icon="settings"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+            <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-input" data-action-arg="col">&lt;/&gt;</button>
+          </div>
+          <p class="fetch-status" id="col-translation-es-status">En attente d’un check FR -> ES.</p>
+          <pre class="output-box empty translation-en-output-box" id="col-out-traduction_es">— pas encore vérifié —</pre>
+          <p class="translation-en-note">Le prompt de ce checker vit dans <code>prompts/traduction/traduction_es.md</code>.</p>
+
+          <div class="translation-en-subsection">
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Traduction ES · Génération</span>
+              <h3 class="collection-stepper-title">Lancer la traduction espagnole</h3>
+              <p class="collection-stepper-subtitle">Le contenu FR corrigé dans le sous-onglet source est utilisé ici comme base de traduction.</p>
+            </div>
+            <div class="field-action-row translation-en-actions translation-en-actions-top">
+              <button class="btn btn-accent" type="button" id="col-translation-es-translate" data-ui-action="run-translation-es-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_es"><span data-svg-icon="settings"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
+              <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-listing-input" data-action-arg="col">&lt;/&gt;</button>
+            </div>
+            <p class="fetch-status" id="col-translation-es-translation-status">En attente d’une traduction ES.</p>
+            <div class="translation-en-subsection">
+              <div class="collection-stepper-heading">
+                <span class="collection-stepper-kicker">Traduction ES · Sortie editable</span>
+                <h3 class="collection-stepper-title">Titre, tags et description ES</h3>
+                <p class="collection-stepper-subtitle">Controle et corrige la traduction generee avant le futur push Etsy.</p>
+              </div>
+              <div class="translation-en-grid translation-en-grid-single">
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-es-translated-title">Titre ES</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-es-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-es-translated-title" placeholder="Titre ES genere" autocomplete="off"/>
+                </div>
+                <div class="fg full">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-es-translated-tags-input">Tags ES</label>
+                    <div class="translation-en-label-actions">
+                      <span class="translation-en-metric" id="col-translation-es-translated-tags-meta">0 tag(s) · 0 hors limite</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="col" data-action-arg2="translated-tags"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <input type="text" id="col-translation-es-translated-tags-input" placeholder="ex: estatua resina, figura alita" autocomplete="off"/>
+                  <p class="etsy-api-field-hint">Appuie sur Entree pour valider la liste. Tu peux ensuite editer, supprimer ou reecrire les tags.</p>
+                  <div class="etsy-api-attribute-tags" id="col-translation-es-translated-tags-list"></div>
+                </div>
+                <div class="fg full" style="grid-column: 1 / -1;">
+                  <div class="translation-en-label-row">
+                    <label for="col-translation-es-translated-description">Description ES</label>
+                    <div class="translation-en-label-actions">
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="col" data-action-arg2="translated-description"><span data-svg-icon="copy"></span></button>
+                    </div>
+                  </div>
+                  <textarea id="col-translation-es-translated-description" class="translation-en-textarea" placeholder="Description ES generee"></textarea>
+                </div>
+              </div>
+              <details class="translation-en-debug">
+                <summary>JSON brut de la traduction</summary>
+                <pre class="output-box empty translation-en-output-box" id="col-out-traduction_listing_es">— pas encore traduit —</pre>
+              </details>
+            </div>
+            <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
+          </div>
           </div>
         </div>
       </section>

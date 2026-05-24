@@ -43,25 +43,45 @@
     if (!state || !host) return;
 
     const snapshot = deps.buildPublicationPayloadSnapshot?.(state) || {};
+    const publicationMode = deps.getPublicationMode?.(state) || (state.publicationMode === 'update_listing' ? 'update_listing' : 'create_draft');
+    const isUpdateMode = publicationMode === 'update_listing';
+    const sourceListingState = String(snapshot.sourceListingState || state.sourceListingState || '').trim().toLowerCase();
+    const publishButtonLabel = state.publicationSubmitting
+      ? (isUpdateMode ? 'Mise a jour...' : 'Publication...')
+      : (isUpdateMode ? 'Mettre a jour la fiche' : 'Publier en draft');
+    const modeNotes = isUpdateMode
+      ? [
+        'Mode mise a jour : cible la fiche chargee et non un nouveau draft.',
+        'Scope actuel : titre, description, tags, images, video et ALT.',
+      ]
+      : [
+        'Mode creation draft : duplique la fiche chargee vers un nouveau draft Etsy.',
+      ];
     const payloadText = JSON.stringify(getDisplayPayloadValue(snapshot.payload || {}), null, 2);
     const validationErrors = Array.isArray(snapshot.validationErrors) ? snapshot.validationErrors : [];
-    const warnings = Array.isArray(snapshot.warnings) ? snapshot.warnings : [];
+    const warnings = [...modeNotes, ...(Array.isArray(snapshot.warnings) ? snapshot.warnings : [])];
     const publicationResult = state.publicationResult ? JSON.stringify(getDisplayPayloadValue(state.publicationResult), null, 2) : '';
     const publicationError = String(state.publicationError || '').trim();
 
     host.innerHTML = `
-      <div class="etsy-api-publication-layout">
-        <section class="etsy-api-publication-card">
+      <div class="etsy-api-publication-layout ${isUpdateMode ? 'etsy-api-publication-layout-update' : 'etsy-api-publication-layout-create'}">
+        <section class="etsy-api-publication-card ${isUpdateMode ? 'etsy-api-publication-card-update' : ''}">
           <div class="etsy-api-publication-card-head">
             <div>
               <h4>Plan de publication Etsy</h4>
-              <p>Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.</p>
+              <p>${isUpdateMode ? 'Mise a jour editoriale et media de la fiche chargee.' : 'Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.'}</p>
             </div>
-            <button class="btn btn-accent" type="button" data-js="etsy-publication-submit" ${state.publicationSubmitting ? 'disabled' : ''}>${state.publicationSubmitting ? 'Publication...' : 'Publier en draft'}</button>
+            <button class="btn ${isUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
           </div>
+          <div class="etsy-api-publication-mode-switch" role="group" aria-label="Mode publication Etsy">
+            <button class="btn ${!isUpdateMode ? 'btn-accent' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="create_draft">Creation draft</button>
+            <button class="btn ${isUpdateMode ? 'btn-warn' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="update_listing">Mise a jour fiche</button>
+          </div>
+          ${isUpdateMode ? `<div class="etsy-api-publication-mode-banner">Mode mise a jour actif : la fiche Etsy chargee sera modifiee directement.</div>` : ''}
           <div class="etsy-api-publication-meta">
             <span class="etsy-api-publication-meta-item">Listing source: ${escapeHtml(snapshot.sourceListingId || 'aucun')}</span>
-            <span class="etsy-api-publication-meta-item">Mode: duplication en draft</span>
+            <span class="etsy-api-publication-meta-item">Etat source: ${escapeHtml(sourceListingState || 'inconnu')}</span>
+            <span class="etsy-api-publication-meta-item">Mode: ${isUpdateMode ? 'mise a jour de fiche' : 'duplication en draft'}</span>
           </div>
           ${warnings.length ? `<div class="etsy-api-publication-notes">${warnings.map((warning) => `<p>${escapeHtml(warning)}</p>`).join('')}</div>` : ''}
           ${validationErrors.length ? `<div class="etsy-api-publication-errors">${validationErrors.map((error) => `<p>${escapeHtml(error)}</p>`).join('')}</div>` : ''}
@@ -81,6 +101,11 @@
       </div>
     `;
 
+    host.querySelectorAll('[data-js="etsy-publication-mode"]').forEach((button) => {
+      button.addEventListener('click', () => {
+        deps.setPublicationMode?.(prefix, String(button.dataset.mode || 'create_draft'));
+      });
+    });
     host.querySelector('[data-js="etsy-publication-submit"]')?.addEventListener('click', () => {
       deps.publishDraftListing?.(prefix);
     });

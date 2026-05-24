@@ -1094,6 +1094,11 @@
   gap: 1rem;
 }
 
+.etsy-api-publication-layout-update .etsy-api-publication-card-update {
+  border-color: rgba(214, 151, 74, 0.42);
+  background: rgba(214, 151, 74, 0.07);
+}
+
 .etsy-api-attributes-card {
   padding: 1rem;
   border: 1px solid var(--border);
@@ -1132,6 +1137,32 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.etsy-api-publication-mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.etsy-api-publication-mode-banner {
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(214, 151, 74, 0.42);
+  border-radius: 14px;
+  background: rgba(214, 151, 74, 0.12);
+  color: #ffd8a3;
+}
+
+.btn-warn {
+  border-color: rgba(214, 151, 74, 0.55);
+  background: linear-gradient(180deg, rgba(214, 151, 74, 0.22), rgba(214, 151, 74, 0.14));
+  color: #ffe5bf;
+}
+
+.btn-warn:hover:not(:disabled),
+.btn-warn:focus-visible:not(:disabled) {
+  border-color: rgba(233, 174, 92, 0.72);
+  background: linear-gradient(180deg, rgba(233, 174, 92, 0.28), rgba(233, 174, 92, 0.18));
 }
 
 .etsy-api-attributes-card-head {
@@ -2148,4 +2179,135 @@
 
 .fs-meta-over {
   color: #ff5a5f;
+}
+
+.translation-en-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.translation-en-subtabs {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.translation-en-subtab {
+  border: 1px solid rgba(247, 247, 242, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(247, 247, 242, 0.82);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.translation-en-subtab.is-active {
+  background: rgba(126, 184, 247, 0.16);
+  border-color: rgba(126, 184, 247, 0.45);
+  color: #7eb8f7;
+}
+
+.translation-en-subpanel {
+  display: none;
+  gap: 1rem;
+}
+
+.translation-en-subpanel.is-active {
+  display: grid;
+}
+
+.translation-en-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.translation-en-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.translation-en-output-box {
+  min-height: 12rem;
+  white-space: pre-wrap;
+}
+
+.translation-en-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.translation-en-actions-top {
+  margin-top: 0;
+}
+
+.translation-en-note {
+  margin: 0;
+  color: rgba(247, 247, 242, 0.72);
+  font-size: 0.92rem;
+}
+
+.translation-en-subsection {
+  border-top: 1px solid rgba(247, 247, 242, 0.08);
+  padding-top: 1rem;
+}
+
+.translation-en-textarea {
+  min-height: 18rem;
+  resize: vertical;
+}
+
+.translation-en-debug {
+  margin-top: 1rem;
+}
+
+.translation-en-debug summary {
+  cursor: pointer;
+  color: rgba(247, 247, 242, 0.82);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.translation-en-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.translation-en-label-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.translation-en-metric {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+}
+
+.translation-en-metric-ok {
+  color: #4cd964;
+}
+
+.translation-en-metric-over {
+  color: #ff5a5f;
+}
+
+.translation-en-tag-over {
+  border-color: rgba(255, 90, 95, 0.8) !important;
+  box-shadow: 0 0 0 1px rgba(255, 90, 95, 0.25);
+}
+
+@media (max-width: 900px) {
+  .translation-en-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .translation-en-label-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

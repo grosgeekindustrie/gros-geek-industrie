@@ -5,7 +5,7 @@
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
 
   function getCostRatesForAgent(agentId = '') {
-    const model = String(global.AGENT_MODELS[agentId] || '');
+    const model = String(global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
     const isHaiku = model.includes('haiku');
 
     return isHaiku
@@ -53,6 +53,12 @@
         marche: '03 Sophie',
         description: '04 Claire',
         alt: '05 Nadia',
+        traduction_en: 'EN Mapping',
+        traduction_listing_en: 'EN Listing',
+        traduction_de: 'DE Mapping',
+        traduction_listing_de: 'DE Listing',
+        traduction_es: 'ES Mapping',
+        traduction_listing_es: 'ES Listing',
         social: '06 Léo',
         camille: '07 Camille',
         iris: 'Iris',
@@ -64,6 +70,12 @@
         tags: '02 Axel',
         description: '03 Eden',
         alt: '04 Jules ALT',
+        traduction_en: 'EN Mapping',
+        traduction_listing_en: 'EN Listing',
+        traduction_de: 'DE Mapping',
+        traduction_listing_de: 'DE Listing',
+        traduction_es: 'ES Mapping',
+        traduction_listing_es: 'ES Listing',
         social: '05 Theo',
         camille: '06 Zoe',
         iris: 'Iris',
@@ -80,13 +92,14 @@
   }
 
   function getCostModelName(agentId = '') {
-    return String(global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
+    return String(global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
   }
 
   function getCostEntryType(entry = {}) {
     if (entry.source === 'cache-aware-prelaunch' || entry.agentId === 'cache_aware') return 'cache_aware_prelaunch';
     if (entry.isWarmupEvent) return 'warmup';
     if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
+    if (entry.source === 'translation' || ['traduction_en', 'traduction_listing_en', 'traduction_de', 'traduction_listing_de', 'traduction_es', 'traduction_listing_es'].includes(entry.agentId)) return 'translation';
     if (entry.source === 'social' || entry.source === 'camille') return 'social';
     if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
     if (entry.source === 'rerun') return 'rerun';
@@ -99,6 +112,7 @@
       pipeline: 'pipeline agent',
       rerun: 'rerun',
       iris: 'iris',
+      translation: 'translation',
       social: 'social',
       explorer: 'explorer',
       cache_aware_prelaunch: CACHE_AWARE_PRELAUNCH_LABEL,
@@ -121,6 +135,7 @@
       pipeline: { count: 0, costCents: 0 },
       rerun: { count: 0, costCents: 0 },
       iris: { count: 0, costCents: 0 },
+      translation: { count: 0, costCents: 0 },
       cache_aware_prelaunch: { count: 0, costCents: 0 },
       warmup: { count: 0, costCents: 0 },
       social: { count: 0, costCents: 0 },

@@ -20,6 +20,13 @@
 
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
+  let currentLbPromptSpec = null;
+  const getCustomPromptSpec = (id) => global.resolveCustomPromptLightboxSpec?.(id) || null;
+  const ensureCustomPromptState = () => {
+    const state = getState();
+    state.customPrompts = state.customPrompts || {};
+    return state.customPrompts;
+  };
 
   function openBiblioLightbox() {
     switchBiblioTab('tags');
@@ -71,8 +78,42 @@
     }
   }
 
-  function openPromptLightbox(id) {
+  async function openPromptLightbox(id) {
     currentLbAgentId = id;
+    currentLbPromptSpec = null;
+    const customPromptSpec = getCustomPromptSpec(id);
+    if (customPromptSpec) {
+      currentLbPromptSpec = {
+        id,
+        label: String(customPromptSpec.label || id).trim() || id,
+        path: String(customPromptSpec.path || '').trim(),
+        stateKey: String(customPromptSpec.stateKey || id).trim() || id,
+      };
+
+      if (!currentLbPromptSpec.path) {
+        showToast('Erreur: chemin prompt custom manquant', '#ff4757');
+        return;
+      }
+
+      const customPrompts = ensureCustomPromptState();
+      if (!customPrompts[currentLbPromptSpec.stateKey]) {
+        try {
+          const res = await fetch(`/files/${currentLbPromptSpec.path}`);
+          if (!res.ok) throw new Error((await res.json()).error);
+          customPrompts[currentLbPromptSpec.stateKey] = await res.text();
+        } catch (e) {
+          showToast(`Erreur: ${e.message}`, '#ff4757');
+          return;
+        }
+      }
+
+      const customTitleEl = document.getElementById('lbTitle');
+      global.PipelineUIIcons?.setIconLabel?.(customTitleEl, 'settings', `Prompt — ${currentLbPromptSpec.label}`);
+      document.getElementById('lbTextarea').value = customPrompts[currentLbPromptSpec.stateKey] || '';
+      document.getElementById('promptLightbox').classList.add('visible');
+      return;
+    }
+
     const tagLabels = {
       tags: 'Axel · Explore Tags',
       tags_filter: 'Céline · Filter Tags',
@@ -90,10 +131,27 @@
   function closePromptLightbox() {
     document.getElementById('promptLightbox').classList.remove('visible');
     currentLbAgentId = null;
+    currentLbPromptSpec = null;
   }
 
   async function saveLbPrompt() {
     if (!currentLbAgentId) return;
+
+    if (currentLbPromptSpec?.path) {
+      if (!confirm(`Écraser ${currentLbPromptSpec.path} sur le disque ?`)) return;
+
+      const customValue = document.getElementById('lbTextarea').value;
+      try {
+        const res = await fetch(`/files/${currentLbPromptSpec.path}`, { method: 'PUT', body: customValue });
+        if (!res.ok) throw new Error((await res.json()).error);
+        ensureCustomPromptState()[currentLbPromptSpec.stateKey] = customValue;
+        closePromptLightbox();
+        showToast('Prompt sauvegardé');
+      } catch (e) {
+        showToast(`Erreur: ${e.message}`, '#ff4757');
+      }
+      return;
+    }
 
     const config = getConfig();
     const mode = getCurrentMode();
@@ -115,6 +173,22 @@
 
   async function resetLbPrompt() {
     if (!currentLbAgentId) return;
+
+    if (currentLbPromptSpec?.path) {
+      if (!confirm(`Recharger ${currentLbPromptSpec.path} depuis le disque ?`)) return;
+
+      try {
+        const res = await fetch(`/files/${currentLbPromptSpec.path}`);
+        if (!res.ok) throw new Error((await res.json()).error);
+        const txt = await res.text();
+        ensureCustomPromptState()[currentLbPromptSpec.stateKey] = txt;
+        document.getElementById('lbTextarea').value = txt;
+        showToast('Rechargé depuis le fichier');
+      } catch (e) {
+        showToast(`Erreur: ${e.message}`, '#ff4757');
+      }
+      return;
+    }
 
     const config = getConfig();
     const mode = getCurrentMode();

@@ -57,6 +57,9 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/runtime/iris_runtime_ui.js',
     'pipeline/runtime/launch_runtime_ui.js',
     'pipeline/runtime/output_runtime_ui.js',
+    'pipeline/runtime/translation_en_runtime_ui.js',
+    'pipeline/runtime/translation_de_runtime_ui.js',
+    'pipeline/runtime/translation_es_runtime_ui.js',
   ]),
   devRuntime: Object.freeze([
     'pipeline/dev/pipeline_dev_runtime_ui.js',

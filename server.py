@@ -27,7 +27,9 @@ ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
 ENV_FILE = ROOT / '.env'
 ALLOWED_DIRS = {'prompts', 'biblios'}
-ALLOWED_SUBDIRS = {'tabletop', 'collection'}
+ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction'}
+LOCAL_HTTPS_FALLBACK_CERT_FILES = ('local-certs/localhost.crt', 'localhost.pem')
+LOCAL_HTTPS_FALLBACK_KEY_FILES = ('local-certs/localhost.key', 'localhost-key.pem')
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
 ANTHROPIC_FILES_BETA = 'files-api-2025-04-14'
 ANTHROPIC_FILES_CACHE_LOCK = Lock()
@@ -117,6 +119,31 @@ def get_local_https_port() -> int:
 
 def is_local_https_enabled() -> bool:
     return bool(get_local_https_cert_file() and get_local_https_key_file())
+
+
+def resolve_first_existing_path(candidates: list[str] | tuple[str, ...]) -> Path | None:
+    for candidate in candidates:
+        raw_candidate = str(candidate or '').strip()
+        if not raw_candidate:
+            continue
+        path = resolve_local_path(raw_candidate)
+        if path.exists():
+            return path
+    return None
+
+
+def resolve_local_https_cert_path() -> Path | None:
+    configured = str(get_local_https_cert_file() or '').strip()
+    candidates = [configured] if configured else []
+    candidates.extend(LOCAL_HTTPS_FALLBACK_CERT_FILES)
+    return resolve_first_existing_path(candidates)
+
+
+def resolve_local_https_key_path() -> Path | None:
+    configured = str(get_local_https_key_file() or '').strip()
+    candidates = [configured] if configured else []
+    candidates.extend(LOCAL_HTTPS_FALLBACK_KEY_FILES)
+    return resolve_first_existing_path(candidates)
 
 
 def resolve_local_path(raw_path: str) -> Path:
@@ -256,8 +283,8 @@ def build_etsy_auth_status() -> dict:
     local_https_cert = get_local_https_cert_file()
     local_https_key = get_local_https_key_file()
     local_https_enabled = is_local_https_enabled()
-    local_https_cert_path = resolve_local_path(local_https_cert) if local_https_cert else None
-    local_https_key_path = resolve_local_path(local_https_key) if local_https_key else None
+    local_https_cert_path = resolve_local_https_cert_path()
+    local_https_key_path = resolve_local_https_key_path()
     local_https_files_ready = bool(
         local_https_cert_path
         and local_https_key_path
@@ -586,6 +613,17 @@ def perform_etsy_put_json_request(path: str, payload: dict, *, include_oauth: bo
         return decode_json_bytes(response.read())
 
 
+def perform_etsy_delete_request(path: str, *, include_oauth: bool) -> dict:
+    url = f'{ETSY_API_BASE_URL}/application/{path.lstrip("/")}'
+    request = urllib.request.Request(
+        url,
+        method='DELETE',
+        headers=build_etsy_request_headers(include_oauth=include_oauth),
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return decode_json_bytes(response.read())
+
+
 def get_etsy_granted_scopes() -> list[str]:
     token_data = get_etsy_oauth_token_data()
     return [str(scope or '').strip() for scope in token_data.get('scopes') or [] if str(scope or '').strip()]
@@ -618,6 +656,41 @@ def extract_etsy_listing_id(payload: dict) -> str:
         return extract_etsy_listing_id(nested)
 
     return ''
+
+
+def normalize_etsy_association_collection(value) -> list[dict]:
+    if isinstance(value, list):
+        return [entry for entry in value if isinstance(entry, dict)]
+    if isinstance(value, dict):
+        for key in ('results', 'data', 'items'):
+            nested = value.get(key)
+            if isinstance(nested, list):
+                return [entry for entry in nested if isinstance(entry, dict)]
+    return []
+
+
+def extract_etsy_listing_image_ids(payload: dict) -> list[int]:
+    source = payload if isinstance(payload, dict) else {}
+    data = source.get('results', [{}])[0] if isinstance(source.get('results'), list) and source.get('results') else source.get('data', source)
+    images = normalize_etsy_association_collection(data.get('images')) or normalize_etsy_association_collection(data.get('Images'))
+    image_ids: list[int] = []
+    for entry in images:
+        image_id = int(entry.get('listing_image_id') or entry.get('image_id') or 0) or 0
+        if image_id:
+            image_ids.append(image_id)
+    return image_ids
+
+
+def extract_etsy_listing_video_ids(payload: dict) -> list[int]:
+    source = payload if isinstance(payload, dict) else {}
+    data = source.get('results', [{}])[0] if isinstance(source.get('results'), list) and source.get('results') else source.get('data', source)
+    videos = normalize_etsy_association_collection(data.get('videos')) or normalize_etsy_association_collection(data.get('Videos'))
+    video_ids: list[int] = []
+    for entry in videos:
+        video_id = int(entry.get('listing_video_id') or entry.get('video_id') or 0) or 0
+        if video_id:
+            video_ids.append(video_id)
+    return video_ids
 
 
 def pause_etsy_publication_requests():
@@ -949,12 +1022,12 @@ def get_listing_shop_id(listing_payload: dict) -> str:
 
 
 def build_https_context() -> ssl.SSLContext:
-    cert_path = resolve_local_path(get_local_https_cert_file())
-    key_path = resolve_local_path(get_local_https_key_file())
+    cert_path = resolve_local_https_cert_path()
+    key_path = resolve_local_https_key_path()
 
-    if not cert_path.exists():
+    if not cert_path or not cert_path.exists():
         raise FileNotFoundError(f'Certificat HTTPS introuvable : {cert_path}')
-    if not key_path.exists():
+    if not key_path or not key_path.exists():
         raise FileNotFoundError(f'Clé HTTPS introuvable : {key_path}')
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -1945,9 +2018,209 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.send_json(400, {'error': 'Payload attributs Etsy invalide'})
                     return
 
+                publication_mode = str(data.get('mode') or 'create_draft').strip().lower() or 'create_draft'
+                target_listing_id = str(
+                    data.get('targetListingId')
+                    or listing_payload.get('listing_id')
+                    or update_payload.get('listing_id')
+                    or ''
+                ).strip()
+
                 require_etsy_scope('listings_w')
                 shop_context = get_etsy_shop_context()
                 shop_id = shop_context['shop_id']
+
+                if publication_mode == 'update_listing':
+                    if not target_listing_id:
+                        self.send_json(400, {'error': 'listing_id cible manquant pour la mise a jour Etsy'})
+                        return
+
+                    base_listing_payload = {
+                        key: value
+                        for key, value in listing_payload.items()
+                        if key in {'title', 'description'}
+                    }
+                    normalized_update_listing_payload = {
+                        **base_listing_payload,
+                        **{
+                            key: value
+                            for key, value in (update_payload or {}).items()
+                            if key in {'tags'}
+                        },
+                    }
+
+                    current_listing_response = perform_etsy_get_request(
+                        f'shops/{shop_id}/listings/{target_listing_id}?includes=Images,Videos',
+                        include_oauth=True,
+                    )
+                    current_listing_data = current_listing_response.get('results', [{}])[0] if isinstance(current_listing_response.get('results'), list) and current_listing_response.get('results') else current_listing_response.get('data', current_listing_response)
+                    current_listing_state = str(current_listing_data.get('state') or '').strip().lower()
+                    if current_listing_state and current_listing_state != 'active':
+                        normalized_update_listing_payload['state'] = 'active'
+
+                    operations = [{
+                        'step': 'load_target_listing',
+                        'listing_id': target_listing_id,
+                        'source_state': current_listing_state,
+                    }]
+
+                    if media_plan_payload:
+                        operations.append({
+                            'step': 'prepare_listing_media',
+                            'source_image_count': int(media_plan_payload.get('sourceImageCount') or 0),
+                            'source_video_count': int(media_plan_payload.get('sourceVideoCount') or 0),
+                            'local_image_count': int(media_plan_payload.get('localImageCount') or 0),
+                            'ordered_media_count': int(media_plan_payload.get('orderedMediaCount') or 0),
+                            'planned_image_count': int(media_plan_payload.get('plannedImageCount') or 0),
+                            'planned_video_count': int(media_plan_payload.get('plannedVideoCount') or 0),
+                            'skipped_video_count': int(media_plan_payload.get('skippedVideoCount') or 0),
+                        })
+
+                    if normalized_update_listing_payload:
+                        pause_etsy_publication_requests()
+                        update_response = perform_etsy_patch_form_request(
+                            f'shops/{shop_id}/listings/{target_listing_id}',
+                            normalized_update_listing_payload,
+                            include_oauth=True,
+                        )
+                        operations.append({
+                            'step': 'update_listing',
+                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
+                            'payload_sent': normalized_update_listing_payload,
+                            'response': update_response,
+                        })
+
+                    if images_payload:
+                        deleted_image_ids = []
+                        for image_id in extract_etsy_listing_image_ids(current_listing_response):
+                            pause_etsy_publication_requests()
+                            delete_response = perform_etsy_delete_request(
+                                f'shop/{shop_id}/listings/{target_listing_id}/images/{image_id}',
+                                include_oauth=True,
+                            )
+                            deleted_image_ids.append({
+                                'listing_image_id': image_id,
+                                'response': delete_response,
+                            })
+                        operations.append({
+                            'step': 'delete_listing_images',
+                            'endpoint': f'shop/{shop_id}/listings/{target_listing_id}/images/{{listing_image_id}}',
+                            'deleted_count': len(deleted_image_ids),
+                            'images': deleted_image_ids,
+                        })
+
+                    if videos_payload:
+                        deleted_video_ids = []
+                        for video_id in extract_etsy_listing_video_ids(current_listing_response):
+                            pause_etsy_publication_requests()
+                            delete_response = perform_etsy_delete_request(
+                                f'shops/{shop_id}/listings/{target_listing_id}/videos/{video_id}',
+                                include_oauth=True,
+                            )
+                            deleted_video_ids.append({
+                                'listing_video_id': video_id,
+                                'response': delete_response,
+                            })
+                        operations.append({
+                            'step': 'delete_listing_videos',
+                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/videos/{{listing_video_id}}',
+                            'deleted_count': len(deleted_video_ids),
+                            'videos': deleted_video_ids,
+                        })
+
+                    uploaded_images = []
+                    for image_index, image_entry in enumerate(images_payload):
+                        if not isinstance(image_entry, dict):
+                            continue
+
+                        mode = str(image_entry.get('mode') or '').strip().lower()
+                        if mode == 'upload':
+                            media_type, image_bytes = decode_data_url_payload(str(image_entry.get('data_url') or ''))
+                        elif mode == 'upload_remote':
+                            media_type, image_bytes = fetch_publication_image_payload(str(image_entry.get('remote_url') or ''))
+                        else:
+                            continue
+
+                        filename_hint = guess_filename(str(image_entry.get('filename') or f'etsy-image-{image_index + 1}'), media_type)
+                        image_fields = {
+                            'rank': int(image_entry.get('order') or image_index + 1),
+                            'alt_text': str(image_entry.get('alt_text') or '').strip(),
+                        }
+                        pause_etsy_publication_requests()
+                        image_response = perform_etsy_post_multipart_request(
+                            f'shops/{shop_id}/listings/{target_listing_id}/images',
+                            include_oauth=True,
+                            fields=image_fields,
+                            file_field_name='image',
+                            filename=filename_hint,
+                            media_type=media_type,
+                            payload=image_bytes,
+                        )
+                        uploaded_images.append({
+                            'index': image_index + 1,
+                            'mode': mode,
+                            'fields_sent': image_fields,
+                            'response': image_response,
+                        })
+
+                    if uploaded_images:
+                        operations.append({
+                            'step': 'upload_listing_images',
+                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/images',
+                            'requested_count': len(images_payload),
+                            'uploaded_count': len(uploaded_images),
+                            'images': uploaded_images,
+                        })
+
+                    uploaded_videos = []
+                    for video_index, video_entry in enumerate(videos_payload):
+                        if not isinstance(video_entry, dict):
+                            continue
+                        mode = str(video_entry.get('mode') or '').strip().lower()
+                        if mode != 'upload_remote':
+                            continue
+
+                        media_type, video_bytes = fetch_publication_video_payload(str(video_entry.get('remote_url') or ''))
+                        filename_hint = guess_filename(str(video_entry.get('filename') or f'etsy-video-{video_index + 1}'), media_type)
+                        video_fields = {
+                            'name': filename_hint,
+                        }
+                        pause_etsy_publication_requests()
+                        video_response = perform_etsy_post_multipart_request(
+                            f'shops/{shop_id}/listings/{target_listing_id}/videos',
+                            include_oauth=True,
+                            fields=video_fields,
+                            file_field_name='video',
+                            filename=filename_hint,
+                            media_type=media_type,
+                            payload=video_bytes,
+                        )
+                        uploaded_videos.append({
+                            'index': video_index + 1,
+                            'mode': mode,
+                            'fields_sent': video_fields,
+                            'response': video_response,
+                        })
+
+                    if uploaded_videos:
+                        operations.append({
+                            'step': 'upload_listing_videos',
+                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/videos',
+                            'requested_count': len(videos_payload),
+                            'uploaded_count': len(uploaded_videos),
+                            'videos': uploaded_videos,
+                        })
+
+                    self.send_json(200, {
+                        'ok': True,
+                        'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
+                        'mode': 'update_listing',
+                        'listing_id': target_listing_id,
+                        'payload_sent': normalized_update_listing_payload,
+                        'payload': current_listing_response,
+                        'operations': operations,
+                    })
+                    return
 
                 create_payload = {
                     key: value

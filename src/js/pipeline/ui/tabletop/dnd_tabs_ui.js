@@ -42,6 +42,7 @@
       document.getElementById('reseauxOnlySection-tt'),
     ].some(isVisible),
     hasEtsyPanel: () => Boolean(document.getElementById('etsyApiPanel-tt')),
+    hasTranslationPanel: () => Boolean(document.getElementById('translationEnPanel-tt')),
     nameFieldIds: ['tt-fNomCourt', 'tt-fNom'],
   });
 

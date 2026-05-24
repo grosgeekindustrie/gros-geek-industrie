@@ -83,11 +83,13 @@
     return readJson(`${route}?listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
-  async function createDraftListing(publicationRequest) {
+  async function submitListingPublication(publicationRequest) {
     const route = getDraftListingRoute();
     if (!route) throw new Error('Route publication draft Etsy indisponible');
     const normalizedRequest = publicationRequest && typeof publicationRequest === 'object'
       ? {
+          mode: String(publicationRequest.mode || 'create_draft').trim() || 'create_draft',
+          targetListingId: String(publicationRequest.targetListingId || '').trim(),
           payload: publicationRequest.createPayload || publicationRequest.payload || {},
           updatePayload: publicationRequest.updatePayload || {},
           inventory: publicationRequest.inventory || {},
@@ -96,7 +98,7 @@
           mediaPlan: publicationRequest.mediaPlan || {},
           attributes: publicationRequest.attributes || {},
         }
-      : { payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {} };
+      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {} };
 
     const response = await fetch(route, {
       method: 'POST',
@@ -115,6 +117,20 @@
     return data;
   }
 
+  async function createDraftListing(publicationRequest) {
+    return submitListingPublication({
+      ...(publicationRequest && typeof publicationRequest === 'object' ? publicationRequest : {}),
+      mode: 'create_draft',
+    });
+  }
+
+  async function updateExistingListing(publicationRequest) {
+    return submitListingPublication({
+      ...(publicationRequest && typeof publicationRequest === 'object' ? publicationRequest : {}),
+      mode: 'update_listing',
+    });
+  }
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     getRoutes,
@@ -126,7 +142,9 @@
     fetchTaxonomySearch,
     fetchListingPayload,
     fetchListingPropertiesPayload,
+    submitListingPublication,
     createDraftListing,
+    updateExistingListing,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

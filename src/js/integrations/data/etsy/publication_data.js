@@ -329,10 +329,7 @@
       validationErrors.push('inventory.products vide');
     }
 
-    const warnings = [
-      'Le listing_id source n est jamais renvoye a Etsy pour la creation du draft.',
-      'Le draft est cree sur une nouvelle fiche, puis enrichi via inventory et images.',
-    ];
+    const warnings = [];
 
     if (!images.length) {
       warnings.push('Aucune image ne sera envoyee sur ce test de duplication.');
@@ -361,6 +358,7 @@
       },
       validationErrors,
       sourceListingId: String(data.listing_id || '').trim(),
+      sourceListingState: String(data.state || '').trim().toLowerCase(),
       warnings,
     };
   }

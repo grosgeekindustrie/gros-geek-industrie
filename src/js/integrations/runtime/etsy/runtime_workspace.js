@@ -392,10 +392,12 @@
       if (listingPropertiesPayload) {
         state.mediaPayload = deps.applyListingPropertyOverrides?.(state.mediaPayload, listingPropertiesPayload) || state.mediaPayload;
       }
+      state.sourceListingState = String(state.mediaPayload?.data?.state || '').trim().toLowerCase();
       state.activeStep = 'media';
       state.detailsDraft = deps.buildDetailsDraftFromPayload?.(state.mediaPayload);
       state.attributesDraft = deps.buildAttributesDraftFromPayload?.(state.mediaPayload);
       state.isEditingCategory = false;
+      state.publicationMode = 'create_draft';
       state.publicationSubmitting = false;
       state.publicationResult = null;
       state.publicationError = '';
@@ -426,9 +428,11 @@
       state.detailsDraft = null;
       state.attributesDraft = null;
       state.isEditingCategory = false;
+      state.publicationMode = 'create_draft';
       state.publicationSubmitting = false;
       state.publicationResult = null;
       state.publicationError = '';
+      state.sourceListingState = '';
       state.mediaOrder = [];
       state.localImages = [];
       state.activeMediaKey = '';
