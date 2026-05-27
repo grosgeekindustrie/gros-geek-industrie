@@ -30,7 +30,7 @@ Fiche source FR :
 Produire une fiche allemande complète avec :
 
 - un titre allemand optimisé pour Etsy
-- jusqu’à 13 tags Etsy en allemand
+- les tags Etsy allemands correspondant aux tags source
 - une description allemande complète, fluide et prête à publier
 
 La fiche allemande doit être fiable, lisible, commerciale et adaptée aux clients germanophones.
@@ -65,7 +65,53 @@ Respecte ces priorités dans cet ordre :
 5. Efficacité commerciale sur Etsy
 6. Conservation de l’intention de la fiche source
 
-La proximité avec les mots français n’est pas une priorité.
+La proximité avec les mots français n’est pas une priorité pour le titre et la description.
+
+Pour les tags, la priorité est différente : respecter chaque tag source et le localiser sans inventer de nouveaux tags.
+
+## Caractères autorisés pour le titre et les tags Etsy
+
+Le titre et les tags Etsy doivent respecter strictement les caractères acceptés par Etsy.
+
+Dans le titre et les tags, utilise uniquement :
+
+- lettres
+- chiffres
+- espaces
+- tirets simples "-"
+- apostrophes simples "'"
+- underscores "_"
+
+Interdiction dans le titre et les tags :
+
+- esperluette "&"
+- slash "/"
+- virgule ","
+- point "."
+- deux-points ":"
+- point-virgule ";"
+- parenthèses
+- guillemets
+- emojis
+- symboles spéciaux
+- caractères typographiques décoratifs
+
+Si le titre ou un tag source contient un caractère interdit, remplace-le par un espace ou reformule très légèrement sans changer l’intention.
+
+Dans les titres et tags DE, remplace systématiquement "&" par "und" ou reformule légèrement si nécessaire.
+
+Exemples :
+
+- "D&D" devient "D und D" ou "DND"
+- "Warhammer 40K / 30K" devient "Warhammer 40K 30K"
+- "RPG/Tabletop" devient "RPG Tabletop"
+- "Link, Zelda" devient "Link Zelda"
+- "Hero: Link" devient "Hero Link"
+- "Resin Figure - 3D Print" peut rester avec un tiret simple
+- "Fan Art & Artist" devient "Fan Art und Artist"
+
+Cette règle concerne uniquement le titre et les tags.
+Elle ne s’applique pas à la description.
 
 ## Titre DE
 
@@ -75,36 +121,111 @@ Il doit rester lisible pour un humain tout en intégrant les informations import
 
 Le titre peut conserver certains termes anglais courants dans le hobby si cela sonne plus naturel ou plus recherché sur Etsy.
 
-Évite les titres artificiels, les répétitions lourdes, les suites de mots-clés illisibles et les promesses excessives.
+Pour les titres, les formulations françaises comme "figurine à peindre", "statue à peindre", "garage kit à peindre", "modèle à peindre" ou "kit à peindre" doivent être localisées avec une formulation allemande qui indique clairement que le produit est vendu non peint.
+
+Dans les titres, privilégie en priorité :
+
+- "unbemalte Figur" pour figurine à peindre
+- "unbemalte Statue" pour statue à peindre
+- "unbemaltes Garage Kit" pour garage kit à peindre
+- "unbemalter Bausatz" pour kit à peindre
+- "unbemaltes Modell" pour modèle à peindre
+- "unbemalte Resin-Figur" pour figurine en résine à peindre
+- "unbemalte Resin-Statue" pour statue en résine à peindre
+- "unbemalter Resin-Bausatz" pour kit résine à peindre
+
+Tu peux utiliser "zum Bemalen" dans le titre si cela améliore clairement la lisibilité ou le SEO, mais ne l’utilise pas comme remplacement automatique de "à peindre".
+
+Évite dans les titres :
+
+- les formulations qui donnent l’impression que le produit est déjà peint
+- les formulations ambiguës sur le fait que le modèle est vendu non peint
+- les titres artificiels
+- les répétitions lourdes
+- les suites de mots-clés illisibles
+- les promesses excessives
 
 ## Tags Etsy DE
 
-Produis maximum 13 tags.
+Les tags ne doivent pas être réinventés.
 
-Les tags doivent être courts, naturels, utiles pour la recherche Etsy et cohérents avec le produit vendu.
+Tu dois localiser les tags fournis dans [[SOURCE_TAGS]] en respectant leur nombre, leur intention et leur structure générale.
 
-Les tags peuvent être en allemand ou conserver un terme anglais si ce terme est plus courant dans le hobby, sur Etsy ou dans la recherche produit.
+Règles obligatoires pour les tags :
 
-Les tags doivent couvrir intelligemment les éléments utiles selon la fiche :
+- Ne crée pas de nouveaux tags.
+- Ne supprime pas de tag source.
+- Ne fusionne pas deux tags source.
+- Ne divise pas un tag source en plusieurs tags.
+- Ne remplace pas un tag par une idée plus large.
+- Ne remplace pas un tag par une licence, un univers ou un personnage qui n’est pas présent dans ce tag source.
+- Ne rajoute pas de licence ou d’univers absent du tag source, même si cela semble pertinent.
+- Ne complète pas les tags avec des informations trouvées dans le titre ou la description.
+- Ne cherche pas à améliorer la stratégie SEO en inventant de nouveaux angles.
+- Conserve l’ordre des tags source.
+- Le tableau "tags_de" doit contenir le même nombre de tags que [[SOURCE_TAGS]], sauf si la source contient plus de 13 tags.
+- Si la source contient plus de 13 tags, conserve uniquement les 13 premiers tags localisables.
 
-- personnage
-- univers ou licence
-- type de produit
-- usage
-- collection
-- peinture
-- hobby
-- matière
-- style
-- échelle si pertinent
+Objectif des tags :
 
-Évite les tags trop longs, trop génériques, répétitifs ou artificiels.
+Chaque tag DE doit être l’équivalent localisé du tag FR correspondant.
+
+Les tags doivent rester courts, naturels et exploitables sur Etsy, mais la fidélité au tag source prime sur l’optimisation SEO libre.
+
+Si un tag source contient plusieurs éléments, conserve ces éléments dans le tag localisé.
+
+Si un tag source est déjà exploitable tel quel pour le marché germanophone, tu peux le conserver.
+
+Tu peux garder certains termes anglais ou internationaux dans les tags si c’est plus naturel pour Etsy et le hobby allemand, par exemple "Garage Kit", "Fan Art", "Resin", "Display", "The Elder Scrolls", ou un nom de personnage/licence.
+
+Pour les tags, les formulations françaises comme "figurine à peindre", "statue à peindre", "garage kit à peindre", "modèle à peindre" ou "kit à peindre" doivent être localisées avec une formulation courte qui indique que le produit est vendu non peint.
+
+Privilégie dans les tags :
+
+- "unbemalte Figur" pour figurine à peindre
+- "Figur zum Bemalen" si le tag source insiste surtout sur l’activité de peinture
+- "unbemalte Statue" pour statue à peindre
+- "Statue zum Bemalen" si le tag source insiste surtout sur l’activité de peinture
+- "unbemaltes Garage Kit" pour garage kit à peindre
+- "unbemalter Bausatz" pour kit à peindre
+- "unbemaltes Modell" pour modèle à peindre
+- "unbemalte Resin-Figur" pour figurine en résine à peindre
+- "unbemalte Resin-Statue" pour statue en résine à peindre
+
+Exemples de logique générale :
+
+- "figurine à peindre" devient "unbemalte Figur" ou "Figur zum Bemalen" selon le contexte.
+- "statue à peindre" devient "unbemalte Statue" ou "Statue zum Bemalen" selon le contexte.
+- "garage kit à peindre" devient "unbemaltes Garage Kit".
+- "kit à peindre" devient "unbemalter Bausatz".
+- "modèle à peindre" devient "unbemaltes Modell" ou "Modell zum Bemalen" selon le contexte.
+- "figurine non peinte" devient "unbemalte Figur".
+- "kit non peint" devient "unbemalter Bausatz" ou "unbemaltes Garage Kit".
+- "statue de collection" devient "Sammlerstatue" ou "Sammlerfigur" selon le produit.
+- "figurine en résine" devient "Resin-Figur" ou "Figur aus Resin".
+- "statue en résine" devient "Resin-Statue" ou "Statue aus Resin".
+- "impression 3D résine" devient "3D-Druck Resin" ou "Resin 3D-Druck".
+- "garage kit" reste "Garage Kit".
+- Un nom de personnage reste le nom DE valide si un équivalent DE est fourni.
+- Un nom d’univers reste le nom DE valide si un équivalent DE est fourni.
+
+Ne transforme jamais un tag source précis en tag plus général.
+
+Exemple de logique interdite :
+
+- Si le tag source est "diorama arcane ekko et jinx", ne le remplace pas par "Arcane Diorama".
+- Si le tag source ne contient pas "League of Legends", ne rajoute pas "League of Legends".
+- Si le tag source contient deux personnages, conserve les deux personnages.
 
 ## Description DE
 
 La description doit être localisée pour un public germanophone.
 
 Tu dois conserver les informations importantes, mais tu peux adapter librement la rédaction pour obtenir une fiche produit allemande naturelle.
+
+Dans la description, "zum Bemalen" est naturel et peut être utilisé lorsque le texte parle du projet de peinture, de l’usage créatif ou de l’expérience hobby.
+
+Quand le texte doit informer clairement que le produit est vendu non peint, utilise plutôt "unbemalt", "unbemalte Figur", "unbemalter Bausatz" ou "unbemaltes Garage Kit" selon le contexte.
 
 ## Passages commerciaux
 
@@ -195,8 +316,10 @@ Privilégie :
 - "3D-Druck-Figur" pour tag court ou titre SEO
 - "Bausatz" pour kit à assembler
 - "unbemalter Bausatz" pour kit non peint
-- "unbemalte Figur" pour figurine non peinte
-- "zum Bemalen" pour à peindre
+- "unbemalte Figur" pour figurine non peinte ou figurine à peindre quand le contexte produit doit être clair
+- "unbemalte Statue" pour statue non peinte ou statue à peindre quand le contexte produit doit être clair
+- "unbemaltes Modell" pour modèle non peint ou modèle à peindre quand le contexte produit doit être clair
+- "zum Bemalen" pour à peindre quand le texte parle de l’expérience de peinture ou du projet créatif
 - "zum Zusammenbauen und Bemalen" pour à assembler et à peindre
 
 Évite :
@@ -437,7 +560,13 @@ Avant de produire le JSON final, vérifie mentalement :
 
 - Les noms propres DE validés sont-ils utilisés exactement ?
 - Le titre est-il naturel et exploitable sur Etsy ?
-- Les tags sont-ils courts, utiles et cohérents ?
+- Le titre utilise-t-il uniquement les caractères autorisés par Etsy : lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ?
+- Si le titre source contient "à peindre", le titre DE indique-t-il clairement que le produit est vendu non peint, de préférence avec "unbemalt" ?
+- Les tags DE correspondent-ils un par un aux tags source ?
+- Les tags utilisent-ils uniquement les caractères autorisés par Etsy : lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ?
+- Le nombre de tags DE est-il identique au nombre de tags source, sauf source supérieure à 13 tags ?
+- Aucun tag n’a-t-il été inventé, fusionné, supprimé ou remplacé par une idée plus large ?
+- Si un tag source contient "à peindre", le tag DE utilise-t-il une formulation claire comme "unbemalt", "Figur zum Bemalen" ou "Bausatz zum Bemalen" selon le contexte ?
 - La description sonne-t-elle naturelle pour un germanophone ?
 - Les passages commerciaux ressemblent-ils à une vraie fiche produit allemande ?
 - Les blocs techniques sont-ils exacts ?

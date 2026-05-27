@@ -11,6 +11,7 @@
   const PREFIXES = ['tt', 'col'];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
+  const DEFAULT_BULK_STATUS = 'En attente dâ€™un lancement global EN / DE / ES.';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
   const DEFAULT_SOURCE_STATUS = 'En attente d’une fiche Etsy source.';
@@ -25,6 +26,7 @@
   };
   const getEtsyRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getEtsyData = () => global.PipelineUIEtsyData || {};
+  const getDescriptionAssembly = () => global.PipelineUIDescriptionAssembly || {};
   const getModel = (agentId) => global.getActiveAgentModel?.(agentId) || 'claude-sonnet-4-5';
   const readField = (prefix, suffix) => document.getElementById(`${prefix}-${suffix}`);
   const getTrimmedValue = (prefix, suffix) => readField(prefix, suffix)?.value?.trim?.() || '';
@@ -44,6 +46,28 @@
     translationOutput: '',
     translationStatus: '',
     translationInput: '',
+    translationDebug: '',
+  });
+
+  const createEmptyBulkState = () => ({
+    running: false,
+    cancelRequested: false,
+    status: '',
+    languages: {
+      en: 'idle',
+      de: 'idle',
+      es: 'idle',
+    },
+    retryCounts: {
+      en: 0,
+      de: 0,
+      es: 0,
+    },
+    timers: {
+      en: { startedAt: 0, lastDurationMs: 0 },
+      de: { startedAt: 0, lastDurationMs: 0 },
+      es: { startedAt: 0, lastDurationMs: 0 },
+    },
   });
 
   const createEmptyPrefixState = () => ({
@@ -56,6 +80,7 @@
     status: '',
     lastInput: '',
     listingDraft: createEmptyListingDraft(),
+    bulk: createEmptyBulkState(),
   });
 
   const ensurePrefixState = (prefix) => {
@@ -109,9 +134,317 @@
         translationOutput: String(listingDraft.translationOutput || ''),
         translationStatus: String(listingDraft.translationStatus || ''),
         translationInput: String(listingDraft.translationInput || ''),
+        translationDebug: String(listingDraft.translationDebug || ''),
+      };
+      const bulk = parsed.bulk && typeof parsed.bulk === 'object' ? parsed.bulk : {};
+      entry.bulk = {
+        ...createEmptyBulkState(),
+        running: bulk.running === true,
+        cancelRequested: bulk.cancelRequested === true,
+        status: String(bulk.status || ''),
+        languages: {
+          en: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.en) ? bulk.languages.en : 'idle',
+          de: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.de) ? bulk.languages.de : 'idle',
+          es: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.es) ? bulk.languages.es : 'idle',
+        },
+        retryCounts: {
+          en: Number.isFinite(Number(bulk.retryCounts?.en)) ? Number(bulk.retryCounts.en) : 0,
+          de: Number.isFinite(Number(bulk.retryCounts?.de)) ? Number(bulk.retryCounts.de) : 0,
+          es: Number.isFinite(Number(bulk.retryCounts?.es)) ? Number(bulk.retryCounts.es) : 0,
+        },
+        timers: {
+          en: {
+            startedAt: Number.isFinite(Number(bulk.timers?.en?.startedAt)) ? Number(bulk.timers.en.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.en?.lastDurationMs)) ? Number(bulk.timers.en.lastDurationMs) : 0,
+          },
+          de: {
+            startedAt: Number.isFinite(Number(bulk.timers?.de?.startedAt)) ? Number(bulk.timers.de.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.de?.lastDurationMs)) ? Number(bulk.timers.de.lastDurationMs) : 0,
+          },
+          es: {
+            startedAt: Number.isFinite(Number(bulk.timers?.es?.startedAt)) ? Number(bulk.timers.es.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.es?.lastDurationMs)) ? Number(bulk.timers.es.lastDurationMs) : 0,
+          },
+        },
       };
     } catch (error) {}
     return entry;
+  };
+
+  const getBulkState = (prefix) => {
+    const entry = ensurePrefixState(prefix);
+    entry.bulk = entry.bulk || createEmptyBulkState();
+    entry.bulk.languages = entry.bulk.languages || { en: 'idle', de: 'idle', es: 'idle' };
+    entry.bulk.retryCounts = entry.bulk.retryCounts || { en: 0, de: 0, es: 0 };
+    entry.bulk.timers = entry.bulk.timers || {
+      en: { startedAt: 0, lastDurationMs: 0 },
+      de: { startedAt: 0, lastDurationMs: 0 },
+      es: { startedAt: 0, lastDurationMs: 0 },
+    };
+    return entry.bulk;
+  };
+
+  let translationTimerIntervalId = 0;
+
+  const formatTranslationDuration = (durationMs = 0) => {
+    const totalSeconds = Math.max(0, Math.floor((Number(durationMs) || 0) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const getTranslationTimerDisplay = (prefix, language) => {
+    const bulk = getBulkState(prefix);
+    const timer = bulk.timers?.[language] || { startedAt: 0, lastDurationMs: 0 };
+    const isRunning = bulk.languages?.[language] === 'running';
+    const activeDurationMs = isRunning && timer.startedAt > 0
+      ? Math.max(0, Date.now() - timer.startedAt)
+      : Math.max(0, Number(timer.lastDurationMs) || 0);
+    return activeDurationMs > 0 ? formatTranslationDuration(activeDurationMs) : '';
+  };
+
+  const hasAnyRunningTranslationTimer = () => PREFIXES.some((prefix) => {
+    const bulk = getBulkState(prefix);
+    return ['en', 'de', 'es'].some((language) => bulk.languages?.[language] === 'running');
+  });
+
+  const renderTranslationSubtabs = (prefix) => {
+    const entry = ensurePrefixState(prefix);
+    const bulk = getBulkState(prefix);
+    ['fr', 'en', 'de', 'es'].forEach((subtab) => {
+      const tabButton = readField(prefix, `translation-subtab-${subtab}`);
+      const panel = readField(prefix, `translation-subpanel-${subtab}`);
+      const isActive = entry.activeSubtab === subtab;
+      if (tabButton) {
+        tabButton.classList.toggle('is-active', isActive);
+        tabButton.classList.remove('is-running', 'is-success', 'is-error');
+        if (subtab !== 'fr') {
+          const statusClass = getLanguageStatusClass(bulk.languages?.[subtab] || 'idle');
+          if (statusClass) tabButton.classList.add(statusClass);
+          const retryCount = Math.max(0, Number(bulk.retryCounts?.[subtab] || 0));
+          const durationLabel = getTranslationTimerDisplay(prefix, subtab);
+          const retryLabel = retryCount > 0 ? ` +${retryCount}` : '';
+          tabButton.textContent = [
+            subtab.toUpperCase(),
+            durationLabel ? ` ${durationLabel}` : '',
+            retryLabel,
+          ].join('');
+        } else {
+          tabButton.textContent = 'FR source';
+        }
+        tabButton.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
+      if (panel) {
+        panel.classList.toggle('is-active', isActive);
+        panel.hidden = !isActive;
+      }
+    });
+  };
+
+  const refreshTranslationTabTimers = () => {
+    PREFIXES.forEach((prefix) => renderTranslationSubtabs(prefix));
+  };
+
+  const syncTranslationTimerTicker = () => {
+    const shouldRun = hasAnyRunningTranslationTimer();
+    if (shouldRun && !translationTimerIntervalId) {
+      translationTimerIntervalId = window.setInterval(refreshTranslationTabTimers, 1000);
+      return;
+    }
+    if (!shouldRun && translationTimerIntervalId) {
+      window.clearInterval(translationTimerIntervalId);
+      translationTimerIntervalId = 0;
+    }
+  };
+
+  const getLanguageStatusClass = (status = '') => {
+    if (status === 'running') return 'is-running';
+    if (status === 'success') return 'is-success';
+    if (status === 'error') return 'is-error';
+    return '';
+  };
+
+  const resetBulkTranslationState = (prefix) => {
+    const bulk = getBulkState(prefix);
+    bulk.running = false;
+    bulk.cancelRequested = false;
+    bulk.status = '';
+    bulk.languages.en = 'idle';
+    bulk.languages.de = 'idle';
+    bulk.languages.es = 'idle';
+    bulk.retryCounts.en = 0;
+    bulk.retryCounts.de = 0;
+    bulk.retryCounts.es = 0;
+    bulk.timers.en = { startedAt: 0, lastDurationMs: 0 };
+    bulk.timers.de = { startedAt: 0, lastDurationMs: 0 };
+    bulk.timers.es = { startedAt: 0, lastDurationMs: 0 };
+    syncTranslationTimerTicker();
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const resetTranslationLanguageRunState = (prefix, language) => {
+    const bulk = getBulkState(prefix);
+    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    if (!normalizedLanguage) return;
+    bulk.languages[normalizedLanguage] = 'idle';
+    bulk.retryCounts[normalizedLanguage] = 0;
+    bulk.timers[normalizedLanguage] = { startedAt: 0, lastDurationMs: 0 };
+    syncTranslationTimerTicker();
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const setBulkTranslationStatus = (prefix, message = '') => {
+    const bulk = getBulkState(prefix);
+    bulk.status = String(message || '');
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const setBulkTranslationRunning = (prefix, isRunning) => {
+    const bulk = getBulkState(prefix);
+    bulk.running = isRunning === true;
+    if (bulk.running) bulk.cancelRequested = false;
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const requestBulkTranslationStop = (prefix) => {
+    const bulk = getBulkState(prefix);
+    bulk.cancelRequested = true;
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const isBulkTranslationStopRequested = (prefix) => getBulkState(prefix).cancelRequested === true;
+
+  const setTranslationLanguageStatus = (prefix, language, status) => {
+    const bulk = getBulkState(prefix);
+    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    const normalizedStatus = ['idle', 'running', 'success', 'error'].includes(status) ? status : 'idle';
+    if (!normalizedLanguage) return;
+    const timer = bulk.timers?.[normalizedLanguage] || { startedAt: 0, lastDurationMs: 0 };
+    if (normalizedStatus === 'running') {
+      timer.startedAt = Date.now();
+      timer.lastDurationMs = 0;
+    } else if (timer.startedAt > 0) {
+      timer.lastDurationMs = Math.max(0, Date.now() - timer.startedAt);
+      timer.startedAt = 0;
+    } else if (normalizedStatus === 'idle') {
+      timer.lastDurationMs = 0;
+    }
+    bulk.timers[normalizedLanguage] = timer;
+    bulk.languages[normalizedLanguage] = normalizedStatus;
+    if (normalizedStatus === 'running' || normalizedStatus === 'success' || normalizedStatus === 'idle') {
+      bulk.retryCounts[normalizedLanguage] = normalizedStatus === 'running' ? bulk.retryCounts[normalizedLanguage] : 0;
+    }
+    syncTranslationTimerTicker();
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const incrementTranslationRetryCount = (prefix, language) => {
+    const bulk = getBulkState(prefix);
+    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    if (!normalizedLanguage) return;
+    bulk.retryCounts[normalizedLanguage] = Math.max(0, Number(bulk.retryCounts[normalizedLanguage] || 0)) + 1;
+    persistPrefixState(prefix);
+    renderPrefixState(prefix);
+  };
+
+  const countTranslationLanguageStatuses = (prefix) => {
+    const bulk = getBulkState(prefix);
+    const statuses = Object.values(bulk.languages || {});
+    return {
+      idle: statuses.filter((value) => value === 'idle').length,
+      running: statuses.filter((value) => value === 'running').length,
+      success: statuses.filter((value) => value === 'success').length,
+      error: statuses.filter((value) => value === 'error').length,
+    };
+  };
+
+  const canPublishAllTranslations = (prefix) => {
+    const bulk = getBulkState(prefix);
+    const counts = countTranslationLanguageStatuses(prefix);
+    return !bulk.running && counts.success > 0;
+  };
+
+  const beginTranslationCacheRun = (prefix, launchScope, agentIds = []) => {
+    const activeRun = global.getActiveCacheDebugRun?.(prefix);
+    if (activeRun) return false;
+    global.beginCacheDebugRun?.(
+      prefix,
+      agentIds.map((id) => ({ id })),
+      {
+        launchScope,
+        cacheAwareEnabled: true,
+      },
+    );
+    return true;
+  };
+
+  const buildTranslationCacheWarmupPromptData = (prefix, listingDraft) => {
+    const filled = [
+      'PHASE TECHNIQUE — CACHE-AWARE TRADUCTION',
+      'Objectif : amorcer SOURCE_FR_LISTING avant les traductions EN / DE / ES.',
+      'Réponds uniquement : CACHE_TRANSLATION_READY',
+    ].join('\n\n');
+    const fixedContentBlocks = buildTranslationCacheBlocks(prefix, listingDraft);
+    return {
+      filled,
+      fixedContentBlocks,
+      runtimeAgentId: 'cache_aware',
+      promptDebug: {
+        agentId: 'cache_aware',
+        promptChars: filled.length,
+        fixedBlocks: fixedContentBlocks,
+        source: 'cache-aware-prelaunch',
+      },
+    };
+  };
+
+  async function runTranslationCacheWarmup(prefix, listingDraft) {
+    const promptData = buildTranslationCacheWarmupPromptData(prefix, listingDraft);
+    const response = await global.callClaude('cache_aware', promptData, false);
+    global.showAgentCost?.('cache_aware', response?.usage || null, {
+      prefix,
+      source: 'cache-aware-prelaunch',
+    });
+    global.syncCacheIndicator?.(response?.usage || null);
+    return response;
+  }
+
+  const finalizeTranslationCacheRun = (prefix, finalStatus, ownsRun) => {
+    if (!ownsRun) return;
+    global.finalizeCacheDebugRun?.(prefix, finalStatus);
+  };
+
+  const validatePublishedTranslationDraft = (draft) => {
+    const title = String(draft?.translatedTitle || '').trim();
+    const description = String(draft?.translatedDescription || '');
+    const tags = Array.isArray(draft?.translatedTags) ? draft.translatedTags : [];
+    const normalizedTags = tags
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+    const reasons = [];
+
+    if (!title) reasons.push('titre vide');
+    if (title.length > TITLE_MAX_LENGTH) reasons.push(`titre > ${TITLE_MAX_LENGTH}`);
+    if (!description.trim()) reasons.push('description vide');
+    if (!normalizedTags.length) reasons.push('tags vides');
+    if (normalizedTags.length > 13) reasons.push('plus de 13 tags');
+    if (normalizedTags.some((tag) => tag.length > TAG_MAX_LENGTH)) {
+      reasons.push(`tag > ${TAG_MAX_LENGTH}`);
+    }
+
+    return {
+      ok: reasons.length === 0,
+      reasons,
+      title,
+      description,
+      tags: normalizedTags,
+    };
   };
 
   const ensurePromptLoaded = async (agentId, promptPath) => {
@@ -141,6 +474,101 @@
     }
   };
 
+  const extractLooseJsonString = (rawText = '', key = '') => {
+    const match = String(rawText || '').match(new RegExp(`"${key}"\\s*:\\s*("(?:\\\\.|[^"\\\\])*")`, 'is'));
+    if (!match) return '';
+    try {
+      return JSON.parse(String(match[1] || ''));
+    } catch (error) {
+      return String(match[1] || '')
+        .replace(/^"/, '')
+        .replace(/"$/, '')
+        .replace(/\\"/g, '"')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .trim();
+    }
+  };
+
+  const extractLooseJsonTags = (rawText = '', key = '') => {
+    const match = String(rawText || '').match(new RegExp(`"${key}"\\s*:\\s*\\[([\\s\\S]*?)\\]`, 'i'));
+    if (!match) return [];
+    return String(match[1] || '')
+      .split(',')
+      .map((chunk) => String(chunk || '').trim().replace(/^"/, '').replace(/"$/, '').replace(/\\"/g, '"'))
+      .filter(Boolean);
+  };
+
+  const extractTranslationFields = (rawText = '') => {
+    const parsed = parseAgentOutput(rawText);
+    if (parsed && typeof parsed === 'object') {
+      const tags = Array.isArray(parsed.tags_en)
+        ? parsed.tags_en
+        : Array.isArray(parsed.tagsEn)
+          ? parsed.tagsEn
+          : Array.isArray(parsed.tags)
+            ? parsed.tags
+            : typeof parsed.tags_en === 'string'
+              ? parsed.tags_en.split(',')
+              : typeof parsed.tagsEn === 'string'
+                ? parsed.tagsEn.split(',')
+                : typeof parsed.tags === 'string'
+                  ? parsed.tags.split(',')
+                  : [];
+      return {
+        title: String(parsed.title_en || parsed.titleEn || parsed.title || '').trim(),
+        description: String(parsed.description_en || parsed.descriptionEn || parsed.description || ''),
+        tags,
+      };
+    }
+
+    return {
+      title: extractLooseJsonString(rawText, 'title_en') || extractLooseJsonString(rawText, 'title'),
+      description: extractLooseJsonString(rawText, 'description_en') || extractLooseJsonString(rawText, 'description'),
+      tags: extractLooseJsonTags(rawText, 'tags_en').length
+        ? extractLooseJsonTags(rawText, 'tags_en')
+        : extractLooseJsonTags(rawText, 'tags'),
+    };
+  };
+
+  const resolveTranslationFamily = (prefix) => getDescriptionAssembly().resolveDescriptionFamilyFromPrefix?.(prefix) || 'collection';
+
+  const normalizeSourceDescriptionForTranslation = (prefix, rawDescription) => {
+    const family = resolveTranslationFamily(prefix);
+    const stripped = getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
+    return {
+      family,
+      description: String(stripped?.description ?? rawDescription ?? '').trim(),
+      stripped: Boolean(stripped?.stripped),
+    };
+  };
+
+  const buildInjectedTranslationDescription = (prefix, language, dynamicDescription) => {
+    const family = resolveTranslationFamily(prefix);
+    return getDescriptionAssembly().buildTranslatedDescriptionWithFixedBlocks?.(dynamicDescription, family, language)
+      || String(dynamicDescription || '').trim();
+  };
+
+  const buildTranslationCacheBlocks = (prefix, listingDraft) => {
+    const title = String(listingDraft?.sourceTitle || '').trim();
+    const tags = (getEtsyData().normalizeAttributeTags?.(listingDraft?.sourceTags || []) || listingDraft?.sourceTags || []).join(', ');
+    const description = normalizeSourceDescriptionForTranslation(prefix, listingDraft?.sourceDescription).description;
+    return [{
+      key: 'translation_source_fr_listing',
+      text: [
+        '## SOURCE_FR_LISTING',
+        `TITLE: ${title}`,
+        `TAGS: ${tags}`,
+        'DESCRIPTION:',
+        description,
+      ].filter(Boolean).join('\n'),
+      cacheable: true,
+      cacheGroup: 'translation_source_fr_listing',
+      cacheLabel: 'source_fr_listing',
+    }];
+  };
+
   const updateMappingStateFromFields = (prefix) => {
     const entry = ensurePrefixState(prefix);
     entry.characterFr = getTrimmedValue(prefix, 'translation-en-character-fr');
@@ -157,7 +585,8 @@
     persistPrefixState(prefix);
   };
 
-  const updateListingStateFromFields = (prefix) => {
+  const updateListingStateFromFields = (prefix, options = {}) => {
+    const rerender = options?.rerender !== false;
     const listingDraft = ensurePrefixState(prefix).listingDraft;
     listingDraft.listingRef = getTrimmedValue(prefix, 'translation-en-listing-ref');
     listingDraft.sourceTitle = String(readField(prefix, 'translation-en-source-title')?.value || '');
@@ -165,6 +594,7 @@
     listingDraft.translatedTitle = String(readField(prefix, 'translation-en-translated-title')?.value || '');
     listingDraft.translatedDescription = String(readField(prefix, 'translation-en-translated-description')?.value || '');
     persistPrefixState(prefix);
+    if (rerender) renderPrefixState(prefix);
   };
 
   const escapeHtml = (value = '') => String(value || '')
@@ -299,6 +729,7 @@
   const renderPrefixState = (prefix) => {
     const entry = ensurePrefixState(prefix);
     const listingDraft = entry.listingDraft;
+    const bulk = getBulkState(prefix);
     const fieldValues = {
       'translation-en-character-fr': entry.characterFr,
       'translation-en-universe-fr': entry.universeFr,
@@ -325,19 +756,7 @@
     const mappingStatusNode = readField(prefix, 'translation-en-status');
     if (mappingStatusNode) mappingStatusNode.textContent = entry.status || DEFAULT_MAPPING_STATUS;
 
-    ['fr', 'en', 'de', 'es'].forEach((subtab) => {
-      const tabButton = readField(prefix, `translation-subtab-${subtab}`);
-      const panel = readField(prefix, `translation-subpanel-${subtab}`);
-      const isActive = entry.activeSubtab === subtab;
-      if (tabButton) {
-        tabButton.classList.toggle('is-active', isActive);
-        tabButton.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      }
-      if (panel) {
-        panel.classList.toggle('is-active', isActive);
-        panel.hidden = !isActive;
-      }
-    });
+    renderTranslationSubtabs(prefix);
 
     const sourceStatusNode = readField(prefix, 'translation-en-source-status');
     if (sourceStatusNode) sourceStatusNode.textContent = listingDraft.sourceStatus || DEFAULT_SOURCE_STATUS;
@@ -347,9 +766,22 @@
       translationOutputNode.textContent = listingDraft.translationOutput || DEFAULT_TRANSLATION_OUTPUT;
       translationOutputNode.classList.toggle('empty', !String(listingDraft.translationOutput || '').trim());
     }
+    const translationDebugNode = readField(prefix, 'translation-en-debug');
+    if (translationDebugNode) {
+      translationDebugNode.textContent = String(listingDraft.translationDebug || 'Aucun debug disponible.');
+    }
 
     const translationStatusNode = readField(prefix, 'translation-en-translation-status');
     if (translationStatusNode) translationStatusNode.textContent = listingDraft.translationStatus || DEFAULT_TRANSLATION_STATUS;
+
+    const bulkTranslateButton = readField(prefix, 'translation-bulk-translate');
+    if (bulkTranslateButton) bulkTranslateButton.disabled = bulk.running === true;
+    const bulkStopButton = readField(prefix, 'translation-bulk-stop');
+    if (bulkStopButton) bulkStopButton.disabled = bulk.running !== true;
+    const bulkPublishButton = readField(prefix, 'translation-bulk-publish');
+    if (bulkPublishButton) bulkPublishButton.disabled = !canPublishAllTranslations(prefix);
+    const bulkStatusNode = readField(prefix, 'translation-bulk-status');
+    if (bulkStatusNode) bulkStatusNode.textContent = bulk.status || DEFAULT_BULK_STATUS;
 
     setMetricNode(
       readField(prefix, 'translation-en-source-title-meta'),
@@ -399,7 +831,7 @@
     if (!entry.characterFr || !entry.universeFr) {
       setMappingStatus(prefix, 'Check impossible : renseigne le personnage FR et l’univers FR.');
       global.showToast('Renseigne le personnage FR et l’univers FR', '#ff4757');
-      return;
+      return { ok: false, reason: 'missing_source' };
     }
 
     const runButton = readField(prefix, 'translation-en-run');
@@ -478,8 +910,9 @@
           : [];
       const normalizedTags = getEtsyData().normalizeAttributeTags?.(sourceTags) || sourceTags;
 
+      const normalizedSource = normalizeSourceDescriptionForTranslation(prefix, String(data.description || ''));
       listingDraft.sourceTitle = String(data.title || '').trim();
-      listingDraft.sourceDescription = String(data.description || '');
+      listingDraft.sourceDescription = normalizedSource.description;
       listingDraft.sourceTags = normalizedTags;
       listingDraft.pendingSourceTagsInput = '';
       entry.characterFr = '';
@@ -497,6 +930,7 @@
       listingDraft.translationInput = '';
       listingDraft.translationStatus = '';
       entry.activeSubtab = 'fr';
+      resetBulkTranslationState(prefix);
       const deEntry = global.PipelineUITranslationDeRuntime?.ensureTranslationDeState?.(prefix);
       if (deEntry) {
         deEntry.characterFr = '';
@@ -508,6 +942,12 @@
         deEntry.lastInput = '';
         deEntry.listingDraft = {
           ...deEntry.listingDraft,
+          listingRef: listingDraft.listingRef,
+          sourceTitle: listingDraft.sourceTitle,
+          sourceDescription: listingDraft.sourceDescription,
+          sourceTags: [...listingDraft.sourceTags],
+          pendingSourceTagsInput: '',
+          sourceStatus: listingDraft.sourceStatus,
           translatedTitle: '',
           translatedDescription: '',
           translatedTags: [],
@@ -528,6 +968,12 @@
         esEntry.lastInput = '';
         esEntry.listingDraft = {
           ...esEntry.listingDraft,
+          listingRef: listingDraft.listingRef,
+          sourceTitle: listingDraft.sourceTitle,
+          sourceDescription: listingDraft.sourceDescription,
+          sourceTags: [...listingDraft.sourceTags],
+          pendingSourceTagsInput: '',
+          sourceStatus: listingDraft.sourceStatus,
           translatedTitle: '',
           translatedDescription: '',
           translatedTags: [],
@@ -537,7 +983,12 @@
           translationStatus: '',
         };
       }
-      setSourceStatus(prefix, `Fiche source ${listingId} chargee.`);
+      setSourceStatus(
+        prefix,
+        normalizedSource.stripped
+          ? `Fiche source ${listingId} chargee. Bloc fixe FR de fin retire automatiquement.`
+          : `Fiche source ${listingId} chargee.`,
+      );
       renderPrefixState(prefix);
       persistPrefixState(prefix);
       global.PipelineUITranslationDeRuntime?.renderTranslationDeState?.(prefix);
@@ -553,9 +1004,11 @@
     }
   }
 
-  async function runTranslationEnListing(prefix = global.pfx()) {
+  async function runTranslationEnListing(prefix = global.pfx(), options = {}) {
     updateMappingStateFromFields(prefix);
     updateListingStateFromFields(prefix);
+    const silent = options?.silent === true;
+    const ownsCacheRun = beginTranslationCacheRun(prefix, 'traduction EN', [TRANSLATION_LISTING_AGENT_ID]);
 
     const entry = ensurePrefixState(prefix);
     const listingDraft = entry.listingDraft;
@@ -564,33 +1017,39 @@
 
     if (!listingDraft.sourceTitle || !listingDraft.sourceDescription || !sourceTagsCsv) {
       setTranslationStatus(prefix, 'Traduction impossible : charge puis complète titre, tags et description source.');
-      global.showToast('Titre, tags et description source requis', '#ff4757');
+      setTranslationLanguageStatus(prefix, 'en', 'error');
+      if (!silent) global.showToast('Titre, tags et description source requis', '#ff4757');
       return;
     }
 
     if (translateButton) translateButton.disabled = true;
+    resetTranslationLanguageRunState(prefix, 'en');
+    setTranslationLanguageStatus(prefix, 'en', 'running');
     try {
       await ensurePromptLoaded(TRANSLATION_LISTING_AGENT_ID, TRANSLATION_LISTING_PROMPT_PATH);
       const template = String(getPromptCache()[TRANSLATION_LISTING_AGENT_ID] || '').trim();
+      const fixedContentBlocks = buildTranslationCacheBlocks(prefix, listingDraft);
       const filled = template
         .replace(/\[\[CHARACTER_FR\]\]/g, entry.characterFr)
         .replace(/\[\[UNIVERSE_FR\]\]/g, entry.universeFr)
         .replace(/\[\[CHARACTER_EN\]\]/g, entry.characterEn)
         .replace(/\[\[UNIVERSE_EN\]\]/g, entry.universeEn)
-        .replace(/\[\[SOURCE_TITLE\]\]/g, listingDraft.sourceTitle)
-        .replace(/\[\[SOURCE_TAGS\]\]/g, sourceTagsCsv)
-        .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, listingDraft.sourceDescription);
+        .replace(/\[\[SOURCE_TITLE\]\]/g, '[voir TITLE dans SOURCE_FR_LISTING mis en cache]')
+        .replace(/\[\[SOURCE_TAGS\]\]/g, '[voir TAGS dans SOURCE_FR_LISTING mis en cache]')
+        .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, '[voir bloc SOURCE_FR_LISTING mis en cache]');
+      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Les blocs fixes de fin sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes de fin dans description_en.`;
 
-      listingDraft.translationInput = filled;
-      getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filled;
+      listingDraft.translationInput = filledWithInjectionNote;
+      getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;
       setTranslationStatus(prefix, `Traduction EN en cours (${getModel(TRANSLATION_LISTING_AGENT_ID)})...`);
 
       const response = await global.callClaude(TRANSLATION_LISTING_AGENT_ID, {
-        filled,
+        filled: filledWithInjectionNote,
+        fixedContentBlocks,
         promptDebug: {
           agentId: TRANSLATION_LISTING_AGENT_ID,
-          promptChars: filled.length,
-          fixedBlocks: [],
+          promptChars: filledWithInjectionNote.length,
+          fixedBlocks: fixedContentBlocks,
         },
       }, false);
 
@@ -598,32 +1057,317 @@
       global.showAgentCost?.(TRANSLATION_LISTING_AGENT_ID, response?.usage || null, { prefix, source: 'translation' });
       global.syncCacheIndicator?.(response?.usage || null);
       const parsed = parseAgentOutput(listingDraft.translationOutput);
-      if (parsed && typeof parsed === 'object') {
-        listingDraft.translatedTitle = String(parsed.title_en || parsed.titleEn || '').trim();
-        listingDraft.translatedDescription = String(parsed.description_en || parsed.descriptionEn || '');
-        const translatedTags = Array.isArray(parsed.tags_en)
-          ? parsed.tags_en
-          : Array.isArray(parsed.tagsEn)
-            ? parsed.tagsEn
-            : typeof parsed.tags_en === 'string'
-              ? parsed.tags_en.split(',')
-              : typeof parsed.tagsEn === 'string'
-                ? parsed.tagsEn.split(',')
-                : [];
-        listingDraft.translatedTags = getEtsyData().normalizeAttributeTags?.(translatedTags) || translatedTags;
-        listingDraft.pendingTranslatedTagsInput = '';
+      const extracted = extractTranslationFields(listingDraft.translationOutput);
+      listingDraft.translatedTitle = String(extracted.title || '').trim();
+      listingDraft.translatedDescription = buildInjectedTranslationDescription(prefix, 'en', extracted.description || '');
+      listingDraft.translatedTags = getEtsyData().normalizeAttributeTags?.(extracted.tags || []) || extracted.tags || [];
+      listingDraft.pendingTranslatedTagsInput = '';
+      const descriptionField = readField(prefix, 'translation-en-translated-description');
+      if (descriptionField) {
+        descriptionField.value = listingDraft.translatedDescription;
+        descriptionField.defaultValue = listingDraft.translatedDescription;
+        descriptionField.textContent = listingDraft.translatedDescription;
       }
+      listingDraft.translationDebug = JSON.stringify({
+        parsedType: parsed ? typeof parsed : 'null',
+        parsedKeys: parsed && typeof parsed === 'object' ? Object.keys(parsed) : [],
+        rawLength: String(listingDraft.translationOutput || '').length,
+        extractedTitleLength: String(listingDraft.translatedTitle || '').length,
+        extractedTagsCount: Array.isArray(listingDraft.translatedTags) ? listingDraft.translatedTags.length : 0,
+        extractedDescriptionLength: String(listingDraft.translatedDescription || '').length,
+        extractedDescriptionPreview: String(listingDraft.translatedDescription || '').slice(0, 220),
+      }, null, 2);
       setTranslationStatus(prefix, 'Traduction EN terminee.');
       renderPrefixState(prefix);
       persistPrefixState(prefix);
-      global.showToast('Traduction EN terminee');
+      setTranslationLanguageStatus(prefix, 'en', 'success');
+      if (!silent) global.showToast('Traduction EN terminee');
+      finalizeTranslationCacheRun(prefix, 'Traduction EN terminee', ownsCacheRun);
+      return { ok: true };
     } catch (error) {
       listingDraft.translationOutput = '';
+      listingDraft.translationDebug = '';
       setTranslationStatus(prefix, `Erreur traduction EN : ${error.message}`);
-      global.showToast(`Erreur traduction EN: ${error.message}`, '#ff4757');
+      setTranslationLanguageStatus(prefix, 'en', 'error');
+      if (!silent) global.showToast(`Erreur traduction EN: ${error.message}`, '#ff4757');
+      finalizeTranslationCacheRun(prefix, `Erreur traduction EN : ${error.message}`, ownsCacheRun);
+      return { ok: false, reason: error.message };
     } finally {
       if (translateButton) translateButton.disabled = false;
     }
+  }
+
+  async function runAllTranslations(prefix = global.pfx()) {
+    const entry = ensurePrefixState(prefix);
+    const listingDraft = entry.listingDraft;
+    if (!listingDraft.sourceTitle || !listingDraft.sourceDescription || !(Array.isArray(listingDraft.sourceTags) && listingDraft.sourceTags.length)) {
+      setBulkTranslationStatus(prefix, 'Source FR incomplete : charge la fiche puis corrige titre, tags et description.');
+      global.showToast('Source FR incomplete pour la traduction globale', '#ff4757');
+      return { ok: false, successCount: 0, errorCount: 3 };
+    }
+
+    resetBulkTranslationState(prefix);
+    const ownsCacheRun = beginTranslationCacheRun(prefix, 'traduction globale EN / DE / ES', [
+      TRANSLATION_LISTING_AGENT_ID,
+      'traduction_listing_de',
+      'traduction_listing_es',
+    ]);
+    setBulkTranslationRunning(prefix, true);
+    setBulkTranslationStatus(prefix, 'Warmup cache traduction en cours...');
+
+    try {
+      await runTranslationCacheWarmup(prefix, listingDraft);
+    } catch (error) {
+      setBulkTranslationRunning(prefix, false);
+      const message = `Warmup cache traduction impossible : ${error.message}`;
+      setBulkTranslationStatus(prefix, message);
+      global.showToast(message, '#ff4757');
+      finalizeTranslationCacheRun(prefix, message, ownsCacheRun);
+      return { ok: false, successCount: 0, errorCount: 3, warmupFailed: true };
+    }
+
+    setBulkTranslationStatus(prefix, 'Traduction globale EN / DE / ES en cours...');
+
+    const results = [];
+    const jobs = [
+      ['en', () => runTranslationEnListing(prefix, { silent: true })],
+      ['de', () => global.runTranslationDeListing?.(prefix, { silent: true })],
+      ['es', () => global.runTranslationEsListing?.(prefix, { silent: true })],
+    ];
+
+    for (const [language, job] of jobs) {
+      if (isBulkTranslationStopRequested(prefix)) {
+        results.push({ language, ok: false, stopped: true });
+        break;
+      }
+      setTranslationLanguageStatus(prefix, language, 'running');
+      try {
+        const result = await job();
+        const ok = result?.ok === true;
+        setTranslationLanguageStatus(prefix, language, ok ? 'success' : 'error');
+        results.push({ language, ok });
+        if (isBulkTranslationStopRequested(prefix)) break;
+      } catch (error) {
+        setTranslationLanguageStatus(prefix, language, 'error');
+        results.push({ language, ok: false });
+        if (isBulkTranslationStopRequested(prefix)) break;
+      }
+    }
+
+    setBulkTranslationRunning(prefix, false);
+    const successCount = results.filter((entryResult) => entryResult.ok).length;
+    const errorCount = results.length - successCount;
+    const summary = isBulkTranslationStopRequested(prefix)
+      ? `Traductions stoppees : ${successCount} succes, ${errorCount} erreur(s).`
+      : `Traductions terminees : ${successCount} succes, ${errorCount} erreur(s).`;
+    setBulkTranslationStatus(prefix, summary);
+    global.showToast(summary, errorCount ? '#e8c547' : undefined);
+    finalizeTranslationCacheRun(prefix, summary, ownsCacheRun);
+    return { ok: successCount > 0, successCount, errorCount };
+  }
+
+  function stopAllTranslations(prefix = global.pfx()) {
+    requestBulkTranslationStop(prefix);
+    ['en', 'de', 'es'].forEach((language) => {
+      if (getBulkState(prefix).languages?.[language] === 'running') {
+        setTranslationLanguageStatus(prefix, language, 'idle');
+      }
+    });
+    [
+      'traduction_en',
+      'traduction_listing_en',
+      'traduction_de',
+      'traduction_listing_de',
+      'traduction_es',
+      'traduction_listing_es',
+    ].forEach((agentId) => {
+      const controller = global.abortControllers?.[agentId];
+      if (controller) controller.abort();
+      if (global.abortControllers) delete global.abortControllers[agentId];
+    });
+    setBulkTranslationRunning(prefix, false);
+    setBulkTranslationStatus(prefix, 'Traductions stoppees manuellement.');
+    global.finalizeCacheDebugRun?.(prefix, 'Traductions stoppees manuellement.');
+    global.showToast('Traductions stoppees');
+  }
+
+  function handleClaudeRetryEvent(event = {}) {
+    const prefix = String(event?.prefix || '').trim();
+    const agentId = String(event?.agentId || '').trim();
+    if (!prefix || !agentId) return;
+
+    const language = agentId === 'traduction_listing_en'
+      ? 'en'
+      : agentId === 'traduction_listing_de'
+        ? 'de'
+        : agentId === 'traduction_listing_es'
+          ? 'es'
+          : '';
+    if (!language) return;
+    incrementTranslationRetryCount(prefix, language);
+  }
+
+  async function publishAllTranslations(prefix = global.pfx()) {
+    if (!canPublishAllTranslations(prefix)) {
+      global.showToast('Aucune traduction publiable pour le moment', '#ff4757');
+      return { ok: false };
+    }
+    const etsyRuntime = getEtsyRuntime();
+    const extractListingId = getEtsyData().extractListingId;
+    const entry = ensurePrefixState(prefix);
+    const listingId = extractListingId?.(entry.listingDraft.listingRef);
+    if (!listingId) {
+      global.showToast('Listing Etsy introuvable pour publier les traductions', '#ff4757');
+      return { ok: false, reason: 'missing_listing_id' };
+    }
+    if (!etsyRuntime.publishListingTranslation) {
+      global.showToast('API Etsy traduction indisponible', '#ff4757');
+      return { ok: false, reason: 'missing_runtime_api' };
+    }
+
+    setBulkTranslationRunning(prefix, true);
+    setBulkTranslationStatus(prefix, 'Publication des traductions EN / DE / ES en cours...');
+
+    const deEntry = global.PipelineUITranslationDeRuntime?.ensureTranslationDeState?.(prefix);
+    const esEntry = global.PipelineUITranslationEsRuntime?.ensureTranslationEsState?.(prefix);
+    const jobs = [
+      {
+        language: 'en',
+        state: getBulkState(prefix).languages.en,
+        draft: entry.listingDraft,
+      },
+      {
+        language: 'de',
+        state: getBulkState(prefix).languages.de,
+        draft: deEntry?.listingDraft || null,
+      },
+      {
+        language: 'es',
+        state: getBulkState(prefix).languages.es,
+        draft: esEntry?.listingDraft || null,
+      },
+    ];
+
+    const results = [];
+    for (const job of jobs) {
+      if (job.state !== 'success' || !job.draft) {
+        results.push({ language: job.language, ok: false, skipped: true, reason: 'langue non prete' });
+        continue;
+      }
+
+      const validated = validatePublishedTranslationDraft(job.draft);
+      if (!validated.ok) {
+        setTranslationLanguageStatus(prefix, job.language, 'error');
+        results.push({
+          language: job.language,
+          ok: false,
+          skipped: false,
+          reason: validated.reasons.join(', '),
+        });
+        continue;
+      }
+
+      try {
+        await etsyRuntime.publishListingTranslation({
+          listingId,
+          language: job.language,
+          title: validated.title,
+          description: validated.description,
+          tags: validated.tags,
+        });
+        results.push({ language: job.language, ok: true });
+      } catch (error) {
+        setTranslationLanguageStatus(prefix, job.language, 'error');
+        const apiMessage = String(
+          error?.payload?.error
+            || error?.payload?.message
+            || error?.message
+            || 'erreur Etsy inconnue',
+        ).trim();
+        console.error(`[translations] publish ${job.language} failed`, {
+          language: job.language,
+          listingId,
+          error,
+          payload: error?.payload,
+        });
+        results.push({
+          language: job.language,
+          ok: false,
+          skipped: false,
+          reason: apiMessage || 'erreur Etsy inconnue',
+        });
+      }
+    }
+
+    setBulkTranslationRunning(prefix, false);
+    const successCount = results.filter((result) => result.ok).length;
+    const errorCount = results.filter((result) => !result.ok && !result.skipped).length;
+    const skippedCount = results.filter((result) => result.skipped).length;
+    const errorDetails = results
+      .filter((result) => !result.ok && !result.skipped && result.reason)
+      .map((result) => `${String(result.language || '').toUpperCase()}: ${result.reason}`)
+      .join(' | ');
+    const summary = `Publication traductions terminee : ${successCount} succes, ${errorCount} erreur(s), ${skippedCount} ignoree(s).`;
+    setBulkTranslationStatus(prefix, summary);
+    if (errorDetails) {
+      setBulkTranslationStatus(prefix, `${summary} ${errorDetails}`);
+    }
+    global.showToast(summary, errorCount ? '#e8c547' : undefined);
+    return { ok: successCount > 0, successCount, errorCount, skippedCount, results };
+  }
+
+  async function publishSingleTranslation(prefix = global.pfx(), language = 'en', draftOverride = null) {
+    const etsyRuntime = getEtsyRuntime();
+    const extractListingId = getEtsyData().extractListingId;
+    const entry = ensurePrefixState(prefix);
+    const listingId = extractListingId?.(entry.listingDraft.listingRef);
+    if (!listingId) {
+      global.showToast('Listing Etsy introuvable pour publier la traduction', '#ff4757');
+      return { ok: false, reason: 'missing_listing_id' };
+    }
+    if (!etsyRuntime.publishListingTranslation) {
+      global.showToast('API Etsy traduction indisponible', '#ff4757');
+      return { ok: false, reason: 'missing_runtime_api' };
+    }
+
+    const normalizedLanguage = ['en', 'de', 'es'].includes(String(language || '').trim().toLowerCase())
+      ? String(language || '').trim().toLowerCase()
+      : 'en';
+    const draft = draftOverride && typeof draftOverride === 'object' ? draftOverride : entry.listingDraft;
+    const validated = validatePublishedTranslationDraft(draft);
+    if (!validated.ok) {
+      setTranslationLanguageStatus(prefix, normalizedLanguage, 'error');
+      const message = `${normalizedLanguage.toUpperCase()} non publiable : ${validated.reasons.join(', ')}`;
+      global.showToast(message, '#ff4757');
+      return { ok: false, reason: validated.reasons.join(', ') };
+    }
+
+    try {
+      await etsyRuntime.publishListingTranslation({
+        listingId,
+        language: normalizedLanguage,
+        title: validated.title,
+        description: validated.description,
+        tags: validated.tags,
+      });
+      setTranslationLanguageStatus(prefix, normalizedLanguage, 'success');
+      global.showToast(`Traduction ${normalizedLanguage.toUpperCase()} publiee`);
+      return { ok: true };
+    } catch (error) {
+      setTranslationLanguageStatus(prefix, normalizedLanguage, 'error');
+      const apiMessage = String(
+        error?.payload?.error
+          || error?.payload?.message
+          || error?.message
+          || 'erreur Etsy inconnue',
+      ).trim();
+      global.showToast(`Erreur publication ${normalizedLanguage.toUpperCase()} : ${apiMessage}`, '#ff4757');
+      return { ok: false, reason: apiMessage };
+    }
+  }
+
+  async function publishTranslationEn(prefix = global.pfx()) {
+    return publishSingleTranslation(prefix, 'en', ensurePrefixState(prefix).listingDraft);
   }
 
   function copyTranslationEnOutput(prefix = global.pfx()) {
@@ -637,12 +1381,19 @@
   }
 
   function showTranslationEnInput(prefix = global.pfx()) {
-    const raw = String(getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`] || '').trim();
+    const raw = String(
+      getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`]
+      || ensurePrefixState(prefix).listingDraft.translationInput
+      || '',
+    ).trim();
     if (!raw) {
       global.showToast("Pas encore d'input brut genere", '#e8c547');
       return;
     }
-    document.getElementById('rawInputTitle').textContent = '</> INPUT - Traduction EN';
+    const hasMappingInput = Boolean(String(getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`] || '').trim());
+    document.getElementById('rawInputTitle').textContent = hasMappingInput
+      ? '</> INPUT - Traduction EN'
+      : '</> INPUT - Traduction fiche EN';
     document.getElementById('rawInputTextarea').value = raw;
     document.getElementById('rawInputCount').textContent = `${raw.length.toLocaleString()} car.`;
     document.getElementById('rawInputLightbox').classList.add('visible');
@@ -659,7 +1410,11 @@
   }
 
   function showTranslationEnListingInput(prefix = global.pfx()) {
-    const raw = String(ensurePrefixState(prefix).listingDraft.translationInput || '').trim();
+    const raw = String(
+      ensurePrefixState(prefix).listingDraft.translationInput
+      || getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`]
+      || '',
+    ).trim();
     if (!raw) {
       global.showToast("Pas encore d'input brut genere", '#e8c547');
       return;
@@ -737,7 +1492,8 @@
     ].forEach((suffix) => {
       const field = readField(prefix, suffix);
       if (!field || field.dataset.translationEnListingBound === 'true') return;
-      field.addEventListener('input', () => updateListingStateFromFields(prefix));
+      field.addEventListener('input', () => updateListingStateFromFields(prefix, { rerender: false }));
+      field.addEventListener('blur', () => renderPrefixState(prefix));
       if (field.tagName === 'TEXTAREA') {
         field.addEventListener('input', () => syncTextareaHeight(field));
       }
@@ -781,6 +1537,7 @@
 
   function initAllTranslationEnPanels() {
     PREFIXES.forEach((prefix) => initTranslationEnPanel(prefix));
+    syncTranslationTimerTicker();
   }
 
   global.PipelineUITranslationEnRuntime = {
@@ -792,6 +1549,17 @@
     runTranslationEnCheck,
     loadTranslationEnSource,
     runTranslationEnListing,
+    runAllTranslations,
+    publishAllTranslations,
+    publishSingleTranslation,
+    publishTranslationEn,
+    stopAllTranslations,
+    beginTranslationCacheRun,
+    finalizeTranslationCacheRun,
+    handleClaudeRetryEvent,
+    setTranslationLanguageStatus,
+    resetTranslationLanguageRunState,
+    canPublishAllTranslations,
     copyTranslationEnOutput,
     showTranslationEnInput,
     copyTranslationEnListingOutput,
@@ -803,6 +1571,12 @@
   global.PipelineUI.translationEn = global.PipelineUI.translationEn || {};
   Object.assign(global.PipelineUI.translationEn, global.PipelineUITranslationEnRuntime);
   Object.assign(global, global.PipelineUITranslationEnRuntime);
+
+  const previousClaudeRetryHandler = global.handleClaudeRetryEvent;
+  global.handleClaudeRetryEvent = function handleClaudeRetryEventChain(event = {}) {
+    global.PipelineUITranslationEnRuntime?.handleClaudeRetryEvent?.(event);
+    previousClaudeRetryHandler?.(event);
+  };
 
   initAllTranslationEnPanels();
 })(window);

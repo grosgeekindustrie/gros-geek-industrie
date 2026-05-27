@@ -273,7 +273,15 @@
 
   function isRetryableClaudeOverloadError(error) {
     const message = String(error?.message || '').toLowerCase();
-    return message.includes('529') || message.includes('overload') || message.includes('surcharg');
+    return (
+      message.includes('529')
+      || message.includes('overload')
+      || message.includes('surcharg')
+      || message.includes('500')
+      || message.includes('internal server error')
+      || message.includes('api_error')
+      || message.includes('timeout')
+    );
   }
 
   function buildAnthropicUploadImagePayload(image, index) {
@@ -665,6 +673,7 @@
         });
 
         if (response.status === 529) throw new Error('HTTP 529 overload');
+        if (response.status === 500) throw new Error('HTTP 500 internal server error');
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -706,6 +715,13 @@
 
         const delayMs = getClaudeRetryDelayMs(attempt);
         updateClaudeRetryMessage(prefix, agentId, attempt, retries, delayMs);
+        global.handleClaudeRetryEvent?.({
+          prefix,
+          agentId,
+          attempt,
+          retries,
+          delayMs,
+        });
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }

@@ -795,8 +795,12 @@ Cache : —</pre>
               <input type="text" id="tt-translation-en-listing-ref" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
               <div class="field-action-row translation-en-actions">
                 <button class="btn btn-accent" type="button" id="tt-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+                <button class="btn btn-accent" type="button" id="tt-translation-bulk-translate" data-ui-action="run-translation-all" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Tout traduire</span></button>
+                <button class="btn btn-muted" type="button" id="tt-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="tt" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
+                <button class="btn btn-muted" type="button" id="tt-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="tt" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
               </div>
               <p class="fetch-status" id="tt-translation-en-source-status">En attente d’une fiche Etsy source.</p>
+              <p class="fetch-status" id="tt-translation-bulk-status">En attente d’un lancement global EN / DE / ES.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">
@@ -875,6 +879,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="tt-translation-en-translate" data-ui-action="run-translation-en-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="tt-translation-en-publish" data-ui-action="publish-translation-en" data-action-arg="tt"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_en"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-listing-input" data-action-arg="tt">&lt;/&gt;</button>
@@ -923,6 +928,10 @@ Cache : —</pre>
                 <summary>JSON brut de la traduction</summary>
                 <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_listing_en">— pas encore traduit —</pre>
               </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse EN</summary>
+                <pre class="output-box translation-en-output-box" id="tt-translation-en-debug">Aucun debug disponible.</pre>
+              </details>
             </div>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_en.md</code>.</p>
           </div>
@@ -970,6 +979,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="tt-translation-de-translate" data-ui-action="run-translation-de-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="tt-translation-de-publish" data-ui-action="publish-translation-de" data-action-arg="tt"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_de"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-listing-input" data-action-arg="tt">&lt;/&gt;</button>
@@ -1069,6 +1079,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="tt-translation-es-translate" data-ui-action="run-translation-es-listing" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="tt-translation-es-publish" data-ui-action="publish-translation-es" data-action-arg="tt"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_es"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-listing-output" data-action-arg="tt"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-listing-input" data-action-arg="tt">&lt;/&gt;</button>
@@ -1116,6 +1127,10 @@ Cache : —</pre>
               <details class="translation-en-debug">
                 <summary>JSON brut de la traduction</summary>
                 <pre class="output-box empty translation-en-output-box" id="tt-out-traduction_listing_es">— pas encore traduit —</pre>
+              </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse ES</summary>
+                <pre class="output-box translation-en-output-box" id="tt-translation-es-debug">Aucun debug disponible.</pre>
               </details>
             </div>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
@@ -1734,8 +1749,12 @@ Cache : —</pre>
               <input type="text" id="col-translation-en-listing-ref" placeholder="Colle un listing_id ou une URL Etsy" autocomplete="off"/>
               <div class="field-action-row translation-en-actions">
                 <button class="btn btn-accent" type="button" id="col-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
+                <button class="btn btn-accent" type="button" id="col-translation-bulk-translate" data-ui-action="run-translation-all" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Tout traduire</span></button>
+                <button class="btn btn-muted" type="button" id="col-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="col" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
+                <button class="btn btn-muted" type="button" id="col-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="col" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
               </div>
               <p class="fetch-status" id="col-translation-en-source-status">En attente d’une fiche Etsy source.</p>
+              <p class="fetch-status" id="col-translation-bulk-status">En attente d’un lancement global EN / DE / ES.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">
@@ -1814,6 +1833,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="col-translation-en-translate" data-ui-action="run-translation-en-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="col-translation-en-publish" data-ui-action="publish-translation-en" data-action-arg="col"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_en"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-en-listing-input" data-action-arg="col">&lt;/&gt;</button>
@@ -1862,6 +1882,10 @@ Cache : —</pre>
                 <summary>JSON brut de la traduction</summary>
                 <pre class="output-box empty translation-en-output-box" id="col-out-traduction_listing_en">— pas encore traduit —</pre>
               </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse EN</summary>
+                <pre class="output-box translation-en-output-box" id="col-translation-en-debug">Aucun debug disponible.</pre>
+              </details>
             </div>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_en.md</code>.</p>
           </div>
@@ -1909,6 +1933,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="col-translation-de-translate" data-ui-action="run-translation-de-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="col-translation-de-publish" data-ui-action="publish-translation-de" data-action-arg="col"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_de"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-de-listing-input" data-action-arg="col">&lt;/&gt;</button>
@@ -2008,6 +2033,7 @@ Cache : —</pre>
             </div>
             <div class="field-action-row translation-en-actions translation-en-actions-top">
               <button class="btn btn-accent" type="button" id="col-translation-es-translate" data-ui-action="run-translation-es-listing" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduire la fiche</span></button>
+              <button class="btn btn-muted" type="button" id="col-translation-es-publish" data-ui-action="publish-translation-es" data-action-arg="col"><span data-svg-icon="upload"></span><span class="ui-icon-label">Publier cette langue</span></button>
               <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="traduction_listing_es"><span data-svg-icon="settings"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-listing-output" data-action-arg="col"><span data-svg-icon="copy"></span></button>
               <button class="btn btn-muted" type="button" data-ui-action="show-translation-es-listing-input" data-action-arg="col">&lt;/&gt;</button>
@@ -2055,6 +2081,10 @@ Cache : —</pre>
               <details class="translation-en-debug">
                 <summary>JSON brut de la traduction</summary>
                 <pre class="output-box empty translation-en-output-box" id="col-out-traduction_listing_es">— pas encore traduit —</pre>
+              </details>
+              <details class="translation-en-debug">
+                <summary>Debunk parse ES</summary>
+                <pre class="output-box translation-en-output-box" id="col-translation-es-debug">Aucun debug disponible.</pre>
               </details>
             </div>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
@@ -2173,6 +2203,18 @@ Cache : —</pre>
 
 <!-- ═══════════════════════════════════════ SCRIPTS CHARGÉS ═══════════════════════════════════════ -->
 <!-- Ordre important : modules UI d’abord, puis bridge pipeline-ui.js, puis runtime pipeline-api.js. -->
+
+<button
+  type="button"
+  class="scroll-top-btn"
+  id="scrollTopBtn"
+  data-js="scroll-top-btn"
+  data-ui-action="scroll-to-top"
+  aria-label="Remonter en haut de la page"
+  title="Remonter en haut"
+>
+  <span class="scroll-top-btn-icon" data-svg-icon="arrowDown"></span>
+</button>
 
 <script type="module" src="js/index.js"></script>
 

@@ -520,6 +520,65 @@
   box-shadow: inset 0 0 0 0.0625rem rgba(255, 154, 87, 0.12);
 }
 
+.scroll-top-btn {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(126, 184, 247, 0.34);
+  border-radius: 999px;
+  background: rgba(14, 19, 27, 0.88);
+  color: var(--text);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity .18s ease, transform .18s ease, visibility .18s ease, border-color .18s ease, background .18s ease;
+  z-index: 9500;
+}
+
+.scroll-top-btn.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.scroll-top-btn:hover {
+  border-color: rgba(126, 184, 247, 0.58);
+  background: rgba(19, 28, 39, 0.94);
+}
+
+.scroll-top-btn:focus-visible {
+  outline: 2px solid rgba(126, 184, 247, 0.72);
+  outline-offset: 3px;
+}
+
+.scroll-top-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(180deg);
+}
+
+.scroll-top-btn-icon .ui-icon {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 720px) {
+  .scroll-top-btn {
+    right: 14px;
+    bottom: 14px;
+    width: 46px;
+    height: 46px;
+  }
+}
+
 .collection-solo-tab.is-disabled,
 .collection-solo-tab:disabled {
   cursor: not-allowed;
@@ -2207,6 +2266,21 @@
   background: rgba(126, 184, 247, 0.16);
   border-color: rgba(126, 184, 247, 0.45);
   color: #7eb8f7;
+}
+
+.translation-en-subtab.is-running {
+  border-color: rgba(232, 197, 71, 0.48);
+  color: #f0d98a;
+}
+
+.translation-en-subtab.is-success {
+  border-color: rgba(74, 214, 120, 0.45);
+  color: #8fe0a8;
+}
+
+.translation-en-subtab.is-error {
+  border-color: rgba(245, 90, 95, 0.48);
+  color: #ff9a9d;
 }
 
 .translation-en-subpanel {

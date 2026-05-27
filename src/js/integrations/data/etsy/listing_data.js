@@ -10,6 +10,15 @@
       .filter(Boolean);
   }
 
+  function decodeHtmlEntities(value = '') {
+    const text = String(value || '');
+    if (!text || !/[&]/.test(text)) return text;
+
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+
   function getCategoryPathParts(data) {
     if (!data || typeof data !== 'object') return [];
 
@@ -63,11 +72,23 @@
       : {}
     );
 
+    const normalizedTitle = decodeHtmlEntities(data.title || rawData.title || '');
+    const normalizedDescription = decodeHtmlEntities(data.description || rawData.description || '');
+    const rawTags = Array.isArray(data.tags)
+      ? data.tags
+      : Array.isArray(rawData.tags)
+        ? rawData.tags
+        : [];
+    const normalizedTags = rawTags.map((tag) => decodeHtmlEntities(tag));
+
     return {
       ...payload,
       data: {
         ...data,
         listing_id: data.listing_id || rawData.listing_id || payload.listing_id || '',
+        title: normalizedTitle,
+        description: normalizedDescription,
+        tags: normalizedTags,
         inventory,
         images,
         videos,
@@ -296,6 +317,7 @@
   global.PipelineUIEtsyData = {
     ...EtsyData,
     splitCategoryPath,
+    decodeHtmlEntities,
     getCategoryPathParts,
     normalizeEtsyListingPayload,
     extractListingPropertyEntries,

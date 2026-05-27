@@ -117,6 +117,10 @@
     'copy-translation-en-output': (prefix) => global.copyTranslationEnOutput?.(prefix),
     'show-translation-en-input': (prefix) => global.showTranslationEnInput?.(prefix),
     'load-translation-en-source': (prefix) => global.loadTranslationEnSource?.(prefix),
+    'run-translation-all': (prefix) => global.runAllTranslations?.(prefix),
+    'stop-translation-all': (prefix) => global.stopAllTranslations?.(prefix),
+    'publish-translation-all': (prefix) => global.publishAllTranslations?.(prefix),
+    'publish-translation-en': (prefix) => global.publishTranslationEn?.(prefix),
     'run-translation-en-listing': (prefix) => global.runTranslationEnListing?.(prefix),
     'copy-translation-en-listing-output': (prefix) => global.copyTranslationEnListingOutput?.(prefix),
     'copy-translation-en-field': (prefix, fieldKey) => global.copyTranslationEnField?.(prefix, fieldKey),
@@ -126,6 +130,7 @@
     'show-translation-de-input': (prefix) => global.showTranslationDeInput?.(prefix),
     'run-translation-de-listing': (prefix) => global.runTranslationDeListing?.(prefix),
     'copy-translation-de-listing-output': (prefix) => global.copyTranslationDeListingOutput?.(prefix),
+    'publish-translation-de': (prefix) => global.publishTranslationDe?.(prefix),
     'copy-translation-de-field': (prefix, fieldKey) => global.copyTranslationDeField?.(prefix, fieldKey),
     'show-translation-de-listing-input': (prefix) => global.showTranslationDeListingInput?.(prefix),
     'run-translation-es-check': (prefix) => global.runTranslationEsCheck?.(prefix),
@@ -133,6 +138,7 @@
     'show-translation-es-input': (prefix) => global.showTranslationEsInput?.(prefix),
     'run-translation-es-listing': (prefix) => global.runTranslationEsListing?.(prefix),
     'copy-translation-es-listing-output': (prefix) => global.copyTranslationEsListingOutput?.(prefix),
+    'publish-translation-es': (prefix) => global.publishTranslationEs?.(prefix),
     'copy-translation-es-field': (prefix, fieldKey) => global.copyTranslationEsField?.(prefix, fieldKey),
     'show-translation-es-listing-input': (prefix) => global.showTranslationEsListingInput?.(prefix),
     'open-biblio-from-settings': () => {
@@ -166,6 +172,7 @@
     'reset-prompt-lightbox': () => global.resetLbPrompt?.(),
     'close-raw-input': () => closeRawInput(),
     'copy-raw-input': () => copyRawInput(),
+    'scroll-to-top': () => scrollToTop(),
     'close-explorer': () => global.closeExplorer?.(),
     'run-iris': (prefix) => (
       prefix === 'col'
@@ -328,6 +335,19 @@
     showToast(RAW_INPUT_COPIED_MESSAGE);
   }
 
+  function scrollToTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  function syncScrollTopButton() {
+    const button = dom.getByData?.('js', 'scroll-top-btn') || document.getElementById('scrollTopBtn');
+    if (!button) return;
+    button.classList.toggle('is-visible', window.scrollY > 420);
+  }
+
   function showView(name) {
     currentView = name;
     (dom.getAllByData?.('js', 'view') || document.querySelectorAll('.view')).forEach((view) => view.classList.remove('active'));
@@ -480,6 +500,8 @@
 
   bindPipelineActionDelegation();
   bindUiActionDelegation();
+  window.addEventListener('scroll', syncScrollTopButton, { passive: true });
+  syncScrollTopButton();
 
   global.PipelineUIApp = {
     showToast,
@@ -487,6 +509,7 @@
     showRawInput,
     closeRawInput,
     copyRawInput,
+    scrollToTop,
     showView,
     updateHeaderContext,
     selectMode,
@@ -512,6 +535,7 @@
     showRawInput,
     closeRawInput,
     copyRawInput,
+    scrollToTop,
     showView,
     selectMode,
     cancelToHome,

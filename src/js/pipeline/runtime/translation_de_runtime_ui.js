@@ -25,6 +25,7 @@
   };
   const getEtsyRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getEtsyData = () => global.PipelineUIEtsyData || {};
+  const getDescriptionAssembly = () => global.PipelineUIDescriptionAssembly || {};
   const getModel = (agentId) => global.getActiveAgentModel?.(agentId) || 'claude-sonnet-4-5';
   const readField = (prefix, suffix) => document.getElementById(`${prefix}-${suffix}`);
   const getTrimmedValue = (prefix, suffix) => readField(prefix, suffix)?.value?.trim?.() || '';
@@ -201,6 +202,43 @@
     };
   };
 
+  const resolveTranslationFamily = (prefix) => getDescriptionAssembly().resolveDescriptionFamilyFromPrefix?.(prefix) || 'collection';
+
+  const normalizeSourceDescriptionForTranslation = (prefix, rawDescription) => {
+    const family = resolveTranslationFamily(prefix);
+    const stripped = getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
+    return {
+      family,
+      description: String(stripped?.description ?? rawDescription ?? '').trim(),
+      stripped: Boolean(stripped?.stripped),
+    };
+  };
+
+  const buildInjectedTranslationDescription = (prefix, language, dynamicDescription) => {
+    const family = resolveTranslationFamily(prefix);
+    return getDescriptionAssembly().buildTranslatedDescriptionWithFixedBlocks?.(dynamicDescription, family, language)
+      || String(dynamicDescription || '').trim();
+  };
+
+  const buildTranslationCacheBlocks = (prefix, listingDraft) => {
+    const title = String(listingDraft?.sourceTitle || '').trim();
+    const tags = (getEtsyData().normalizeAttributeTags?.(listingDraft?.sourceTags || []) || listingDraft?.sourceTags || []).join(', ');
+    const description = normalizeSourceDescriptionForTranslation(prefix, listingDraft?.sourceDescription).description;
+    return [{
+      key: 'translation_source_fr_listing',
+      text: [
+        '## SOURCE_FR_LISTING',
+        `TITLE: ${title}`,
+        `TAGS: ${tags}`,
+        'DESCRIPTION:',
+        description,
+      ].filter(Boolean).join('\n'),
+      cacheable: true,
+      cacheGroup: 'translation_source_fr_listing',
+      cacheLabel: 'source_fr_listing',
+    }];
+  };
+
   const updateMappingStateFromFields = (prefix) => {
     const entry = ensurePrefixState(prefix);
     entry.characterFr = getTrimmedValue(prefix, 'translation-de-character-fr');
@@ -210,7 +248,8 @@
     persistPrefixState(prefix);
   };
 
-  const updateListingStateFromFields = (prefix) => {
+  const updateListingStateFromFields = (prefix, options = {}) => {
+    const rerender = options?.rerender !== false;
     const listingDraft = ensurePrefixState(prefix).listingDraft;
     listingDraft.listingRef = getTrimmedValue(prefix, 'translation-en-listing-ref');
     listingDraft.sourceTitle = String(readField(prefix, 'translation-en-source-title')?.value || '');
@@ -218,6 +257,7 @@
     listingDraft.translatedTitle = String(readField(prefix, 'translation-de-translated-title')?.value || '');
     listingDraft.translatedDescription = String(readField(prefix, 'translation-de-translated-description')?.value || '');
     persistPrefixState(prefix);
+    if (rerender) renderPrefixState(prefix);
   };
 
   const escapeHtml = (value = '') => String(value || '')
@@ -531,8 +571,9 @@
           : [];
       const normalizedTags = getEtsyData().normalizeAttributeTags?.(sourceTags) || sourceTags;
 
+      const normalizedSource = normalizeSourceDescriptionForTranslation(prefix, String(data.description || ''));
       listingDraft.sourceTitle = String(data.title || '').trim();
-      listingDraft.sourceDescription = String(data.description || '');
+      listingDraft.sourceDescription = normalizedSource.description;
       listingDraft.sourceTags = normalizedTags;
       listingDraft.pendingSourceTagsInput = '';
       entry.characterFr = '';
@@ -550,7 +591,12 @@
       listingDraft.translationInput = '';
       listingDraft.translationStatus = '';
       entry.activeSubtab = 'fr';
-      setSourceStatus(prefix, `Fiche source ${listingId} chargee.`);
+      setSourceStatus(
+        prefix,
+        normalizedSource.stripped
+          ? `Fiche source ${listingId} chargee. Bloc fixe FR de fin retire automatiquement.`
+          : `Fiche source ${listingId} chargee.`,
+      );
       renderPrefixState(prefix);
       persistPrefixState(prefix);
       global.showToast('Fiche source DE chargee');
@@ -562,9 +608,15 @@
     }
   }
 
-  async function runTranslationDeListing(prefix = global.pfx()) {
+  async function runTranslationDeListing(prefix = global.pfx(), options = {}) {
     updateMappingStateFromFields(prefix);
     updateListingStateFromFields(prefix);
+    const silent = options?.silent === true;
+    const ownsCacheRun = global.PipelineUITranslationEnRuntime?.beginTranslationCacheRun?.(
+      prefix,
+      'traduction DE',
+      [TRANSLATION_LISTING_AGENT_ID],
+    ) === true;
 
     const entry = ensurePrefixState(prefix);
     const listingDraft = entry.listingDraft;
@@ -580,14 +632,18 @@
 
     if (!listingDraft.sourceTitle || !listingDraft.sourceDescription || !sourceTagsCsv) {
       setTranslationStatus(prefix, 'Traduction impossible : charge puis complète titre, tags et description source.');
-      global.showToast('Titre, tags et description source requis', '#ff4757');
-      return;
+      global.PipelineUITranslationEnRuntime?.setTranslationLanguageStatus?.(prefix, 'de', 'error');
+      if (!silent) global.showToast('Titre, tags et description source requis', '#ff4757');
+      return { ok: false, reason: 'missing_source' };
     }
 
     if (translateButton) translateButton.disabled = true;
+    global.PipelineUITranslationEnRuntime?.resetTranslationLanguageRunState?.(prefix, 'de');
+    global.PipelineUITranslationEnRuntime?.setTranslationLanguageStatus?.(prefix, 'de', 'running');
     try {
       await ensurePromptLoaded(TRANSLATION_LISTING_AGENT_ID, TRANSLATION_LISTING_PROMPT_PATH);
       const template = String(getPromptCache()[TRANSLATION_LISTING_AGENT_ID] || '').trim();
+      const fixedContentBlocks = buildTranslationCacheBlocks(prefix, listingDraft);
       const filled = template
         .replace(/\[\[CHARACTER_FR\]\]/g, entry.characterFr)
         .replace(/\[\[UNIVERSE_FR\]\]/g, entry.universeFr)
@@ -595,20 +651,22 @@
         .replace(/\[\[UNIVERSE_DE\]\]/g, entry.universeEn)
         .replace(/\[\[CHARACTER_EN\]\]/g, entry.characterEn)
         .replace(/\[\[UNIVERSE_EN\]\]/g, entry.universeEn)
-        .replace(/\[\[SOURCE_TITLE\]\]/g, listingDraft.sourceTitle)
-        .replace(/\[\[SOURCE_TAGS\]\]/g, sourceTagsCsv)
-        .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, listingDraft.sourceDescription);
+        .replace(/\[\[SOURCE_TITLE\]\]/g, '[voir TITLE dans SOURCE_FR_LISTING mis en cache]')
+        .replace(/\[\[SOURCE_TAGS\]\]/g, '[voir TAGS dans SOURCE_FR_LISTING mis en cache]')
+        .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, '[voir bloc SOURCE_FR_LISTING mis en cache]');
+      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Les blocs fixes de fin sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes de fin dans description_de.`;
 
-      listingDraft.translationInput = filled;
-      getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filled;
+      listingDraft.translationInput = filledWithInjectionNote;
+      getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;
       setTranslationStatus(prefix, `Traduction DE en cours (${getModel(TRANSLATION_LISTING_AGENT_ID)})...`);
 
       const response = await global.callClaude(TRANSLATION_LISTING_AGENT_ID, {
-        filled,
+        filled: filledWithInjectionNote,
+        fixedContentBlocks,
         promptDebug: {
           agentId: TRANSLATION_LISTING_AGENT_ID,
-          promptChars: filled.length,
-          fixedBlocks: [],
+          promptChars: filledWithInjectionNote.length,
+          fixedBlocks: fixedContentBlocks,
         },
       }, false);
 
@@ -618,7 +676,7 @@
       const parsed = parseAgentOutput(listingDraft.translationOutput);
       const extracted = extractTranslationFields(listingDraft.translationOutput);
       listingDraft.translatedTitle = String(extracted.title || '').trim();
-      listingDraft.translatedDescription = String(extracted.description || '');
+      listingDraft.translatedDescription = buildInjectedTranslationDescription(prefix, 'de', extracted.description || '');
       listingDraft.translatedTags = getEtsyData().normalizeAttributeTags?.(extracted.tags || []) || extracted.tags || [];
       listingDraft.pendingTranslatedTagsInput = '';
       const descriptionField = readField(prefix, 'translation-de-translated-description');
@@ -639,12 +697,18 @@
       setTranslationStatus(prefix, 'Traduction DE terminee.');
       renderPrefixState(prefix);
       persistPrefixState(prefix);
-      global.showToast('Traduction DE terminee');
+      global.PipelineUITranslationEnRuntime?.setTranslationLanguageStatus?.(prefix, 'de', 'success');
+      if (!silent) global.showToast('Traduction DE terminee');
+      global.PipelineUITranslationEnRuntime?.finalizeTranslationCacheRun?.(prefix, 'Traduction DE terminee', ownsCacheRun);
+      return { ok: true };
     } catch (error) {
       listingDraft.translationOutput = '';
       listingDraft.translationDebug = '';
       setTranslationStatus(prefix, `Erreur traduction DE : ${error.message}`);
-      global.showToast(`Erreur traduction DE: ${error.message}`, '#ff4757');
+      global.PipelineUITranslationEnRuntime?.setTranslationLanguageStatus?.(prefix, 'de', 'error');
+      if (!silent) global.showToast(`Erreur traduction DE: ${error.message}`, '#ff4757');
+      global.PipelineUITranslationEnRuntime?.finalizeTranslationCacheRun?.(prefix, `Erreur traduction DE : ${error.message}`, ownsCacheRun);
+      return { ok: false, reason: error.message };
     } finally {
       if (translateButton) translateButton.disabled = false;
     }
@@ -661,12 +725,19 @@
   }
 
   function showTranslationDeInput(prefix = global.pfx()) {
-    const raw = String(getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`] || '').trim();
+    const raw = String(
+      getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`]
+      || ensurePrefixState(prefix).listingDraft.translationInput
+      || '',
+    ).trim();
     if (!raw) {
       global.showToast("Pas encore d'input brut genere", '#e8c547');
       return;
     }
-    document.getElementById('rawInputTitle').textContent = '</> INPUT - Traduction DE';
+    const hasMappingInput = Boolean(String(getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`] || '').trim());
+    document.getElementById('rawInputTitle').textContent = hasMappingInput
+      ? '</> INPUT - Traduction DE'
+      : '</> INPUT - Traduction fiche DE';
     document.getElementById('rawInputTextarea').value = raw;
     document.getElementById('rawInputCount').textContent = `${raw.length.toLocaleString()} car.`;
     document.getElementById('rawInputLightbox').classList.add('visible');
@@ -683,12 +754,16 @@
   }
 
   function showTranslationDeListingInput(prefix = global.pfx()) {
-    const raw = String(ensurePrefixState(prefix).listingDraft.translationInput || '').trim();
+    const raw = String(
+      ensurePrefixState(prefix).listingDraft.translationInput
+      || getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`]
+      || '',
+    ).trim();
     if (!raw) {
       global.showToast("Pas encore d'input brut genere", '#e8c547');
       return;
     }
-    document.getElementById('rawInputTitle').textContent = '</> INPUT - Traduction fiche EN';
+    document.getElementById('rawInputTitle').textContent = '</> INPUT - Traduction fiche DE';
     document.getElementById('rawInputTextarea').value = raw;
     document.getElementById('rawInputCount').textContent = `${raw.length.toLocaleString()} car.`;
     document.getElementById('rawInputLightbox').classList.add('visible');
@@ -711,6 +786,14 @@
     }
     navigator.clipboard.writeText(value);
     global.showToast('Valeur copiee');
+  }
+
+  async function publishTranslationDe(prefix = global.pfx()) {
+    return global.PipelineUITranslationEnRuntime?.publishSingleTranslation?.(
+      prefix,
+      'de',
+      ensurePrefixState(prefix).listingDraft,
+    ) || { ok: false, reason: 'missing_publish_helper' };
   }
 
   function resolveTranslationDePromptLightboxSpec(id = '') {
@@ -754,7 +837,8 @@
     ].forEach((suffix) => {
       const field = readField(prefix, suffix);
       if (!field || field.dataset.translationEnListingBound === 'true') return;
-      field.addEventListener('input', () => updateListingStateFromFields(prefix));
+      field.addEventListener('input', () => updateListingStateFromFields(prefix, { rerender: false }));
+      field.addEventListener('blur', () => renderPrefixState(prefix));
       if (field.tagName === 'TEXTAREA') {
         field.addEventListener('input', () => syncTextareaHeight(field));
       }
@@ -815,6 +899,7 @@
     showTranslationDeInput,
     copyTranslationDeListingOutput,
     copyTranslationDeField,
+    publishTranslationDe,
     showTranslationDeListingInput,
     resolveTranslationDePromptLightboxSpec,
   };

@@ -6,11 +6,41 @@
 
   function getCostRatesForAgent(agentId = '') {
     const model = String(global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
-    const isHaiku = model.includes('haiku');
+    const normalizedModel = model.trim().toLowerCase();
 
-    return isHaiku
-      ? { input: 0.80 / 1_000_000, cacheWrite: 1.00 / 1_000_000, cacheRead: 0.08 / 1_000_000, output: 4.00 / 1_000_000 }
-      : { input: 3.00 / 1_000_000, cacheWrite: 3.75 / 1_000_000, cacheRead: 0.30 / 1_000_000, output: 15.00 / 1_000_000 };
+    if (normalizedModel.includes('haiku')) {
+      return {
+        input: 0.80 / 1_000_000,
+        cacheWrite: 1.00 / 1_000_000,
+        cacheRead: 0.08 / 1_000_000,
+        output: 4.00 / 1_000_000,
+      };
+    }
+
+    if (normalizedModel.includes('opus-4-5')) {
+      return {
+        input: 5.00 / 1_000_000,
+        cacheWrite: 6.25 / 1_000_000,
+        cacheRead: 0.50 / 1_000_000,
+        output: 25.00 / 1_000_000,
+      };
+    }
+
+    if (normalizedModel.includes('opus')) {
+      return {
+        input: 15.00 / 1_000_000,
+        cacheWrite: 18.75 / 1_000_000,
+        cacheRead: 1.50 / 1_000_000,
+        output: 75.00 / 1_000_000,
+      };
+    }
+
+    return {
+      input: 3.00 / 1_000_000,
+      cacheWrite: 3.75 / 1_000_000,
+      cacheRead: 0.30 / 1_000_000,
+      output: 15.00 / 1_000_000,
+    };
   }
 
   function toSafeTokenCount(value) {

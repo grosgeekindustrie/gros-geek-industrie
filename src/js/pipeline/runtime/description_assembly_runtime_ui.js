@@ -5,6 +5,10 @@
   const templates = global.PipelineUIDataDescriptionTemplates || {};
 
   const TOP_LEVEL_BLOCK_SEPARATOR = '\n\n\n\n';
+  const PREFIX_TO_FAMILY = Object.freeze({
+    col: 'collection',
+    tt: 'tabletop',
+  });
 
   function splitScaleValues(rawValue) {
     return String(rawValue || '')
@@ -34,6 +38,79 @@
       .join(TOP_LEVEL_BLOCK_SEPARATOR)
       .replace(/\n{5,}/g, TOP_LEVEL_BLOCK_SEPARATOR)
       .trim();
+  }
+
+  function normalizeTopLevelBlockText(rawValue) {
+    return String(rawValue || '')
+      .replace(/\r\n/g, '\n')
+      .trim()
+      .replace(/\n{3,}/g, TOP_LEVEL_BLOCK_SEPARATOR)
+      .trim();
+  }
+
+  function resolveDescriptionFamilyFromPrefix(prefix = '') {
+    return PREFIX_TO_FAMILY[String(prefix || '').trim()] || 'collection';
+  }
+
+  function getFixedBlocksForFamilyAndLanguage(family = '', language = 'fr') {
+    const families = templates.FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE || {};
+    return Array.isArray(families?.[family]?.[language]) ? families[family][language] : [];
+  }
+
+  function stripTrailingFixedBlocks(rawValue, family = '', language = 'fr') {
+    const normalized = normalizeTopLevelBlockText(rawValue);
+    const fixedBlocks = getFixedBlocksForFamilyAndLanguage(family, language);
+    if (!normalized || !fixedBlocks.length) {
+      return {
+        description: normalized,
+        stripped: false,
+        family,
+        language,
+      };
+    }
+
+    const fixedJoined = joinTopLevelBlocks(fixedBlocks);
+    if (!fixedJoined) {
+      return {
+        description: normalized,
+        stripped: false,
+        family,
+        language,
+      };
+    }
+
+    if (normalized === fixedJoined) {
+      return {
+        description: '',
+        stripped: true,
+        family,
+        language,
+      };
+    }
+
+    const suffix = `${TOP_LEVEL_BLOCK_SEPARATOR}${fixedJoined}`;
+    if (normalized.endsWith(suffix)) {
+      return {
+        description: normalized.slice(0, -suffix.length).trim(),
+        stripped: true,
+        family,
+        language,
+      };
+    }
+
+    return {
+      description: normalized,
+      stripped: false,
+      family,
+      language,
+    };
+  }
+
+  function buildTranslatedDescriptionWithFixedBlocks(dynamicDescription, family = '', language = '') {
+    const dynamicOnly = stripTrailingFixedBlocks(dynamicDescription, family, language).description;
+    const fixedBlocks = getFixedBlocksForFamilyAndLanguage(family, language);
+    if (!fixedBlocks.length) return dynamicOnly;
+    return joinTopLevelBlocks([dynamicOnly, ...fixedBlocks]);
   }
 
   function buildDescriptionAssemblyContext(prefix) {
@@ -83,6 +160,11 @@
     formatScaleSummary,
     buildWhatYouReceiveBlock,
     joinTopLevelBlocks,
+    normalizeTopLevelBlockText,
+    resolveDescriptionFamilyFromPrefix,
+    getFixedBlocksForFamilyAndLanguage,
+    stripTrailingFixedBlocks,
+    buildTranslatedDescriptionWithFixedBlocks,
     buildDescriptionAssemblyContext,
     stripLeadingDescriptionHeading,
     buildFinalPipelineDescription,

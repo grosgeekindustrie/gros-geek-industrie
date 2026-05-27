@@ -252,8 +252,11 @@ def forward_anthropic_json_request(url: str, payload: dict, *, use_files_beta: b
         'x-api-key': api_key,
         'anthropic-version': '2023-06-01',
     }
-    if use_files_beta:
-        headers['anthropic-beta'] = f'prompt-caching-2024-07-31,{ANTHROPIC_FILES_BETA}'
+    headers['anthropic-beta'] = (
+        f'prompt-caching-2024-07-31,{ANTHROPIC_FILES_BETA}'
+        if use_files_beta
+        else 'prompt-caching-2024-07-31'
+    )
 
     request = urllib.request.Request(
         url,
@@ -2542,6 +2545,98 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     'payload_sent': create_payload,
                     'payload': create_response,
                     'operations': operations,
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/etsy/test/listing/translation':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                listing_id = str(data.get('listingId') or data.get('listing_id') or '').strip()
+                language = str(data.get('language') or '').strip().lower()
+                title = str(data.get('title') or '').strip()
+                description = str(data.get('description') or '')
+                tags = data.get('tags') or []
+                if isinstance(tags, str):
+                    tags = [part.strip() for part in tags.split(',') if part.strip()]
+                if not isinstance(tags, list):
+                    self.send_json(400, {'error': 'Payload tags traduction Etsy invalide'})
+                    return
+                if not listing_id:
+                    self.send_json(400, {'error': 'listing_id traduction Etsy manquant'})
+                    return
+                if language not in {'en', 'de', 'es', 'fr', 'it'}:
+                    self.send_json(400, {'error': f'Langue traduction Etsy non supportee: {language or "vide"}'})
+                    return
+                if not title:
+                    self.send_json(400, {'error': 'title traduction Etsy manquant'})
+                    return
+                if not description:
+                    self.send_json(400, {'error': 'description traduction Etsy manquante'})
+                    return
+                if not tags:
+                    self.send_json(400, {'error': 'tags traduction Etsy manquants'})
+                    return
+
+                require_etsy_scope('listings_w')
+                shop_context = get_etsy_shop_context()
+                shop_id = shop_context['shop_id']
+                translation_path = f'shops/{shop_id}/listings/{listing_id}/translations/{language}'
+                translation_payload = {
+                    'title': title,
+                    'description': description,
+                    'tags': [str(tag or '').strip() for tag in tags if str(tag or '').strip()],
+                }
+
+                existing_translation = None
+                translation_exists = False
+                try:
+                    existing_translation = perform_etsy_get_request(translation_path, include_oauth=True)
+                    translation_exists = True
+                except urllib.error.HTTPError as get_error:
+                    if get_error.code != 404:
+                        raise
+
+                pause_etsy_publication_requests()
+                if translation_exists:
+                    response_payload = perform_etsy_put_form_request(
+                        translation_path,
+                        translation_payload,
+                        include_oauth=True,
+                    )
+                    operation = 'update_listing_translation'
+                    method = 'PUT'
+                else:
+                    response_payload = perform_etsy_post_form_request(
+                        translation_path,
+                        translation_payload,
+                        include_oauth=True,
+                    )
+                    operation = 'create_listing_translation'
+                    method = 'POST'
+
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': translation_path,
+                    'listing_id': listing_id,
+                    'language': language,
+                    'operation': operation,
+                    'method': method,
+                    'translation_exists': translation_exists,
+                    'payload_sent': translation_payload,
+                    'existing_translation': existing_translation,
+                    'payload': response_payload,
                 })
             except ValueError as e:
                 self.send_json(400, {'error': str(e)})

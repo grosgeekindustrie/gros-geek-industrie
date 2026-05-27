@@ -29,6 +29,10 @@
     return String(getRoutes().listingProperties || '').trim();
   }
 
+  function getListingTranslationRoute() {
+    return String(getRoutes().listingTranslation || '').trim();
+  }
+
   function extractApiErrorMessage(payload, fallbackStatus) {
     if (!payload || typeof payload !== 'object') {
       return fallbackStatus ? `HTTP ${fallbackStatus}` : 'Erreur API inconnue';
@@ -131,12 +135,43 @@
     });
   }
 
+  async function publishListingTranslation(translationRequest) {
+    const route = getListingTranslationRoute();
+    if (!route) throw new Error('Route traduction Etsy indisponible');
+    const normalizedRequest = translationRequest && typeof translationRequest === 'object'
+      ? {
+          listingId: String(translationRequest.listingId || '').trim(),
+          language: String(translationRequest.language || '').trim().toLowerCase(),
+          title: String(translationRequest.title || '').trim(),
+          description: String(translationRequest.description || ''),
+          tags: Array.isArray(translationRequest.tags) ? translationRequest.tags : [],
+        }
+      : { listingId: '', language: '', title: '', description: '', tags: [] };
+
+    const response = await fetch(route, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(normalizedRequest),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(extractApiErrorMessage(data, response.status));
+      error.status = response.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
+  }
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     getRoutes,
     getCategorySearchRoute,
     getDraftListingRoute,
     getListingPropertiesRoute,
+    getListingTranslationRoute,
     extractApiErrorMessage,
     readJson,
     fetchTaxonomySearch,
@@ -145,6 +180,7 @@
     submitListingPublication,
     createDraftListing,
     updateExistingListing,
+    publishListingTranslation,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

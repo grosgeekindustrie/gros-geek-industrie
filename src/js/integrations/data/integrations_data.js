@@ -16,6 +16,7 @@
       listing: '/etsy/test/listing',
       listingProperties: '/etsy/test/listing/properties',
       listingVariationImages: '/etsy/test/listing/variation-images',
+      listingTranslation: '/etsy/test/listing/translation',
       shippingProfiles: '/etsy/test/shipping-profiles',
       readinessStates: '/etsy/test/readiness-states',
       draftListing: '/etsy/test/listing/draft',
