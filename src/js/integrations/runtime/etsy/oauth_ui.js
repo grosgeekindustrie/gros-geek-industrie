@@ -11,6 +11,7 @@
 
   let initialized = false;
   let lastRenderedOutput = '';
+  let lastRenderedOutputDoublex = '';
 
   const getNode = (id) => document.getElementById(id);
 
@@ -36,6 +37,26 @@
       listingPropertiesButton: getNode('etsyListingPropertiesBtn'),
       listingVariationImagesButton: getNode('etsyListingVariationImagesBtn'),
       output: getNode('etsyAuthOutput'),
+      doublexPanel: getNode('etsyAuthHomePanelDoublex'),
+      doublexConfigured: getNode('etsyAuthConfiguredDoublex'),
+      doublexConnected: getNode('etsyAuthConnectedDoublex'),
+      doublexPending: getNode('etsyAuthPendingDoublex'),
+      doublexRedirect: getNode('etsyAuthRedirectUriDoublex'),
+      doublexScopes: getNode('etsyAuthScopesDoublex'),
+      doublexExpires: getNode('etsyAuthExpiresAtDoublex'),
+      doublexDetails: getNode('etsyAuthDetailsDoublex'),
+      doublexStartButton: getNode('etsyAuthStartBtnDoublex'),
+      doublexRefreshButton: getNode('etsyAuthRefreshBtnDoublex'),
+      doublexPingButton: getNode('etsyPingBtnDoublex'),
+      doublexIdentityButton: getNode('etsyIdentityBtnDoublex'),
+      doublexShopButton: getNode('etsyShopBtnDoublex'),
+      doublexListingsButton: getNode('etsyListingsBtnDoublex'),
+      doublexSectionsButton: getNode('etsySectionsBtnDoublex'),
+      doublexListingReferenceInput: getNode('etsyListingReferenceInputDoublex'),
+      doublexListingButton: getNode('etsyListingBtnDoublex'),
+      doublexListingPropertiesButton: getNode('etsyListingPropertiesBtnDoublex'),
+      doublexListingVariationImagesButton: getNode('etsyListingVariationImagesBtnDoublex'),
+      doublexOutput: getNode('etsyAuthOutputDoublex'),
     };
   }
 
@@ -63,14 +84,17 @@
 
   const extractListingId = EtsyData.extractListingId;
 
-  function buildRouteWithListingId(routeKey) {
+  function buildRouteWithListingId(routeKey, target = 'primary') {
     const route = ROUTES[routeKey];
     if (!route) {
       throw new Error(`Route Etsy inconnue: ${routeKey}`);
     }
 
     const nodes = getNodes();
-    const listingId = extractListingId(nodes.listingReferenceInput?.value);
+    const rawListingReference = target === 'doublex'
+      ? nodes.doublexListingReferenceInput?.value
+      : nodes.listingReferenceInput?.value;
+    const listingId = extractListingId(rawListingReference);
     if (!listingId) {
       throw new Error('Listing ID Etsy introuvable dans la référence fournie');
     }
@@ -150,29 +174,64 @@
     if (nodes.listingButton) nodes.listingButton.disabled = !(canReadPrivateData && hasListingReference);
     if (nodes.listingPropertiesButton) nodes.listingPropertiesButton.disabled = !(canReadPrivateData && hasListingReference);
     if (nodes.listingVariationImagesButton) nodes.listingVariationImagesButton.disabled = !(canReadPrivateData && hasListingReference);
+
+    if (nodes.doublexPanel) {
+      nodes.doublexConfigured.textContent = status.configured
+        ? STATUS_LABELS.configuredYes
+        : STATUS_LABELS.configuredNo;
+      nodes.doublexConnected.textContent = status.connected
+        ? STATUS_LABELS.connectedYes
+        : STATUS_LABELS.connectedNo;
+      nodes.doublexPending.textContent = status.pending
+        ? STATUS_LABELS.pendingYes
+        : STATUS_LABELS.pendingNo;
+      nodes.doublexRedirect.textContent = status.redirectUri || '—';
+      nodes.doublexScopes.textContent = Array.isArray(status.scopes) && status.scopes.length
+        ? status.scopes.join(', ')
+        : '—';
+      nodes.doublexExpires.textContent = formatDateTime(status.expiresAt);
+      nodes.doublexDetails.textContent = buildDetailsLines(status);
+      if (nodes.doublexStartButton) nodes.doublexStartButton.disabled = !canStart;
+      if (nodes.doublexPingButton) nodes.doublexPingButton.disabled = !status.configured;
+      if (nodes.doublexIdentityButton) nodes.doublexIdentityButton.disabled = !canReadPrivateData;
+      if (nodes.doublexShopButton) nodes.doublexShopButton.disabled = !canReadPrivateData;
+      if (nodes.doublexListingsButton) nodes.doublexListingsButton.disabled = !canReadPrivateData;
+      if (nodes.doublexSectionsButton) nodes.doublexSectionsButton.disabled = !canReadPrivateData;
+      const hasDoublexListingReference = !!extractListingId(nodes.doublexListingReferenceInput?.value);
+      if (nodes.doublexListingButton) nodes.doublexListingButton.disabled = !(canReadPrivateData && hasDoublexListingReference);
+      if (nodes.doublexListingPropertiesButton) nodes.doublexListingPropertiesButton.disabled = !(canReadPrivateData && hasDoublexListingReference);
+      if (nodes.doublexListingVariationImagesButton) nodes.doublexListingVariationImagesButton.disabled = !(canReadPrivateData && hasDoublexListingReference);
+    }
   }
 
-  function renderJsonOutput(payload) {
+  function renderJsonOutput(payload, target = 'primary') {
     const nodes = getNodes();
+    const serialized = JSON.stringify(payload, null, 2);
+    if (target === 'doublex') {
+      if (!nodes.doublexOutput) return;
+      lastRenderedOutputDoublex = serialized;
+      nodes.doublexOutput.textContent = serialized;
+      return;
+    }
     if (!nodes.output) return;
-    lastRenderedOutput = JSON.stringify(payload, null, 2);
-    nodes.output.textContent = lastRenderedOutput;
+    lastRenderedOutput = serialized;
+    nodes.output.textContent = serialized;
   }
 
-  async function runEtsyProbe(routeKey) {
+  async function runEtsyProbe(routeKey, target = 'primary') {
     const route = ROUTES[routeKey];
     if (!route) {
       throw new Error(`Route Etsy inconnue: ${routeKey}`);
     }
 
     const payload = await readJson(route);
-    renderJsonOutput(payload);
+    renderJsonOutput(payload, target);
     return payload;
   }
 
-  async function runEtsyListingProbeRequest(routeKey) {
-    const payload = await readJson(buildRouteWithListingId(routeKey));
-    renderJsonOutput(payload);
+  async function runEtsyListingProbeRequest(routeKey, target = 'primary') {
+    const payload = await readJson(buildRouteWithListingId(routeKey, target));
+    renderJsonOutput(payload, target);
     return payload;
   }
 
@@ -203,12 +262,33 @@
     }
   }
 
+  async function startEtsyAuthDoublex() {
+    try {
+      const payload = await readJson(ROUTES.startDoublex || `${ROUTES.start}?browser=opera`);
+      if (!payload?.authUrl) {
+        throw new Error('URL d’autorisation Etsy manquante');
+      }
+      global.showToast?.('Autorisation DoubleXindustrie ouverte dans Opera');
+    } catch (error) {
+      global.showToast?.(`OAuth Etsy DoubleXindustrie : ${error.message}`, '#ff4757');
+    }
+  }
+
   async function runEtsyPingProbe() {
     try {
       await runEtsyProbe('ping');
       global.showToast?.('Ping Etsy réussi');
     } catch (error) {
       global.showToast?.(`Ping Etsy : ${error.message}`, '#ff4757');
+    }
+  }
+
+  async function runEtsyPingProbeDoublex() {
+    try {
+      await runEtsyProbe('ping', 'doublex');
+      global.showToast?.('Ping Etsy DoubleXindustrie réussi');
+    } catch (error) {
+      global.showToast?.(`Ping Etsy DoubleXindustrie : ${error.message}`, '#ff4757');
     }
   }
 
@@ -221,12 +301,30 @@
     }
   }
 
+  async function runEtsyIdentityProbeDoublex() {
+    try {
+      await runEtsyProbe('identity', 'doublex');
+      global.showToast?.('Identité OAuth DoubleXindustrie lue');
+    } catch (error) {
+      global.showToast?.(`Identité OAuth DoubleXindustrie : ${error.message}`, '#ff4757');
+    }
+  }
+
   async function runEtsyShopProbe() {
     try {
       await runEtsyProbe('shop');
       global.showToast?.('Boutique Etsy lue');
     } catch (error) {
       global.showToast?.(`Boutique Etsy : ${error.message}`, '#ff4757');
+    }
+  }
+
+  async function runEtsyShopProbeDoublex() {
+    try {
+      await runEtsyProbe('shop', 'doublex');
+      global.showToast?.('Boutique DoubleXindustrie lue');
+    } catch (error) {
+      global.showToast?.(`Boutique DoubleXindustrie : ${error.message}`, '#ff4757');
     }
   }
 
@@ -239,12 +337,30 @@
     }
   }
 
+  async function runEtsyListingsProbeDoublex() {
+    try {
+      await runEtsyProbe('listings', 'doublex');
+      global.showToast?.('Listings DoubleXindustrie lus');
+    } catch (error) {
+      global.showToast?.(`Listings DoubleXindustrie : ${error.message}`, '#ff4757');
+    }
+  }
+
   async function runEtsySectionsProbe() {
     try {
       await runEtsyProbe('sections');
       global.showToast?.('Sections Etsy lues');
     } catch (error) {
       global.showToast?.(`Sections Etsy : ${error.message}`, '#ff4757');
+    }
+  }
+
+  async function runEtsySectionsProbeDoublex() {
+    try {
+      await runEtsyProbe('sections', 'doublex');
+      global.showToast?.('Sections DoubleXindustrie lues');
+    } catch (error) {
+      global.showToast?.(`Sections DoubleXindustrie : ${error.message}`, '#ff4757');
     }
   }
 
@@ -257,6 +373,15 @@
     }
   }
 
+  async function runEtsyListingProbeDoublex() {
+    try {
+      await runEtsyListingProbeRequest('listing', 'doublex');
+      global.showToast?.('Fiche DoubleXindustrie lue');
+    } catch (error) {
+      global.showToast?.(`Fiche DoubleXindustrie : ${error.message}`, '#ff4757');
+    }
+  }
+
   async function runEtsyListingPropertiesProbe() {
     try {
       await runEtsyListingProbeRequest('listingProperties');
@@ -266,12 +391,30 @@
     }
   }
 
+  async function runEtsyListingPropertiesProbeDoublex() {
+    try {
+      await runEtsyListingProbeRequest('listingProperties', 'doublex');
+      global.showToast?.('Attributs DoubleXindustrie lus');
+    } catch (error) {
+      global.showToast?.(`Attributs DoubleXindustrie : ${error.message}`, '#ff4757');
+    }
+  }
+
   async function runEtsyListingVariationImagesProbe() {
     try {
       await runEtsyListingProbeRequest('listingVariationImages');
       global.showToast?.('Images de variations Etsy lues');
     } catch (error) {
       global.showToast?.(`Images de variations Etsy : ${error.message}`, '#ff4757');
+    }
+  }
+
+  async function runEtsyListingVariationImagesProbeDoublex() {
+    try {
+      await runEtsyListingProbeRequest('listingVariationImages', 'doublex');
+      global.showToast?.('Images de variations DoubleXindustrie lues');
+    } catch (error) {
+      global.showToast?.(`Images de variations DoubleXindustrie : ${error.message}`, '#ff4757');
     }
   }
 
@@ -286,6 +429,20 @@
       global.showToast?.('Sortie API copiée');
     } catch (error) {
       global.showToast?.(`Copie API Etsy : ${error.message}`, '#ff4757');
+    }
+  }
+
+  async function copyEtsyOutputDoublex() {
+    if (!lastRenderedOutputDoublex) {
+      global.showToast?.('Aucune sortie API DoubleXindustrie à copier', '#ff4757');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(lastRenderedOutputDoublex);
+      global.showToast?.('Sortie API DoubleXindustrie copiée');
+    } catch (error) {
+      global.showToast?.(`Copie API Etsy DoubleXindustrie : ${error.message}`, '#ff4757');
     }
   }
 
@@ -316,21 +473,34 @@
     getNodes().listingReferenceInput?.addEventListener('input', () => {
       refreshEtsyAuthStatus({ silent: true });
     });
+    getNodes().doublexListingReferenceInput?.addEventListener('input', () => {
+      refreshEtsyAuthStatus({ silent: true });
+    });
   }
 
   global.PipelineUIEtsyAuth = {
     initEtsyAuthHomePanel,
     refreshEtsyAuthStatus,
     startEtsyAuth,
+    startEtsyAuthDoublex,
     runEtsyPingProbe,
+    runEtsyPingProbeDoublex,
     runEtsyIdentityProbe,
+    runEtsyIdentityProbeDoublex,
     runEtsyShopProbe,
+    runEtsyShopProbeDoublex,
     runEtsyListingsProbe,
+    runEtsyListingsProbeDoublex,
     runEtsySectionsProbe,
+    runEtsySectionsProbeDoublex,
     runEtsyListingProbe,
+    runEtsyListingProbeDoublex,
     runEtsyListingPropertiesProbe,
+    runEtsyListingPropertiesProbeDoublex,
     runEtsyListingVariationImagesProbe,
+    runEtsyListingVariationImagesProbeDoublex,
     copyEtsyOutput,
+    copyEtsyOutputDoublex,
   };
 
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
@@ -340,15 +510,25 @@
     initEtsyAuthHomePanel,
     refreshEtsyAuthStatus,
     startEtsyAuth,
+    startEtsyAuthDoublex,
     runEtsyPingProbe,
+    runEtsyPingProbeDoublex,
     runEtsyIdentityProbe,
+    runEtsyIdentityProbeDoublex,
     runEtsyShopProbe,
+    runEtsyShopProbeDoublex,
     runEtsyListingsProbe,
+    runEtsyListingsProbeDoublex,
     runEtsySectionsProbe,
+    runEtsySectionsProbeDoublex,
     runEtsyListingProbe,
+    runEtsyListingProbeDoublex,
     runEtsyListingPropertiesProbe,
+    runEtsyListingPropertiesProbeDoublex,
     runEtsyListingVariationImagesProbe,
+    runEtsyListingVariationImagesProbeDoublex,
     copyEtsyOutput,
+    copyEtsyOutputDoublex,
   });
 
   if (document.readyState === 'loading') {

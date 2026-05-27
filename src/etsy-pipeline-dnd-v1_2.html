@@ -80,6 +80,23 @@
         <h2>Etsy Pipeline</h2>
         <p>Génération de fiches produit IA — Tabletop &amp; Collection</p>
       </div>
+      <section class="home-shop-switch" aria-labelledby="homeShopSwitchTitle">
+        <div class="home-shop-switch-copy">
+          <p class="home-shop-switch-kicker">BOUTIQUE ACTIVE</p>
+          <h3 id="homeShopSwitchTitle">Contexte boutique</h3>
+          <p class="home-shop-switch-text" data-js="active-shop-description">Gros Geek Industrie actif · charte historique et pipeline principal.</p>
+        </div>
+        <div class="home-shop-switch-toggle" role="tablist" aria-label="Sélection de la boutique active">
+          <button class="home-shop-toggle-btn is-active" type="button" data-js="shop-toggle-button" data-shop-key="grosgeek" data-ui-action="set-active-shop" data-action-arg="grosgeek" aria-selected="true">
+            <span class="home-shop-toggle-title">Gros Geek Industrie</span>
+            <span class="home-shop-toggle-meta">Pipeline principal</span>
+          </button>
+          <button class="home-shop-toggle-btn" type="button" data-js="shop-toggle-button" data-shop-key="doublex" data-ui-action="set-active-shop" data-action-arg="doublex" aria-selected="false">
+            <span class="home-shop-toggle-title">DoubleXindustrie</span>
+            <span class="home-shop-toggle-meta">Sexy · NSFW</span>
+          </button>
+        </div>
+      </section>
       <div class="home-cards home-cards-dual">
         <div class="home-card" data-ui-action="select-mode" data-action-arg="tabletop">
           <div class="home-card-icon" data-svg-icon="tabletop"></div>
@@ -158,6 +175,72 @@
           <button class="btn btn-muted" type="button" id="etsyCopyOutputBtn" data-ui-action="copy-etsy-output"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier la sortie API</span></button>
         </div>
         <pre class="home-integration-details" id="etsyAuthOutput">Les réponses des endpoints de test Etsy apparaîtront ici.</pre>
+      </section>
+
+      <section class="home-integration-panel" id="etsyAuthHomePanelDoublex" aria-labelledby="etsyAuthHomeTitleDoublex">
+        <div class="home-integration-panel-header">
+          <div>
+            <p class="home-integration-kicker">POC API</p>
+            <h3 id="etsyAuthHomeTitleDoublex">Connexion Etsy OAuth · DoubleXindustrie</h3>
+          </div>
+          <div class="home-integration-panel-icon" data-svg-icon="collection"></div>
+        </div>
+        <p class="home-integration-panel-copy">Deuxième host d’autorisation pour la nouvelle boutique. Ce flux ouvre l’autorisation Etsy dans Opera pour éviter d’écraser la session de l’autre boutique.</p>
+        <div class="home-integration-grid">
+          <div class="home-integration-item">
+            <span class="home-integration-label">Configuration</span>
+            <span class="home-integration-value" id="etsyAuthConfiguredDoublex">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Connexion</span>
+            <span class="home-integration-value" id="etsyAuthConnectedDoublex">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Demande OAuth</span>
+            <span class="home-integration-value" id="etsyAuthPendingDoublex">—</span>
+          </div>
+          <div class="home-integration-item">
+            <span class="home-integration-label">Expiration token</span>
+            <span class="home-integration-value" id="etsyAuthExpiresAtDoublex">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Redirect URI</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthRedirectUriDoublex">—</span>
+          </div>
+          <div class="home-integration-item home-integration-item-wide">
+            <span class="home-integration-label">Scopes</span>
+            <span class="home-integration-value home-integration-code" id="etsyAuthScopesDoublex">—</span>
+          </div>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthDetailsDoublex">En attente de la première autorisation OAuth Etsy pour DoubleXindustrie.</pre>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-accent" type="button" id="etsyAuthStartBtnDoublex" data-ui-action="start-etsy-auth-doublex" disabled><span data-svg-icon="play"></span><span class="ui-icon-label">Autoriser DoubleXindustrie</span></button>
+          <button class="btn btn-muted" type="button" id="etsyAuthRefreshBtnDoublex" data-ui-action="refresh-etsy-auth-status"><span data-svg-icon="refresh"></span><span class="ui-icon-label">Actualiser l’état</span></button>
+          <button class="btn btn-muted" type="button" id="etsyPingBtnDoublex" data-ui-action="run-etsy-ping-doublex" disabled><span data-svg-icon="search"></span><span class="ui-icon-label">Lire ping</span></button>
+          <button class="btn btn-muted" type="button" id="etsyIdentityBtnDoublex" data-ui-action="run-etsy-identity-doublex" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire identité OAuth</span></button>
+          <button class="btn btn-muted" type="button" id="etsyShopBtnDoublex" data-ui-action="run-etsy-shop-doublex" disabled><span data-svg-icon="collection"></span><span class="ui-icon-label">Lire boutique</span></button>
+          <button class="btn btn-muted" type="button" id="etsyListingsBtnDoublex" data-ui-action="run-etsy-listings-doublex" disabled><span data-svg-icon="tag"></span><span class="ui-icon-label">Lire listings</span></button>
+          <button class="btn btn-muted" type="button" id="etsySectionsBtnDoublex" data-ui-action="run-etsy-sections-doublex" disabled><span data-svg-icon="book"></span><span class="ui-icon-label">Lire sections</span></button>
+        </div>
+        <div class="home-integration-listing-tools">
+          <label class="settings-label" for="etsyListingReferenceInputDoublex">Référence fiche Etsy</label>
+          <input
+            type="text"
+            id="etsyListingReferenceInputDoublex"
+            class="settings-input"
+            placeholder="Colle un listing_id ou une URL Etsy"
+            autocomplete="off"
+          />
+          <div class="field-action-row home-integration-actions">
+            <button class="btn btn-muted" type="button" id="etsyListingBtnDoublex" data-ui-action="run-etsy-listing-doublex" disabled><span data-svg-icon="fileText"></span><span class="ui-icon-label">Lire fiche</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingPropertiesBtnDoublex" data-ui-action="run-etsy-listing-properties-doublex" disabled><span data-svg-icon="settings"></span><span class="ui-icon-label">Lire attributs</span></button>
+            <button class="btn btn-muted" type="button" id="etsyListingVariationImagesBtnDoublex" data-ui-action="run-etsy-listing-variation-images-doublex" disabled><span data-svg-icon="image"></span><span class="ui-icon-label">Lire images variations</span></button>
+          </div>
+        </div>
+        <div class="field-action-row home-integration-actions">
+          <button class="btn btn-muted" type="button" id="etsyCopyOutputBtnDoublex" data-ui-action="copy-etsy-output-doublex"><span data-svg-icon="copy"></span><span class="ui-icon-label">Copier la sortie API</span></button>
+        </div>
+        <pre class="home-integration-details" id="etsyAuthOutputDoublex">Les réponses des endpoints de test Etsy pour DoubleXindustrie apparaîtront ici.</pre>
       </section>
     </div>
   </div>

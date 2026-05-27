@@ -7,6 +7,7 @@
     routes: Object.freeze({
       status: '/etsy/auth/status',
       start: '/etsy/auth/start',
+      startDoublex: '/etsy/auth/start?browser=opera',
       ping: '/etsy/test/ping',
       identity: '/etsy/test/oauth-identity',
       shop: '/etsy/test/shop',

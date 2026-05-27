@@ -27,6 +27,10 @@
   const pipelineAgentsCollection = agentsData.PIPELINE_AGENTS_BY_MODE?.collection || [];
   const pipelineRuntimeAgentIds = agentsData.PIPELINE_RUNTIME_AGENT_IDS || {};
   const pipelineTargetSteps = agentsData.PIPELINE_TARGET_STEPS || {};
+  const getPipelineAgentsForShopFromData = agentsData.getPipelineAgentsForShop
+    || ((mode = global.currentMode) => ((String(mode || '').trim() === PIPELINE_MODES.COLLECTION ? pipelineAgentsCollection : pipelineAgents).map((agent) => ({ ...agent }))));
+  const getPipelineTargetStepsForShopFromData = agentsData.getPipelineTargetStepsForShop
+    || ((mode = global.currentMode) => ((pipelineTargetSteps[getPipelineModeKey(mode)] || []).map((step) => ({ ...step }))));
 
   const getPipelineModeKey = (mode = global.currentMode) => modeData.getPipelineModeKeyFromData(mode);
   const getPipelineModes = () => modeData.getPipelineModesFromData();
@@ -36,9 +40,7 @@
   const getPipelinePrefixes = () => getPipelineModes().map((mode) => getPipelinePrefix(mode));
 
   const getPipelineAgentsForMode = (mode = global.currentMode) => (
-    getPipelineModeKey(mode) === PIPELINE_MODES.COLLECTION
-      ? pipelineAgentsCollection
-      : pipelineAgents
+    getPipelineAgentsForShopFromData(getPipelineModeKey(mode))
   );
 
   const getPipelineAgents = () => getPipelineAgentsForMode(global.currentMode);
@@ -56,19 +58,19 @@
   );
 
   const getPipelineTargetSteps = (mode = global.currentMode) => (
-    (pipelineTargetSteps[getPipelineModeKey(mode)] || []).map((step) => ({
+    getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode)).map((step) => ({
       id: step.id,
       label: step.label,
     }))
   );
 
   const getPipelineTargetStepMeta = (mode = global.currentMode, stepId = '') => {
-    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const steps = getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode));
     return steps.find((step) => step.id === stepId) || steps[steps.length - 1] || null;
   };
 
   const getPipelineFinalTargetStepId = (mode = global.currentMode) => {
-    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const steps = getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode));
     return steps[steps.length - 1]?.id || '';
   };
 
@@ -78,7 +80,7 @@
   };
 
   const normalizePipelineTargetStepId = (mode = global.currentMode, stepId = '') => {
-    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const steps = getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode));
     const finalStepId = steps[steps.length - 1]?.id || '';
     const requestedStepId = String(stepId || '').trim();
     const devStopAfterStepId = getPipelineDevStopAfterStepId(mode);
@@ -89,7 +91,7 @@
 
   const getPipelineRuntimeAgentIdsForTarget = (mode = global.currentMode, stepId = '') => {
     const runtimeAgentIds = getPipelineRuntimeAgentIds(mode).slice();
-    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const steps = getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode));
     const resolvedStepId = normalizePipelineTargetStepId(mode, stepId);
     const targetStepMeta = steps.find((step) => step.id === resolvedStepId) || steps[steps.length - 1] || null;
     const stopAfterAgentId = String(targetStepMeta?.stopAfterAgentId || '').trim();
@@ -109,12 +111,16 @@
   );
 
   const getPipelineWarmupStepId = (mode = global.currentMode) => {
-    const steps = pipelineTargetSteps[getPipelineModeKey(mode)] || [];
+    const steps = getPipelineTargetStepsForShopFromData(getPipelineModeKey(mode));
     return steps[0]?.id || '';
   };
 
   const promptFileMap = promptMapsData.PROMPT_FILE_MAPS?.tabletop || {};
   const promptFileMapCollection = promptMapsData.PROMPT_FILE_MAPS?.collection || {};
+  const resolvePromptFileMapFromData = promptMapsData.resolvePromptFileMap
+    || ((mode = global.currentMode) => (String(mode || '').trim() === 'collection' ? promptFileMapCollection : promptFileMap));
+  const resolvePromptFolderFromData = promptMapsData.resolvePromptFolder
+    || ((mode = global.currentMode) => `prompts/${String(mode || '').trim() === 'collection' ? 'collection' : 'tabletop'}`);
 
   Object.assign(global.PipelineUIConfig, {
     PIPELINE_AGENTS: pipelineAgents,
@@ -142,6 +148,8 @@
     normalizePipelineTargetStepId,
     getPipelineRuntimeAgentIdsForTarget,
     getPipelineWarmupStepId,
+    resolvePromptFileMap: resolvePromptFileMapFromData,
+    resolvePromptFolder: resolvePromptFolderFromData,
     PROMPT_FILE_MAP: promptFileMap,
     PROMPT_FILE_MAP_COLLECTION: promptFileMapCollection,
   });
@@ -167,6 +175,8 @@
     normalizePipelineTargetStepId,
     getPipelineRuntimeAgentIdsForTarget,
     getPipelineWarmupStepId,
+    resolvePromptFileMap: resolvePromptFileMapFromData,
+    resolvePromptFolder: resolvePromptFolderFromData,
     PROMPT_FILE_MAP: promptFileMap,
     PROMPT_FILE_MAP_COLLECTION: promptFileMapCollection,
   });

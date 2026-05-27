@@ -6,6 +6,10 @@
   global.PipelineUI = global.PipelineUI || {};
 
   const DEFAULT_SHOP_URL = 'https://grosgeekindustrie.etsy.com';
+  const DEFAULT_SHOP_URLS = Object.freeze({
+    grosgeek: 'https://grosgeekindustrie.etsy.com',
+    doublex: 'https://www.etsy.com/shop/DoubleXindustrie',
+  });
   const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
   const FORM_STORAGE_KEY_PREFIX = 'pipeline.form.';
   const DEFAULT_SUBJECT_NAME = 'Figurine';
@@ -200,6 +204,19 @@
     writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
   };
 
+  const getActiveShopKey = () => {
+    const rawValue = String(readAppSettings().activeShop || '').trim();
+    return rawValue === 'doublex' ? 'doublex' : 'grosgeek';
+  };
+  const getPromptFileMapForCurrentContext = (mode = getCurrentMode()) => (
+    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey())
+      || (mode === 'collection' ? getConfig().PROMPT_FILE_MAP_COLLECTION : getConfig().PROMPT_FILE_MAP)
+  );
+  const getPromptFolderForCurrentContext = (mode = getCurrentMode()) => (
+    getConfig().resolvePromptFolder?.(mode, getActiveShopKey())
+      || `prompts/${mode}`
+  );
+
   const renderSelectOptions = (selectId, options = [], selectedValue = null) => {
     const select = getElementById(selectId);
     if (!select) return;
@@ -370,13 +387,20 @@
     const inputValue = getTrimmedElementValue('shopUrl');
     if (inputValue) return inputValue;
 
-    const savedValue = readAppSettings().shopUrl;
-    return savedValue || DEFAULT_SHOP_URL;
+    const settings = readAppSettings();
+    const shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object' ? settings.shopUrls : {};
+    const savedValue = shopUrls[getActiveShopKey()] || settings.shopUrl;
+    return savedValue || DEFAULT_SHOP_URLS[getActiveShopKey()] || DEFAULT_SHOP_URL;
   };
 
   const persistShopUrl = () => {
     const settings = readAppSettings();
-    settings.shopUrl = getShopUrl();
+    const activeShopKey = getActiveShopKey();
+    settings.shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object'
+      ? settings.shopUrls
+      : {};
+    settings.shopUrls[activeShopKey] = getShopUrl();
+    settings.shopUrl = settings.shopUrls[activeShopKey];
     writeAppSettings(settings);
   };
 
@@ -792,7 +816,9 @@
     try {
       const settings = readAppSettings();
       const shopUrlEl = getElementById('shopUrl');
-      if (shopUrlEl) shopUrlEl.value = settings.shopUrl || DEFAULT_SHOP_URL;
+      const activeShopKey = String(settings.activeShop || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+      const shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object' ? settings.shopUrls : {};
+      if (shopUrlEl) shopUrlEl.value = shopUrls[activeShopKey] || settings.shopUrl || DEFAULT_SHOP_URLS[activeShopKey] || DEFAULT_SHOP_URL;
 
       const selectedClaudeModel = String(settings.selectedClaudeModel || '').trim() || DEFAULT_CLAUDE_MODEL;
       CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
@@ -818,9 +844,8 @@
     const currentMode = getCurrentMode();
     const prefix = getPfx();
     const config = getConfig();
-    const promptFileMap = currentMode === 'collection'
-      ? config.PROMPT_FILE_MAP_COLLECTION
-      : config.PROMPT_FILE_MAP;
+    const promptFileMap = getPromptFileMapForCurrentContext(currentMode);
+    const promptFolder = getPromptFolderForCurrentContext(currentMode);
     const promptFiles = Object.entries(promptFileMap);
     const missing = [];
     const mode = currentMode;
@@ -828,14 +853,14 @@
     await Promise.all([
       ...promptFiles.map(async ([agentId, fileName]) => {
         try {
-          const res = await fetch(`/files/prompts/${mode}/${fileName}.md`);
+          const res = await fetch(`/files/${promptFolder}/${fileName}.md`);
           if (!res.ok) {
-            missing.push(`prompts/${mode}/${fileName}.md`);
+            missing.push(`${promptFolder}/${fileName}.md`);
             return;
           }
           state.promptsByMode[mode][agentId] = await res.text();
         } catch (error) {
-          missing.push(`prompts/${mode}/${fileName}.md`);
+          missing.push(`${promptFolder}/${fileName}.md`);
         }
       }),
       ...BIBLIO_FILES.map(async (key) => {

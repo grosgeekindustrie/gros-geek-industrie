@@ -29,3 +29,17 @@ body.mode-collection {
   --accent: #7eb8f7;
   --accent2: #5a9fd4;
 }
+
+body.shop-doublex {
+  --bg: #120b12;
+  --surface: #1a111a;
+  --surface2: #241726;
+  --border: #352436;
+  --border2: #4b3250;
+  --accent: #f2a3c7;
+  --accent2: #d978a6;
+  --text: #f6edf3;
+  --text2: #c6a9bb;
+  --muted: #8d6f82;
+  --stepper-current: #f0b37e;
+}

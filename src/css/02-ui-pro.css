@@ -93,6 +93,13 @@ body.mode-collection #view-home {
       var(--bg);
 }
 
+body.shop-doublex #view-home {
+  background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(242,163,199,.08), transparent),
+      radial-gradient(circle at 85% 15%, rgba(240,179,126,.08), transparent 28%),
+      var(--bg);
+}
+
 .home-headline h2 {
   font-family: 'Clash Display', 'Syne', sans-serif;
   font-size: 40px;
@@ -144,6 +151,14 @@ body.mode-collection #view-home {
 
 body.mode-collection .home-card:hover {
   box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(126,184,247,.1);
+}
+
+body.shop-doublex .home-card::after {
+  background: linear-gradient(135deg, rgba(242,163,199,.08), transparent 60%);
+}
+
+body.shop-doublex .home-card:hover {
+  box-shadow: 0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(242,163,199,.16);
 }
 
 .home-card-icon {

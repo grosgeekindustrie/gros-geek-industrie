@@ -24,8 +24,58 @@
     },
   };
 
+  const promptFileMapsByShop = {
+    grosgeek: promptFileMaps,
+    doublex: {
+      tabletop: {
+        analyse:'yoshi_visual',
+        alt:'luigi_alt_blocks',
+        marche:'daisy_market',
+        tags:'bowser_tags',
+        titre:'mario_titles',
+        description:'peach_description',
+        social:'wario_social',
+        camille:'rosalina_pinterest',
+        iris:'toad_seo',
+      },
+      collection: {
+        alt:'lune_alt_blocks',
+        iris:'esquie_seo',
+        marche:'ciel_alt',
+        tags:'verso_tags',
+        titre:'maelle_titles',
+        description:'renoir_description',
+        social:'alicia_social',
+        camille:'gustave_pinterest',
+      },
+    },
+  };
+
+  const normalizeShopKey = (shopKey = '') => (
+    String(shopKey || '').trim() === 'doublex' ? 'doublex' : 'grosgeek'
+  );
+
+  const resolvePromptFileMap = (mode = 'tabletop', shopKey = '') => {
+    const normalizedShopKey = normalizeShopKey(shopKey);
+    const normalizedMode = String(mode || '').trim() === 'collection' ? 'collection' : 'tabletop';
+    return promptFileMapsByShop[normalizedShopKey]?.[normalizedMode]
+      || promptFileMaps[normalizedMode]
+      || {};
+  };
+
+  const resolvePromptFolder = (mode = 'tabletop', shopKey = '') => {
+    const normalizedShopKey = normalizeShopKey(shopKey);
+    const normalizedMode = String(mode || '').trim() === 'collection' ? 'collection' : 'tabletop';
+    return normalizedShopKey === 'doublex'
+      ? `prompts/doubleX/${normalizedMode}`
+      : `prompts/${normalizedMode}`;
+  };
+
   Object.assign(global.PipelineUIDataPromptMaps, {
     PROMPT_FILE_MAPS: promptFileMaps,
+    PROMPT_FILE_MAPS_BY_SHOP: promptFileMapsByShop,
+    resolvePromptFileMap,
+    resolvePromptFolder,
   });
 
   Object.assign(global.PipelineUIData, {

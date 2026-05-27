@@ -12,6 +12,7 @@ import json
 import os
 import re
 import ssl
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -27,7 +28,7 @@ ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
 ENV_FILE = ROOT / '.env'
 ALLOWED_DIRS = {'prompts', 'biblios'}
-ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction'}
+ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction', 'doubleX'}
 LOCAL_HTTPS_FALLBACK_CERT_FILES = ('local-certs/localhost.crt', 'localhost.pem')
 LOCAL_HTTPS_FALLBACK_KEY_FILES = ('local-certs/localhost.key', 'localhost-key.pem')
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
@@ -38,6 +39,7 @@ ETSY_API_BASE_URL = 'https://api.etsy.com/v3'
 ETSY_OAUTH_CONNECT_URL = 'https://www.etsy.com/oauth/connect'
 ETSY_OAUTH_TOKEN_URL = f'{ETSY_API_BASE_URL}/public/oauth/token'
 ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w')
+OPERA_BROWSER_PATH = Path(r'C:\Users\raficraft\AppData\Local\Programs\Opera\opera.exe')
 ETSY_OAUTH_PENDING_FILE = ROOT / '.etsy_oauth_pending.json'
 ETSY_OAUTH_TOKEN_FILE = ROOT / '.etsy_oauth_tokens.json'
 ETSY_OAUTH_CALLBACK_ROUTE = '/etsy/oauth/callback'
@@ -368,6 +370,22 @@ def build_etsy_authorization_url() -> str:
         'code_challenge_method': 'S256',
     })
     return f'{ETSY_OAUTH_CONNECT_URL}?{query}'
+
+
+def open_url_in_opera(url: str) -> dict:
+    normalized_url = str(url or '').strip()
+    if not normalized_url:
+        raise ValueError('URL Opera invalide')
+    if not OPERA_BROWSER_PATH.exists():
+        raise FileNotFoundError(f'Opera introuvable : {OPERA_BROWSER_PATH}')
+
+    subprocess.Popen([str(OPERA_BROWSER_PATH), normalized_url])
+    return {
+        'ok': True,
+        'browser': 'opera',
+        'browserPath': str(OPERA_BROWSER_PATH),
+        'url': normalized_url,
+    }
 
 
 def exchange_etsy_authorization_code(code: str, pending_payload: dict) -> dict:
@@ -1703,7 +1721,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/etsy/auth/start':
             try:
                 auth_url = build_etsy_authorization_url()
-                self.send_json(200, {'ok': True, 'authUrl': auth_url})
+                browser = str(query_params.get('browser', [''])[0] or '').strip().lower()
+                launched = None
+                if browser == 'opera':
+                    launched = open_url_in_opera(auth_url)
+                self.send_json(200, {
+                    'ok': True,
+                    'authUrl': auth_url,
+                    'browser': browser or 'default',
+                    'launched': launched,
+                })
             except ValueError as e:
                 self.send_json(400, {'error': str(e)})
             except Exception as e:

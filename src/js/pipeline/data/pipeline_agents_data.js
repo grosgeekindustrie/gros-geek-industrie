@@ -7,6 +7,15 @@
   global.PipelineUIData = global.PipelineUIData || {};
   global.PipelineUIDataAgents = global.PipelineUIDataAgents || {};
 
+  const getActiveShopKey = () => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      return String(settings.activeShop || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+    } catch (error) {
+      return 'grosgeek';
+    }
+  };
+
   const pipelineAgentsByMode = {
     tabletop: [
       { id:'titre', title:'01 - Maya · Titres SEO (x5)', usesImages:false, hasSelection:true, selectionType:'titre' },
@@ -42,10 +51,64 @@
     ],
   };
 
+  const DOUBLEX_AGENT_TITLE_OVERRIDES = Object.freeze({
+    tabletop: Object.freeze({
+      titre: '01 - Mario · Titres SEO (x5)',
+      tags: '02 - Bowser · Tags (x13)',
+      description: '03 - Peach · Description',
+      alt: '04 - Luigi · Balise ALT finale',
+    }),
+    collection: Object.freeze({
+      titre: '01 - Maelle · Titres SEO (x5)',
+      tags: '02 - Verso · Tags (x13)',
+      description: '03 - Renoir · Description',
+      alt: '04 - Lune · Balise ALT finale',
+    }),
+  });
+
+  const DOUBLEX_STEP_LABEL_OVERRIDES = Object.freeze({
+    tabletop: Object.freeze({
+      titre: 'Mario · Titres SEO (x5)',
+      tags: 'Bowser · Tags (x13)',
+      description: 'Peach · Description',
+      alt: 'Luigi · Balise ALT finale',
+    }),
+    collection: Object.freeze({
+      titre: 'Maelle · Titres SEO (x5)',
+      tags: 'Verso · Tags (x13)',
+      description: 'Renoir · Description',
+      alt: 'Lune · Balise ALT finale',
+    }),
+  });
+
+  const cloneAgentWithShopLabel = (mode = 'tabletop', agent = {}) => {
+    const shopKey = getActiveShopKey();
+    if (shopKey !== 'doublex') return { ...agent };
+    const titleOverride = DOUBLEX_AGENT_TITLE_OVERRIDES[mode]?.[agent.id];
+    return titleOverride ? { ...agent, title: titleOverride } : { ...agent };
+  };
+
+  const cloneStepWithShopLabel = (mode = 'tabletop', step = {}) => {
+    const shopKey = getActiveShopKey();
+    if (shopKey !== 'doublex') return { ...step };
+    const labelOverride = DOUBLEX_STEP_LABEL_OVERRIDES[mode]?.[step.id];
+    return labelOverride ? { ...step, label: labelOverride } : { ...step };
+  };
+
+  const getPipelineAgentsForShop = (mode = 'tabletop') => (
+    (pipelineAgentsByMode[mode] || []).map((agent) => cloneAgentWithShopLabel(mode, agent))
+  );
+
+  const getPipelineTargetStepsForShop = (mode = 'tabletop') => (
+    (pipelineTargetSteps[mode] || []).map((step) => cloneStepWithShopLabel(mode, step))
+  );
+
   Object.assign(global.PipelineUIDataAgents, {
     PIPELINE_AGENTS_BY_MODE: pipelineAgentsByMode,
     PIPELINE_RUNTIME_AGENT_IDS: pipelineRuntimeAgentIds,
     PIPELINE_TARGET_STEPS: pipelineTargetSteps,
+    getPipelineAgentsForShop,
+    getPipelineTargetStepsForShop,
   });
 
   Object.assign(global.PipelineUIData, {

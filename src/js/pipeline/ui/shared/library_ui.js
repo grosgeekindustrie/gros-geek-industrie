@@ -17,6 +17,22 @@
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
   const getConfig = () => global.PipelineUIConfig;
+  const getActiveShopKey = () => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      return String(settings.activeShop || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+    } catch (error) {
+      return 'grosgeek';
+    }
+  };
+  const getPromptFileMapForCurrentContext = (mode = getCurrentMode()) => (
+    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey())
+      || (mode === 'collection' ? getConfig().PROMPT_FILE_MAP_COLLECTION : getConfig().PROMPT_FILE_MAP)
+  );
+  const getPromptFolderForCurrentContext = (mode = getCurrentMode()) => (
+    getConfig().resolvePromptFolder?.(mode, getActiveShopKey())
+      || `prompts/${mode}`
+  );
 
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
@@ -155,13 +171,14 @@
 
     const config = getConfig();
     const mode = getCurrentMode();
-    const map = mode === 'collection' ? config.PROMPT_FILE_MAP_COLLECTION : config.PROMPT_FILE_MAP;
+    const map = getPromptFileMapForCurrentContext(mode);
+    const promptFolder = getPromptFolderForCurrentContext(mode);
     const fname = (map && map[currentLbAgentId]) || currentLbAgentId;
-    if (!confirm(`Écraser prompts/${mode}/${fname}.md sur le disque ?`)) return;
+    if (!confirm(`Écraser ${promptFolder}/${fname}.md sur le disque ?`)) return;
 
     const val = document.getElementById('lbTextarea').value;
     try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`, { method: 'PUT', body: val });
+      const res = await fetch(`/files/${promptFolder}/${fname}.md`, { method: 'PUT', body: val });
       if (!res.ok) throw new Error((await res.json()).error);
       getState().promptsByMode[mode][currentLbAgentId] = val;
       closePromptLightbox();
@@ -192,12 +209,13 @@
 
     const config = getConfig();
     const mode = getCurrentMode();
-    const map = mode === 'collection' ? config.PROMPT_FILE_MAP_COLLECTION : config.PROMPT_FILE_MAP;
+    const map = getPromptFileMapForCurrentContext(mode);
+    const promptFolder = getPromptFolderForCurrentContext(mode);
     const fname = (map && map[currentLbAgentId]) || currentLbAgentId;
-    if (!confirm(`Recharger prompts/${mode}/${fname}.md depuis le disque ?`)) return;
+    if (!confirm(`Recharger ${promptFolder}/${fname}.md depuis le disque ?`)) return;
 
     try {
-      const res = await fetch(`/files/prompts/${mode}/${fname}.md`);
+      const res = await fetch(`/files/${promptFolder}/${fname}.md`);
       if (!res.ok) throw new Error((await res.json()).error);
       const txt = await res.text();
       getState().promptsByMode[mode][currentLbAgentId] = txt;

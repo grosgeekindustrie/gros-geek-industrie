@@ -13,6 +13,21 @@
   const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
     WAIT: 'wait',
   };
+  const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
+  const SHOP_CONFIGS = Object.freeze({
+    grosgeek: Object.freeze({
+      key: 'grosgeek',
+      label: 'Gros Geek Industrie',
+      url: 'https://grosgeekindustrie.etsy.com',
+      description: 'Gros Geek Industrie actif · charte historique et pipeline principal.',
+    }),
+    doublex: Object.freeze({
+      key: 'doublex',
+      label: 'DoubleXindustrie',
+      url: 'https://www.etsy.com/shop/DoubleXindustrie',
+      description: 'DoubleXindustrie active · univers sexy NSFW et charte rose cuivre.',
+    }),
+  });
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
@@ -94,6 +109,71 @@
     trigger.dataset.actionArg3,
   ].filter((value) => typeof value !== 'undefined'));
 
+  const readAppSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const writeAppSettings = (nextSettings = {}) => {
+    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+  };
+
+  const getShopConfig = (shopKey = '') => (
+    SHOP_CONFIGS[String(shopKey || '').trim()] || SHOP_CONFIGS.grosgeek
+  );
+
+  const getActiveShopKey = () => getShopConfig(readAppSettings().activeShop).key;
+
+  function syncActiveShopUi() {
+    const settings = readAppSettings();
+    const activeShop = getShopConfig(settings.activeShop);
+    document.body.classList.toggle('shop-doublex', activeShop.key === 'doublex');
+
+    const shopUrlInput = document.getElementById('shopUrl');
+    const shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object' ? settings.shopUrls : {};
+    const activeShopUrl = String(shopUrls[activeShop.key] || settings.shopUrl || activeShop.url).trim() || activeShop.url;
+    if (shopUrlInput && shopUrlInput.value !== activeShopUrl) {
+      shopUrlInput.value = activeShopUrl;
+    }
+
+    const activeShopDescription = dom.getByData?.('js', 'active-shop-description') || document.querySelector('[data-js="active-shop-description"]');
+    if (activeShopDescription) activeShopDescription.textContent = activeShop.description;
+
+    (dom.getAllByData?.('js', 'shop-toggle-button') || document.querySelectorAll('[data-js="shop-toggle-button"]')).forEach((button) => {
+      const isActive = String(button.dataset.shopKey || '') === activeShop.key;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    const primaryPanel = document.getElementById('etsyAuthHomePanel');
+    const doublexPanel = document.getElementById('etsyAuthHomePanelDoublex');
+    if (primaryPanel) primaryPanel.classList.toggle('is-shop-active', activeShop.key === 'grosgeek');
+    if (doublexPanel) doublexPanel.classList.toggle('is-shop-active', activeShop.key === 'doublex');
+  }
+
+  function setActiveShop(shopKey = '') {
+    const activeShop = getShopConfig(shopKey);
+    const settings = readAppSettings();
+    settings.activeShop = activeShop.key;
+    settings.shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object'
+      ? settings.shopUrls
+      : {};
+    settings.shopUrls[activeShop.key] = String(settings.shopUrls[activeShop.key] || activeShop.url).trim() || activeShop.url;
+    settings.shopUrl = settings.shopUrls[activeShop.key];
+    writeAppSettings(settings);
+    syncActiveShopUi();
+    global.buildPipeline?.();
+    getModes().forEach((knownMode) => {
+      refreshModeStepper(knownMode);
+      refreshModeTabs(knownMode);
+    });
+    global.loadAllFiles?.(true);
+    showToast(`Boutique active : ${activeShop.label}`, activeShop.key === 'doublex' ? '#f2a3c7' : '#e8c547');
+  }
+
   const getUiActionHandlers = () => ({
     'cancel-to-home': () => cancelToHome(),
     'copy-token-report': () => global.copyTokenReport?.(),
@@ -101,16 +181,26 @@
     'open-settings': () => openSettings(),
     'close-settings': () => closeSettings(),
     'start-etsy-auth': () => global.startEtsyAuth?.(),
+    'start-etsy-auth-doublex': () => global.startEtsyAuthDoublex?.(),
     'refresh-etsy-auth-status': () => global.refreshEtsyAuthStatus?.(),
     'run-etsy-ping': () => global.runEtsyPingProbe?.(),
+    'run-etsy-ping-doublex': () => global.runEtsyPingProbeDoublex?.(),
     'run-etsy-identity': () => global.runEtsyIdentityProbe?.(),
+    'run-etsy-identity-doublex': () => global.runEtsyIdentityProbeDoublex?.(),
     'run-etsy-shop': () => global.runEtsyShopProbe?.(),
+    'run-etsy-shop-doublex': () => global.runEtsyShopProbeDoublex?.(),
     'run-etsy-listings': () => global.runEtsyListingsProbe?.(),
+    'run-etsy-listings-doublex': () => global.runEtsyListingsProbeDoublex?.(),
     'run-etsy-sections': () => global.runEtsySectionsProbe?.(),
+    'run-etsy-sections-doublex': () => global.runEtsySectionsProbeDoublex?.(),
     'run-etsy-listing': () => global.runEtsyListingProbe?.(),
+    'run-etsy-listing-doublex': () => global.runEtsyListingProbeDoublex?.(),
     'run-etsy-listing-properties': () => global.runEtsyListingPropertiesProbe?.(),
+    'run-etsy-listing-properties-doublex': () => global.runEtsyListingPropertiesProbeDoublex?.(),
     'run-etsy-listing-variation-images': () => global.runEtsyListingVariationImagesProbe?.(),
+    'run-etsy-listing-variation-images-doublex': () => global.runEtsyListingVariationImagesProbeDoublex?.(),
     'copy-etsy-output': () => global.copyEtsyOutput?.(),
+    'copy-etsy-output-doublex': () => global.copyEtsyOutputDoublex?.(),
     'load-etsy-workspace-media': (prefix) => global.loadEtsyWorkspaceMedia?.(prefix),
     'copy-etsy-workspace-payload': (prefix) => global.copyEtsyWorkspacePayload?.(prefix),
     'run-translation-en-check': (prefix) => global.runTranslationEnCheck?.(prefix),
@@ -150,6 +240,7 @@
       closeSettings();
     },
     'clear-storage': () => clearAllStorage(),
+    'set-active-shop': (shopKey) => setActiveShop(shopKey),
     'select-mode': (mode) => selectMode(mode),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
@@ -502,6 +593,7 @@
   bindUiActionDelegation();
   window.addEventListener('scroll', syncScrollTopButton, { passive: true });
   syncScrollTopButton();
+  syncActiveShopUi();
 
   global.PipelineUIApp = {
     showToast,
@@ -522,6 +614,9 @@
     updatePipelineTimeline,
     openSettings,
     closeSettings,
+    getActiveShopKey,
+    setActiveShop,
+    syncActiveShopUi,
     bindPipelineActionDelegation,
     bindUiActionDelegation,
     getCurrentView: () => currentView,
@@ -546,5 +641,8 @@
     updatePipelineTimeline,
     openSettings,
     closeSettings,
+    getActiveShopKey,
+    setActiveShop,
+    syncActiveShopUi,
   });
 })(window);
