@@ -735,6 +735,15 @@
       Object.assign(base, getCollectionData());
     }
 
+    const relaunchContext = global.buildListingRelaunchContext?.(prefix, {
+      agentId,
+      mode: currentMode,
+      baseContext: base,
+    });
+    if (relaunchContext && typeof relaunchContext === 'object') {
+      Object.assign(base, relaunchContext);
+    }
+
     return base;
   }
 

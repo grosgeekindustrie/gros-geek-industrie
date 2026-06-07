@@ -181,7 +181,10 @@
     const { action, prefix, stepId, agentId } = normalizePipelineActionRequest(request);
     const activePrefix = prefix || global.pfx();
     const actionHandlers = {
-      launch: () => global.runPipelineWithCacheAware(activePrefix),
+      launch: () => {
+        global.clearListingRelaunchContext?.(activePrefix);
+        return global.runPipelineWithCacheAware(activePrefix);
+      },
       'rerun-agent': () => rerunAgent(agentId, activePrefix),
       'rerun-suite': () => rerunSuite(agentId, activePrefix),
       'stop-agent': () => stopAgent(agentId, activePrefix),

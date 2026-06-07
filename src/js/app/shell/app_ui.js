@@ -203,6 +203,7 @@
     'copy-etsy-output': () => global.copyEtsyOutput?.(),
     'copy-etsy-output-doublex': () => global.copyEtsyOutputDoublex?.(),
     'load-etsy-workspace-media': (prefix) => global.loadEtsyWorkspaceMedia?.(prefix),
+    'run-etsy-listing-relaunch': (prefix) => global.runEtsyListingRelaunch?.(prefix),
     'copy-etsy-workspace-payload': (prefix) => global.copyEtsyWorkspacePayload?.(prefix),
     'run-translation-en-check': (prefix) => global.runTranslationEnCheck?.(prefix),
     'copy-translation-en-output': (prefix) => global.copyTranslationEnOutput?.(prefix),

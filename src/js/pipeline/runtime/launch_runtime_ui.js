@@ -285,6 +285,9 @@
   }
 
   function buildPipelineFormSnapshot(prefix) {
+    const relaunchSnapshot = global.buildListingRelaunchFormSnapshot?.(prefix);
+    if (relaunchSnapshot) return relaunchSnapshot;
+
     const mode = global.getPipelineLaunchMode(prefix);
     const echelles = global.PipelineUIEchelles.getEchellesSelected();
     const dimensions = global.PipelineUIEchelles.getDimsFromEchelles();

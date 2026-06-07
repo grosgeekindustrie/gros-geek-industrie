@@ -48,6 +48,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/ui/shared/selections_ui.js',
   ]),
   runtime: Object.freeze([
+    'pipeline/runtime/listing_relaunch_runtime_ui.js',
     'pipeline/runtime/pipeline_target_runtime_ui.js',
     'pipeline/runtime/anthropic_runtime_api.js',
     'pipeline/runtime/agent_runtime_ui.js',
