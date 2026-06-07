@@ -55,18 +55,21 @@
     String(shopKey || '').trim() === 'doublex' ? 'doublex' : 'grosgeek'
   );
 
-  const resolvePromptFileMap = (mode = 'tabletop', shopKey = '') => {
+  const resolvePromptFileMap = (mode = 'tabletop', shopKey = '', options = {}) => {
     const normalizedShopKey = normalizeShopKey(shopKey);
     const normalizedMode = String(mode || '').trim() === 'collection' ? 'collection' : 'tabletop';
-    return promptFileMapsByShop[normalizedShopKey]?.[normalizedMode]
+    const useDoublexShopPrompts = options?.useDoublexShopPrompts !== false;
+    const effectiveShopKey = normalizedShopKey === 'doublex' && !useDoublexShopPrompts ? 'grosgeek' : normalizedShopKey;
+    return promptFileMapsByShop[effectiveShopKey]?.[normalizedMode]
       || promptFileMaps[normalizedMode]
       || {};
   };
 
-  const resolvePromptFolder = (mode = 'tabletop', shopKey = '') => {
+  const resolvePromptFolder = (mode = 'tabletop', shopKey = '', options = {}) => {
     const normalizedShopKey = normalizeShopKey(shopKey);
     const normalizedMode = String(mode || '').trim() === 'collection' ? 'collection' : 'tabletop';
-    return normalizedShopKey === 'doublex'
+    const useDoublexShopPrompts = options?.useDoublexShopPrompts !== false;
+    return normalizedShopKey === 'doublex' && useDoublexShopPrompts
       ? `prompts/doubleX/${normalizedMode}`
       : `prompts/${normalizedMode}`;
   };

@@ -30,7 +30,7 @@
     input.type = 'file';
     input.id = `etsyApiUploadInput-${prefix}`;
     input.className = 'input-file-hidden';
-    input.accept = 'image/*';
+    input.accept = 'image/*,video/*';
     input.multiple = true;
     nodes.panel.appendChild(input);
     return input;
@@ -86,12 +86,21 @@
     return `local-image:${String(image?.local_id)}`;
   }
 
+  function getLocalVideoKey(video) {
+    return `local-video:${String(video?.local_id)}`;
+  }
+
   function getImageId(image, index) {
     return String(image?.listing_image_id || image?.image_id || index || '-');
   }
 
   function getVideoId(video, index) {
     return String(video?.video_id || video?.listing_video_id || index || '-');
+  }
+
+  function getVideoPreviewSource(video, isLocal) {
+    if (isLocal) return String(video?.data_url || '');
+    return String(video?.video_url || '');
   }
 
   function getImagePreviewSource(image, isLocal) {
@@ -160,9 +169,11 @@
     getImageKey,
     getVideoKey,
     getLocalImageKey,
+    getLocalVideoKey,
     getImageId,
     getVideoId,
     getImagePreviewSource,
+    getVideoPreviewSource,
     getImageResolution,
     getVideoResolution,
     formatResolution,

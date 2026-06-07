@@ -121,6 +121,7 @@
       loadImageFromDataUrl: runtime.loadImageFromDataUrl,
       appendMediaKeysToOrder: runtime.appendMediaKeysToOrder,
       getLocalImageKey: runtime.getLocalImageKey,
+      getLocalVideoKey: runtime.getLocalVideoKey,
       syncPayloadText: runtime.syncPayloadText,
       renderWorkspace,
       setStatus: runtime.workspaceSetStatus,
@@ -278,6 +279,7 @@
       getState: runtime.getWorkspaceState,
       createDraftListing: runtime.createDraftListing,
       updateExistingListing: runtime.updateExistingListing,
+      updateExpiredListing: runtime.updateExpiredListing,
       applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
     });
   }

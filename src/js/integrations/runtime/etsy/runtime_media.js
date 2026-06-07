@@ -23,6 +23,12 @@
       || `local-image:${String(image?.local_id)}`;
   }
 
+  function resolveLocalVideoKey(deps, video) {
+    return deps.getLocalVideoKey?.(video)
+      || getRuntime().getLocalVideoKey?.(video)
+      || `local-video:${String(video?.local_id)}`;
+  }
+
   function resolveDisplayImageSource(deps, prefix, mediaKey, image, isLocal) {
     return deps.getDisplayImageSource?.(prefix, mediaKey, image, isLocal)
       || getRuntime().getDisplayImageSource?.(prefix, mediaKey, image, isLocal)
@@ -42,11 +48,13 @@
     const images = Array.isArray(data.images) ? data.images : [];
     const videos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state?.localVideos) ? state.localVideos : [];
 
     return [
       ...images.map((image, index) => resolveImageKey(deps, image, index)),
       ...videos.map((video, index) => resolveVideoKey(deps, video, index)),
       ...localImages.map((image) => resolveLocalImageKey(deps, image)),
+      ...localVideos.map((video) => resolveLocalVideoKey(deps, video)),
     ];
   }
 
@@ -55,18 +63,22 @@
     const images = Array.isArray(data.images) ? data.images : [];
     const videos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state?.localVideos) ? state.localVideos : [];
 
     const imageMap = new Map(images.map((image, index) => [resolveImageKey(deps, image, index), image]));
     const videoMap = new Map(videos.map((video, index) => [resolveVideoKey(deps, video, index), video]));
     const localImageMap = new Map(localImages.map((image) => [resolveLocalImageKey(deps, image), image]));
+    const localVideoMap = new Map(localVideos.map((video) => [resolveLocalVideoKey(deps, video), video]));
 
     return {
       images,
       videos,
       localImages,
+      localVideos,
       imageMap,
       videoMap,
       localImageMap,
+      localVideoMap,
     };
   }
 
@@ -92,6 +104,12 @@
         return;
       }
 
+      if (maps.localVideoMap.has(key)) {
+        items.push({ kind: 'video', key, value: maps.localVideoMap.get(key), isLocal: true });
+        seen.add(key);
+        return;
+      }
+
       if (maps.videoMap.has(key)) {
         items.push({ kind: 'video', key, value: maps.videoMap.get(key), isLocal: false });
         seen.add(key);
@@ -102,6 +120,7 @@
       if (seen.has(key)) return;
       if (maps.imageMap.has(key)) items.push({ kind: 'image', key, value: maps.imageMap.get(key), isLocal: false });
       if (maps.localImageMap.has(key)) items.push({ kind: 'image', key, value: maps.localImageMap.get(key), isLocal: true });
+      if (maps.localVideoMap.has(key)) items.push({ kind: 'video', key, value: maps.localVideoMap.get(key), isLocal: true });
       if (maps.videoMap.has(key)) items.push({ kind: 'video', key, value: maps.videoMap.get(key), isLocal: false });
     });
 
@@ -115,6 +134,7 @@
     const maps = buildMediaMaps(state, deps);
     if (maps.imageMap.has(mediaKey)) return { kind: 'image', key: mediaKey, value: maps.imageMap.get(mediaKey), isLocal: false };
     if (maps.localImageMap.has(mediaKey)) return { kind: 'image', key: mediaKey, value: maps.localImageMap.get(mediaKey), isLocal: true };
+    if (maps.localVideoMap.has(mediaKey)) return { kind: 'video', key: mediaKey, value: maps.localVideoMap.get(mediaKey), isLocal: true };
     if (maps.videoMap.has(mediaKey)) return { kind: 'video', key: mediaKey, value: maps.videoMap.get(mediaKey), isLocal: false };
     return null;
   }
@@ -250,9 +270,10 @@
     const imageCount = Array.isArray(state?.mediaPayload?.data?.images) ? state.mediaPayload.data.images.length : 0;
     const localImageCount = Array.isArray(state?.localImages) ? state.localImages.length : 0;
     const videoCount = Array.isArray(state?.mediaPayload?.data?.videos) ? state.mediaPayload.data.videos.length : 0;
+    const localVideoCount = Array.isArray(state?.localVideos) ? state.localVideos.length : 0;
 
     deps.destroySortable?.(prefix);
-    if (!state || !grid || !SortableCtor || (imageCount + localImageCount + videoCount) < 2) return;
+    if (!state || !grid || !SortableCtor || (imageCount + localImageCount + videoCount + localVideoCount) < 2) return;
 
     grid.classList.add('is-sortable');
     state.sortable = SortableCtor.create(grid, {
@@ -265,7 +286,7 @@
         if (!reorderMediaFromGrid(prefix, grid, deps)) return;
         deps.setStatus?.(
           prefix,
-          `Ordre des medias mis a jour - ${imageCount + localImageCount} image(s) - ${videoCount} video(s).`
+          `Ordre des medias mis a jour - ${imageCount + localImageCount} image(s) - ${videoCount + localVideoCount} video(s).`
         );
       },
     });
@@ -285,24 +306,47 @@
     };
   }
 
+  async function buildLocalVideoFromFile(file, deps = {}) {
+    const dataUrl = await (deps.readFileAsDataUrl?.(file) || getRuntime().readFileAsDataUrl?.(file));
+    return {
+      local_id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: file.name || 'video.mp4',
+      data_url: dataUrl,
+      media_type: file.type || 'video/mp4',
+      width: 0,
+      height: 0,
+    };
+  }
+
   async function addLocalImages(prefix, files, deps = {}) {
     const state = deps.getState?.(prefix);
     if (!state || !files.length) return;
 
     const nextImages = [];
+    const nextVideos = [];
     for (const file of files) {
-      if (!file?.type?.startsWith('image/')) continue;
-      nextImages.push(await buildLocalImageFromFile(file, deps));
+      if (file?.type?.startsWith('image/')) {
+        nextImages.push(await buildLocalImageFromFile(file, deps));
+        continue;
+      }
+      if (file?.type?.startsWith('video/')) {
+        nextVideos.push(await buildLocalVideoFromFile(file, deps));
+      }
     }
 
-    if (!nextImages.length) return;
+    if (!nextImages.length && !nextVideos.length) return;
 
     state.localImages.push(...nextImages);
-    deps.appendMediaKeysToOrder?.(state, nextImages.map((image) => resolveLocalImageKey(deps, image)));
+    state.localVideos = Array.isArray(state.localVideos) ? state.localVideos : [];
+    state.localVideos.push(...nextVideos);
+    deps.appendMediaKeysToOrder?.(state, [
+      ...nextImages.map((image) => resolveLocalImageKey(deps, image)),
+      ...nextVideos.map((video) => resolveLocalVideoKey(deps, video)),
+    ]);
     deps.syncPayloadText?.(state);
     deps.renderWorkspace?.(prefix);
-    deps.setStatus?.(prefix, `${state.localImages.length} image(s) locale(s) ajoutee(s) au workspace.`);
-    global.showToast?.('Images ajoutees au workspace Etsy');
+    deps.setStatus?.(prefix, `${nextImages.length} image(s) et ${nextVideos.length} video(s) locale(s) ajoutee(s) au workspace.`);
+    global.showToast?.('Medias ajoutes au workspace Etsy');
   }
 
   function removeMediaByKey(prefix, mediaKey, deps = {}) {
@@ -316,6 +360,8 @@
 
     if (mediaItem.kind === 'image' && mediaItem.isLocal) {
       state.localImages = state.localImages.filter((image) => resolveLocalImageKey(deps, image) !== mediaKey);
+    } else if (mediaItem.kind === 'video' && mediaItem.isLocal) {
+      state.localVideos = (state.localVideos || []).filter((video) => resolveLocalVideoKey(deps, video) !== mediaKey);
     } else if (mediaItem.kind === 'image') {
       const images = Array.isArray(state.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
       state.mediaPayload.data.images = images.filter((image, index) => resolveImageKey(deps, image, index) !== mediaKey);
@@ -346,6 +392,8 @@
 
     if (mediaItem.kind === 'image' && mediaItem.isLocal) {
       state.localImages = state.localImages.filter((image) => resolveLocalImageKey(deps, image) !== mediaKey);
+    } else if (mediaItem.kind === 'video' && mediaItem.isLocal) {
+      state.localVideos = (state.localVideos || []).filter((video) => resolveLocalVideoKey(deps, video) !== mediaKey);
     } else if (mediaItem.kind === 'image') {
       const images = Array.isArray(state.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
       state.mediaPayload.data.images = images.filter((image, index) => resolveImageKey(deps, image, index) !== mediaKey);
@@ -380,8 +428,36 @@
     const state = deps.getState?.(prefix);
     if (!state) return;
 
-    if (deps.getActiveEditorSession?.()?.prefix === prefix) {
+    const selectedMediaKeys = Array.isArray(state.selectedPipelineAltMediaKeys)
+      ? state.selectedPipelineAltMediaKeys.filter(Boolean)
+      : [];
+    const hasSelectedImages = selectedMediaKeys.length > 0;
+    const selectedMediaKeySet = new Set(selectedMediaKeys);
+
+    if (deps.getActiveEditorSession?.()?.prefix === prefix
+      && (!hasSelectedImages || selectedMediaKeySet.has(deps.getActiveEditorSession?.()?.mediaKey))) {
       deps.closeImageEditorOverlay?.();
+    }
+
+    if (hasSelectedImages) {
+      const images = Array.isArray(state.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
+      if (state.mediaPayload?.data) {
+        state.mediaPayload.data.images = images.filter((image, index) => !selectedMediaKeySet.has(resolveImageKey(deps, image, index)));
+      }
+      state.localImages = Array.isArray(state.localImages)
+        ? state.localImages.filter((image) => !selectedMediaKeySet.has(resolveLocalImageKey(deps, image)))
+        : [];
+      state.mediaOrder = Array.isArray(state.mediaOrder)
+        ? state.mediaOrder.filter((mediaKey) => !selectedMediaKeySet.has(mediaKey))
+        : [];
+      state.selectedPipelineAltMediaKeys = [];
+      selectedMediaKeys.forEach((mediaKey) => deps.clearEditedImageState?.(prefix, mediaKey));
+      if (selectedMediaKeySet.has(state.activeMediaKey)) deps.closeMediaLightbox?.();
+      deps.syncPayloadText?.(state);
+      deps.renderWorkspace?.(prefix);
+      deps.setStatus?.(prefix, `${selectedMediaKeys.length} image(s) selectionnee(s) supprimee(s) du workspace Etsy.`);
+      global.showToast?.(`${selectedMediaKeys.length} image(s) supprimee(s)`);
+      return;
     }
 
     if (state.mediaPayload?.data) {
@@ -390,6 +466,7 @@
     }
 
     state.localImages = [];
+    state.localVideos = [];
     state.mediaOrder = [];
     state.selectedPipelineAltMediaKeys = [];
     deps.resetWorkspaceEditedImages?.(prefix);
@@ -420,6 +497,7 @@
     reorderMediaFromGrid,
     setupSortable,
     buildLocalImageFromFile,
+    buildLocalVideoFromFile,
     addLocalImages,
     removeMediaByKey,
     removeMediaByKeyInline,

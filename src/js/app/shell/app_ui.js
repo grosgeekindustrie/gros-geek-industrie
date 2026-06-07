@@ -152,6 +152,7 @@
     const doublexPanel = document.getElementById('etsyAuthHomePanelDoublex');
     if (primaryPanel) primaryPanel.classList.toggle('is-shop-active', activeShop.key === 'grosgeek');
     if (doublexPanel) doublexPanel.classList.toggle('is-shop-active', activeShop.key === 'doublex');
+    global.syncDoublexPromptToggleUi?.();
   }
 
   function setActiveShop(shopKey = '') {
@@ -240,6 +241,8 @@
       closeSettings();
     },
     'clear-storage': () => clearAllStorage(),
+    'toggle-external-instruction-dictation': (fieldId) => global.toggleExternalInstructionDictation?.(fieldId),
+    'paste-external-instruction-clipboard': (fieldId) => global.pasteClipboardToField?.(fieldId),
     'set-active-shop': (shopKey) => setActiveShop(shopKey),
     'select-mode': (mode) => selectMode(mode),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),

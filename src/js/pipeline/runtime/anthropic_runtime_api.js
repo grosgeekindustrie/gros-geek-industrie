@@ -156,6 +156,7 @@
       fixedContentBlocks: Array.isArray(promptData?.fixedContentBlocks) ? promptData.fixedContentBlocks : [],
       promptDebug: promptData?.promptDebug || null,
       runtimeAgentId: String(promptData?.runtimeAgentId || '').trim() || agentId,
+      overrideModel: String(promptData?.overrideModel || '').trim(),
     };
   }
 
@@ -628,6 +629,7 @@
       fixedContentBlocks,
       promptDebug,
       runtimeAgentId,
+      overrideModel,
     } = normalizedPromptData;
     const prefix = global.pfx();
 
@@ -665,7 +667,7 @@
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
+            model: overrideModel || global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || 'claude-sonnet-4-5',
             max_tokens: getMaxTokensForAgent(agentId),
             messages: [{ role: 'user', content }],
             useFilesBeta: imageContentBlocks.length > 0,

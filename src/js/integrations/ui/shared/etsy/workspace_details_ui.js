@@ -121,6 +121,11 @@
     if (titleInput.value !== draft.title) titleInput.value = draft.title || '';
     if (descriptionInput.value !== draft.description) descriptionInput.value = draft.description || '';
 
+    if (titleInput.dataset.counterBound !== 'true') {
+      titleInput.addEventListener('input', () => renderTitleCounter(prefix, deps));
+      titleInput.dataset.counterBound = 'true';
+    }
+
     renderTitleCounter(prefix, deps);
     autoResizeDescription(prefix, deps);
     (deps.resolveDraftCategoryLabel || runtime.resolveDraftCategoryLabel)?.(prefix);

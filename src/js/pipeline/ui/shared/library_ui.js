@@ -25,12 +25,20 @@
       return 'grosgeek';
     }
   };
+  const shouldUseDoublexShopPrompts = () => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+      return settings.doublexUseShopPrompts !== false;
+    } catch (error) {
+      return true;
+    }
+  };
   const getPromptFileMapForCurrentContext = (mode = getCurrentMode()) => (
-    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey())
+    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || (mode === 'collection' ? getConfig().PROMPT_FILE_MAP_COLLECTION : getConfig().PROMPT_FILE_MAP)
   );
   const getPromptFolderForCurrentContext = (mode = getCurrentMode()) => (
-    getConfig().resolvePromptFolder?.(mode, getActiveShopKey())
+    getConfig().resolvePromptFolder?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || `prompts/${mode}`
   );
 

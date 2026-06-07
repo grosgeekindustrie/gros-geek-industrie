@@ -108,6 +108,70 @@
     }, true);
   }
 
+  function resizeTextarea(node) {
+    if (!node || node.tagName !== 'TEXTAREA' || node.dataset.noAutoresize === 'true') return;
+
+    const previousScrollY = window.scrollY;
+    const computedStyle = window.getComputedStyle(node);
+    const minHeight = Number.parseFloat(computedStyle.minHeight || '0') || 0;
+
+    node.style.height = 'auto';
+    node.style.overflowY = 'hidden';
+    node.style.height = `${Math.max(node.scrollHeight, minHeight)}px`;
+
+    if (document.activeElement === node && window.scrollY !== previousScrollY) {
+      window.scrollTo({ top: previousScrollY });
+    }
+  }
+
+  function resizeAllTextareas(root = document) {
+    const host = root && typeof root.querySelectorAll === 'function' ? root : document;
+    host.querySelectorAll('textarea').forEach((node) => resizeTextarea(node));
+  }
+
+  function bindTextareaAutoResize() {
+    if (global.__pipelineTextareaAutoResizeBound) return;
+    global.__pipelineTextareaAutoResizeBound = true;
+
+    const init = () => resizeAllTextareas(document);
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+      init();
+    }
+
+    document.addEventListener('input', (event) => {
+      const textarea = event.target?.closest?.('textarea');
+      if (!textarea) return;
+      resizeTextarea(textarea);
+    });
+
+    document.addEventListener('focusin', (event) => {
+      const textarea = event.target?.closest?.('textarea');
+      if (!textarea) return;
+      resizeTextarea(textarea);
+    });
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof HTMLElement)) return;
+          if (node.tagName === 'TEXTAREA') {
+            resizeTextarea(node);
+            return;
+          }
+          resizeAllTextareas(node);
+        });
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
   function setNodeText(node, text) {
     if (!node) return;
     if ('value' in node) node.value = text;
@@ -249,6 +313,7 @@
   }
 
   bindFinalOutputEditing();
+  bindTextareaAutoResize();
 
   global.PipelineUIRender = {
     syncSelectionField,
@@ -256,6 +321,8 @@
     syncTagsOutputFromUI,
     formatFinalOutputText,
     updateAltLengthMeta,
+    resizeTextarea,
+    resizeAllTextareas,
   };
 
   global.PipelineUI.render = global.PipelineUI.render || {};

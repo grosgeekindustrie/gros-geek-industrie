@@ -28,6 +28,7 @@
       mediaOrder: [],
       selectedPipelineAltMediaKeys: [],
       localImages: [],
+      localVideos: [],
       activeMediaKey: '',
       editedImageDataUrls: {},
       editorDesignStates: {},

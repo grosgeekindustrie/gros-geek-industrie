@@ -181,7 +181,9 @@
     const images = Array.isArray(state.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
     const videos = Array.isArray(state.mediaPayload?.data?.videos) ? state.mediaPayload.data.videos : [];
     const localImages = Array.isArray(state.localImages) ? state.localImages : [];
-    countNode.textContent = `${images.length + localImages.length} image(s) - ${videos.length} video(s)`;
+    const localVideos = Array.isArray(state.localVideos) ? state.localVideos : [];
+    const selectedCount = Array.isArray(state.selectedPipelineAltMediaKeys) ? state.selectedPipelineAltMediaKeys.length : 0;
+    countNode.textContent = `${images.length + localImages.length} image(s) - ${videos.length + localVideos.length} video(s) - ${selectedCount} selectionnee(s)`;
   }
 
   function syncWorkspacePanels(prefix, deps = {}) {
@@ -204,7 +206,8 @@
     const imageCount = Array.isArray(state?.mediaPayload?.data?.images) ? state.mediaPayload.data.images.length : 0;
     const localImageCount = Array.isArray(state?.localImages) ? state.localImages.length : 0;
     const videoCount = Array.isArray(state?.mediaPayload?.data?.videos) ? state.mediaPayload.data.videos.length : 0;
-    const mediaCount = imageCount + localImageCount + videoCount;
+    const localVideoCount = Array.isArray(state?.localVideos) ? state.localVideos.length : 0;
+    const mediaCount = imageCount + localImageCount + videoCount + localVideoCount;
 
     if (!grid || mediaCount < 2) {
       deps.destroySortable?.(prefix);
@@ -344,7 +347,7 @@
     deps.renderAttributesStep?.(prefix);
     deps.renderPublicationStep?.(prefix);
 
-    if (state.mediaPayload || state.localImages.length) {
+    if (state.mediaPayload || state.localImages.length || state.localVideos.length) {
       deps.renderMediaGrid?.(prefix, state.mediaPayload);
       deps.setWorkspaceActiveStep?.(prefix, state.activeStep || 'media');
       const activeItem = state.activeMediaKey ? deps.getMediaItemByKey?.(state, state.activeMediaKey) : null;
@@ -403,6 +406,7 @@
       state.publicationError = '';
       state.mediaOrder = [];
       state.localImages = [];
+      state.localVideos = [];
       state.activeMediaKey = '';
       deps.resetWorkspaceEditedImages?.(prefix);
       deps.applyDetailsDraftToPayload?.(state);
@@ -435,6 +439,7 @@
       state.sourceListingState = '';
       state.mediaOrder = [];
       state.localImages = [];
+      state.localVideos = [];
       state.activeMediaKey = '';
       deps.resetWorkspaceEditedImages?.(prefix);
       deps.setStatus?.(prefix, `Lecture Etsy impossible : ${error.message}`);
@@ -480,8 +485,8 @@
 
     const dropTarget = nodes.strip || nodes.panel;
     dropTarget?.addEventListener('dragover', (event) => {
-      const hasImageFile = Array.from(event.dataTransfer?.items || []).some((item) => item.kind === 'file' && item.type.startsWith('image/'));
-      if (!hasImageFile) return;
+      const hasMediaFile = Array.from(event.dataTransfer?.items || []).some((item) => item.kind === 'file' && (item.type.startsWith('image/') || item.type.startsWith('video/')));
+      if (!hasMediaFile) return;
       event.preventDefault();
       dropTarget.classList.add('is-dragover');
     });
@@ -491,7 +496,7 @@
     });
 
     dropTarget?.addEventListener('drop', async (event) => {
-      const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/'));
+      const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
       dropTarget.classList.remove('is-dragover');
       if (!files.length) return;
       event.preventDefault();

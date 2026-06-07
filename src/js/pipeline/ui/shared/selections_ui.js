@@ -19,8 +19,15 @@
 
   const TAG_SELECTION_MAX = 13;
   const AUXILIARY_RETRY_COUNT = 1;
-  const COMMON_PRODUCT_TAGS = global.PipelineUIDataTagsCommon?.COMMON_PRODUCT_TAGS || [];
   const PIPELINE_SEED_STORAGE_PREFIX = 'pipeline.seed.';
+
+  function getCommonProductTags() {
+    const mode = global.currentMode;
+    const shopKey = global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek';
+    return global.PipelineUIDataTagsCommon?.resolveCommonProductTags?.(mode, shopKey)
+      || global.PipelineUIDataTagsCommon?.COMMON_PRODUCT_TAGS
+      || [];
+  }
 
   function getPipelineSeedStorageKey(prefix = getPfx()) {
     return `${PIPELINE_SEED_STORAGE_PREFIX}${String(prefix || '').trim()}`;
@@ -507,7 +514,8 @@
       return;
     }
 
-    const [commonLeftColumn, commonRightColumn] = splitTagsIntoColumns(COMMON_PRODUCT_TAGS);
+    const commonProductTags = getCommonProductTags();
+    const [commonLeftColumn, commonRightColumn] = splitTagsIntoColumns(commonProductTags);
     const [leftColumn, rightColumn] = splitTagsIntoColumns(tags);
     const commonTagStartIndex = tags.length;
 
@@ -884,10 +892,14 @@
     modals().ensureLibraryModals();
     modals().ensureTitresManualAddButton(agentId);
 
+    const stripTitleLengthSuffix = (value = '') => String(value || '')
+      .replace(/^\d+\.\s*/, '')
+      .replace(/\s*[-–—]?\s*\(?\d+\s*car(?:\.|act[eè]res?)?\)?\.?\s*$/i, '')
+      .trim();
+
     list.innerHTML = lines.map((line, i) => {
-      const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
-      const charMatch = line.match(/\((\d+)\s*car/i);
-      const chars = charMatch ? parseInt(charMatch[1], 10) : text.length;
+      const text = stripTitleLengthSuffix(line);
+      const chars = text.length;
       return buildTitreSelectionItemMarkup(text, chars, agentId, i);
     }).join('');
 
@@ -895,7 +907,7 @@
     const blacklisted = parsed.blacklisted || [];
     if (blacklisted.length) {
       lines.forEach((line, i) => {
-        const text = line.replace(/^\d+\.\s*/, '').replace(/\s*\(\d+\s*car(?:actères?)?\).*$/i, '').trim();
+        const text = stripTitleLengthSuffix(line);
         const term = helpers().getBlacklistedTerm ? helpers().getBlacklistedTerm(text, blacklisted) : null;
         if (term) {
           const el = getSelectionItemById(`${p}-ti-${agentId}-${i}`);

@@ -5,10 +5,14 @@
   const EtsyRuntime = global.PipelineUIEtsyRuntime || {};
   const EtsyData = global.PipelineUIEtsyData || {};
 
+  function isUpdatePublicationMode(mode) {
+    return mode === 'update_listing' || mode === 'update_expired_listing';
+  }
+
   function filterSnapshotForMode(snapshot, state) {
     const normalizedSnapshot = snapshot && typeof snapshot === 'object' ? snapshot : {};
     const publicationMode = getPublicationMode(state);
-    if (publicationMode !== 'update_listing') {
+    if (!isUpdatePublicationMode(publicationMode)) {
       return normalizedSnapshot;
     }
 
@@ -44,7 +48,9 @@
       sourceListingId,
       sourceListingState,
       warnings: [
-        'Mode mise a jour : seuls le titre, la description, les tags, les images, la video et les ALT seront renvoyes.',
+        publicationMode === 'update_expired_listing'
+          ? 'Mode fiche expiree : la fiche chargee mettra a jour titre, description, tags, images, video et ALT, sans publication automatique.'
+          : 'Mode mise a jour : seuls le titre, la description, les tags, les images, la video et les ALT seront renvoyes.',
         ...(Array.isArray(normalizedSnapshot.warnings) ? normalizedSnapshot.warnings : []),
       ],
     };
@@ -62,14 +68,18 @@
   }
 
   function getPublicationMode(state) {
-    return state?.publicationMode === 'update_listing' ? 'update_listing' : 'create_draft';
+    if (state?.publicationMode === 'update_listing') return 'update_listing';
+    if (state?.publicationMode === 'update_expired_listing') return 'update_expired_listing';
+    return 'create_draft';
   }
 
   function setPublicationMode(prefix, nextMode, deps = {}) {
     const runtime = global.PipelineUIEtsyRuntime || {};
     const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
     if (!state) return;
-    state.publicationMode = nextMode === 'update_listing' ? 'update_listing' : 'create_draft';
+    state.publicationMode = nextMode === 'update_listing'
+      ? 'update_listing'
+      : (nextMode === 'update_expired_listing' ? 'update_expired_listing' : 'create_draft');
     runtime.workspaceRenderPublicationStep?.(prefix);
   }
 
@@ -94,7 +104,7 @@
       runtime.workspaceRenderPublicationStep?.(prefix);
       return;
     }
-    if (publicationMode === 'update_listing' && !String(snapshot.sourceListingId || '').trim()) {
+    if (isUpdatePublicationMode(publicationMode) && !String(snapshot.sourceListingId || '').trim()) {
       state.publicationSubmitting = false;
       state.publicationError = 'Publication impossible: listing source introuvable pour la mise a jour.';
       runtime.workspaceRenderPublicationStep?.(prefix);
@@ -108,17 +118,23 @@
           targetListingId: String(snapshot.sourceListingId || '').trim(),
           mode: 'update_listing',
         })
-        : await deps.createDraftListing?.({
+        : publicationMode === 'update_expired_listing'
+          ? await deps.updateExpiredListing?.({
           ...(snapshot.payload || {}),
-          mode: 'create_draft',
-        });
+          targetListingId: String(snapshot.sourceListingId || '').trim(),
+          mode: 'update_expired_listing',
+        })
+          : await deps.createDraftListing?.({
+            ...(snapshot.payload || {}),
+            mode: 'create_draft',
+          });
       state.publicationResult = response || null;
       state.publicationError = '';
       runtime.workspaceSetStatus?.(
         prefix,
-        publicationMode === 'update_listing'
-          ? 'Fiche Etsy mise a jour.'
-          : 'Draft Etsy cree.'
+        publicationMode === 'update_expired_listing'
+          ? 'Fiche Etsy expiree mise a jour.'
+          : (publicationMode === 'update_listing' ? 'Fiche Etsy mise a jour.' : 'Draft Etsy cree.')
       );
     } catch (error) {
       state.publicationResult = null;
@@ -129,7 +145,7 @@
       if (error?.payload && typeof error.payload === 'object') {
         state.publicationResult = {
           ok: false,
-          error: error.message || (publicationMode === 'update_listing' ? 'Mise a jour Etsy impossible' : 'Publication draft impossible'),
+          error: error.message || (isUpdatePublicationMode(publicationMode) ? 'Mise a jour Etsy impossible' : 'Publication draft impossible'),
           status: error.status || null,
           payload: error.payload,
         };

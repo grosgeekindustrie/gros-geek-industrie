@@ -18,7 +18,6 @@ Le tronc commun SEO est déjà généré ailleurs par le pipeline. Axel ne doit 
 * Archétypes : `[[ARCHETYPES]]`
 * SEO élargi : `[[SEO_ELARGIES]]`
 * Titre validé : `[[TITRE_VALIDE]]`
-* Résumé personnage : `[[RESUME_PERSONNAGE]]`
 * Exclusions tags : `[[BIBLIO_TAGS]]`
 
 ## Mission

@@ -8,6 +8,17 @@
     return global.PipelineUIDataIntegrations?.etsyAuth?.routes || {};
   }
 
+  function getActiveShopKey() {
+    return global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek';
+  }
+
+  function withActiveShopQuery(route = '') {
+    const normalizedRoute = String(route || '').trim();
+    if (!normalizedRoute) return '';
+    const separator = normalizedRoute.includes('?') ? '&' : '?';
+    return `${normalizedRoute}${separator}shop=${encodeURIComponent(getActiveShopKey())}`;
+  }
+
   async function readJson(url) {
     const response = await fetch(url);
     const payload = await response.json().catch(() => ({}));
@@ -78,13 +89,13 @@
   async function fetchListingPayload(listingId) {
     const route = String(getRoutes().listing || '').trim();
     if (!route) throw new Error('Route listing Etsy indisponible');
-    return readJson(`${route}?listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
+    return readJson(`${withActiveShopQuery(route)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
   async function fetchListingPropertiesPayload(listingId) {
     const route = getListingPropertiesRoute();
     if (!route) throw new Error('Route attributs Etsy indisponible');
-    return readJson(`${route}?listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
+    return readJson(`${withActiveShopQuery(route)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
   async function submitListingPublication(publicationRequest) {
@@ -101,10 +112,11 @@
           videos: Array.isArray(publicationRequest.videos) ? publicationRequest.videos : [],
           mediaPlan: publicationRequest.mediaPlan || {},
           attributes: publicationRequest.attributes || {},
+          shopKey: String(publicationRequest.shopKey || getActiveShopKey()).trim() || 'grosgeek',
         }
-      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {} };
+      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey() };
 
-    const response = await fetch(route, {
+    const response = await fetch(withActiveShopQuery(route), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -135,6 +147,13 @@
     });
   }
 
+  async function updateExpiredListing(publicationRequest) {
+    return submitListingPublication({
+      ...(publicationRequest && typeof publicationRequest === 'object' ? publicationRequest : {}),
+      mode: 'update_expired_listing',
+    });
+  }
+
   async function publishListingTranslation(translationRequest) {
     const route = getListingTranslationRoute();
     if (!route) throw new Error('Route traduction Etsy indisponible');
@@ -145,10 +164,11 @@
           title: String(translationRequest.title || '').trim(),
           description: String(translationRequest.description || ''),
           tags: Array.isArray(translationRequest.tags) ? translationRequest.tags : [],
+          shopKey: String(translationRequest.shopKey || getActiveShopKey()).trim() || 'grosgeek',
         }
-      : { listingId: '', language: '', title: '', description: '', tags: [] };
+      : { listingId: '', language: '', title: '', description: '', tags: [], shopKey: getActiveShopKey() };
 
-    const response = await fetch(route, {
+    const response = await fetch(withActiveShopQuery(route), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -157,9 +177,17 @@
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(extractApiErrorMessage(data, response.status));
+      const rawMessage = extractApiErrorMessage(data, response.status);
+      const routeMissing = response.status === 404
+        && String(data?.error || '').trim().toLowerCase() === 'route inconnue';
+      const error = new Error(
+        routeMissing
+          ? `Route backend absente pour la publication des traductions (${route}) - redemarre server.py`
+          : rawMessage
+      );
       error.status = response.status;
       error.payload = data;
+      error.route = route;
       throw error;
     }
     return data;
@@ -180,6 +208,7 @@
     submitListingPublication,
     createDraftListing,
     updateExistingListing,
+    updateExpiredListing,
     publishListingTranslation,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};

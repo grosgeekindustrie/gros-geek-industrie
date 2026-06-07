@@ -17,6 +17,50 @@
     '• Emballage sécurisé + protection des pièces fines',
   ]);
 
+  const DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_FR = Object.freeze([
+    Object.freeze([
+      '\u2705 Ce que tu re\u00e7ois:',
+      '\u2022 Une figurine physique en r\u00e9sine \u00e0 peindre (garage kit)',
+      '\u2022 Kit non peint : les visuels color\u00e9s sont des rendus 3D pr\u00e9sent\u00e9s \u00e0 titre d\u2019inspiration',
+      '\u2022 Nettoy\u00e9e et pr\u00e9par\u00e9e : pr\u00eate pour sous-couche et peinture',
+      '\u2022 Emballage s\u00e9curis\u00e9 + protection des pi\u00e8ces fines',
+      '\u2022 Echelle : de 1/10 \u00e0 1/6 (dimensions ci-dessous)',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_EN = Object.freeze([
+    Object.freeze([
+      '\u2705 What you receive:',
+      '\u2022 A physical resin miniature to paint (garage kit)',
+      '\u2022 Unpainted kit: colored visuals are 3D renders shown for inspiration',
+      '\u2022 Cleaned and prepared: ready for primer and paint',
+      '\u2022 Secure packaging + protection for delicate parts',
+      '\u2022 Scale: from 1/10 to 1/6 (dimensions below)',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_DE = Object.freeze([
+    Object.freeze([
+      '\u2705 Was du erh\u00e4ltst:',
+      '\u2022 Eine physische Resin-Figur zum Bemalen (Garage Kit)',
+      '\u2022 Unbemaltes Kit: Die farbigen Bilder sind 3D-Renderings und dienen zur Inspiration',
+      '\u2022 Gereinigt und vorbereitet: bereit f\u00fcr Grundierung und Bemalung',
+      '\u2022 Sichere Verpackung + Schutz f\u00fcr feine Teile',
+      '\u2022 Ma\u00dfstab: von 1/10 bis 1/6 (Abmessungen unten)',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_ES = Object.freeze([
+    Object.freeze([
+      '\u2705 Lo que recibes:',
+      '\u2022 Una miniatura f\u00edsica de resina para pintar (garage kit)',
+      '\u2022 Kit sin pintar: las im\u00e1genes en color son renders 3D mostrados como inspiraci\u00f3n',
+      '\u2022 Limpiada y preparada: lista para imprimaci\u00f3n y pintura',
+      '\u2022 Embalaje seguro + protecci\u00f3n para piezas delicadas',
+      '\u2022 Escala: de 1/10 a 1/6 (dimensiones abajo)',
+    ].join('\n')),
+  ]);
+
   const COLLECTION_BOTTOM_FIXED_BLOCKS = Object.freeze([
     Object.freeze([
       '🏆 L’expérience Gros Geek Industrie',
@@ -603,6 +647,538 @@
       '• Fabricación aditiva según la norma ISO/ASTM 52900',
     ].join('\n')),
   ]);
+  const TABLETOP_TOP_FIXED_BLOCKS_FR_V2 = Object.freeze([
+    Object.freeze([
+      '🛡️ La Rolls Royce des résines tabletop',
+      '',
+      'Pour nos figurines de jeu de 32 à 54mm, nous utilisons la TGM7 Ameralabs :',
+      '',
+      '• Résine premium haut de gamme',
+      '• Détails nets après impression',
+      '• Excellente résistance aux impacts',
+      '• Transport plus serein entre deux parties',
+      '• Pensée pour suivre vos armées pendant des années',
+    ].join('\n')),
+  ]);
+  const TABLETOP_TOP_FIXED_BLOCKS_EN_V2 = Object.freeze([
+    Object.freeze([
+      '🛡️ The Rolls-Royce of tabletop resins',
+      '',
+      'For our 32 to 54 mm gaming miniatures, we use AmeraLabs TGM7:',
+      '',
+      '• High-end premium resin',
+      '• Crisp details after printing',
+      '• Excellent impact resistance',
+      '• Safer transport between games',
+      '• Made to follow your armies for years',
+    ].join('\n')),
+  ]);
+  const TABLETOP_TOP_FIXED_BLOCKS_DE_V2 = Object.freeze([
+    Object.freeze([
+      '🛡️ Der Rolls-Royce unter den Tabletop-Resinen',
+      '',
+      'Für unsere Spielfiguren von 32 bis 54 mm verwenden wir AmeraLabs TGM7:',
+      '',
+      '• Hochwertiges Premium-Resin',
+      '• Klare Details nach dem Druck',
+      '• Ausgezeichnete Schlagfestigkeit',
+      '• Entspannter Transport zwischen zwei Partien',
+      '• Entwickelt, um deine Armeen über Jahre hinweg zu begleiten',
+    ].join('\n')),
+  ]);
+  const TABLETOP_TOP_FIXED_BLOCKS_ES_V2 = Object.freeze([
+    Object.freeze([
+      '🛡️ El Rolls-Royce de las resinas para tabletop',
+      '',
+      'Para nuestras miniaturas de juego de 32 a 54 mm, usamos AmeraLabs TGM7:',
+      '',
+      '• Resina premium de alta gama',
+      '• Detalles nítidos tras la impresión',
+      '• Excelente resistencia a los impactos',
+      '• Transporte más seguro entre partidas',
+      '• Pensada para acompañar a tus ejércitos durante años',
+    ].join('\n')),
+  ]);
+  const TABLETOP_BOTTOM_FIXED_BLOCKS_FR_V2 = Object.freeze([
+    Object.freeze([
+      '🏆 L’expérience Gros Geek Industrie',
+      '',
+      'Plusieurs centaines d’avis 5 étoiles témoignent de la qualité et du sérieux de notre atelier.',
+      'Chaque figurine est préparée, nettoyée et testée à sec lorsque nécessaire pour garantir un montage propre et agréable.',
+      'Les pièces fines ou fragiles sont fournies en double lorsque c’est utile, afin d’assurer une expérience plus sereine et parfaitement adaptée aux peintres passionnés.',
+    ].join('\n')),
+    Object.freeze([
+      'ℹ️ Modèle à peindre. Garage kit à assembler',
+      '',
+      '✔️ Nos figurines sont livrées sous forme de garage kits : à monter et à peindre soi-même.',
+      '🎨 Les visuels colorés sont des rendus 3D présentés à titre d’inspiration.',
+      '🖌️ Exprime ta créativité et donne vie à ta pièce avec ta propre palette de couleurs.',
+    ].join('\n')),
+    Object.freeze([
+      '✅ Contrôle qualité exigeant',
+      '',
+      'Chaque tirage est inspecté pièce par pièce avant expédition.',
+      'Aucune figurine ne quitte l’atelier sans respecter nos standards de finition : impression propre, détails lisibles, pièces contrôlées et ajustements testés à sec lorsque nécessaire.',
+    ].join('\n')),
+    Object.freeze([
+      '⚙️ Préparée, nettoyée, prête à peindre',
+      '',
+      '• Supports retirés proprement',
+      '• Nettoyage + post-traitement UV complet',
+      '• Pièces contrôlées avant expédition',
+      '• Un léger ponçage de surface suffit avant sous-couche',
+      '🧼 Fini les longues étapes de préparation : tu peux passer directement au plaisir de la peinture.',
+    ].join('\n')),
+    Object.freeze([
+      '🎲 Pensée pour la table de jeu',
+      '',
+      'Une figurine tabletop ne doit pas seulement être belle en photo. Elle doit aussi pouvoir être manipulée, transportée et ressortie partie après partie.',
+      'Chaque pièce est pensée pour accompagner vos campagnes, vos armées et vos sessions de jeu dans la durée.',
+    ].join('\n')),
+    Object.freeze([
+      '🎁 Un projet personnel ou un cadeau unique',
+      '',
+      'Idéal pour les hobbyistes, peintres, rôlistes, joueurs de wargame et collectionneurs.',
+      'À offrir ou à monter soi-même pour enrichir ta collection, préparer un personnage de campagne ou ajouter une pièce marquante à ton armée.',
+    ].join('\n')),
+    Object.freeze([
+      '📩 Service client réactif',
+      '',
+      'Une question ? Une demande de personnalisation ?',
+      '📬 Écris-nous directement sur Etsy : réponse rapide garantie, avant ou après ta commande.',
+    ].join('\n')),
+    Object.freeze([
+      '⚖️ Usage et sécurité',
+      '',
+      '• Produit destiné aux collectionneurs et modélistes',
+      '• Non adapté aux enfants de moins de 14 ans',
+      '• Résines conformes RoHS et REACH',
+      '• Fabrication additive selon la norme ISO/ASTM 52900',
+    ].join('\n')),
+  ]);
+  const TABLETOP_BOTTOM_FIXED_BLOCKS_EN_V2 = Object.freeze([
+    Object.freeze([
+      '🏆 The Gros Geek Industrie Experience',
+      '',
+      'Several hundred 5-star reviews reflect the quality and care of our workshop.',
+      'Each miniature is prepared, cleaned and dry-fitted when needed to ensure a clean and enjoyable assembly.',
+      'Thin or fragile parts are included in duplicate when useful, to provide a more relaxed experience perfectly suited to passionate painters.',
+    ].join('\n')),
+    Object.freeze([
+      'ℹ️ Model to paint. Garage kit to assemble',
+      '',
+      '✔️ Our miniatures are delivered as garage kits: to assemble and paint yourself.',
+      '🎨 The colored visuals are 3D renders shown for inspiration.',
+      '🖌️ Express your creativity and bring your piece to life with your own color palette.',
+    ].join('\n')),
+    Object.freeze([
+      '✅ Strict Quality Control',
+      '',
+      'Each print is inspected piece by piece before shipping.',
+      'No miniature leaves the workshop unless it meets our finishing standards: clean print, readable details, checked parts and dry-fitted adjustments when needed.',
+    ].join('\n')),
+    Object.freeze([
+      '⚙️ Prepared, cleaned, ready to paint',
+      '',
+      '• Supports cleanly removed',
+      '• Full cleaning and UV post-curing',
+      '• Parts checked before shipping',
+      '• A light surface sanding is enough before priming',
+      '🧼 No more long preparation steps: you can go straight to the pleasure of painting.',
+    ].join('\n')),
+    Object.freeze([
+      '🎲 Designed for the gaming table',
+      '',
+      'A tabletop miniature should not only look good in photos. It also needs to be handled, transported and brought back to the table game after game.',
+      'Each piece is made to follow your campaigns, your armies and your gaming sessions over time.',
+    ].join('\n')),
+    Object.freeze([
+      '🎁 A personal project or a unique gift',
+      '',
+      'Ideal for hobbyists, painters, roleplayers, wargamers and collectors.',
+      'Offer it as a gift or build it yourself to enrich your collection, prepare a campaign character or add a striking piece to your army.',
+    ].join('\n')),
+    Object.freeze([
+      '📩 Responsive customer service',
+      '',
+      'A question? A customization request?',
+      '📬 Write to us directly on Etsy: fast reply guaranteed, before or after your order.',
+    ].join('\n')),
+    Object.freeze([
+      '⚖️ Use and safety',
+      '',
+      '• Product intended for collectors and model makers',
+      '• Not suitable for children under 14',
+      '• RoHS and REACH compliant resins',
+      '• Additive manufacturing according to ISO/ASTM 52900',
+    ].join('\n')),
+  ]);
+  const TABLETOP_BOTTOM_FIXED_BLOCKS_DE_V2 = Object.freeze([
+    Object.freeze([
+      '🏆 Das Gros Geek Industrie Erlebnis',
+      '',
+      'Mehrere hundert 5-Sterne-Bewertungen zeugen von der Qualität und Seriosität unserer Werkstatt.',
+      'Jede Figur wird vorbereitet, gereinigt und bei Bedarf trocken angepasst, um eine saubere und angenehme Montage zu ermöglichen.',
+      'Feine oder empfindliche Teile werden, wenn sinnvoll, doppelt beigelegt, damit die Erfahrung entspannter bleibt und perfekt zu leidenschaftlichen Malern passt.',
+    ].join('\n')),
+    Object.freeze([
+      'ℹ️ Modell zum Bemalen. Garage Kit zum Zusammenbauen',
+      '',
+      '✔️ Unsere Figuren werden als Garage Kits geliefert: zum selbst Zusammenbauen und Bemalen.',
+      '🎨 Die farbigen Bilder sind 3D-Renderings und dienen als Inspiration.',
+      '🖌️ Entfalte deine Kreativität und erwecke dein Modell mit deiner eigenen Farbpalette zum Leben.',
+    ].join('\n')),
+    Object.freeze([
+      '✅ Strenge Qualitätskontrolle',
+      '',
+      'Jeder Druck wird vor dem Versand Teil für Teil geprüft.',
+      'Keine Figur verlässt die Werkstatt, ohne unseren Qualitätsstandards zu entsprechen: sauberer Druck, gut erkennbare Details, geprüfte Teile und bei Bedarf trocken getestete Passungen.',
+    ].join('\n')),
+    Object.freeze([
+      '⚙️ Vorbereitet, gereinigt, bereit zum Bemalen',
+      '',
+      '• Stützen sauber entfernt',
+      '• Vollständige Reinigung und UV-Nachhärtung',
+      '• Teile vor dem Versand kontrolliert',
+      '• Ein leichtes Oberflächenschleifen reicht vor der Grundierung aus',
+      '🧼 Schluss mit langen Vorbereitungsschritten: du kannst direkt mit dem Malspaß beginnen.',
+    ].join('\n')),
+    Object.freeze([
+      '🎲 Für den Spieltisch gemacht',
+      '',
+      'Eine Tabletop-Figur soll nicht nur auf Fotos gut aussehen. Sie muss auch angefasst, transportiert und Spiel für Spiel wieder eingesetzt werden können.',
+      'Jedes Teil ist dafür gedacht, eure Kampagnen, Armeen und Spielsitzungen langfristig zu begleiten.',
+    ].join('\n')),
+    Object.freeze([
+      '🎁 Ein persönliches Projekt oder ein einzigartiges Geschenk',
+      '',
+      'Ideal für Hobbyisten, Maler, Rollenspieler, Wargame-Spieler und Sammler.',
+      'Zum Verschenken oder zum Selbstbauen, um deine Sammlung zu erweitern, einen Kampagnencharakter vorzubereiten oder deiner Armee ein markantes Modell hinzuzufügen.',
+    ].join('\n')),
+    Object.freeze([
+      '📩 Reaktiver Kundenservice',
+      '',
+      'Eine Frage? Ein Wunsch nach Personalisierung?',
+      '📬 Schreib uns direkt auf Etsy: schnelle Antwort garantiert, vor oder nach deiner Bestellung.',
+    ].join('\n')),
+    Object.freeze([
+      '⚖️ Verwendung und Sicherheit',
+      '',
+      '• Produkt für Sammler und Modellbauer bestimmt',
+      '• Nicht geeignet für Kinder unter 14 Jahren',
+      '• RoHS- und REACH-konforme Resine',
+      '• Additive Fertigung gemäß ISO/ASTM 52900',
+    ].join('\n')),
+  ]);
+  const TABLETOP_BOTTOM_FIXED_BLOCKS_ES_V2 = Object.freeze([
+    Object.freeze([
+      '🏆 La experiencia Gros Geek Industrie',
+      '',
+      'Varios cientos de reseñas de 5 estrellas reflejan la calidad y seriedad de nuestro taller.',
+      'Cada miniatura se prepara, se limpia y se prueba en seco cuando es necesario para garantizar un montaje limpio y agradable.',
+      'Las piezas finas o frágiles se incluyen por duplicado cuando resulta útil, para ofrecer una experiencia más tranquila y perfectamente adaptada a pintores apasionados.',
+    ].join('\n')),
+    Object.freeze([
+      'ℹ️ Modelo para pintar. Garage kit para montar',
+      '',
+      '✔️ Nuestras miniaturas se entregan como garage kits: para montar y pintar uno mismo.',
+      '🎨 Las imágenes en color son renders 3D mostrados como inspiración.',
+      '🖌️ Expresa tu creatividad y da vida a tu pieza con tu propia paleta de colores.',
+    ].join('\n')),
+    Object.freeze([
+      '✅ Control de calidad exigente',
+      '',
+      'Cada impresión se inspecciona pieza por pieza antes del envío.',
+      'Ninguna miniatura sale del taller sin cumplir nuestros estándares de acabado: impresión limpia, detalles legibles, piezas revisadas y ajustes probados en seco cuando es necesario.',
+    ].join('\n')),
+    Object.freeze([
+      '⚙️ Preparada, limpia, lista para pintar',
+      '',
+      '• Soportes retirados limpiamente',
+      '• Limpieza completa y postcurado UV',
+      '• Piezas revisadas antes del envío',
+      '• Un ligero lijado de superficie es suficiente antes de la imprimación',
+      '🧼 Se acabaron las largas etapas de preparación: puedes pasar directamente al placer de pintar.',
+    ].join('\n')),
+    Object.freeze([
+      '🎲 Pensada para la mesa de juego',
+      '',
+      'Una miniatura tabletop no solo debe verse bien en las fotos. También debe poder manipularse, transportarse y volver a la mesa partida tras partida.',
+      'Cada pieza está pensada para acompañar tus campañas, tus ejércitos y tus sesiones de juego a largo plazo.',
+    ].join('\n')),
+    Object.freeze([
+      '🎁 Un proyecto personal o un regalo único',
+      '',
+      'Ideal para aficionados, pintores, roleros, jugadores de wargame y coleccionistas.',
+      'Para regalar o montar tú mismo, para enriquecer tu colección, preparar un personaje de campaña o añadir una pieza destacada a tu ejército.',
+    ].join('\n')),
+    Object.freeze([
+      '📩 Atención al cliente rápida',
+      '',
+      '¿Tienes una pregunta? ¿Una solicitud de personalización?',
+      '📬 Escríbenos directamente en Etsy: respuesta rápida garantizada, antes o después de tu pedido.',
+    ].join('\n')),
+    Object.freeze([
+      '⚖️ Uso y seguridad',
+      '',
+      '• Producto destinado a coleccionistas y modelistas',
+      '• No apto para menores de 14 años',
+      '• Resinas conformes con RoHS y REACH',
+      '• Fabricación aditiva según la norma ISO/ASTM 52900',
+    ].join('\n')),
+  ]);
+  const DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS = Object.freeze([
+    Object.freeze([
+      '\ud83c\udfc6 L\u2019exp\u00e9rience Double X Industrie:',
+      '',
+      'Double X Industrie reprend le savoir-faire atelier d\u00e9velopp\u00e9 avec Gros Geek Industrie, avec le m\u00eame soin port\u00e9 \u00e0 l\u2019impression, au nettoyage et \u00e0 la pr\u00e9paration des figurines.',
+      'Chaque pi\u00e8ce est pr\u00e9par\u00e9e, contr\u00f4l\u00e9e et test\u00e9e \u00e0 sec lorsque n\u00e9cessaire, afin d\u2019offrir un montage propre et agr\u00e9able.',
+      'Les \u00e9l\u00e9ments fins ou fragiles sont fournis en double quand cela est utile, pour une exp\u00e9rience plus sereine et adapt\u00e9e aux peintres passionn\u00e9s.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udfa8 R\u00e9sine 14K HD - D\u00e9tails nets, structure fiable',
+      '',
+      'Chaque mod\u00e8le est imprim\u00e9 en r\u00e9sine 14K haute d\u00e9finition pour capturer les plus fines textures, gravures et expressions.',
+      'Notre m\u00e9lange exclusif 14K + r\u00e9sine renforc\u00e9e am\u00e9liore la solidit\u00e9 tout en offrant une l\u00e9g\u00e8re flexibilit\u00e9 sur les pi\u00e8ces fines, un \u00e9quilibre id\u00e9al entre pr\u00e9cision et durabilit\u00e9.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2139\ufe0f Mod\u00e8le \u00e0 peindre - Garage kit \u00e0 assembler',
+      '',
+      '\u2714\ufe0f Nos figurines sont livr\u00e9es sous forme de garage kits : \u00e0 monter et \u00e0 peindre soi-m\u00eame.',
+      '\ud83c\udfa8 Les visuels color\u00e9s sont des rendus 3D pr\u00e9sent\u00e9s \u00e0 titre d\u2019inspiration.',
+      '\ud83d\udd8c\ufe0f Exprime ta cr\u00e9ativit\u00e9 et donne vie \u00e0 ta pi\u00e8ce avec ta propre palette de couleurs.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2705 Contr\u00f4le qualit\u00e9 exigeant',
+      '',
+      'Chaque tirage est inspect\u00e9 pi\u00e8ce par pi\u00e8ce avant exp\u00e9dition.',
+      'Aucune figurine ne quitte l\u2019atelier sans respecter nos standards de finition \u00e9lev\u00e9s :',
+      'z\u00e9ro bulle, z\u00e9ro d\u00e9formation, ajustements test\u00e9s \u00e0 sec.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2699\ufe0f Pr\u00e9par\u00e9e, nettoy\u00e9e, pr\u00eate \u00e0 peindre',
+      '',
+      '\u2022 Supports retir\u00e9s proprement',
+      '\u2022 Nettoyage + post-traitement UV complet',
+      '\u2022 Un l\u00e9ger pon\u00e7age de surface suffit avant sous-couche',
+      '\ud83e\uddfc Fini les longues \u00e9tapes de pr\u00e9paration : tu peux passer directement \u00e0 la peinture.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udf81 Un projet personnel ou un cadeau unique',
+      '',
+      'Id\u00e9al pour les hobbyistes, peintres et collectionneurs.',
+      '\u00c0 offrir ou \u00e0 monter soi-m\u00eame pour enrichir ta collection et ton exp\u00e9rience de peinture.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83d\udce9 Service client r\u00e9actif',
+      '',
+      'Une question ? Une demande de personnalisation ?',
+      '\ud83d\udcec \u00c9cris-nous directement sur Etsy - r\u00e9ponse rapide garantie, avant ou apr\u00e8s ta commande.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2696\ufe0f Usage et s\u00e9curit\u00e9',
+      '',
+      '\u2022 Produit destin\u00e9 aux collectionneurs et mod\u00e9listes',
+      '\u2022 Non adapt\u00e9 aux enfants de moins de 14 ans',
+      '\u2022 R\u00e9sines conformes RoHS & REACH',
+      '\u2022 Fabrication additive selon la norme ISO / ASTM 52900',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_EN = Object.freeze([
+    Object.freeze([
+      '\ud83c\udfc6 The Double X Industrie Experience',
+      '',
+      'Double X Industrie builds on the workshop expertise developed with Gros Geek Industrie, with the same care given to printing, cleaning, and preparing miniatures.',
+      'Each part is prepared, checked, and dry-fitted when needed to ensure a clean and enjoyable assembly.',
+      'Thin or fragile elements are provided in duplicate when useful, for a more relaxed experience suited to passionate painters.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udfa8 14K HD Resin - Crisp details, reliable structure',
+      '',
+      'Each model is printed in high-definition 14K resin to capture the finest textures, engravings, and expressions.',
+      'Our exclusive 14K + reinforced resin blend improves strength while keeping slight flexibility on thin parts, an ideal balance between precision and durability.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2139\ufe0f Model to paint - Garage kit to assemble',
+      '',
+      '\u2714\ufe0f Our miniatures are delivered as garage kits: to assemble and paint yourself.',
+      '\ud83c\udfa8 The colored visuals are 3D renders shown for inspiration.',
+      '\ud83d\udd8c\ufe0f Express your creativity and bring your piece to life with your own color palette.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2705 Strict quality control',
+      '',
+      'Each print is inspected piece by piece before shipping.',
+      'No miniature leaves the workshop without meeting our high finishing standards:',
+      'zero bubbles, zero warping, dry-fitted adjustments.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2699\ufe0f Prepared, cleaned, ready to paint',
+      '',
+      '\u2022 Supports cleanly removed',
+      '\u2022 Full cleaning + UV post-curing',
+      '\u2022 A light surface sanding is enough before priming',
+      '\ud83e\uddfc No more long preparation steps: you can go straight to painting.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udf81 A personal project or a unique gift',
+      '',
+      'Ideal for hobbyists, painters, and collectors.',
+      'Offer it as a gift or build it yourself to enrich your collection and your painting experience.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83d\udce9 Responsive customer service',
+      '',
+      'A question? A customization request?',
+      '\ud83d\udcec Write to us directly on Etsy - fast reply guaranteed, before or after your order.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2696\ufe0f Use and safety',
+      '',
+      '\u2022 Product intended for collectors and model makers',
+      '\u2022 Not suitable for children under 14',
+      '\u2022 RoHS & REACH compliant resins',
+      '\u2022 Additive manufacturing according to ISO / ASTM 52900',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_DE = Object.freeze([
+    Object.freeze([
+      '\ud83c\udfc6 Das Double X Industrie Erlebnis',
+      '',
+      'Double X Industrie baut auf dem mit Gros Geek Industrie entwickelten Werkstatt-Know-how auf, mit derselben Sorgfalt bei Druck, Reinigung und Vorbereitung der Figuren.',
+      'Jedes Teil wird vorbereitet, kontrolliert und bei Bedarf trocken angepasst, um eine saubere und angenehme Montage zu gew\u00e4hrleisten.',
+      'Feine oder fragile Elemente werden, wenn sinnvoll, doppelt beigelegt, f\u00fcr ein entspannteres Erlebnis, das zu leidenschaftlichen Malern passt.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udfa8 14K HD-Resin - Klare Details, zuverl\u00e4ssige Struktur',
+      '',
+      'Jedes Modell wird in hochaufl\u00f6sendem 14K-Resin gedruckt, um feinste Texturen, Gravuren und Ausdr\u00fccke einzufangen.',
+      'Unsere exklusive Mischung aus 14K-Resin und verst\u00e4rktem Harz verbessert die Stabilit\u00e4t und bietet zugleich leichte Flexibilit\u00e4t bei feinen Teilen, eine ideale Balance zwischen Pr\u00e4zision und Haltbarkeit.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2139\ufe0f Modell zum Bemalen - Garage Kit zum Zusammenbauen',
+      '',
+      '\u2714\ufe0f Unsere Figuren werden als Garage Kits geliefert: zum selbst Zusammenbauen und Bemalen.',
+      '\ud83c\udfa8 Die farbigen Bilder sind 3D-Renderings und dienen als Inspiration.',
+      '\ud83d\udd8c\ufe0f Entfalte deine Kreativit\u00e4t und erwecke dein Modell mit deiner eigenen Farbpalette zum Leben.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2705 Strenge Qualit\u00e4tskontrolle',
+      '',
+      'Jeder Druck wird vor dem Versand Teil f\u00fcr Teil gepr\u00fcft.',
+      'Keine Figur verl\u00e4sst die Werkstatt, ohne unsere hohen Verarbeitungsstandards zu erf\u00fcllen:',
+      'null Blasen, null Verformungen, trocken getestete Passungen.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2699\ufe0f Vorbereitet, gereinigt, bereit zum Bemalen',
+      '',
+      '\u2022 St\u00fctzen sauber entfernt',
+      '\u2022 Vollst\u00e4ndige Reinigung + UV-Nachh\u00e4rtung',
+      '\u2022 Ein leichtes Oberfl\u00e4chenschleifen reicht vor der Grundierung aus',
+      '\ud83e\uddfc Keine langen Vorbereitungsschritte mehr: du kannst direkt mit dem Bemalen beginnen.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udf81 Ein pers\u00f6nliches Projekt oder ein einzigartiges Geschenk',
+      '',
+      'Ideal f\u00fcr Hobbyisten, Maler und Sammler.',
+      'Zum Verschenken oder zum Selbstbauen, um deine Sammlung und dein Malerlebnis zu bereichern.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83d\udce9 Reaktiver Kundenservice',
+      '',
+      'Eine Frage? Ein Wunsch nach Personalisierung?',
+      '\ud83d\udcec Schreib uns direkt auf Etsy - schnelle Antwort garantiert, vor oder nach deiner Bestellung.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2696\ufe0f Verwendung und Sicherheit',
+      '',
+      '\u2022 Produkt f\u00fcr Sammler und Modellbauer bestimmt',
+      '\u2022 Nicht geeignet f\u00fcr Kinder unter 14 Jahren',
+      '\u2022 RoHS- und REACH-konforme Resine',
+      '\u2022 Additive Fertigung gem\u00e4\u00df ISO / ASTM 52900',
+    ].join('\n')),
+  ]);
+
+  const DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_ES = Object.freeze([
+    Object.freeze([
+      '\ud83c\udfc6 La experiencia Double X Industrie',
+      '',
+      'Double X Industrie retoma el saber hacer de taller desarrollado con Gros Geek Industrie, con el mismo cuidado puesto en la impresi\u00f3n, la limpieza y la preparaci\u00f3n de las miniaturas.',
+      'Cada pieza se prepara, se revisa y se prueba en seco cuando es necesario para garantizar un montaje limpio y agradable.',
+      'Los elementos finos o fr\u00e1giles se incluyen por duplicado cuando resulta \u00fatil, para una experiencia m\u00e1s tranquila y adaptada a pintores apasionados.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udfa8 Resina 14K HD - Detalles n\u00edtidos, estructura fiable',
+      '',
+      'Cada modelo se imprime en resina 14K de alta definici\u00f3n para capturar las texturas, grabados y expresiones m\u00e1s finos.',
+      'Nuestra mezcla exclusiva de resina 14K + resina reforzada mejora la solidez y ofrece una ligera flexibilidad en las piezas finas, un equilibrio ideal entre precisi\u00f3n y durabilidad.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2139\ufe0f Modelo para pintar - Garage kit para montar',
+      '',
+      '\u2714\ufe0f Nuestras miniaturas se entregan como garage kits: para montar y pintar uno mismo.',
+      '\ud83c\udfa8 Las im\u00e1genes en color son renders 3D mostrados como inspiraci\u00f3n.',
+      '\ud83d\udd8c\ufe0f Expresa tu creatividad y da vida a tu pieza con tu propia paleta de colores.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2705 Control de calidad exigente',
+      '',
+      'Cada impresi\u00f3n se inspecciona pieza por pieza antes del env\u00edo.',
+      'Ninguna miniatura sale del taller sin cumplir nuestros altos est\u00e1ndares de acabado:',
+      'cero burbujas, cero deformaciones, ajustes probados en seco.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2699\ufe0f Preparada, limpia, lista para pintar',
+      '',
+      '\u2022 Soportes retirados limpiamente',
+      '\u2022 Limpieza completa + postcurado UV',
+      '\u2022 Un ligero lijado de superficie es suficiente antes de la imprimaci\u00f3n',
+      '\ud83e\uddfc Se acabaron las largas etapas de preparaci\u00f3n: puedes pasar directamente a la pintura.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83c\udf81 Un proyecto personal o un regalo \u00fanico',
+      '',
+      'Ideal para aficionados, pintores y coleccionistas.',
+      'Para regalar o montar t\u00fa mismo, para enriquecer tu colecci\u00f3n y tu experiencia de pintura.',
+    ].join('\n')),
+    Object.freeze([
+      '\ud83d\udce9 Atenci\u00f3n al cliente r\u00e1pida',
+      '',
+      '\u00bfTienes una pregunta? \u00bfUna solicitud de personalizaci\u00f3n?',
+      '\ud83d\udcec Escr\u00edbenos directamente en Etsy - respuesta r\u00e1pida garantizada, antes o despu\u00e9s de tu pedido.',
+    ].join('\n')),
+    Object.freeze([
+      '\u2696\ufe0f Uso y seguridad',
+      '',
+      '\u2022 Producto destinado a coleccionistas y modelistas',
+      '\u2022 No apto para menores de 14 a\u00f1os',
+      '\u2022 Resinas conformes con RoHS y REACH',
+      '\u2022 Fabricaci\u00f3n aditiva seg\u00fan la norma ISO / ASTM 52900',
+    ].join('\n')),
+  ]);
+
+  const INTRO_FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE = Object.freeze({
+    collection: Object.freeze({
+      fr: [],
+      en: [],
+      de: [],
+      es: [],
+    }),
+    collection_doublex: Object.freeze({
+      fr: DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_FR,
+      en: DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_EN,
+      de: DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_DE,
+      es: DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_ES,
+    }),
+    tabletop: Object.freeze({
+      fr: TABLETOP_TOP_FIXED_BLOCKS_FR_V2,
+      en: TABLETOP_TOP_FIXED_BLOCKS_EN_V2,
+      de: TABLETOP_TOP_FIXED_BLOCKS_DE_V2,
+      es: TABLETOP_TOP_FIXED_BLOCKS_ES_V2,
+    }),
+  });
   const FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE = Object.freeze({
     collection: Object.freeze({
       fr: COLLECTION_BOTTOM_FIXED_BLOCKS,
@@ -610,26 +1186,49 @@
       de: COLLECTION_BOTTOM_FIXED_BLOCKS_DE,
       es: COLLECTION_BOTTOM_FIXED_BLOCKS_ES,
     }),
+    collection_doublex: Object.freeze({
+      fr: DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS,
+      en: DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_EN,
+      de: DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_DE,
+      es: DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_ES,
+    }),
     tabletop: Object.freeze({
-      fr: TABLETOP_BOTTOM_FIXED_BLOCKS_FR,
-      en: TABLETOP_BOTTOM_FIXED_BLOCKS_EN,
-      de: TABLETOP_BOTTOM_FIXED_BLOCKS_DE,
-      es: TABLETOP_BOTTOM_FIXED_BLOCKS_ES,
+      fr: TABLETOP_BOTTOM_FIXED_BLOCKS_FR_V2,
+      en: TABLETOP_BOTTOM_FIXED_BLOCKS_EN_V2,
+      de: TABLETOP_BOTTOM_FIXED_BLOCKS_DE_V2,
+      es: TABLETOP_BOTTOM_FIXED_BLOCKS_ES_V2,
     }),
   });
 
   Object.assign(global.PipelineUIDataDescriptionTemplates, {
     TOP_LEVEL_BLOCK_SEPARATOR,
     WHAT_YOU_RECEIVE_LINES,
+    DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_FR,
+    DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_EN,
+    DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_DE,
+    DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_ES,
     COLLECTION_BOTTOM_FIXED_BLOCKS,
     COLLECTION_BOTTOM_FIXED_BLOCK,
     COLLECTION_BOTTOM_FIXED_BLOCKS_EN,
     COLLECTION_BOTTOM_FIXED_BLOCKS_DE,
     COLLECTION_BOTTOM_FIXED_BLOCKS_ES,
+    DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS,
+    DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_EN,
+    DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_DE,
+    DOUBLEX_COLLECTION_BOTTOM_FIXED_BLOCKS_ES,
+    TABLETOP_TOP_FIXED_BLOCKS_FR_V2,
+    TABLETOP_TOP_FIXED_BLOCKS_EN_V2,
+    TABLETOP_TOP_FIXED_BLOCKS_DE_V2,
+    TABLETOP_TOP_FIXED_BLOCKS_ES_V2,
     TABLETOP_BOTTOM_FIXED_BLOCKS_FR,
+    TABLETOP_BOTTOM_FIXED_BLOCKS_FR_V2,
+    TABLETOP_BOTTOM_FIXED_BLOCKS_EN_V2,
+    TABLETOP_BOTTOM_FIXED_BLOCKS_DE_V2,
+    TABLETOP_BOTTOM_FIXED_BLOCKS_ES_V2,
     TABLETOP_BOTTOM_FIXED_BLOCKS_EN,
     TABLETOP_BOTTOM_FIXED_BLOCKS_DE,
     TABLETOP_BOTTOM_FIXED_BLOCKS_ES,
+    INTRO_FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE,
     FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE,
     EXPERIENCE_BLOCK,
     CLIENT_INFORMATION_BLOCKS,

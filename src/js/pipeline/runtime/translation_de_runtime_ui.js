@@ -11,6 +11,7 @@
   const PREFIXES = ['tt', 'col'];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
+  const TRANSLATION_MODEL = 'claude-sonnet-4-5';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
   const DEFAULT_SOURCE_STATUS = 'En attente d’une fiche Etsy source.';
@@ -26,7 +27,7 @@
   const getEtsyRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getEtsyData = () => global.PipelineUIEtsyData || {};
   const getDescriptionAssembly = () => global.PipelineUIDescriptionAssembly || {};
-  const getModel = (agentId) => global.getActiveAgentModel?.(agentId) || 'claude-sonnet-4-5';
+  const getModel = () => TRANSLATION_MODEL;
   const readField = (prefix, suffix) => document.getElementById(`${prefix}-${suffix}`);
   const getTrimmedValue = (prefix, suffix) => readField(prefix, suffix)?.value?.trim?.() || '';
   const getStorageKey = (prefix) => `${STORAGE_KEY_PREFIX}${prefix}`;
@@ -206,7 +207,8 @@
 
   const normalizeSourceDescriptionForTranslation = (prefix, rawDescription) => {
     const family = resolveTranslationFamily(prefix);
-    const stripped = getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
+    const stripped = getDescriptionAssembly().stripDecorativeFixedBlocks?.(rawDescription, family, 'fr')
+      || getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
     return {
       family,
       description: String(stripped?.description ?? rawDescription ?? '').trim(),
@@ -288,6 +290,12 @@
     node.classList.toggle('translation-en-metric-over', !isValid);
   };
 
+  const buildTagMetricText = (tag = '') => `${String(tag || '').length} / ${TAG_MAX_LENGTH}`;
+
+  const renderTagMetricNode = (node, tag = '') => {
+    setMetricNode(node, buildTagMetricText(tag), String(tag || '').length <= TAG_MAX_LENGTH);
+  };
+
   const renderTagsList = (prefix, kind) => {
     const listingDraft = ensurePrefixState(prefix).listingDraft;
     const isSource = kind === 'source';
@@ -308,15 +316,20 @@
     tagsHost.innerHTML = tags.length
       ? tags.map((tag, index) => `
         <div class="etsy-api-attribute-tag-item">
-          <input
-            type="text"
-            maxlength="${data.ETSY_MAX_TAG_LENGTH || 30}"
-            data-js="${editAction}"
-            data-prefix="${prefix}"
-            data-tag-index="${index}"
-            class="${String(tag || '').length > TAG_MAX_LENGTH ? 'translation-en-tag-over' : ''}"
-            value="${escapeHtml(tag)}"
-          />
+          <div class="etsy-api-attribute-tag-edit-wrap">
+            <input
+              type="text"
+              maxlength="${data.ETSY_MAX_TAG_LENGTH || 30}"
+              data-js="${editAction}"
+              data-prefix="${prefix}"
+              data-tag-index="${index}"
+              class="${String(tag || '').length > TAG_MAX_LENGTH ? 'translation-en-tag-over' : ''}"
+              value="${escapeHtml(tag)}"
+            />
+            <span class="translation-en-metric ${String(tag || '').length > TAG_MAX_LENGTH ? 'translation-en-metric-over' : 'translation-en-metric-ok'}">
+              ${buildTagMetricText(tag)}
+            </span>
+          </div>
           <button class="etsy-api-attribute-tag-remove" type="button" data-js="${removeAction}" data-prefix="${prefix}" data-tag-index="${index}" aria-label="Supprimer le tag">
             ${global.PipelineUIIcons?.renderIcon?.('close') || 'x'}
           </button>
@@ -343,8 +356,11 @@
       input.addEventListener('input', (event) => {
         const tagIndex = Number.parseInt(String(input.dataset.tagIndex || '-1'), 10);
         if (tagIndex < 0) return;
+        const nextValue = String(event.target.value || '').slice(0, data.ETSY_MAX_TAG_LENGTH || 30);
         const targetTags = isSource ? listingDraft.sourceTags : listingDraft.translatedTags;
-        targetTags[tagIndex] = String(event.target.value || '').slice(0, data.ETSY_MAX_TAG_LENGTH || 30);
+        targetTags[tagIndex] = nextValue;
+        input.classList.toggle('translation-en-tag-over', nextValue.length > TAG_MAX_LENGTH);
+        renderTagMetricNode(input.parentElement?.querySelector('.translation-en-metric'), nextValue);
         persistPrefixState(prefix);
       });
       input.addEventListener('blur', (event) => {
@@ -408,9 +424,11 @@
       const field = readField(prefix, suffix);
       if (!field) return;
       if (field.tagName === 'TEXTAREA') {
-        field.value = value;
-        field.defaultValue = value;
-        field.textContent = value;
+        if (field.value !== value) {
+          field.value = value;
+          field.defaultValue = value;
+          field.textContent = value;
+        }
         return;
       }
       if (field.value !== value) field.value = value;
@@ -512,6 +530,7 @@
       setMappingStatus(prefix, `Verification EN en cours (${getModel(TRANSLATION_MAPPING_AGENT_ID)})...`);
 
       const response = await global.callClaude(TRANSLATION_MAPPING_AGENT_ID, {
+        overrideModel: TRANSLATION_MODEL,
         filled,
         promptDebug: {
           agentId: TRANSLATION_MAPPING_AGENT_ID,
@@ -571,9 +590,8 @@
           : [];
       const normalizedTags = getEtsyData().normalizeAttributeTags?.(sourceTags) || sourceTags;
 
-      const normalizedSource = normalizeSourceDescriptionForTranslation(prefix, String(data.description || ''));
       listingDraft.sourceTitle = String(data.title || '').trim();
-      listingDraft.sourceDescription = normalizedSource.description;
+      listingDraft.sourceDescription = String(data.description || '');
       listingDraft.sourceTags = normalizedTags;
       listingDraft.pendingSourceTagsInput = '';
       entry.characterFr = '';
@@ -591,12 +609,7 @@
       listingDraft.translationInput = '';
       listingDraft.translationStatus = '';
       entry.activeSubtab = 'fr';
-      setSourceStatus(
-        prefix,
-        normalizedSource.stripped
-          ? `Fiche source ${listingId} chargee. Bloc fixe FR de fin retire automatiquement.`
-          : `Fiche source ${listingId} chargee.`,
-      );
+      setSourceStatus(prefix, `Fiche source ${listingId} chargee.`);
       renderPrefixState(prefix);
       persistPrefixState(prefix);
       global.showToast('Fiche source DE chargee');
@@ -661,6 +674,7 @@
       setTranslationStatus(prefix, `Traduction DE en cours (${getModel(TRANSLATION_LISTING_AGENT_ID)})...`);
 
       const response = await global.callClaude(TRANSLATION_LISTING_AGENT_ID, {
+        overrideModel: TRANSLATION_MODEL,
         filled: filledWithInjectionNote,
         fixedContentBlocks,
         promptDebug: {
@@ -838,6 +852,14 @@
       const field = readField(prefix, suffix);
       if (!field || field.dataset.translationEnListingBound === 'true') return;
       field.addEventListener('input', () => updateListingStateFromFields(prefix, { rerender: false }));
+      if (suffix === 'translation-de-source-title' || suffix === 'translation-de-translated-title') {
+        field.addEventListener('input', () => {
+          const isSourceTitle = suffix === 'translation-de-source-title';
+          const metricNode = readField(prefix, isSourceTitle ? 'translation-de-source-title-meta' : 'translation-de-translated-title-meta');
+          const value = String(field.value || '');
+          setMetricNode(metricNode, `${value.length} / ${TITLE_MAX_LENGTH}`, value.length <= TITLE_MAX_LENGTH);
+        });
+      }
       field.addEventListener('blur', () => renderPrefixState(prefix));
       if (field.tagName === 'TEXTAREA') {
         field.addEventListener('input', () => syncTextareaHeight(field));

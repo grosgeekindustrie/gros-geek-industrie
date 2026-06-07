@@ -241,16 +241,16 @@
     } else {
       const preview = document.createElement('video');
       preview.className = 'etsy-media-lightbox-preview-video';
-      preview.src = mediaItem.value.video_url || '';
-      preview.poster = mediaItem.value.thumbnail_url || '';
+      preview.src = deps.getVideoPreviewSource?.(mediaItem.value, mediaItem.isLocal) || mediaItem.value.video_url || '';
+      preview.poster = mediaItem.isLocal ? '' : (mediaItem.value.thumbnail_url || '');
       preview.controls = true;
       preview.preload = 'metadata';
       previewHost.appendChild(preview);
 
-      typeNode.textContent = 'Video Etsy';
-      idNode.textContent = deps.getVideoId?.(mediaItem.value);
+      typeNode.textContent = mediaItem.isLocal ? 'Video locale' : 'Video Etsy';
+      idNode.textContent = mediaItem.isLocal ? String(mediaItem.value.local_id || '-') : deps.getVideoId?.(mediaItem.value);
       resolutionNode.textContent = deps.formatResolution?.(deps.getVideoResolution?.(mediaItem.value)) || '-';
-      sourceNode.textContent = 'Chargee depuis Etsy';
+      sourceNode.textContent = mediaItem.isLocal ? 'Ajoutee au workspace' : 'Chargee depuis Etsy';
       altGroup.style.display = 'none';
       imageActions.style.display = 'none';
       headerActions.style.display = 'none';
@@ -310,7 +310,7 @@
     const actions = document.createElement('div');
     actions.className = 'field-action-row etsy-api-empty-actions';
     actions.appendChild(
-      getCreateToolbarButton(deps)?.('btn btn-muted btn-xs-inline', 'image', 'Ajouter images', () => deps.triggerAddImages?.(prefix))
+      getCreateToolbarButton(deps)?.('btn btn-muted btn-xs-inline', 'image', 'Ajouter medias', () => deps.triggerAddImages?.(prefix))
     );
     empty.appendChild(actions);
 
@@ -323,7 +323,7 @@
     const state = deps.getState?.(prefix);
     if (!nodes?.summary) return;
 
-    if (!mediaPayload && !(state?.localImages?.length)) {
+    if (!mediaPayload && !(state?.localImages?.length) && !(state?.localVideos?.length)) {
       nodes.summary.innerHTML = '';
       return;
     }
@@ -332,7 +332,9 @@
     const images = Array.isArray(data.images) ? data.images : [];
     const videos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state?.localVideos) ? state.localVideos : [];
     const totalImages = images.length + localImages.length;
+    const totalVideos = videos.length + localVideos.length;
 
     nodes.summary.innerHTML = `
       <div class="etsy-api-summary-card">
@@ -345,7 +347,7 @@
       </div>
       <div class="etsy-api-summary-card">
         <span class="etsy-api-summary-label">Video</span>
-        <span class="etsy-api-summary-value">${videos.length} / 1</span>
+        <span class="etsy-api-summary-value">${totalVideos} / 1</span>
       </div>
     `;
   }
@@ -384,10 +386,11 @@
     const images = Array.isArray(data.images) ? data.images : [];
     const videos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state.localVideos) ? state.localVideos : [];
     const selectedAltCount = Array.isArray(state.selectedPipelineAltMediaKeys) ? state.selectedPipelineAltMediaKeys.length : 0;
     const countNode = strip.querySelector('[data-js="etsy-media-toolbar-count"]');
     if (countNode) {
-      countNode.textContent = `${images.length + localImages.length} image(s) - ${videos.length} video(s) - ${selectedAltCount} ALT selectionnee(s)`;
+      countNode.textContent = `${images.length + localImages.length} image(s) - ${videos.length + localVideos.length} video(s) - ${selectedAltCount} selectionnee(s)`;
     }
   }
 
@@ -412,7 +415,7 @@
     input.checked = checked;
     input.dataset.js = 'etsy-media-pipeline-alt-select';
     input.dataset.mediaKey = mediaKey;
-    input.setAttribute('aria-label', 'Selectionner cette image pour appliquer la balise alt du pipeline');
+    input.setAttribute('aria-label', 'Selectionner cette image');
     input.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
     });
@@ -465,7 +468,7 @@
     return card;
   }
 
-  function createVideoCard(video, index, mediaKey, prefix, deps = {}) {
+  function createVideoCard(video, index, mediaKey, prefix, isLocal, deps = {}) {
     const card = document.createElement('article');
     card.className = 'image-thumb-card etsy-api-media-card etsy-api-media-card-visual';
     card.dataset.etsyMediaKind = 'video';
@@ -476,8 +479,8 @@
 
     const preview = document.createElement('video');
     preview.className = 'image-thumb-preview etsy-api-video-preview';
-    preview.src = video.video_url || '';
-    preview.poster = video.thumbnail_url || '';
+    preview.src = deps.getVideoPreviewSource?.(video, isLocal) || video.video_url || '';
+    preview.poster = isLocal ? '' : (video.thumbnail_url || '');
     preview.preload = 'metadata';
     preview.muted = true;
     preview.playsInline = true;
@@ -505,11 +508,12 @@
     const images = Array.isArray(data.images) ? data.images : [];
     const videos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state.localVideos) ? state.localVideos : [];
     const selectedAltCount = Array.isArray(state.selectedPipelineAltMediaKeys) ? state.selectedPipelineAltMediaKeys.length : 0;
 
     nodes.strip.innerHTML = '';
 
-    if (!images.length && !videos.length && !localImages.length) {
+    if (!images.length && !videos.length && !localImages.length && !localVideos.length) {
       renderPlaceholder(prefix, 'Charge une fiche source Etsy, puis exploite ici les médias déjà présents dans le workspace.', deps);
       return;
     }
@@ -520,20 +524,20 @@
     const toolbarCount = document.createElement('div');
     toolbarCount.className = 'image-thumb-toolbar-count';
     toolbarCount.dataset.js = 'etsy-media-toolbar-count';
-    toolbarCount.textContent = `${images.length + localImages.length} image(s) - ${videos.length} video(s) - ${selectedAltCount} ALT selectionnee(s)`;
+    toolbarCount.textContent = `${images.length + localImages.length} image(s) - ${videos.length + localVideos.length} video(s) - ${selectedAltCount} selectionnee(s)`;
     toolbar.appendChild(toolbarCount);
 
     const toolbarActions = document.createElement('div');
     toolbarActions.className = 'image-thumb-toolbar-actions';
-    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'check', 'Tout selectionner ALT', () => {
+    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'check', 'Tout selectionner', () => {
       deps.setAllPipelineAltMediaSelections?.(prefix, true);
       syncPipelineAltCheckboxes(prefix, deps);
     }));
-    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'refresh', 'Tout deselectionner ALT', () => {
+    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'refresh', 'Tout deselectionner', () => {
       deps.setAllPipelineAltMediaSelections?.(prefix, false);
       syncPipelineAltCheckboxes(prefix, deps);
     }));
-    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'image', 'Ajouter images', () => deps.triggerAddImages?.(prefix)));
+    toolbarActions.appendChild(createToolbarButton('btn btn-muted btn-xs-inline', 'image', 'Ajouter medias', () => deps.triggerAddImages?.(prefix)));
     toolbarActions.appendChild(createToolbarButton('btn btn-error btn-xs-inline', 'trash', 'Tout supprimer', () => deps.clearAllMedia?.(prefix)));
     toolbar.appendChild(toolbarActions);
 
@@ -547,7 +551,7 @@
       }
 
       if (item.kind === 'video') {
-        grid.appendChild(createVideoCard(item.value, index, item.key, prefix, deps));
+        grid.appendChild(createVideoCard(item.value, index, item.key, prefix, item.isLocal, deps));
       }
     });
 

@@ -29,19 +29,26 @@
     return `local-image:${String(image?.local_id || '')}`;
   }
 
+  function resolveLocalVideoKey(video) {
+    return `local-video:${String(video?.local_id || '')}`;
+  }
+
   function getOrderedPublicationMedia(state) {
     const data = state?.mediaPayload?.data || {};
     const remoteImages = Array.isArray(data.images) ? data.images : [];
     const remoteVideos = Array.isArray(data.videos) ? data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state?.localVideos) ? state.localVideos : [];
     const editedImageDataUrls = state?.editedImageDataUrls || {};
     const remoteMap = new Map(remoteImages.map((image, index) => [resolveRemoteImageKey(image, index), image]));
     const videoMap = new Map(remoteVideos.map((video, index) => [resolveRemoteVideoKey(video, index), video]));
     const localMap = new Map(localImages.map((image) => [resolveLocalImageKey(image), image]));
+    const localVideoMap = new Map(localVideos.map((video) => [resolveLocalVideoKey(video), video]));
     const defaultOrder = [
       ...remoteImages.map((image, index) => resolveRemoteImageKey(image, index)),
       ...remoteVideos.map((video, index) => resolveRemoteVideoKey(video, index)),
       ...localImages.map((image) => resolveLocalImageKey(image)),
+      ...localVideos.map((video) => resolveLocalVideoKey(video)),
     ];
     const activeOrder = Array.isArray(state?.mediaOrder) && state.mediaOrder.length ? state.mediaOrder : defaultOrder;
     const seen = new Set();
@@ -76,6 +83,15 @@
           editedDataUrl: String(editedImageDataUrls[key] || '').trim(),
         });
         seen.add(key);
+        return;
+      }
+      if (localVideoMap.has(key)) {
+        ordered.push({
+          key,
+          kind: 'local-video',
+          value: localVideoMap.get(key),
+        });
+        seen.add(key);
       }
     });
 
@@ -87,39 +103,41 @@
     const sourceImages = Array.isArray(state?.mediaPayload?.data?.images) ? state.mediaPayload.data.images : [];
     const sourceVideos = Array.isArray(state?.mediaPayload?.data?.videos) ? state.mediaPayload.data.videos : [];
     const localImages = Array.isArray(state?.localImages) ? state.localImages : [];
+    const localVideos = Array.isArray(state?.localVideos) ? state.localVideos : [];
 
-    const images = orderedEntries.filter((entry) => entry.kind === 'image' || entry.kind === 'local-image').map((entry, index) => {
+    const images = orderedEntries.flatMap((entry, orderedIndex) => {
+      if (entry.kind !== 'image' && entry.kind !== 'local-image') return [];
       const image = entry.value;
       const altText = String(image?.alt_text || '').trim();
       const filename = String(
         image?.name
         || image?.filename
         || image?.title
-        || `etsy-image-${index + 1}.jpg`
-      ).trim() || `etsy-image-${index + 1}.jpg`;
+        || `etsy-image-${orderedIndex + 1}.jpg`
+      ).trim() || `etsy-image-${orderedIndex + 1}.jpg`;
 
       if (entry.editedDataUrl) {
-        return {
-          order: index + 1,
+        return [{
+          order: orderedIndex + 1,
           mode: 'upload',
           filename,
           alt_text: altText,
           data_url: entry.editedDataUrl,
-        };
+        }];
       }
 
       if (entry.kind === 'local-image') {
-        return {
-          order: index + 1,
+        return [{
+          order: orderedIndex + 1,
           mode: 'upload',
           filename,
           alt_text: altText,
           data_url: String(image?.data_url || ''),
-        };
+        }];
       }
 
-      return {
-        order: index + 1,
+      return [{
+        order: orderedIndex + 1,
         mode: 'upload_remote',
         filename,
         alt_text: altText,
@@ -132,27 +150,41 @@
           || image?.url
           || ''
         ).trim(),
-      };
+      }];
     }).filter((imagePlan) => {
       if (imagePlan.mode === 'upload') return !!imagePlan.data_url;
       if (imagePlan.mode === 'upload_remote') return !!imagePlan.remote_url;
       return false;
     });
 
-    const videos = orderedEntries.filter((entry) => entry.kind === 'video').map((entry, index) => {
+    const videos = orderedEntries.flatMap((entry, orderedIndex) => {
+      if (entry.kind !== 'video' && entry.kind !== 'local-video') return [];
       const video = entry.value;
-      return {
-        order: index + 1,
+      if (entry.kind === 'local-video') {
+        return [{
+          order: orderedIndex + 1,
+          mode: 'upload',
+          filename: String(
+            video?.name
+            || video?.filename
+            || video?.title
+            || `etsy-video-${orderedIndex + 1}.mp4`
+          ).trim() || `etsy-video-${orderedIndex + 1}.mp4`,
+          data_url: String(video?.data_url || '').trim(),
+        }];
+      }
+      return [{
+        order: orderedIndex + 1,
         mode: 'upload_remote',
         filename: String(
           video?.name
           || video?.filename
           || video?.title
-          || `etsy-video-${index + 1}.mp4`
-        ).trim() || `etsy-video-${index + 1}.mp4`,
+          || `etsy-video-${orderedIndex + 1}.mp4`
+        ).trim() || `etsy-video-${orderedIndex + 1}.mp4`,
         remote_url: String(video?.video_url || '').trim(),
-      };
-    }).filter((videoPlan) => !!videoPlan.remote_url);
+      }];
+    }).filter((videoPlan) => (videoPlan.mode === 'upload' ? !!videoPlan.data_url : !!videoPlan.remote_url));
 
     return {
       images,
@@ -161,6 +193,7 @@
         sourceImageCount: sourceImages.length,
         sourceVideoCount: sourceVideos.length,
         localImageCount: localImages.length,
+        localVideoCount: localVideos.length,
         orderedMediaCount: orderedEntries.length,
         plannedImageCount: images.length,
         plannedVideoCount: videos.length,

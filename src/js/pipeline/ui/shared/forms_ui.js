@@ -19,6 +19,7 @@
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
   const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
   const CLAUDE_MODEL_SELECT_IDS = Object.freeze(['tt-launch-model', 'col-launch-model']);
+  const DOUBLEX_PROMPT_TOGGLE_IDS = Object.freeze(['tt-doublex-prompt-toggle', 'col-doublex-prompt-toggle']);
   const FETCH_STATUS = {
     idleLabel: 'Fetch',
     loadingLabel: '\u27f3 Fetch...',
@@ -43,6 +44,7 @@
   };
   const COLLECTION_PERSISTED_TEXT_FIELDS = [
     'col-fParticularites',
+    'col-fConsignesExternes',
     'col-fDescriptionFigurine',
     'col-fResumePersonnage',
     'col-fLienPerso',
@@ -67,6 +69,7 @@
     'tt-fArchetypes',
     'tt-fArchSeo',
     'tt-fParticularites',
+    'tt-fConsignesExternes',
     'tt-fResumePersonnage',
     'tt-fConnexesPrioritaires',
     'tt-fLienPerso',
@@ -122,6 +125,109 @@
   const getCheckedValues = (selector) => [...document.querySelectorAll(selector)].map((input) => input.value);
   const formatCommaList = (values = []) => values.join(', ');
   const saveFormStateIfNeeded = () => saveFormState();
+  let speechRecognitionInstance = null;
+  let speechRecognitionFieldId = '';
+  let speechRecognitionSupported = null;
+
+  const getSpeechRecognitionCtor = () => (
+    window.SpeechRecognition
+    || window.webkitSpeechRecognition
+    || null
+  );
+
+  const isSpeechRecognitionSupported = () => {
+    if (speechRecognitionSupported === null) {
+      speechRecognitionSupported = typeof getSpeechRecognitionCtor() === 'function';
+    }
+    return speechRecognitionSupported;
+  };
+
+  const getSpeechRecognitionButtonId = (fieldId = '') => `${String(fieldId || '').trim()}-mic`;
+
+  const isBraveBrowser = () => {
+    try {
+      return !!global.navigator?.brave;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const setSpeechRecognitionButtonState = (fieldId = '', isListening = false) => {
+    const button = getElementById(getSpeechRecognitionButtonId(fieldId));
+    if (!button) return;
+    button.classList.toggle('is-recording', !!isListening);
+    const label = button.querySelector('.ui-icon-label');
+    if (label) label.textContent = isListening ? 'Stop' : 'Micro';
+  };
+
+  const appendTranscriptToField = (fieldId = '', transcript = '') => {
+    const field = getElementById(fieldId);
+    const normalizedTranscript = String(transcript || '').trim();
+    if (!field || !normalizedTranscript) return;
+
+    const currentValue = String(field.value || '');
+    const selectionStart = typeof field.selectionStart === 'number' ? field.selectionStart : currentValue.length;
+    const selectionEnd = typeof field.selectionEnd === 'number' ? field.selectionEnd : currentValue.length;
+    const before = currentValue.slice(0, selectionStart);
+    const after = currentValue.slice(selectionEnd);
+    const needsLeadingSpace = before && !/\s$/.test(before);
+    const needsTrailingSpace = after && !/^\s/.test(after);
+    const insertion = `${needsLeadingSpace ? ' ' : ''}${normalizedTranscript}${needsTrailingSpace ? ' ' : ''}`;
+    const nextValue = `${before}${insertion}${after}`;
+    const nextCaret = before.length + insertion.length;
+
+    field.value = nextValue;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.focus();
+    if (typeof field.setSelectionRange === 'function') {
+      field.setSelectionRange(nextCaret, nextCaret);
+    }
+  };
+
+  const pasteClipboardToField = async (fieldId = '') => {
+    const normalizedFieldId = String(fieldId || '').trim();
+    const field = getElementById(normalizedFieldId);
+    if (!field) {
+      global.showToast('Champ introuvable', '#ff4757', 3000);
+      return;
+    }
+
+    if (!navigator.clipboard?.readText) {
+      global.showToast('Collage indisponible dans ce navigateur', '#ff4757', 3500);
+      return;
+    }
+
+    try {
+      const clipboardText = String(await navigator.clipboard.readText() || '').trim();
+      if (!clipboardText) {
+        global.showToast('Presse-papiers vide', '#ff4757', 2500);
+        return;
+      }
+
+      appendTranscriptToField(normalizedFieldId, clipboardText);
+      saveFormState();
+      global.showToast('Texte colle', '#7eb8f7', 1800);
+    } catch (error) {
+      global.showToast('Lecture du presse-papiers refusee', '#ff4757', 3500);
+    }
+  };
+
+  const stopExternalInstructionDictationInternal = ({ silent = false } = {}) => {
+    const activeFieldId = speechRecognitionFieldId;
+    const recognition = speechRecognitionInstance;
+    speechRecognitionFieldId = '';
+    speechRecognitionInstance = null;
+    if (activeFieldId) setSpeechRecognitionButtonState(activeFieldId, false);
+    if (recognition) {
+      try {
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        recognition.stop();
+      } catch (error) {}
+    }
+    if (!silent && activeFieldId) global.showToast('Dictée arrêtée', '#e8c547', 1800);
+  };
 
   const getStoredJSONEntry = (key) => {
     try {
@@ -204,16 +310,35 @@
     writeStoredJSON(APP_SETTINGS_STORAGE_KEY, nextSettings);
   };
 
+  const shouldUseDoublexShopPrompts = () => readAppSettings().doublexUseShopPrompts !== false;
+
+  const writeDoublexPromptToggleSetting = (enabled) => {
+    const settings = readAppSettings();
+    settings.doublexUseShopPrompts = enabled !== false;
+    writeAppSettings(settings);
+  };
+
   const getActiveShopKey = () => {
     const rawValue = String(readAppSettings().activeShop || '').trim();
     return rawValue === 'doublex' ? 'doublex' : 'grosgeek';
   };
+  const syncDoublexPromptToggleUi = () => {
+    const isDoublexActive = getActiveShopKey() === 'doublex';
+    const enabled = shouldUseDoublexShopPrompts();
+    document.querySelectorAll('[data-js="doublex-prompt-toggle-wrap"]').forEach((node) => {
+      node.hidden = !isDoublexActive;
+    });
+    DOUBLEX_PROMPT_TOGGLE_IDS.forEach((id) => {
+      const input = getElementById(id);
+      if (input) input.checked = enabled;
+    });
+  };
   const getPromptFileMapForCurrentContext = (mode = getCurrentMode()) => (
-    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey())
+    getConfig().resolvePromptFileMap?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || (mode === 'collection' ? getConfig().PROMPT_FILE_MAP_COLLECTION : getConfig().PROMPT_FILE_MAP)
   );
   const getPromptFolderForCurrentContext = (mode = getCurrentMode()) => (
-    getConfig().resolvePromptFolder?.(mode, getActiveShopKey())
+    getConfig().resolvePromptFolder?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || `prompts/${mode}`
   );
 
@@ -468,6 +593,8 @@
       genresTransverses: genres,
       genres_transverses: genres,
       particularites: getElementValue('tt-fParticularites'),
+      consignesExternes: getElementValue('tt-fConsignesExternes'),
+      consignes_externes: getElementValue('tt-fConsignesExternes'),
       archetypesManuels: getElementValue('tt-fArchetypes'),
       seoElargies: getElementValue('tt-fArchSeo'),
       descriptionFigurine: getElementValue('tt-fDescriptionFigurine'),
@@ -487,6 +614,8 @@
       ...getCollectionMediumMetaData(),
       license: isElementChecked('col-fLicense') ? 'oui' : 'non',
       particularites: getElementValue('col-fParticularites'),
+      consignesExternes: getElementValue('col-fConsignesExternes'),
+      consignes_externes: getElementValue('col-fConsignesExternes'),
       archetypesManuels: getElementValue('col-fArchetypes'),
       seoElargies: getElementValue('col-fArchSeo'),
       descriptionFigurine: getElementValue('col-fDescriptionFigurine'),
@@ -634,6 +763,7 @@
       data._mediumSubcategories = getCollectionMediumSubcategoryValues();
       data._genres = getCollectionGenreValues();
       data._particularites = getElementValue('col-fParticularites');
+      data._consignesExternes = getElementValue('col-fConsignesExternes');
       data._archetypesManuels = getElementValue('col-fArchetypes');
       data._seoElargies = getElementValue('col-fArchSeo');
       data._descriptionFigurine = getElementValue('col-fDescriptionFigurine');
@@ -720,6 +850,10 @@
           setElementValue('col-fParticularites', data._particularites);
         }
 
+        if (data._consignesExternes !== undefined) {
+          setElementValue('col-fConsignesExternes', data._consignesExternes);
+        }
+
         if (data._archetypesManuels !== undefined) {
           setElementValue('col-fArchetypes', data._archetypesManuels);
         }
@@ -799,8 +933,108 @@
       });
     });
 
+    DOUBLEX_PROMPT_TOGGLE_IDS.forEach((id) => {
+      const input = getElementById(id);
+      if (!input) return;
+      input.addEventListener('change', async () => {
+        const enabled = !!input.checked;
+        writeDoublexPromptToggleSetting(enabled);
+        syncDoublexPromptToggleUi();
+        await loadAllFiles(true);
+        global.showToast(
+          enabled ? 'Prompts DoubleXindustrie actifs' : 'Prompts classiques actifs',
+          enabled ? '#f2a3c7' : '#e8c547',
+          2500,
+        );
+      });
+    });
+
     const shopUrlEl = getElementById('shopUrl');
     if (shopUrlEl) shopUrlEl.addEventListener('input', persistShopUrl);
+  }
+
+  function toggleExternalInstructionDictation(fieldId = '') {
+    const normalizedFieldId = String(fieldId || '').trim();
+    if (!normalizedFieldId) return;
+
+    if (!isSpeechRecognitionSupported()) {
+      global.showToast('Reco vocale non supportée par ce navigateur', '#ff4757', 4000);
+      return;
+    }
+
+    if (speechRecognitionFieldId === normalizedFieldId && speechRecognitionInstance) {
+      stopExternalInstructionDictationInternal();
+      return;
+    }
+
+    if (speechRecognitionInstance) {
+      stopExternalInstructionDictationInternal({ silent: true });
+    }
+
+    const SpeechRecognitionCtor = getSpeechRecognitionCtor();
+    const field = getElementById(normalizedFieldId);
+    if (!SpeechRecognitionCtor || !field) {
+      global.showToast('Champ de dictée introuvable', '#ff4757', 3000);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    speechRecognitionFieldId = normalizedFieldId;
+    speechRecognitionInstance = recognition;
+    setSpeechRecognitionButtonState(normalizedFieldId, true);
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results || [])
+        .slice(event.resultIndex || 0)
+        .filter((result) => result?.isFinal)
+        .map((result) => String(result?.[0]?.transcript || '').trim())
+        .filter(Boolean)
+        .join(' ');
+      appendTranscriptToField(normalizedFieldId, transcript);
+    };
+
+    recognition.onerror = (event) => {
+      const errorCode = String(event?.error || '').trim();
+      console.error('[dictation] speech recognition error', {
+        fieldId: normalizedFieldId,
+        error: errorCode || 'unknown',
+        message: String(event?.message || '').trim(),
+        type: String(event?.type || '').trim(),
+        isBrave: isBraveBrowser(),
+        userAgent: String(global.navigator?.userAgent || ''),
+        event,
+      });
+      if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
+        global.showToast('Micro refusé par le navigateur', '#ff4757', 4000);
+      } else if (errorCode === 'no-speech') {
+        global.showToast('Aucune voix détectée', '#e8c547', 2500);
+      } else {
+        global.showToast(`Erreur dictée : ${errorCode || 'inconnue'}`, '#ff4757', 4000);
+      }
+    };
+
+    recognition.onend = () => {
+      speechRecognitionFieldId = '';
+      speechRecognitionInstance = null;
+      setSpeechRecognitionButtonState(normalizedFieldId, false);
+      saveFormState();
+    };
+
+    try {
+      field.focus();
+      recognition.start();
+      global.showToast('Dictée démarrée', '#7eb8f7', 1800);
+    } catch (error) {
+      speechRecognitionFieldId = '';
+      speechRecognitionInstance = null;
+      setSpeechRecognitionButtonState(normalizedFieldId, false);
+      global.showToast(`Impossible de démarrer la dictée : ${error.message}`, '#ff4757', 4000);
+    }
   }
 
   function loadPersistedData() {
@@ -819,6 +1053,7 @@
       const activeShopKey = String(settings.activeShop || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
       const shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object' ? settings.shopUrls : {};
       if (shopUrlEl) shopUrlEl.value = shopUrls[activeShopKey] || settings.shopUrl || DEFAULT_SHOP_URLS[activeShopKey] || DEFAULT_SHOP_URL;
+      syncDoublexPromptToggleUi();
 
       const selectedClaudeModel = String(settings.selectedClaudeModel || '').trim() || DEFAULT_CLAUDE_MODEL;
       CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
@@ -922,6 +1157,11 @@
     attachFormPersistence,
     loadPersistedData,
     loadAllFiles,
+    getActiveShopKey,
+    syncDoublexPromptToggleUi,
+    toggleExternalInstructionDictation,
+    pasteClipboardToField,
+    stopExternalInstructionDictation: stopExternalInstructionDictationInternal,
   };
 
   global.PipelineUI.forms = global.PipelineUI.forms || {};

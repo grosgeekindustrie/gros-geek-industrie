@@ -106,6 +106,7 @@
       getEditedImageDataUrl: runtime.getEditedImageDataUrl,
       formatResolution: runtime.formatResolution,
       getVideoId: runtime.getVideoId,
+      getVideoPreviewSource: runtime.getVideoPreviewSource,
       getVideoResolution: runtime.getVideoResolution,
     });
   }

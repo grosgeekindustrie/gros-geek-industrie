@@ -470,6 +470,16 @@
                       <textarea id="tt-fParticularites" class="textarea-md" placeholder="ex: 2 armes au choix, socle rocheux, version casque ou tête nue"></textarea>
                     </div>
                     <div class="fg full">
+                      <div class="translation-en-label-row">
+                        <label>Consigne externe <span class="fg-hint">→ instruction spécifique à faire respecter par les agents</span></label>
+                        <div class="translation-en-label-actions">
+                          <button class="btn btn-muted btn-xs-inline" type="button" id="tt-fConsignesExternes-mic" data-ui-action="toggle-external-instruction-dictation" data-action-arg="tt-fConsignesExternes" aria-label="Dicter la consigne externe Tabletop"><span data-svg-icon="message"></span><span class="ui-icon-label">Micro</span></button>
+                          <button class="btn btn-muted btn-xs-inline" type="button" id="tt-fConsignesExternes-paste" data-ui-action="paste-external-instruction-clipboard" data-action-arg="tt-fConsignesExternes" aria-label="Coller dans la consigne externe Tabletop"><span data-svg-icon="copy"></span><span class="ui-icon-label">Coller</span></button>
+                        </div>
+                      </div>
+                      <textarea id="tt-fConsignesExternes" class="textarea-md" placeholder="ex: prendre en compte 2 têtes distinctes, une SFW et une NSFW, et le préciser clairement dans la description"></textarea>
+                    </div>
+                    <div class="fg full">
                       <label>Notes libres</label>
                       <textarea id="tt-fNotes" placeholder="Infos supplémentaires..."></textarea>
                     </div>
@@ -544,6 +554,11 @@
                     <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
                     <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
                   </select>
+                </label>
+                <label class="launch-model-picker launch-toggle" for="tt-doublex-prompt-toggle" data-js="doublex-prompt-toggle-wrap" hidden>
+                  <span class="launch-model-picker-label">Prompts NSFW DoubleXindustrie</span>
+                  <input type="checkbox" id="tt-doublex-prompt-toggle" checked />
+                  <span class="launch-toggle-slider" aria-hidden="true"></span>
                 </label>
                 <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer le pipeline complet</span></button>
               </div>
@@ -1416,6 +1431,16 @@ Cache : —</pre>
                       <label>Particularités <span class="fg-hint">→ variantes, FX, options</span></label>
                       <textarea id="col-fParticularites" class="textarea-md" placeholder="ex: 2 designs cheveux long ou court, FX résine translucide rouge en option"></textarea>
                     </div>
+                    <div class="fg full">
+                      <div class="translation-en-label-row">
+                        <label>Consigne externe <span class="fg-hint">→ instruction spécifique à faire respecter par les agents</span></label>
+                        <div class="translation-en-label-actions">
+                          <button class="btn btn-muted btn-xs-inline" type="button" id="col-fConsignesExternes-mic" data-ui-action="toggle-external-instruction-dictation" data-action-arg="col-fConsignesExternes" aria-label="Dicter la consigne externe Collection"><span data-svg-icon="message"></span><span class="ui-icon-label">Micro</span></button>
+                          <button class="btn btn-muted btn-xs-inline" type="button" id="col-fConsignesExternes-paste" data-ui-action="paste-external-instruction-clipboard" data-action-arg="col-fConsignesExternes" aria-label="Coller dans la consigne externe Collection"><span data-svg-icon="copy"></span><span class="ui-icon-label">Coller</span></button>
+                        </div>
+                      </div>
+                      <textarea id="col-fConsignesExternes" class="textarea-md" placeholder="ex: bien préciser qu'il y a 2 designs différents, une tête SFW et une tête NSFW, sans oublier la double option dans la description"></textarea>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1498,6 +1523,11 @@ Cache : —</pre>
                     <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
                     <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
                   </select>
+                </label>
+                <label class="launch-model-picker launch-toggle" for="col-doublex-prompt-toggle" data-js="doublex-prompt-toggle-wrap" hidden>
+                  <span class="launch-model-picker-label">Prompts NSFW DoubleXindustrie</span>
+                  <input type="checkbox" id="col-doublex-prompt-toggle" checked />
+                  <span class="launch-toggle-slider" aria-hidden="true"></span>
                 </label>
                 <button class="btn btn-accent" type="button" data-pipeline-action="launch" data-pipeline-prefix="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Lancer le pipeline complet</span></button>
               </div>

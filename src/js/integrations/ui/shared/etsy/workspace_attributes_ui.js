@@ -10,6 +10,7 @@
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+  const getTagLengthTone = (length, maxLength) => (length > maxLength ? ' is-overflow' : ' is-valid');
 
   function commitTagsInput(prefix, rawValue, deps = {}) {
     const data = getData();
@@ -53,17 +54,23 @@
               value="${escapeHtml(draft.pendingTagsInput || '')}"
             />
             <p class="etsy-api-field-hint">Appuyez sur Entree pour valider la liste. Les tags trop longs sont ignores, seuls les 13 premiers valides sont conserves.</p>
+            <div class="etsy-api-title-meta">
+              <span class="etsy-api-title-count${getTagLengthTone(String(draft.pendingTagsInput || '').length, data.ETSY_MAX_TAG_LENGTH || 30)}" data-js="etsy-attributes-pending-tags-count">${String(draft.pendingTagsInput || '').length} / ${data.ETSY_MAX_TAG_LENGTH || 30}</span>
+            </div>
           </div>
           <div class="etsy-api-attribute-tags" id="etsyApiAttributesTagsList-${prefix}">
             ${draft.tags.length ? draft.tags.map((tag, index) => `
               <div class="etsy-api-attribute-tag-item">
-                <input
-                  type="text"
-                  maxlength="${data.ETSY_MAX_TAG_LENGTH || 30}"
-                  data-js="etsy-attributes-tag-edit"
-                  data-tag-index="${index}"
-                  value="${escapeHtml(tag || '')}"
-                />
+                <div class="etsy-api-attribute-tag-edit-wrap">
+                  <input
+                    type="text"
+                    maxlength="${data.ETSY_MAX_TAG_LENGTH || 30}"
+                    data-js="etsy-attributes-tag-edit"
+                    data-tag-index="${index}"
+                    value="${escapeHtml(tag || '')}"
+                  />
+                  <span class="etsy-api-title-count${getTagLengthTone(String(tag || '').length, data.ETSY_MAX_TAG_LENGTH || 30)}" data-js="etsy-attributes-tag-count" data-tag-index="${index}">${String(tag || '').length} / ${data.ETSY_MAX_TAG_LENGTH || 30}</span>
+                </div>
                 <button class="etsy-api-attribute-tag-remove" type="button" data-js="etsy-attributes-tag-remove" data-tag-index="${index}" aria-label="Supprimer le tag">
                   ${global.PipelineUIIcons?.renderIcon?.('close') || 'x'}
                 </button>
@@ -72,7 +79,7 @@
           </div>
         </section>
 
-        <section class="etsy-api-attributes-card">
+        <section class="etsy-api-attributes-card" hidden>
           <div class="etsy-api-attributes-card-head">
             <div>
               <h4>Dimensions</h4>
@@ -127,6 +134,13 @@
       deps.updateAttributesDraft?.(prefix, (nextDraft) => {
         nextDraft.pendingTagsInput = String(event.target.value || '');
       });
+      const countNode = host.querySelector('[data-js="etsy-attributes-pending-tags-count"]');
+      if (countNode) {
+        const length = String(event.target.value || '').length;
+        countNode.textContent = `${length} / ${data.ETSY_MAX_TAG_LENGTH || 30}`;
+        countNode.classList.toggle('is-overflow', length > (data.ETSY_MAX_TAG_LENGTH || 30));
+        countNode.classList.toggle('is-valid', length <= (data.ETSY_MAX_TAG_LENGTH || 30));
+      }
     });
     tagsInput?.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
@@ -149,10 +163,16 @@
       input.addEventListener('input', (event) => {
         const tagIndex = Number.parseInt(String(input.dataset.tagIndex || '-1'), 10);
         if (tagIndex < 0) return;
+        const normalized = String(event.target.value || '').slice(0, data.ETSY_MAX_TAG_LENGTH || 30);
         deps.updateAttributesDraft?.(prefix, (nextDraft) => {
-          const normalized = String(event.target.value || '').slice(0, data.ETSY_MAX_TAG_LENGTH || 30);
           nextDraft.tags[tagIndex] = normalized;
         });
+        const countNode = host.querySelector(`[data-js="etsy-attributes-tag-count"][data-tag-index="${tagIndex}"]`);
+        if (countNode) {
+          countNode.textContent = `${normalized.length} / ${data.ETSY_MAX_TAG_LENGTH || 30}`;
+          countNode.classList.toggle('is-overflow', normalized.length > (data.ETSY_MAX_TAG_LENGTH || 30));
+          countNode.classList.toggle('is-valid', normalized.length <= (data.ETSY_MAX_TAG_LENGTH || 30));
+        }
       });
       input.addEventListener('blur', (event) => {
         const tagIndex = Number.parseInt(String(input.dataset.tagIndex || '-1'), 10);

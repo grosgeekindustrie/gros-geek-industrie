@@ -43,15 +43,19 @@
     if (!state || !host) return;
 
     const snapshot = deps.buildPublicationPayloadSnapshot?.(state) || {};
-    const publicationMode = deps.getPublicationMode?.(state) || (state.publicationMode === 'update_listing' ? 'update_listing' : 'create_draft');
+    const publicationMode = deps.getPublicationMode?.(state) || 'create_draft';
     const isUpdateMode = publicationMode === 'update_listing';
+    const isExpiredUpdateMode = publicationMode === 'update_expired_listing';
+    const isDirectUpdateMode = isUpdateMode || isExpiredUpdateMode;
     const sourceListingState = String(snapshot.sourceListingState || state.sourceListingState || '').trim().toLowerCase();
     const publishButtonLabel = state.publicationSubmitting
-      ? (isUpdateMode ? 'Mise a jour...' : 'Publication...')
-      : (isUpdateMode ? 'Mettre a jour la fiche' : 'Publier en draft');
-    const modeNotes = isUpdateMode
+      ? (isDirectUpdateMode ? 'Mise a jour...' : 'Publication...')
+      : (isExpiredUpdateMode ? 'Mettre a jour la fiche expiree' : (isUpdateMode ? 'Mettre a jour la fiche' : 'Publier en draft'));
+    const modeNotes = isDirectUpdateMode
       ? [
-        'Mode mise a jour : cible la fiche chargee et non un nouveau draft.',
+        isExpiredUpdateMode
+          ? 'Mode fiche expiree : met a jour la fiche expiree chargee, sans publication automatique.'
+          : 'Mode mise a jour : cible la fiche chargee et non un nouveau draft.',
         'Scope actuel : titre, description, tags, images, video et ALT.',
       ]
       : [
@@ -64,24 +68,25 @@
     const publicationError = String(state.publicationError || '').trim();
 
     host.innerHTML = `
-      <div class="etsy-api-publication-layout ${isUpdateMode ? 'etsy-api-publication-layout-update' : 'etsy-api-publication-layout-create'}">
-        <section class="etsy-api-publication-card ${isUpdateMode ? 'etsy-api-publication-card-update' : ''}">
+      <div class="etsy-api-publication-layout ${isDirectUpdateMode ? 'etsy-api-publication-layout-update' : 'etsy-api-publication-layout-create'}">
+        <section class="etsy-api-publication-card ${isDirectUpdateMode ? 'etsy-api-publication-card-update' : ''}">
           <div class="etsy-api-publication-card-head">
             <div>
               <h4>Plan de publication Etsy</h4>
-              <p>${isUpdateMode ? 'Mise a jour editoriale et media de la fiche chargee.' : 'Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.'}</p>
+              <p>${isDirectUpdateMode ? 'Mise a jour editoriale et media de la fiche chargee.' : 'Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.'}</p>
             </div>
-            <button class="btn ${isUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
+            <button class="btn ${isDirectUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
           </div>
           <div class="etsy-api-publication-mode-switch" role="group" aria-label="Mode publication Etsy">
-            <button class="btn ${!isUpdateMode ? 'btn-accent' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="create_draft">Creation draft</button>
+            <button class="btn ${!isDirectUpdateMode ? 'btn-accent' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="create_draft">Creation draft</button>
             <button class="btn ${isUpdateMode ? 'btn-warn' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="update_listing">Mise a jour fiche</button>
+            <button class="btn ${isExpiredUpdateMode ? 'btn-warn' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="update_expired_listing">Mise a jour fiche expiree</button>
           </div>
-          ${isUpdateMode ? `<div class="etsy-api-publication-mode-banner">Mode mise a jour actif : la fiche Etsy chargee sera modifiee directement.</div>` : ''}
+          ${isDirectUpdateMode ? `<div class="etsy-api-publication-mode-banner">${isExpiredUpdateMode ? 'Mode fiche expiree actif : la fiche Etsy expiree chargee sera modifiee sans publication automatique.' : 'Mode mise a jour actif : la fiche Etsy chargee sera modifiee directement.'}</div>` : ''}
           <div class="etsy-api-publication-meta">
             <span class="etsy-api-publication-meta-item">Listing source: ${escapeHtml(snapshot.sourceListingId || 'aucun')}</span>
             <span class="etsy-api-publication-meta-item">Etat source: ${escapeHtml(sourceListingState || 'inconnu')}</span>
-            <span class="etsy-api-publication-meta-item">Mode: ${isUpdateMode ? 'mise a jour de fiche' : 'duplication en draft'}</span>
+            <span class="etsy-api-publication-meta-item">Mode: ${isExpiredUpdateMode ? 'mise a jour de fiche expiree' : (isUpdateMode ? 'mise a jour de fiche' : 'duplication en draft')}</span>
           </div>
           ${warnings.length ? `<div class="etsy-api-publication-notes">${warnings.map((warning) => `<p>${escapeHtml(warning)}</p>`).join('')}</div>` : ''}
           ${validationErrors.length ? `<div class="etsy-api-publication-errors">${validationErrors.map((error) => `<p>${escapeHtml(error)}</p>`).join('')}</div>` : ''}

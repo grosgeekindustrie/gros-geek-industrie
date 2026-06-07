@@ -38,6 +38,19 @@
       : [];
   }
 
+  function buildLocalVideoPayload(state) {
+    return Array.isArray(state?.localVideos)
+      ? state.localVideos.map((video) => ({
+          local_id: video.local_id,
+          name: video.name,
+          width: video.width,
+          height: video.height,
+          media_type: video.media_type,
+          pending_upload: true,
+        }))
+      : [];
+  }
+
   function cacheTaxonomyEntries(prefix, entries) {
     const state = global.PipelineUIEtsyRuntime?.getWorkspaceState?.(prefix);
     if (!state || !Array.isArray(entries)) return [];
@@ -63,6 +76,7 @@
         media_order: state.mediaOrder,
         selected_pipeline_alt_media_keys: state.selectedPipelineAltMediaKeys || [],
         local_images: buildLocalImagePayload(state),
+        local_videos: buildLocalVideoPayload(state),
         active_step: state.activeStep || 'media',
         details_draft: state.detailsDraft || null,
         attributes_draft: state.attributesDraft || null,
@@ -80,6 +94,7 @@
     saveListingReference,
     restoreListingReference,
     buildLocalImagePayload,
+    buildLocalVideoPayload,
     cacheTaxonomyEntries,
     syncPayloadText,
   };

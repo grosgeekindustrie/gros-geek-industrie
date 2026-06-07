@@ -10,6 +10,10 @@
     tt: 'tabletop',
   });
 
+  function getActiveShopKey() {
+    return global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek';
+  }
+
   function splitScaleValues(rawValue) {
     return String(rawValue || '')
       .split(',')
@@ -44,16 +48,24 @@
     return String(rawValue || '')
       .replace(/\r\n/g, '\n')
       .trim()
-      .replace(/\n{3,}/g, TOP_LEVEL_BLOCK_SEPARATOR)
       .trim();
   }
 
   function resolveDescriptionFamilyFromPrefix(prefix = '') {
-    return PREFIX_TO_FAMILY[String(prefix || '').trim()] || 'collection';
+    const baseFamily = PREFIX_TO_FAMILY[String(prefix || '').trim()] || 'collection';
+    if (baseFamily === 'collection' && getActiveShopKey() === 'doublex') {
+      return 'collection_doublex';
+    }
+    return baseFamily;
   }
 
   function getFixedBlocksForFamilyAndLanguage(family = '', language = 'fr') {
     const families = templates.FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE || {};
+    return Array.isArray(families?.[family]?.[language]) ? families[family][language] : [];
+  }
+
+  function getIntroBlocksForFamilyAndLanguage(family = '', language = 'fr') {
+    const families = templates.INTRO_FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE || {};
     return Array.isArray(families?.[family]?.[language]) ? families[family][language] : [];
   }
 
@@ -106,11 +118,87 @@
     };
   }
 
+  function stripLeadingFixedBlocks(rawValue, family = '', language = 'fr') {
+    const normalized = normalizeTopLevelBlockText(rawValue);
+    const introBlocks = getIntroBlocksForFamilyAndLanguage(family, language);
+    if (!normalized || !introBlocks.length) {
+      return {
+        description: normalized,
+        stripped: false,
+        family,
+        language,
+      };
+    }
+
+    const introJoined = joinTopLevelBlocks(introBlocks);
+    if (!introJoined) {
+      return {
+        description: normalized,
+        stripped: false,
+        family,
+        language,
+      };
+    }
+
+    if (normalized === introJoined) {
+      return {
+        description: '',
+        stripped: true,
+        family,
+        language,
+      };
+    }
+
+    const prefix = `${introJoined}${TOP_LEVEL_BLOCK_SEPARATOR}`;
+    if (normalized.startsWith(prefix)) {
+      return {
+        description: normalized.slice(prefix.length).trim(),
+        stripped: true,
+        family,
+        language,
+      };
+    }
+
+    return {
+      description: normalized,
+      stripped: false,
+      family,
+      language,
+    };
+  }
+
+  function stripDecorativeFixedBlocks(rawValue, family = '', language = 'fr') {
+    const candidateFamilies = family === 'collection_doublex'
+      ? ['collection_doublex', 'collection']
+      : [family];
+
+    for (const candidateFamily of candidateFamilies) {
+      const withoutIntro = stripLeadingFixedBlocks(rawValue, candidateFamily, language);
+      const withoutTrailing = stripTrailingFixedBlocks(withoutIntro.description, candidateFamily, language);
+      if (withoutIntro.stripped || withoutTrailing.stripped) {
+        return {
+          description: withoutTrailing.description,
+          stripped: true,
+          family: candidateFamily,
+          language,
+        };
+      }
+    }
+
+    return {
+      description: normalizeTopLevelBlockText(rawValue),
+      stripped: false,
+      family,
+      language,
+    };
+  }
+
   function buildTranslatedDescriptionWithFixedBlocks(dynamicDescription, family = '', language = '') {
-    const dynamicOnly = stripTrailingFixedBlocks(dynamicDescription, family, language).description;
+    const dynamicOnly = stripDecorativeFixedBlocks(dynamicDescription, family, language).description;
+    const introBlocks = getIntroBlocksForFamilyAndLanguage(family, language);
     const fixedBlocks = getFixedBlocksForFamilyAndLanguage(family, language);
-    if (!fixedBlocks.length) return dynamicOnly;
-    return joinTopLevelBlocks([dynamicOnly, ...fixedBlocks]);
+    if (!introBlocks.length && !fixedBlocks.length) return dynamicOnly;
+    return joinTopLevelBlocks([...introBlocks, dynamicOnly, ...fixedBlocks]);
   }
 
   function buildDescriptionAssemblyContext(prefix) {
@@ -143,15 +231,21 @@
     const rawDynamicDescription = stripLeadingDescriptionHeading(dynamicDescription);
     if (!rawDynamicDescription) return '';
 
+    const family = resolveDescriptionFamilyFromPrefix(prefix);
     const ctx = buildDescriptionAssemblyContext(prefix);
-    const fixedClientBlocks = Array.isArray(templates.CLIENT_INFORMATION_BLOCKS)
-      ? templates.CLIENT_INFORMATION_BLOCKS
-      : [];
+    const introBlocks = family === 'collection'
+      ? [buildWhatYouReceiveBlock(ctx)]
+      : getIntroBlocksForFamilyAndLanguage(family, 'fr');
+    const fixedClientBlocks = family === 'collection'
+      ? [
+          String(templates.EXPERIENCE_BLOCK || '').trim(),
+          ...(Array.isArray(templates.CLIENT_INFORMATION_BLOCKS) ? templates.CLIENT_INFORMATION_BLOCKS : []),
+        ]
+      : getFixedBlocksForFamilyAndLanguage(family, 'fr');
 
     return joinTopLevelBlocks([
-      buildWhatYouReceiveBlock(ctx),
+      ...introBlocks,
       rawDynamicDescription,
-      String(templates.EXPERIENCE_BLOCK || '').trim(),
       ...fixedClientBlocks,
     ]);
   }
@@ -162,8 +256,11 @@
     joinTopLevelBlocks,
     normalizeTopLevelBlockText,
     resolveDescriptionFamilyFromPrefix,
+    getIntroBlocksForFamilyAndLanguage,
     getFixedBlocksForFamilyAndLanguage,
+    stripLeadingFixedBlocks,
     stripTrailingFixedBlocks,
+    stripDecorativeFixedBlocks,
     buildTranslatedDescriptionWithFixedBlocks,
     buildDescriptionAssemblyContext,
     stripLeadingDescriptionHeading,

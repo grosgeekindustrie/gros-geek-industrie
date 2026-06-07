@@ -84,6 +84,17 @@
 
   const extractListingId = EtsyData.extractListingId;
 
+  function resolveTargetShopKey(target = 'primary') {
+    return target === 'doublex' ? 'doublex' : 'grosgeek';
+  }
+
+  function buildScopedRoute(route = '', target = 'primary') {
+    const normalizedRoute = String(route || '').trim();
+    if (!normalizedRoute) return '';
+    const separator = normalizedRoute.includes('?') ? '&' : '?';
+    return `${normalizedRoute}${separator}shop=${encodeURIComponent(resolveTargetShopKey(target))}`;
+  }
+
   function buildRouteWithListingId(routeKey, target = 'primary') {
     const route = ROUTES[routeKey];
     if (!route) {
@@ -99,7 +110,10 @@
       throw new Error('Listing ID Etsy introuvable dans la référence fournie');
     }
 
-    const params = new URLSearchParams({ listing_id: listingId });
+    const params = new URLSearchParams({
+      shop: resolveTargetShopKey(target),
+      listing_id: listingId,
+    });
     return `${route}?${params.toString()}`;
   }
 
@@ -224,7 +238,7 @@
       throw new Error(`Route Etsy inconnue: ${routeKey}`);
     }
 
-    const payload = await readJson(route);
+    const payload = await readJson(buildScopedRoute(route, target));
     renderJsonOutput(payload, target);
     return payload;
   }
@@ -239,9 +253,20 @@
     const { silent = false } = options;
 
     try {
-      const payload = await readJson(ROUTES.status);
-      renderAuthStatus(payload);
-      return payload;
+      const primaryPayload = await readJson(buildScopedRoute(ROUTES.status, 'primary'));
+      const doublexPayload = await readJson(buildScopedRoute(ROUTES.status, 'doublex'));
+      renderAuthStatus(primaryPayload);
+      const nodes = getNodes();
+      if (nodes.doublexPanel) {
+        nodes.doublexConfigured.textContent = doublexPayload.configured ? STATUS_LABELS.configuredYes : STATUS_LABELS.configuredNo;
+        nodes.doublexConnected.textContent = doublexPayload.connected ? STATUS_LABELS.connectedYes : STATUS_LABELS.connectedNo;
+        nodes.doublexPending.textContent = doublexPayload.pending ? STATUS_LABELS.pendingYes : STATUS_LABELS.pendingNo;
+        nodes.doublexRedirect.textContent = doublexPayload.redirectUri || '—';
+        nodes.doublexScopes.textContent = Array.isArray(doublexPayload.scopes) && doublexPayload.scopes.length ? doublexPayload.scopes.join(', ') : '—';
+        nodes.doublexExpires.textContent = formatDateTime(doublexPayload.expiresAt);
+        nodes.doublexDetails.textContent = buildDetailsLines(doublexPayload);
+      }
+      return { primary: primaryPayload, doublex: doublexPayload };
     } catch (error) {
       if (!silent) {
         global.showToast?.(`OAuth Etsy : ${error.message}`, '#ff4757');
@@ -252,7 +277,7 @@
 
   async function startEtsyAuth() {
     try {
-      const payload = await readJson(ROUTES.start);
+      const payload = await readJson(buildScopedRoute(ROUTES.start, 'primary'));
       if (!payload?.authUrl) {
         throw new Error('URL d’autorisation Etsy manquante');
       }
@@ -264,7 +289,7 @@
 
   async function startEtsyAuthDoublex() {
     try {
-      const payload = await readJson(ROUTES.startDoublex || `${ROUTES.start}?browser=opera`);
+      const payload = await readJson(`${buildScopedRoute(ROUTES.start, 'doublex')}&browser=opera`);
       if (!payload?.authUrl) {
         throw new Error('URL d’autorisation Etsy manquante');
       }

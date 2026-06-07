@@ -313,6 +313,8 @@
       pushSnapshotLine('Version', document.getElementById('tt-fVersion')?.value);
       pushSnapshotLine('Archétypes', global.getArchetypes());
       pushSnapshotLine('SEO élargies', document.getElementById('tt-fArchSeo')?.value);
+      pushSnapshotLine('Particularités', document.getElementById('tt-fParticularites')?.value);
+      pushSnapshotLine('Consignes externes', document.getElementById('tt-fConsignesExternes')?.value);
       pushSnapshotLine('Notes', document.getElementById('tt-fNotes')?.value);
     } else {
       pushSnapshotLine('Medium', collectionData.medium || global.getMediums());
@@ -323,6 +325,7 @@
       pushSnapshotLine('SEO élargies', document.getElementById('col-fArchSeo')?.value);
       pushSnapshotLine('License sensible', document.getElementById('col-fLicense')?.checked ? 'oui' : 'non');
       pushSnapshotLine('Particularités', document.getElementById('col-fParticularites')?.value);
+      pushSnapshotLine('Consignes externes', document.getElementById('col-fConsignesExternes')?.value);
       pushSnapshotLine('Description figurine', document.getElementById('col-fDescriptionFigurine')?.value);
       pushSnapshotLine('Résumé personnage', document.getElementById('col-fResumePersonnage')?.value);
       pushSnapshotLine('Connexes prioritaires', document.getElementById('col-fConnexesPrioritaires')?.value);

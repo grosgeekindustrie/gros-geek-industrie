@@ -14,6 +14,7 @@ Nombre de pièces : [[PIECES]]
 Pose : [[POSE]]  
 Archétypes : [[ARCHETYPES]]  
 Particularités : [[PARTICULARITES]]  
+Consignes externes : [[CONSIGNES_EXTERNES]]  
 Description figurine : [[DESCRIPTION_FIGURINE]]  
 Résumé personnage : [[RESUME_PERSONNAGE]]  
 Connexes prioritaires : [[CONNEXES_PRIORITAIRES]]  
@@ -74,6 +75,28 @@ Règles absolues :
 - si un élément visuel n’est pas visible ou explicitement décrit, tu ne l’inventes pas
 - tu n’utilises pas les tags ni le titre comme matière descriptive
 - si `[[ARCHETYPES]]` contient aussi des fragments SEO, tu n’utilises que la partie utile à la caractérisation, jamais les mots-clés SEO comme matière rédactionnelle
+
+---
+
+## CONSIGNES EXTERNES
+
+Le champ `[[CONSIGNES_EXTERNES]]` contient des consignes éditoriales complémentaires propres à ce lancement.
+
+Ces consignes peuvent par exemple :
+- faire ressortir un point important
+- demander d'ajouter, retirer ou ajuster un angle
+- demander de faire apparaître une information dans une partie précise de la sortie
+- demander d'ajouter un bloc spécifique
+- signaler une nuance importante sur la figurine, ses variantes, sa présentation ou son usage
+
+Tu dois les prendre en compte avec sérieux et les intégrer intelligemment dans ta sortie.
+
+Règles :
+- ne recopie jamais textuellement la consigne comme si elle devait apparaître brute dans la fiche
+- transforme toujours la consigne en rédaction naturelle, exploitable et cohérente
+- respecte exactement la demande quand elle précise où ou comment un élément doit apparaître
+- n'utilise pas ces consignes pour inventer un détail visuel absent des données reçues
+- si le champ est vide, ignore-le
 
 ---
 

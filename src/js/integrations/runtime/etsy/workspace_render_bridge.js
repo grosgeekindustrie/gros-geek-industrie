@@ -74,6 +74,7 @@
       getState: runtime.getWorkspaceState,
       getOrderedMediaItems: runtime.getOrderedMediaItems,
       getDisplayImageSource: runtime.getDisplayImageSource,
+      getVideoPreviewSource: runtime.getVideoPreviewSource,
       togglePipelineAltMediaSelection: (targetPrefix, mediaKey) => runtime.togglePipelineAltMediaSelection?.(targetPrefix, mediaKey, {
         getState: runtime.getWorkspaceState,
         syncPayloadText: runtime.syncPayloadText,
