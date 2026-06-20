@@ -1304,6 +1304,14 @@ textarea:not([data-no-autoresize="true"]) {
   gap: 0.75rem;
 }
 
+.etsy-api-publication-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .etsy-api-attributes-card-head h4 {
   margin: 0 0 0.2rem;
 }
@@ -2179,6 +2187,19 @@ textarea:not([data-no-autoresize="true"]) {
 @media (max-width: 760px) {
   .etsy-api-media-summary {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .etsy-api-publication-card-head {
+    flex-direction: column;
+  }
+
+  .etsy-api-publication-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .etsy-api-publication-actions .btn {
+    flex: 1 1 100%;
   }
 
   .etsy-api-category-card,

@@ -296,4 +296,4 @@ Vérifier :
 - 26 tags
 - 1 par ligne
 - ordre alphabétique
-- pas d’explication
+- aucune explication

@@ -11,7 +11,7 @@
   const PREFIXES = ['tt', 'col'];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
-  const TRANSLATION_MODEL = 'claude-sonnet-4-5';
+  const TRANSLATION_MODEL = 'claude-sonnet-4-6';
   const DEFAULT_BULK_STATUS = 'En attente dâ€™un lancement global EN / DE / ES.';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
@@ -541,7 +541,7 @@
       || getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
     return {
       family,
-      description: String(stripped?.description ?? rawDescription ?? '').trim(),
+      description: String(stripped?.description ?? rawDescription ?? '').replace(/\r\n?/g, '\n'),
       stripped: Boolean(stripped?.stripped),
     };
   };
@@ -549,7 +549,7 @@
   const buildInjectedTranslationDescription = (prefix, language, dynamicDescription) => {
     const family = resolveTranslationFamily(prefix);
     return getDescriptionAssembly().buildTranslatedDescriptionWithFixedBlocks?.(dynamicDescription, family, language)
-      || String(dynamicDescription || '').trim();
+      || String(dynamicDescription || '').replace(/\r\n?/g, '\n');
   };
 
   const buildTranslationCacheBlocks = (prefix, listingDraft) => {

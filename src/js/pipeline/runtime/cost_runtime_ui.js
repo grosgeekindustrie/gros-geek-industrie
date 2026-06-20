@@ -6,7 +6,7 @@
 
   function getCostRatesForAgent(agentId = '') {
     const model = String(global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
-    const normalizedModel = model.trim().toLowerCase();
+    const normalizedModel = String(global.normalizeClaudeModelId?.(model) || model).trim().toLowerCase();
 
     if (normalizedModel.includes('haiku')) {
       return {
@@ -17,7 +17,12 @@
       };
     }
 
-    if (normalizedModel.includes('opus-4-5')) {
+    if (
+      normalizedModel.includes('opus-4-5')
+      || normalizedModel.includes('opus-4-6')
+      || normalizedModel.includes('opus-4-7')
+      || normalizedModel.includes('opus-4-8')
+    ) {
       return {
         input: 5.00 / 1_000_000,
         cacheWrite: 6.25 / 1_000_000,
@@ -122,7 +127,8 @@
   }
 
   function getCostModelName(agentId = '') {
-    return String(global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
+    const rawModel = String(global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
+    return String(global.normalizeClaudeModelId?.(rawModel) || rawModel);
   }
 
   function getCostEntryType(entry = {}) {

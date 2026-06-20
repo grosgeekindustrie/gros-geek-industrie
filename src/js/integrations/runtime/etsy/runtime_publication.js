@@ -73,6 +73,32 @@
     return 'create_draft';
   }
 
+  function normalizeShopKey(shopKey = '') {
+    return String(shopKey || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+  }
+
+  function getPublicationTargetShopKey(state, deps = {}, options = {}) {
+    const explicitTarget = String(options?.targetShopKey || '').trim();
+    if (explicitTarget) return normalizeShopKey(explicitTarget);
+
+    const sourceShopKey = String(state?.sourceShopKey || '').trim();
+    if (sourceShopKey) return normalizeShopKey(sourceShopKey);
+
+    return normalizeShopKey(deps.getActiveShopKey?.() || global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek');
+  }
+
+  function getPublicationModeFromRequest(state, options = {}) {
+    const requestedMode = String(options?.modeOverride || '').trim();
+    if (requestedMode === 'update_listing') return 'update_listing';
+    if (requestedMode === 'update_expired_listing') return 'update_expired_listing';
+    if (requestedMode === 'create_draft') return 'create_draft';
+    return getPublicationMode(state);
+  }
+
+  function getShopLabel(shopKey = '') {
+    return normalizeShopKey(shopKey) === 'doublex' ? 'DoubleXindustrie' : 'Gros Geek Industrie';
+  }
+
   function setPublicationMode(prefix, nextMode, deps = {}) {
     const runtime = global.PipelineUIEtsyRuntime || {};
     const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
@@ -83,7 +109,7 @@
     runtime.workspaceRenderPublicationStep?.(prefix);
   }
 
-  async function publishDraftListing(prefix, deps = {}) {
+  async function publishDraftListing(prefix, deps = {}, options = {}) {
     const runtime = global.PipelineUIEtsyRuntime || {};
     const state = deps.getState?.(prefix) || runtime.getWorkspaceState?.(prefix);
     if (!state) return;
@@ -92,7 +118,9 @@
     runtime.syncPayloadText?.(state);
 
     const snapshot = buildPublicationPayloadSnapshot(state);
-    const publicationMode = getPublicationMode(state);
+    const publicationMode = getPublicationModeFromRequest(state, options);
+    const targetShopKey = getPublicationTargetShopKey(state, deps, options);
+    const targetShopLabel = getShopLabel(targetShopKey);
     state.publicationSubmitting = true;
     state.publicationResult = null;
     state.publicationError = '';
@@ -117,24 +145,27 @@
           ...(snapshot.payload || {}),
           targetListingId: String(snapshot.sourceListingId || '').trim(),
           mode: 'update_listing',
+          shopKey: targetShopKey,
         })
         : publicationMode === 'update_expired_listing'
           ? await deps.updateExpiredListing?.({
           ...(snapshot.payload || {}),
           targetListingId: String(snapshot.sourceListingId || '').trim(),
           mode: 'update_expired_listing',
+          shopKey: targetShopKey,
         })
           : await deps.createDraftListing?.({
             ...(snapshot.payload || {}),
             mode: 'create_draft',
+            shopKey: targetShopKey,
           });
       state.publicationResult = response || null;
       state.publicationError = '';
       runtime.workspaceSetStatus?.(
         prefix,
         publicationMode === 'update_expired_listing'
-          ? 'Fiche Etsy expiree mise a jour.'
-          : (publicationMode === 'update_listing' ? 'Fiche Etsy mise a jour.' : 'Draft Etsy cree.')
+          ? `Fiche Etsy expiree mise a jour sur ${targetShopLabel}.`
+          : (publicationMode === 'update_listing' ? `Fiche Etsy mise a jour sur ${targetShopLabel}.` : `Draft Etsy cree sur ${targetShopLabel}.`)
       );
     } catch (error) {
       state.publicationResult = null;
@@ -161,6 +192,7 @@
     ...EtsyRuntime,
     buildPublicationPayloadSnapshot,
     getPublicationMode,
+    getPublicationTargetShopKey,
     setPublicationMode,
     publishDraftListing,
   };

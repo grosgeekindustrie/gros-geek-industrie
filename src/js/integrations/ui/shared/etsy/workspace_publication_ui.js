@@ -10,6 +10,18 @@
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
   const MAX_DEBUG_STRING_LENGTH = 250;
+  const SHOP_LABELS = Object.freeze({
+    grosgeek: 'Gros Geek Industrie',
+    doublex: 'DoubleXindustrie',
+  });
+
+  function normalizeShopKey(shopKey = '') {
+    return String(shopKey || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+  }
+
+  function getShopLabel(shopKey = '') {
+    return SHOP_LABELS[normalizeShopKey(shopKey)] || SHOP_LABELS.grosgeek;
+  }
 
   function getDisplayPayloadValue(value, keyPath = []) {
     if (typeof value === 'string') {
@@ -47,10 +59,20 @@
     const isUpdateMode = publicationMode === 'update_listing';
     const isExpiredUpdateMode = publicationMode === 'update_expired_listing';
     const isDirectUpdateMode = isUpdateMode || isExpiredUpdateMode;
+    const sourceShopKey = normalizeShopKey(state.sourceShopKey || deps.getActiveShopKey?.() || 'grosgeek');
+    const primaryTargetShopKey = normalizeShopKey(
+      deps.getPublicationTargetShopKey?.(state, {
+        getActiveShopKey: deps.getActiveShopKey,
+      }) || sourceShopKey
+    );
+    const canTransferToDoublex = sourceShopKey === 'grosgeek';
+    const transferTargetShopKey = 'doublex';
+    const transferDisabled = state.publicationSubmitting || publicationMode !== 'create_draft';
     const sourceListingState = String(snapshot.sourceListingState || state.sourceListingState || '').trim().toLowerCase();
     const publishButtonLabel = state.publicationSubmitting
       ? (isDirectUpdateMode ? 'Mise a jour...' : 'Publication...')
       : (isExpiredUpdateMode ? 'Mettre a jour la fiche expiree' : (isUpdateMode ? 'Mettre a jour la fiche' : 'Publier en draft'));
+    const transferButtonLabel = state.publicationSubmitting ? 'Publication DoubleX...' : 'Publier en draft sur DoubleX';
     const modeNotes = isDirectUpdateMode
       ? [
         isExpiredUpdateMode
@@ -60,6 +82,7 @@
       ]
       : [
         'Mode creation draft : duplique la fiche chargee vers un nouveau draft Etsy.',
+        ...(canTransferToDoublex ? ['Transfert inter-boutique : ce contexte Gros Geek peut aussi creer un draft sur DoubleXindustrie.'] : []),
       ];
     const payloadText = JSON.stringify(getDisplayPayloadValue(snapshot.payload || {}), null, 2);
     const validationErrors = Array.isArray(snapshot.validationErrors) ? snapshot.validationErrors : [];
@@ -75,7 +98,10 @@
               <h4>Plan de publication Etsy</h4>
               <p>${isDirectUpdateMode ? 'Mise a jour editoriale et media de la fiche chargee.' : 'Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.'}</p>
             </div>
-            <button class="btn ${isDirectUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
+            <div class="etsy-api-publication-actions">
+              <button class="btn ${isDirectUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" data-target-shop="${escapeHtml(primaryTargetShopKey)}" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
+              ${canTransferToDoublex ? `<button class="btn btn-muted" type="button" data-js="etsy-publication-transfer-submit" data-target-shop="${transferTargetShopKey}" ${transferDisabled ? 'disabled' : ''}>${transferButtonLabel}</button>` : ''}
+            </div>
           </div>
           <div class="etsy-api-publication-mode-switch" role="group" aria-label="Mode publication Etsy">
             <button class="btn ${!isDirectUpdateMode ? 'btn-accent' : 'btn-muted'}" type="button" data-js="etsy-publication-mode" data-mode="create_draft">Creation draft</button>
@@ -85,6 +111,8 @@
           ${isDirectUpdateMode ? `<div class="etsy-api-publication-mode-banner">${isExpiredUpdateMode ? 'Mode fiche expiree actif : la fiche Etsy expiree chargee sera modifiee sans publication automatique.' : 'Mode mise a jour actif : la fiche Etsy chargee sera modifiee directement.'}</div>` : ''}
           <div class="etsy-api-publication-meta">
             <span class="etsy-api-publication-meta-item">Listing source: ${escapeHtml(snapshot.sourceListingId || 'aucun')}</span>
+            <span class="etsy-api-publication-meta-item">Boutique source: ${escapeHtml(getShopLabel(sourceShopKey))}</span>
+            <span class="etsy-api-publication-meta-item">Boutique cible: ${escapeHtml(getShopLabel(primaryTargetShopKey))}</span>
             <span class="etsy-api-publication-meta-item">Etat source: ${escapeHtml(sourceListingState || 'inconnu')}</span>
             <span class="etsy-api-publication-meta-item">Mode: ${isExpiredUpdateMode ? 'mise a jour de fiche expiree' : (isUpdateMode ? 'mise a jour de fiche' : 'duplication en draft')}</span>
           </div>
@@ -112,7 +140,14 @@
       });
     });
     host.querySelector('[data-js="etsy-publication-submit"]')?.addEventListener('click', () => {
-      deps.publishDraftListing?.(prefix);
+      const targetShopKey = host.querySelector('[data-js="etsy-publication-submit"]')?.dataset.targetShop || primaryTargetShopKey;
+      deps.publishDraftListing?.(prefix, { targetShopKey });
+    });
+    host.querySelector('[data-js="etsy-publication-transfer-submit"]')?.addEventListener('click', () => {
+      deps.publishDraftListing?.(prefix, {
+        targetShopKey: transferTargetShopKey,
+        modeOverride: 'create_draft',
+      });
     });
   }
 

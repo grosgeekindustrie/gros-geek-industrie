@@ -18,6 +18,23 @@
   const DEFAULT_PROFILE_NAME = 'hobbyiste';
   const DEFAULT_VERSION_LABEL = 'FIGURINE';
   const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
+  const SUPPORTED_CLAUDE_MODELS = Object.freeze([
+    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { value: 'claude-opus-4-8', label: 'Claude Opus 4.8' },
+    { value: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
+    { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+    { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+    { value: 'claude-sonnet-4-0', label: 'Claude Sonnet 4.0' },
+    { value: 'claude-opus-4-1', label: 'Claude Opus 4.1' },
+    { value: 'claude-opus-4-0', label: 'Claude Opus 4.0' },
+    { value: 'claude-3-7-sonnet-latest', label: 'Claude Sonnet 3.7' },
+    { value: 'claude-3-5-sonnet-latest', label: 'Claude Sonnet 3.5' },
+  ]);
+  const LEGACY_CLAUDE_MODEL_ALIASES = Object.freeze({
+    'claude-opus-4-5-20251101': 'claude-opus-4-5',
+  });
+  const SUPPORTED_CLAUDE_MODEL_IDS = new Set(SUPPORTED_CLAUDE_MODELS.map((entry) => entry.value));
   const CLAUDE_MODEL_SELECT_IDS = Object.freeze(['tt-launch-model', 'col-launch-model']);
   const DOUBLEX_PROMPT_TOGGLE_IDS = Object.freeze(['tt-doublex-prompt-toggle', 'col-doublex-prompt-toggle']);
   const FETCH_STATUS = {
@@ -529,8 +546,21 @@
     writeAppSettings(settings);
   };
 
+  function normalizeClaudeModelId(value = '') {
+    const rawValue = String(value || '').trim();
+    if (!rawValue) return DEFAULT_CLAUDE_MODEL;
+    const aliasedValue = LEGACY_CLAUDE_MODEL_ALIASES[rawValue] || rawValue;
+    return SUPPORTED_CLAUDE_MODEL_IDS.has(aliasedValue) ? aliasedValue : DEFAULT_CLAUDE_MODEL;
+  }
+
+  function ensureClaudeModelOptions() {
+    CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
+      renderSelectOptions(id, SUPPORTED_CLAUDE_MODELS, getElementById(id)?.value || DEFAULT_CLAUDE_MODEL);
+    });
+  }
+
   function syncClaudeModelSelects(nextValue = '', sourceId = '') {
-    const normalizedValue = String(nextValue || '').trim() || DEFAULT_CLAUDE_MODEL;
+    const normalizedValue = normalizeClaudeModelId(nextValue);
     CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
       if (!id || id === sourceId) return;
       const select = getElementById(id);
@@ -541,10 +571,10 @@
   function getSelectedClaudeModel() {
     const currentPrefix = getCurrentMode() === 'collection' ? 'col' : 'tt';
     const currentSelect = getElementById(`${currentPrefix}-launch-model`);
-    const currentValue = String(currentSelect?.value || '').trim();
+    const currentValue = normalizeClaudeModelId(currentSelect?.value || '');
     if (currentValue) return currentValue;
 
-    const settingsValue = String(readAppSettings().selectedClaudeModel || '').trim();
+    const settingsValue = normalizeClaudeModelId(readAppSettings().selectedClaudeModel || '');
     return settingsValue || DEFAULT_CLAUDE_MODEL;
   }
 
@@ -744,6 +774,13 @@
       Object.assign(base, relaunchContext);
     }
 
+    if (agentId === 'description' && String(base.relaunch_internal_instruction || '').trim()) {
+      base.correction = [
+        String(base.correction || '').trim(),
+        String(base.relaunch_internal_instruction || '').trim(),
+      ].filter(Boolean).join('\n\n');
+    }
+
     return base;
   }
 
@@ -803,6 +840,7 @@
   function loadFormState() {
     const currentMode = getCurrentMode();
     const echellesApi = getEchellesApi();
+    ensureClaudeModelOptions();
     renderDeclarativeFormCatalogs({ shouldSave: false });
 
     try {
@@ -936,7 +974,7 @@
       if (!select) return;
       select.addEventListener('change', () => {
         const settings = readAppSettings();
-        settings.selectedClaudeModel = String(select.value || '').trim() || DEFAULT_CLAUDE_MODEL;
+        settings.selectedClaudeModel = normalizeClaudeModelId(select.value || '');
         writeAppSettings(settings);
         syncClaudeModelSelects(settings.selectedClaudeModel, id);
       });
@@ -1064,7 +1102,10 @@
       if (shopUrlEl) shopUrlEl.value = shopUrls[activeShopKey] || settings.shopUrl || DEFAULT_SHOP_URLS[activeShopKey] || DEFAULT_SHOP_URL;
       syncDoublexPromptToggleUi();
 
-      const selectedClaudeModel = String(settings.selectedClaudeModel || '').trim() || DEFAULT_CLAUDE_MODEL;
+      ensureClaudeModelOptions();
+      const selectedClaudeModel = normalizeClaudeModelId(settings.selectedClaudeModel || '');
+      settings.selectedClaudeModel = selectedClaudeModel;
+      writeAppSettings(settings);
       CLAUDE_MODEL_SELECT_IDS.forEach((id) => {
         const select = getElementById(id);
         if (select) select.value = selectedClaudeModel;
@@ -1149,6 +1190,7 @@
     COLLECTION_FORM_FIELDS,
     getArchetypes,
     getSelectedClaudeModel,
+    normalizeClaudeModelId,
     getMediums,
     getCollectionData,
     getCollectionMediumSubcategoryValues,

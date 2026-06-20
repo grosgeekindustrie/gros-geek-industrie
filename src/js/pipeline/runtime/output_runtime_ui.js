@@ -45,6 +45,10 @@
     if (!contentNode) return;
 
     contentNode.textContent = global.PipelineUIRender.formatFinalOutputText(key, content);
+    if (key === 'alt') {
+      const prefix = String(contentId || '').split('-').pop() || global.pfx?.() || '';
+      global.PipelineUIRender?.updateAltLengthMeta?.(prefix, content);
+    }
   }
 
   function refreshFinalOutputTabs(prefix) {
@@ -87,15 +91,18 @@
 
   function assembleFinal() {
     const prefix = global.pfx();
-    const titre = global.state.outputs.titre_valide || '';
+    const titre = global.PipelineUIRender?.sanitizeFinalOutputText?.('titre_valide', global.state.outputs.titre_valide || '') || '';
     const tags = global.state.outputs.tags || '';
     const dynamicDescription = global.state.outputs.description_assembled || '';
-    const desc = global.buildFinalPipelineDescription?.(prefix, dynamicDescription) || dynamicDescription;
-    const alt = global.state.outputs.alt || '';
+    const assembledDescription = global.buildFinalPipelineDescription?.(prefix, dynamicDescription) || dynamicDescription;
+    const desc = global.PipelineUIRender?.sanitizeFinalOutputText?.('description_final', assembledDescription) || '';
+    const alt = global.PipelineUIRender?.sanitizeFinalOutputText?.('alt', global.state.outputs.alt || '') || '';
 
     if (!titre && !tags && !desc && !alt) return;
 
+    global.state.outputs.titre_valide = titre;
     global.state.outputs.description_final = desc;
+    global.state.outputs.alt = alt;
 
     setFinalSectionContent(`fs-titre-${prefix}`, `fc-titre-${prefix}`, titre, 'titre_valide');
     setFinalSectionContent(`fs-tags-${prefix}`, `fc-tags-${prefix}`, tags, 'tags');

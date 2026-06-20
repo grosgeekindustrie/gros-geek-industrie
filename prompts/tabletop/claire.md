@@ -574,6 +574,8 @@ Réponds uniquement avec le texte final destiné à Etsy.
 
 La sortie finale ne doit contenir aucun caractère `#`.
 
+Aucune explication
+
 La sortie finale ne doit contenir aucun titre markdown.
 
 La sortie finale ne doit contenir aucun séparateur markdown.
@@ -805,6 +807,7 @@ Tu dois donner envie par :
 * la peinture
 * l’usage de la pièce
 * la cohérence de l’univers
+* aucune explication
 
 Pas par la manipulation.
 Pas par le remplissage.

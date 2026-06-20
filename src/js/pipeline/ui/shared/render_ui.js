@@ -29,17 +29,59 @@
     return [...tags].sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }));
   }
 
+  function stripPromptArtifactLine(rawLine = '') {
+    return String(rawLine || '')
+      .trimEnd()
+      .replace(/^\s*#{1,6}\s*/, '')
+      .replace(/^\s*[-–—]{2,}\s*(.+?)\s*[-–—]{2,}\s*$/u, '$1');
+  }
+
+  function shouldKeepPromptArtifactLine(line = '', key = '') {
+    const compact = String(line || '').trim();
+    if (!compact) return true;
+    if (/^(sortie finale|output final)\s*:?\s*$/iu.test(compact)) return false;
+    if (/^[-–—_]{2,}\s*$/u.test(compact)) return false;
+    if (key === 'description_final') return !/^(description)\s*:?\s*$/iu.test(compact);
+    return !/^(titre|tags|description|balise alt|alt)\s*:?\s*$/iu.test(compact);
+  }
+
+  function sanitizeSharedFinalOutputText(key, text) {
+    if (key === 'tags') return String(text || '');
+
+    const normalized = String(text || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/\u00a0/g, ' ');
+
+    if (!normalized) return '';
+
+    const cleanedLines = normalized
+      .split('\n')
+      .map((line) => stripPromptArtifactLine(line))
+      .filter((line) => shouldKeepPromptArtifactLine(line, key));
+
+    if (key === 'description_final') {
+      return cleanedLines.join('\n');
+    }
+
+    const joined = cleanedLines.join('\n').trim();
+    if (!joined) return '';
+
+    return joined.replace(/\n{3,}/g, '\n\n');
+  }
+
   function formatTagsForDisplay(text) {
     const tags = sortTagValues(splitTagValues(text));
     return tags.map((tag, index) => `${tag}${index < tags.length - 1 ? ',' : ''}`).join('\n');
   }
 
   function formatFinalOutputText(key, text) {
-    return key === 'tags' ? formatTagsForDisplay(text) : String(text || '');
+    return key === 'tags'
+      ? formatTagsForDisplay(text)
+      : sanitizeSharedFinalOutputText(key, text);
   }
 
   function normalizeFinalOutputText(key, text) {
-    if (key !== 'tags') return String(text || '').trim();
+    if (key !== 'tags') return sanitizeSharedFinalOutputText(key, text);
     return sortTagValues(splitTagValues(text)).join(', ');
   }
 
@@ -320,6 +362,7 @@
     syncFinalPre,
     syncTagsOutputFromUI,
     formatFinalOutputText,
+    sanitizeFinalOutputText: sanitizeSharedFinalOutputText,
     updateAltLengthMeta,
     resizeTextarea,
     resizeAllTextareas,

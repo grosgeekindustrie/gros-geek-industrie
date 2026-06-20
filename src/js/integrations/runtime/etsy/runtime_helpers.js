@@ -142,7 +142,7 @@
 
     const title = String(seed.title || '').trim();
     const tagsCsv = String(seed.tagsCsv || '').trim();
-    const descriptionText = global.stripLeadingDescriptionHeading?.(seed.descriptionText) || String(seed.descriptionText || '').trim();
+    const descriptionText = String(seed.descriptionText || '').replace(/\r\n?/g, '\n');
     const altText = String(seed.altText || '').trim();
     if (!title && !tagsCsv && !descriptionText && !altText) return null;
 

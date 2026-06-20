@@ -408,9 +408,105 @@
     ].join('\n')),
   ]);
 
-  const COLLECTION_BOTTOM_FIXED_BLOCK = COLLECTION_BOTTOM_FIXED_BLOCKS.join(TOP_LEVEL_BLOCK_SEPARATOR);
-  const EXPERIENCE_BLOCK = COLLECTION_BOTTOM_FIXED_BLOCKS[0];
-  const CLIENT_INFORMATION_BLOCKS = Object.freeze(COLLECTION_BOTTOM_FIXED_BLOCKS.slice(1));
+  const COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2 = Object.freeze([
+    Object.freeze([
+      '🏆 L’expérience Gros Geek Industrie',
+      '',
+      'Plusieurs centaines d’avis 5 étoiles témoignent de la qualité et du sérieux de l’atelier.',
+      'Chaque figurine est préparée, nettoyée et testée à blanc afin de garantir un montage propre, fluide et agréable.',
+      'Les pièces fines ou fragiles peuvent être fournies en double lorsque cela est nécessaire, pour une expérience plus sereine et parfaitement adaptée aux peintres passionnés.',
+    ].join('\n')),
+    Object.freeze([
+      'ℹ️ Modèle non peint, garage kit à assembler',
+      '',
+      '✔️ Nos figurines sont livrées sous forme de garage kits : à assembler et à peindre soi-même.',
+      '🎨 Les visuels en couleur sont des rendus 3D présentés à titre d’inspiration.',
+      '🖌️ Exprime ta créativité et donne vie à ta pièce avec ta propre palette de couleurs.',
+    ].join('\n')),
+    Object.freeze([
+      '🎨 Résine 14K HD, détails nets et structure fiable',
+      '',
+      'Chaque modèle est imprimé en résine 14K haute définition afin de restituer les textures les plus fines, les gravures et les expressions.',
+      'Notre mélange exclusif de résine 14K renforcée améliore la solidité tout en apportant une légère flexibilité aux pièces fines, pour un équilibre idéal entre précision et durabilité.',
+    ].join('\n')),
+    Object.freeze([
+      '🖌️ Une résine pensée pour la peinture',
+      '',
+      'Résine photopolymère premium, parfaitement compatible avec les peintures acryliques.',
+      'Surface propre et lisse pour une excellente accroche des sous-couches, lavis, glacis et dégradés.',
+      'Chaque kit est pensé pour offrir une expérience de peinture fluide et agréable, quel que soit ton niveau.',
+    ].join('\n')),
+    Object.freeze([
+      '✅ Contrôle qualité rigoureux',
+      '',
+      'Chaque impression est inspectée pièce par pièce avant expédition.',
+      'Aucune figurine ne quitte l’atelier sans répondre à nos standards de finition :',
+      'pas de bulles, pas de déformation, ajustements testés à blanc.',
+    ].join('\n')),
+    Object.freeze([
+      '⚙️ Préparé, nettoyé, prêt à peindre',
+      '',
+      '• Supports retirés proprement',
+      '• Nettoyage complet et post-traitement UV',
+      '• Seul un léger ponçage de surface peut être nécessaire avant la sous-couche',
+      '🧼 Fini les longues heures de préparation : tu peux passer rapidement à la peinture.',
+    ].join('\n')),
+    Object.freeze([
+      '🧩 Assemblage simple et intuitif',
+      '',
+      'Les points de connexion sont pensés pour s’aligner naturellement.',
+      'Un léger ajustement peut être nécessaire selon le kit.',
+      '💡 Colle recommandée : super glue, cyanoacrylate.',
+    ].join('\n')),
+    Object.freeze([
+      '🎭 Poses expressives et équilibrées',
+      '',
+      'Chaque sculpture est sélectionnée pour son impact visuel :',
+      'posture maîtrisée, lignes lisibles et expressivité adaptée pour sublimer une vitrine ou un diorama.',
+    ].join('\n')),
+    Object.freeze([
+      '📏 Échelles disponibles',
+      '',
+      'Nos modèles sont disponibles en plusieurs formats standards, comme 1/6, 1/8, 1/10, afin de s’adapter à tous les espaces d’exposition : vitrines, dioramas ou jeux de figurines.',
+      '🛠️ Besoin d’une échelle personnalisée ? Contacte-moi simplement.',
+    ].join('\n')),
+    Object.freeze([
+      '🎁 Un projet personnel ou un cadeau unique',
+      '',
+      'Idéal pour les hobbyistes, peintres et collectionneurs.',
+      'À offrir ou à monter soi-même pour enrichir ta collection et ton expérience de peinture.',
+    ].join('\n')),
+    Object.freeze([
+      '♻️ Fan Art, respect et soutien aux artistes indépendants',
+      '',
+      'Nos modèles sont des créations Fan Art non officielles, réalisées par des sculpteurs indépendants.',
+      'Nous soutenons leur travail via des plateformes comme Patreon et MyMiniFactory, afin de contribuer à la création originale.',
+    ].join('\n')),
+    Object.freeze([
+      '💰 Une alternative artisanale et qualitative',
+      '',
+      'Certaines figurines officielles sont rares ou très coûteuses.',
+      'Nous proposons des modèles inspirés et accessibles, produits en France, avec des standards de finition dignes d’une pièce de qualité professionnelle.',
+    ].join('\n')),
+    Object.freeze([
+      '📩 Service client réactif',
+      '',
+      'Une question ? Une demande de personnalisation ?',
+      '📬 Contacte-moi directement sur Etsy, réponse rapide garantie avant ou après ta commande.',
+    ].join('\n')),
+    Object.freeze([
+      '⚖️ Usage et sécurité',
+      '',
+      '• Produit destiné aux collectionneurs et maquettistes',
+      '• Ne convient pas aux enfants de moins de 14 ans',
+      '• Résines conformes RoHS et REACH',
+      '• Fabrication additive selon la norme ISO/ASTM 52900',
+    ].join('\n')),
+  ]);
+
+  const COLLECTION_BOTTOM_FIXED_BLOCK = COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2.join(TOP_LEVEL_BLOCK_SEPARATOR);
+  const EXPERIENCE_BLOCK = COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2[0];
+  const CLIENT_INFORMATION_BLOCKS = Object.freeze(COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2.slice(1));
   const TABLETOP_BOTTOM_FIXED_BLOCKS_EN = Object.freeze([
     Object.freeze([
       '🏆 The Gros Geek Industrie Experience',
@@ -1181,7 +1277,7 @@
   });
   const FIXED_BLOCKS_BY_FAMILY_AND_LANGUAGE = Object.freeze({
     collection: Object.freeze({
-      fr: COLLECTION_BOTTOM_FIXED_BLOCKS,
+      fr: COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2,
       en: COLLECTION_BOTTOM_FIXED_BLOCKS_EN,
       de: COLLECTION_BOTTOM_FIXED_BLOCKS_DE,
       es: COLLECTION_BOTTOM_FIXED_BLOCKS_ES,
@@ -1208,6 +1304,7 @@
     DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_DE,
     DOUBLEX_COLLECTION_TOP_FIXED_BLOCKS_ES,
     COLLECTION_BOTTOM_FIXED_BLOCKS,
+    COLLECTION_BOTTOM_FIXED_BLOCKS_FR_V2,
     COLLECTION_BOTTOM_FIXED_BLOCK,
     COLLECTION_BOTTOM_FIXED_BLOCKS_EN,
     COLLECTION_BOTTOM_FIXED_BLOCKS_DE,

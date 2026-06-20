@@ -231,6 +231,7 @@
     const runtime = getRuntime();
     return runtime.loadEtsyWorkspaceMedia?.(prefix, {
       ...getWorkspaceUiDeps(),
+      getActiveShopKey: runtime.getActiveShopKey || global.PipelineUIApp?.getActiveShopKey,
       extractListingId: global.PipelineUIEtsyData?.extractListingId,
       setStatus: runtime.workspaceSetStatus,
       fetchListingPayload: runtime.fetchListingPayload,
@@ -273,7 +274,7 @@
     });
   }
 
-  function publishDraftListing(prefix) {
+  function publishDraftListing(prefix, options = {}) {
     const runtime = getRuntime();
     return runtime.publishDraftListing?.(prefix, {
       getState: runtime.getWorkspaceState,
@@ -281,7 +282,8 @@
       updateExistingListing: runtime.updateExistingListing,
       updateExpiredListing: runtime.updateExpiredListing,
       applyAttributesDraftToPayload: runtime.applyAttributesDraftToPayload,
-    });
+      getActiveShopKey: runtime.getActiveShopKey || global.PipelineUIApp?.getActiveShopKey,
+    }, options);
   }
 
   function initEtsyWorkspaceContext(prefix) {

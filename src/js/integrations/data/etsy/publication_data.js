@@ -2,6 +2,84 @@
   'use strict';
 
   const EtsyData = global.PipelineUIEtsyData || {};
+  const CREATE_PAYLOAD_EXCLUDED_KEYS = new Set([
+    'listing_id',
+    'shop_id',
+    'user_id',
+    'state',
+    'images',
+    'videos',
+    'inventory',
+    'featured_data',
+    'collections',
+    'translations',
+    'products',
+    'offerings',
+    'results',
+    'taxonomy_path',
+    'category_path',
+    'category_name',
+    'item_type',
+    'legacy_state',
+    'main_image_id',
+    'favorers',
+  ]);
+  const CREATE_PAYLOAD_EXCLUDED_KEY_PATTERNS = [
+    /^url$/i,
+    /^url_/i,
+    /_url$/i,
+    /^image_/i,
+    /^video_/i,
+    /_image_id$/i,
+    /_video_id$/i,
+    /_path$/i,
+    /_name$/i,
+    /(?:^|_)(?:created|creation|modified|updated|ending|original)_/i,
+    /(?:^|_)(?:tsz|timestamp)$/i,
+    /(?:^|_)(?:views|view_count|num_favorers|favorers|is_favorite)$/i,
+  ];
+
+  function isPrimitivePublicationValue(value) {
+    const valueType = typeof value;
+    return value === null
+      || valueType === 'string'
+      || valueType === 'number'
+      || valueType === 'boolean';
+  }
+
+  function isCreatableListingKey(key = '') {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) return false;
+    if (CREATE_PAYLOAD_EXCLUDED_KEYS.has(normalizedKey)) return false;
+    return !CREATE_PAYLOAD_EXCLUDED_KEY_PATTERNS.some((pattern) => pattern.test(normalizedKey));
+  }
+
+  function normalizeCreatableListingValue(value) {
+    if (isPrimitivePublicationValue(value)) return value;
+    if (Array.isArray(value)) {
+      const normalizedEntries = value.filter(isPrimitivePublicationValue);
+      return normalizedEntries.length ? normalizedEntries : undefined;
+    }
+    return undefined;
+  }
+
+  function extractCreatableListingPayload(data) {
+    if (!data || typeof data !== 'object') return {};
+
+    const createPayload = {};
+    Object.entries(data).forEach(([key, rawValue]) => {
+      if (!isCreatableListingKey(key)) return;
+      const normalizedValue = normalizeCreatableListingValue(rawValue);
+      if (typeof normalizedValue === 'undefined') return;
+      createPayload[key] = normalizedValue;
+    });
+
+    const sectionId = Number(data.shop_section_id || 0) || 0;
+    if (sectionId) createPayload.section_id = sectionId;
+    delete createPayload.shop_section_id;
+
+    return createPayload;
+  }
 
   function getPublicationBasePrice(data) {
     const inventoryProduct = Array.isArray(data?.inventory?.products) ? data.inventory.products[0] : null;
@@ -298,6 +376,7 @@
     const hasVideos = Array.isArray(data.videos) && data.videos.length > 0;
 
     const createPayload = {
+      ...extractCreatableListingPayload(data),
       quantity: getPublicationBaseQuantity(data),
       title: String(data.title || '').trim(),
       description: String(data.description || ''),
@@ -400,6 +479,7 @@
     ...EtsyData,
     getPublicationBasePrice,
     getPublicationBaseQuantity,
+    extractCreatableListingPayload,
     buildPublicationInventoryPayload,
     buildDraftPublicationPayload,
   };

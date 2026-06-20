@@ -905,6 +905,32 @@ def prepare_publication_video_uploads(videos_payload: list[dict]) -> list[dict]:
     return prepared_videos
 
 
+def upload_listing_image_payloads(
+    shop_id: str,
+    listing_id: str,
+    prepared_images: list[dict],
+) -> list[dict]:
+    uploaded_images = []
+    for prepared_image in prepared_images:
+        pause_etsy_publication_requests()
+        image_response = perform_etsy_post_multipart_request(
+            f'shops/{shop_id}/listings/{listing_id}/images',
+            include_oauth=True,
+            fields=prepared_image['fields_sent'],
+            file_field_name='image',
+            filename=prepared_image['filename'],
+            media_type=prepared_image['media_type'],
+            payload=prepared_image['payload'],
+        )
+        uploaded_images.append({
+            'index': prepared_image['index'],
+            'mode': prepared_image['mode'],
+            'fields_sent': prepared_image['fields_sent'],
+            'response': image_response,
+        })
+    return uploaded_images
+
+
 def _flatten_taxonomy_nodes(nodes, parents: list[str] | None = None) -> list[dict]:
     parents = list(parents or [])
     flattened: list[dict] = []
@@ -2267,8 +2293,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         )
                     current_listing_data = current_listing_response.get('results', [{}])[0] if isinstance(current_listing_response.get('results'), list) and current_listing_response.get('results') else current_listing_response.get('data', current_listing_response)
                     current_listing_state = str(current_listing_data.get('state') or '').strip().lower()
-                    if publication_mode != 'update_expired_listing' and current_listing_state and current_listing_state != 'active':
-                        normalized_update_listing_payload['state'] = 'active'
 
                     operations = [{
                         'step': 'load_target_listing',
@@ -2278,6 +2302,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                     prepared_images = prepare_publication_image_uploads(images_payload) if images_payload else []
                     prepared_videos = prepare_publication_video_uploads(videos_payload) if videos_payload else []
+                    existing_image_ids = extract_etsy_listing_image_ids(current_listing_response) if images_payload else []
+                    existing_video_ids = extract_etsy_listing_video_ids(current_listing_response) if videos_payload else []
 
                     if media_plan_payload:
                         operations.append({
@@ -2291,6 +2317,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'planned_video_count': int(media_plan_payload.get('plannedVideoCount') or 0),
                             'skipped_video_count': int(media_plan_payload.get('skippedVideoCount') or 0),
                         })
+
+                    if images_payload and not prepared_images:
+                        self.send_json(400, {'error': 'Aucune image publiable preparee pour la mise a jour Etsy'})
+                        return
 
                     if normalized_update_listing_payload:
                         pause_etsy_publication_requests()
@@ -2309,7 +2339,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                     if images_payload:
                         deleted_image_ids = []
-                        for image_id in extract_etsy_listing_image_ids(current_listing_response):
+
+                        # Etsy refuse de supprimer la derniere image d'une fiche.
+                        # Sequence sure:
+                        # - garder 1 image source si elle existe
+                        # - supprimer le reste
+                        # - uploader la premiere nouvelle image
+                        # - supprimer l image retenue
+                        # - uploader les autres nouvelles images
+                        retained_image_id = existing_image_ids[0] if existing_image_ids else 0
+                        removable_image_ids = existing_image_ids[1:] if retained_image_id else []
+
+                        for image_id in removable_image_ids:
                             pause_etsy_publication_requests()
                             delete_response = perform_etsy_delete_request(
                                 f'shops/{shop_id}/listings/{target_listing_id}/images/{image_id}',
@@ -2319,16 +2360,57 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                 'listing_image_id': image_id,
                                 'response': delete_response,
                             })
+
+                        uploaded_images = []
+                        remaining_prepared_images = list(prepared_images)
+                        if retained_image_id and remaining_prepared_images:
+                            first_uploaded_images = upload_listing_image_payloads(
+                                shop_id,
+                                target_listing_id,
+                                [remaining_prepared_images[0]],
+                            )
+                            uploaded_images.extend(first_uploaded_images)
+                            remaining_prepared_images = remaining_prepared_images[1:]
+
+                            pause_etsy_publication_requests()
+                            retained_delete_response = perform_etsy_delete_request(
+                                f'shops/{shop_id}/listings/{target_listing_id}/images/{retained_image_id}',
+                                include_oauth=True,
+                            )
+                            deleted_image_ids.append({
+                                'listing_image_id': retained_image_id,
+                                'response': retained_delete_response,
+                            })
+                        elif retained_image_id and not remaining_prepared_images:
+                            deleted_image_ids.append({
+                                'listing_image_id': retained_image_id,
+                                'response': {'status': 'kept', 'reason': 'aucune nouvelle image preparee'},
+                            })
+
+                        if remaining_prepared_images:
+                            uploaded_images.extend(upload_listing_image_payloads(
+                                shop_id,
+                                target_listing_id,
+                                remaining_prepared_images,
+                            ))
+
                         operations.append({
                             'step': 'delete_listing_images',
                             'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/images/{{listing_image_id}}',
                             'deleted_count': len(deleted_image_ids),
                             'images': deleted_image_ids,
                         })
+                        operations.append({
+                            'step': 'upload_listing_images',
+                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/images',
+                            'requested_count': len(images_payload),
+                            'uploaded_count': len(uploaded_images),
+                            'images': uploaded_images,
+                        })
 
                     if videos_payload:
                         deleted_video_ids = []
-                        for video_id in extract_etsy_listing_video_ids(current_listing_response):
+                        for video_id in existing_video_ids:
                             pause_etsy_publication_requests()
                             delete_response = perform_etsy_delete_request(
                                 f'shops/{shop_id}/listings/{target_listing_id}/videos/{video_id}',
@@ -2343,34 +2425,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/videos/{{listing_video_id}}',
                             'deleted_count': len(deleted_video_ids),
                             'videos': deleted_video_ids,
-                        })
-
-                    uploaded_images = []
-                    for prepared_image in prepared_images:
-                        pause_etsy_publication_requests()
-                        image_response = perform_etsy_post_multipart_request(
-                            f'shops/{shop_id}/listings/{target_listing_id}/images',
-                            include_oauth=True,
-                            fields=prepared_image['fields_sent'],
-                            file_field_name='image',
-                            filename=prepared_image['filename'],
-                            media_type=prepared_image['media_type'],
-                            payload=prepared_image['payload'],
-                        )
-                        uploaded_images.append({
-                            'index': prepared_image['index'],
-                            'mode': prepared_image['mode'],
-                            'fields_sent': prepared_image['fields_sent'],
-                            'response': image_response,
-                        })
-
-                    if uploaded_images:
-                        operations.append({
-                            'step': 'upload_listing_images',
-                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}/images',
-                            'requested_count': len(images_payload),
-                            'uploaded_count': len(uploaded_images),
-                            'images': uploaded_images,
                         })
 
                     uploaded_videos = []

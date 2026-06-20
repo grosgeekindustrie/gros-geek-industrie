@@ -27,7 +27,7 @@
     if (seed.descriptionText && state.detailsDraft) {
       state.detailsDraft = {
         ...state.detailsDraft,
-        description: String(seed.descriptionText || '').trim(),
+        description: String(seed.descriptionText || '').replace(/\r\n?/g, '\n'),
       };
     }
   }
@@ -388,6 +388,7 @@
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
       state.listingId = listingId;
+      state.sourceShopKey = String(deps.getActiveShopKey?.() || global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek').trim() || 'grosgeek';
       state.payloadEnvelope = payload || null;
       state.listingPropertiesPayload = listingPropertiesPayload || null;
       state.listingPropertiesError = listingPropertiesError;
@@ -424,6 +425,7 @@
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
       state.payloadEnvelope = null;
+      state.sourceShopKey = '';
       state.mediaPayload = null;
       state.payloadText = '';
       state.listingPropertiesPayload = null;

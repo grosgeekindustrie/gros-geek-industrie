@@ -8,6 +8,7 @@
     return {
       payloadText: '',
       listingId: '',
+      sourceShopKey: '',
       mediaPayload: null,
       payloadEnvelope: null,
       listingPropertiesPayload: null,

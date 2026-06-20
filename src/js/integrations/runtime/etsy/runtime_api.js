@@ -12,11 +12,12 @@
     return global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek';
   }
 
-  function withActiveShopQuery(route = '') {
+  function withActiveShopQuery(route = '', shopKeyOverride = '') {
     const normalizedRoute = String(route || '').trim();
     if (!normalizedRoute) return '';
     const separator = normalizedRoute.includes('?') ? '&' : '?';
-    return `${normalizedRoute}${separator}shop=${encodeURIComponent(getActiveShopKey())}`;
+    const normalizedShopKey = String(shopKeyOverride || getActiveShopKey()).trim() || 'grosgeek';
+    return `${normalizedRoute}${separator}shop=${encodeURIComponent(normalizedShopKey)}`;
   }
 
   async function readJson(url) {
@@ -86,16 +87,18 @@
     return (global.PipelineUIEtsyRuntime?.cacheTaxonomyEntries || (() => []))(prefix, results);
   }
 
-  async function fetchListingPayload(listingId) {
+  async function fetchListingPayload(listingId, options = {}) {
     const route = String(getRoutes().listing || '').trim();
     if (!route) throw new Error('Route listing Etsy indisponible');
-    return readJson(`${withActiveShopQuery(route)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
+    const shopKey = String(options?.shopKey || '').trim();
+    return readJson(`${withActiveShopQuery(route, shopKey)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
-  async function fetchListingPropertiesPayload(listingId) {
+  async function fetchListingPropertiesPayload(listingId, options = {}) {
     const route = getListingPropertiesRoute();
     if (!route) throw new Error('Route attributs Etsy indisponible');
-    return readJson(`${withActiveShopQuery(route)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
+    const shopKey = String(options?.shopKey || '').trim();
+    return readJson(`${withActiveShopQuery(route, shopKey)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
   async function submitListingPublication(publicationRequest) {
@@ -116,7 +119,7 @@
         }
       : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey() };
 
-    const response = await fetch(withActiveShopQuery(route), {
+    const response = await fetch(withActiveShopQuery(route, normalizedRequest.shopKey), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -168,7 +171,7 @@
         }
       : { listingId: '', language: '', title: '', description: '', tags: [], shopKey: getActiveShopKey() };
 
-    const response = await fetch(withActiveShopQuery(route), {
+    const response = await fetch(withActiveShopQuery(route, normalizedRequest.shopKey), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

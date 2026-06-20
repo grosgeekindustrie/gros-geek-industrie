@@ -5,6 +5,14 @@
 
   const PIPELINE_PREFIXES = Object.freeze(['tt', 'col']);
   const DEFAULT_STATUS = "En attente d'une fiche Etsy source et d'une selection media.";
+  const RELAUNCH_DESCRIPTION_PARTICULARITES_INSTRUCTION = [
+    'Mode relance de fiche existante :',
+    '- Ne jamais convertir les tags en "particularites".',
+    '- Si aucune particularite n existe dans la fiche source, ne cree aucune particularite.',
+    '- Si une particularite existe dans la fiche source, reprendre uniquement cette information, eventuellement reformulee.',
+    '- Ne pas inventer de nouvelles particularites.',
+    '- En cas de doute : aucune particularite.',
+  ].join('\n');
 
   function ensureRootState() {
     global.state.pipelineListingRelaunch = global.state.pipelineListingRelaunch || {};
@@ -189,8 +197,9 @@
     const fallbackNomCourt = fallbackNom.split(/\s+/)[0] || fallbackNom;
     const description = String(source.description || '');
     const mode = String(options.mode || global.getPipelineModeByPrefix?.(prefix) || '').trim();
+    const agentId = String(options.agentId || '').trim();
 
-    return {
+    const context = {
       nom: fallbackNom,
       nomCourt: fallbackNomCourt,
       univers: '',
@@ -231,6 +240,12 @@
       listing_source_selected_images: String(source.selectedImageCount || 0),
       listing_source_selection_mode: source.usedSelection ? 'selected_only' : 'all_visible',
     };
+
+    if (agentId === 'description') {
+      context.relaunch_internal_instruction = RELAUNCH_DESCRIPTION_PARTICULARITES_INSTRUCTION;
+    }
+
+    return context;
   }
 
   function buildListingRelaunchFormSnapshot(prefix) {
@@ -246,7 +261,7 @@
       `Images source retenues: ${source.selectedImageCount || 0}`,
       `Selection images: ${source.usedSelection ? 'selection utilisateur' : 'toutes les images visibles'}`,
     ];
-    const description = String(source.description || '').trim();
+    const description = String(source.description || '').replace(/\r\n?/g, '\n');
     if (description) lines.push(`Description source: ${description}`);
     return lines.join('\n');
   }

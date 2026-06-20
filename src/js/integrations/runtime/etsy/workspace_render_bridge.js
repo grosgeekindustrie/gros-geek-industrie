@@ -125,8 +125,10 @@
     return getPublicationUi().renderPublicationStep?.(prefix, {
       getState: runtime.getWorkspaceState,
       getNode: runtime.getNode,
+      getActiveShopKey: runtime.getActiveShopKey || global.PipelineUIApp?.getActiveShopKey,
       buildPublicationPayloadSnapshot: runtime.buildPublicationPayloadSnapshot,
       getPublicationMode: runtime.getPublicationMode,
+      getPublicationTargetShopKey: runtime.getPublicationTargetShopKey,
       setPublicationMode: runtime.setPublicationMode,
       publishDraftListing: runtime.workspacePublishDraftListing || runtime.publishDraftListing,
     });

@@ -39,7 +39,7 @@
       prefix: String(prefix || '').trim(),
       title: String(outputs.titre_valide || '').trim(),
       tagsCsv: String(outputs.tags || '').trim(),
-      descriptionText: String(outputs.description_final || outputs.description_assembled || '').trim(),
+      descriptionText: String(outputs.description_final || outputs.description_assembled || ''),
       altText: String(outputs.alt || '').trim(),
       updatedAt: new Date().toISOString(),
     };

@@ -35,20 +35,25 @@
     return baseLines.join('\n');
   }
 
+  function normalizeDescriptionLineEndings(rawValue) {
+    return String(rawValue || '').replace(/\r\n?/g, '\n');
+  }
+
+  function stripOuterBlankLines(rawValue) {
+    return normalizeDescriptionLineEndings(rawValue)
+      .replace(/^(?:[ \t]*\n)+/g, '')
+      .replace(/(?:\n[ \t]*)+$/g, '');
+  }
+
   function joinTopLevelBlocks(blocks = []) {
     return blocks
-      .map((block) => String(block || '').trim())
+      .map((block) => stripOuterBlankLines(block))
       .filter(Boolean)
-      .join(TOP_LEVEL_BLOCK_SEPARATOR)
-      .replace(/\n{5,}/g, TOP_LEVEL_BLOCK_SEPARATOR)
-      .trim();
+      .join(TOP_LEVEL_BLOCK_SEPARATOR);
   }
 
   function normalizeTopLevelBlockText(rawValue) {
-    return String(rawValue || '')
-      .replace(/\r\n/g, '\n')
-      .trim()
-      .trim();
+    return stripOuterBlankLines(rawValue);
   }
 
   function resolveDescriptionFamilyFromPrefix(prefix = '') {
@@ -103,7 +108,7 @@
     const suffix = `${TOP_LEVEL_BLOCK_SEPARATOR}${fixedJoined}`;
     if (normalized.endsWith(suffix)) {
       return {
-        description: normalized.slice(0, -suffix.length).trim(),
+        description: stripOuterBlankLines(normalized.slice(0, -suffix.length)),
         stripped: true,
         family,
         language,
@@ -152,7 +157,7 @@
     const prefix = `${introJoined}${TOP_LEVEL_BLOCK_SEPARATOR}`;
     if (normalized.startsWith(prefix)) {
       return {
-        description: normalized.slice(prefix.length).trim(),
+        description: stripOuterBlankLines(normalized.slice(prefix.length)),
         stripped: true,
         family,
         language,
@@ -210,8 +215,7 @@
   }
 
   function stripLeadingDescriptionHeading(rawValue) {
-    const lines = String(rawValue || '')
-      .replace(/\r\n/g, '\n')
+    const lines = normalizeDescriptionLineEndings(rawValue)
       .split('\n');
 
     if (!lines.length) return '';
@@ -220,11 +224,11 @@
     const isMarkdownHeading = /^#\s*/.test(firstLine);
     const looksLikeDescriptionHeading = /description\s+produit/i.test(firstLine);
     if (!isMarkdownHeading || !looksLikeDescriptionHeading) {
-      return lines.join('\n').trim();
+      return lines.join('\n');
     }
 
-    const remaining = lines.slice(1).join('\n').replace(/^\s+/, '');
-    return remaining.trim();
+    const remaining = lines.slice(1).join('\n');
+    return remaining.replace(/^(?:[ \t]*\n)+/g, '');
   }
 
   function buildFinalPipelineDescription(prefix, dynamicDescription) {
