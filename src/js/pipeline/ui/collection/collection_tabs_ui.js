@@ -54,6 +54,7 @@
     ].some(Boolean),
     hasEtsyPanel: () => Boolean(document.getElementById('etsyApiPanel-col')),
     hasTranslationPanel: () => Boolean(document.getElementById('translationEnPanel-col')),
+    hasAuditPanel: () => Boolean(document.getElementById('etsyAuditPanel-col')),
     onActiveTabChange: ({ tabId }) => {
       if (tabId === 'social') ensureSocialTabContentVisibility();
     },

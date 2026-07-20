@@ -302,6 +302,9 @@
 
     data.title = String(draft.title || '').trim();
     data.description = String(draft.description || '');
+    data.taxonomy_id = String(draft.taxonomyId || '').trim()
+      ? Number(draft.taxonomyId)
+      : null;
 
     const categoryPathParts = splitCategoryPath(draft.categoryPathText || '');
     if (categoryPathParts.length) {

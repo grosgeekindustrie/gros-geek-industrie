@@ -11,6 +11,7 @@
   const getEtsyUiCollection = () => getEtsyUi().collection || {};
 
   const initEtsyWorkspaceContext = (prefix) => getRuntime().workspaceInitEtsyWorkspaceContext?.(prefix);
+  const initEtsyAuditContext = (prefix) => getRuntime().initAuditContext?.(prefix);
 
   const loadEtsyWorkspaceMedia = (prefix) => getRuntime().workspaceLoadEtsyWorkspaceMedia?.(prefix);
 
@@ -21,24 +22,29 @@
   const initEtsyWorkspace = () => {
     getEtsyUiTabletop().initTabletopWorkspace?.({
       initWorkspaceContext: initEtsyWorkspaceContext,
+      initAuditContext: initEtsyAuditContext,
     });
     getEtsyUiCollection().initCollectionWorkspace?.({
       initWorkspaceContext: initEtsyWorkspaceContext,
+      initAuditContext: initEtsyAuditContext,
     });
   };
 
   const initEtsyWorkspaceTabletop = () => {
     initEtsyWorkspaceContext('tt');
+    initEtsyAuditContext('tt');
   };
 
   const initEtsyWorkspaceCollection = () => {
     initEtsyWorkspaceContext('col');
+    initEtsyAuditContext('col');
   };
 
   global.PipelineUIEtsyWorkspace = {
     ...(global.PipelineUIEtsyWorkspace || {}),
     initEtsyWorkspace,
     initEtsyWorkspaceContext,
+    initEtsyAuditContext,
     initEtsyWorkspaceTabletop,
     initEtsyWorkspaceCollection,
     loadEtsyWorkspaceMedia,

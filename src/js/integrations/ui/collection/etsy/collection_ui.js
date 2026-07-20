@@ -5,6 +5,7 @@
 
   function initCollectionWorkspace(deps = {}) {
     deps.initWorkspaceContext?.('col');
+    deps.initAuditContext?.('col');
   }
 
   function bootstrapCollectionWorkspaceWhenReady() {

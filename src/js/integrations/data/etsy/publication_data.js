@@ -2,6 +2,9 @@
   'use strict';
 
   const EtsyData = global.PipelineUIEtsyData || {};
+  const DEFAULT_WHO_MADE = 'i_did';
+  const DEFAULT_WHEN_MADE = 'made_to_order';
+  const DEFAULT_IS_SUPPLY = false;
   const CREATE_PAYLOAD_EXCLUDED_KEYS = new Set([
     'listing_id',
     'shop_id',
@@ -109,6 +112,37 @@
 
   function resolveLocalVideoKey(video) {
     return `local-video:${String(video?.local_id || '')}`;
+  }
+
+  function resolvePublicationRemoteImageUrl(image) {
+    const directUrl = String(
+      image?.url_fullxfull
+      || image?.full_url
+      || image?.url_570xN
+      || image?.url_570xn
+      || image?.url_170x135
+      || image?.url_75x75
+      || image?.src
+      || image?.url
+      || ''
+    ).trim();
+    if (directUrl) return directUrl;
+
+    const sources = Array.isArray(image?.sources) ? image.sources : [];
+    const sourceUrl = [...sources]
+      .reverse()
+      .map((entry) => String(entry?.url || entry?.src || '').trim())
+      .find(Boolean);
+    if (sourceUrl) return sourceUrl;
+
+    const sizes = Array.isArray(image?.sizes) ? image.sizes : [];
+    const sizedUrl = [...sizes]
+      .reverse()
+      .map((entry) => String(entry?.url || entry?.src || '').trim())
+      .find(Boolean);
+    if (sizedUrl) return sizedUrl;
+
+    return '';
   }
 
   function getOrderedPublicationMedia(state) {
@@ -219,15 +253,7 @@
         mode: 'upload_remote',
         filename,
         alt_text: altText,
-        remote_url: String(
-          image?.url_fullxfull
-          || image?.full_url
-          || image?.url_570xN
-          || image?.url_570xn
-          || image?.src
-          || image?.url
-          || ''
-        ).trim(),
+        remote_url: resolvePublicationRemoteImageUrl(image),
       }];
     }).filter((imagePlan) => {
       if (imagePlan.mode === 'upload') return !!imagePlan.data_url;
@@ -370,10 +396,30 @@
     return dimensionProperties;
   }
 
+  function getOriginScaleDimensionFallback(state) {
+    const prefix = String(state?.prefix || '').trim();
+    const originDimensions = global.PipelineUIEchelles?.getOriginScaleDimensions?.(prefix);
+    if (!originDimensions) return null;
+
+    return {
+      height: Number.isFinite(Number(originDimensions.height)) && Number(originDimensions.height) > 0
+        ? Number(originDimensions.height)
+        : null,
+      width: Number.isFinite(Number(originDimensions.width)) && Number(originDimensions.width) > 0
+        ? Number(originDimensions.width)
+        : null,
+      depth: Number.isFinite(Number(originDimensions.depth)) && Number(originDimensions.depth) > 0
+        ? Number(originDimensions.depth)
+        : null,
+      unit: String(originDimensions.unit || '').trim() || 'mm',
+    };
+  }
+
   function buildDraftPublicationPayload(state) {
     const data = state?.mediaPayload?.data || {};
     const attributesDraft = state?.attributesDraft || null;
     const hasVideos = Array.isArray(data.videos) && data.videos.length > 0;
+    const originDimensionFallback = getOriginScaleDimensionFallback(state);
 
     const createPayload = {
       ...extractCreatableListingPayload(data),
@@ -381,25 +427,30 @@
       title: String(data.title || '').trim(),
       description: String(data.description || ''),
       price: getPublicationBasePrice(data),
-      who_made: String(data.who_made || '').trim(),
-      when_made: String(data.when_made || '').trim(),
+      who_made: String(data.who_made || '').trim() || DEFAULT_WHO_MADE,
+      when_made: String(data.when_made || '').trim() || DEFAULT_WHEN_MADE,
       taxonomy_id: Number(data.taxonomy_id || 0) || 0,
       shipping_profile_id: Number(data.shipping_profile_id || 0) || 0,
       readiness_state_id: Number(data.readiness_state_id || 0) || 0,
-      is_supply: Boolean(data.is_supply),
+      is_supply: data.is_supply === true ? true : DEFAULT_IS_SUPPLY,
       type: String(data.type || 'physical').trim() || 'physical',
     };
 
     const heightValue = attributesDraft?.dimensions?.height !== undefined && attributesDraft?.dimensions?.height !== null && String(attributesDraft.dimensions.height).trim() !== ''
       ? Number(attributesDraft.dimensions.height)
-      : data.item_height;
+      : (data.item_height ?? originDimensionFallback?.height ?? null);
     const widthValue = attributesDraft?.dimensions?.width !== undefined && attributesDraft?.dimensions?.width !== null && String(attributesDraft.dimensions.width).trim() !== ''
       ? Number(attributesDraft.dimensions.width)
-      : data.item_width;
+      : (data.item_width ?? originDimensionFallback?.width ?? null);
     const depthValue = attributesDraft?.dimensions?.depth !== undefined && attributesDraft?.dimensions?.depth !== null && String(attributesDraft.dimensions.depth).trim() !== ''
       ? Number(attributesDraft.dimensions.depth)
-      : data.item_length;
-    const dimensionUnitValue = String(attributesDraft?.dimensions?.unit || data.item_dimensions_unit || '').trim() || null;
+      : (data.item_length ?? originDimensionFallback?.depth ?? null);
+    const dimensionUnitValue = String(
+      attributesDraft?.dimensions?.unit
+      || data.item_dimensions_unit
+      || originDimensionFallback?.unit
+      || ''
+    ).trim() || null;
 
     const updatePayload = {
       tags: Array.isArray(data.tags) ? data.tags : [],

@@ -395,6 +395,7 @@
       };
     runState.cumulativeEntries.push(entry);
     refreshPipelineRunCumulativeText(runState);
+    global.persistPipelineRuntimeState?.(prefix);
   }
 
   function setPipelineRunEntry(prefix, agentId, content, meta = {}) {
@@ -430,6 +431,7 @@
     }
 
     refreshPipelineRunCumulativeText(runState);
+    global.persistPipelineRuntimeState?.(prefix);
   }
 
   function getResolvedTargetStep(prefix) {
@@ -627,6 +629,7 @@
     if (!preserveCacheStatus) global.setLastCacheStatus('—');
     global.resetSocialRuntimePanels(prefix);
     global.resetFinalOutputPanels(prefix);
+    global.clearPipelineRuntimeState?.(prefix);
 
     ['titre_valide', 'description_assembled', 'description_final', 'tags', 'tags_raw', 'alt'].forEach((key) => {
       global.state.outputs[key] = '';

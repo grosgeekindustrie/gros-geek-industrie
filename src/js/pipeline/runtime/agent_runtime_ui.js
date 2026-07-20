@@ -301,6 +301,8 @@
         });
       }
 
+      global.persistPipelineRuntimeState?.(prefix);
+
       global.finalizeAgentSuccess(prefix, agent, refs, result, usage, { isRetry });
       return true;
     } catch (error) {

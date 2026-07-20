@@ -43,6 +43,7 @@
     ].some(isVisible),
     hasEtsyPanel: () => Boolean(document.getElementById('etsyApiPanel-tt')),
     hasTranslationPanel: () => Boolean(document.getElementById('translationEnPanel-tt')),
+    hasAuditPanel: () => Boolean(document.getElementById('etsyAuditPanel-tt')),
     nameFieldIds: ['tt-fNomCourt', 'tt-fNom'],
   });
 

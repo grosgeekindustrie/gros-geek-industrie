@@ -53,8 +53,48 @@
     'cadeau collectionneur',
   ]);
 
-  const doublexNsfwCommonProductTags = Object.freeze([
+  const doublexTabletopCommonProductTags = Object.freeze([
+    'cadeau donjon dragon',
+    'cadeau Dungeon Master',
+    'donjons et dragons',
+    'figurine \u00e0 peindre',
+    'figurine dnd',
+    'figurine jdr',
+    'figurine NSFW',
+    'figurine non peinte',
+    'figurine pin-up',
+    'figurine rpg',
+    'figurine sexy',
+    'figurine tabletop',
+    'figurine waifu',
+    'figurine wargame',
+    'figurine wargaming',
+    'garage kit NSFW',
+    'mature',
+    'miniature \u00e0 peindre',
+    'miniature de jeu',
+    'miniature dnd',
+    'miniature en r\u00e9sine',
+    'miniature fantasy',
+    'miniature mature',
+    'miniature non peinte',
+    'miniature NSFW',
+    'miniature pin-up',
+    'miniature sexy',
+    'miniature tabletop',
+    'miniature ttrpg',
+    'NSFW \u00e0 peindre',
+    'pin-up \u00e0 peindre',
+    'waifu miniature',
+  ]);
+
+  const doublexCollectionCommonProductTags = Object.freeze([
+    'mature',
+    'impression 3D',
     'impression 3D en r\u00e9sine',
+    'figurine en r\u00e9sine',
+    'statue en r\u00e9sine',
+    'garage kit en r\u00e9sine',
     'figurine de collection',
     'statue de collection',
     'garage kit de collection',
@@ -63,18 +103,27 @@
     'garage kit \u00e0 peindre',
     'figurine non peinte',
     'statue non peinte',
-    'garage kit en r\u00e9sine',
-    'mature',
     'figurine nsfw',
     'statue nsfw',
+    'garage kit nsfw',
+    'figurine waifu',
+    'statue waifu',
+    'garage kit waifu',
     'figurine sexy',
+    'statue sexy',
+    'figurine pin-up',
+    'statue pin-up',
     'pin up \u00e0 peindre',
-    'cadeau no\u00ebl peintres',
-    'cadeau anniversaire hobby',
+    'cadeau geek',
+    'cadeau collectionneur',
   ]);
 
   function resolveCommonProductTags(mode = 'tabletop', shopKey = 'grosgeek') {
-    if (String(shopKey || '').trim() === 'doublex') return doublexNsfwCommonProductTags;
+    if (String(shopKey || '').trim() === 'doublex') {
+      return String(mode || '').trim() === 'collection'
+        ? doublexCollectionCommonProductTags
+        : doublexTabletopCommonProductTags;
+    }
     return String(mode || '').trim() === 'collection'
       ? collectionCommonProductTags
       : tabletopCommonProductTags;
@@ -83,7 +132,9 @@
   Object.assign(global.PipelineUIDataTagsCommon, {
     TABLETOP_COMMON_PRODUCT_TAGS: tabletopCommonProductTags,
     COLLECTION_COMMON_PRODUCT_TAGS: collectionCommonProductTags,
-    DOUBLEX_NSFW_COMMON_PRODUCT_TAGS: doublexNsfwCommonProductTags,
+    DOUBLEX_TABLETOP_COMMON_PRODUCT_TAGS: doublexTabletopCommonProductTags,
+    DOUBLEX_COLLECTION_COMMON_PRODUCT_TAGS: doublexCollectionCommonProductTags,
+    DOUBLEX_NSFW_COMMON_PRODUCT_TAGS: doublexCollectionCommonProductTags,
     COMMON_PRODUCT_TAGS: tabletopCommonProductTags,
     resolveCommonProductTags,
   });

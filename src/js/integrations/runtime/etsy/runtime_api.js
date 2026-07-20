@@ -45,6 +45,18 @@
     return String(getRoutes().listingTranslation || '').trim();
   }
 
+  function getListingsRoute() {
+    return String(getRoutes().listings || '').trim();
+  }
+
+  function getListingSalesRoute() {
+    return String(getRoutes().listingSales || '').trim();
+  }
+
+  function getSectionsRoute() {
+    return String(getRoutes().sections || '').trim();
+  }
+
   function extractApiErrorMessage(payload, fallbackStatus) {
     if (!payload || typeof payload !== 'object') {
       return fallbackStatus ? `HTTP ${fallbackStatus}` : 'Erreur API inconnue';
@@ -101,6 +113,53 @@
     return readJson(`${withActiveShopQuery(route, shopKey)}&listing_id=${encodeURIComponent(String(listingId || '').trim())}`);
   }
 
+  async function fetchShopListingsPage(options = {}) {
+    const route = getListingsRoute();
+    if (!route) throw new Error('Route listings Etsy indisponible');
+
+    const params = new URLSearchParams();
+    const state = String(options.state || 'active').trim().toLowerCase() || 'active';
+    const limit = Number(options.limit || 5) || 5;
+    const offset = Number(options.offset || 0) || 0;
+    const shopKey = String(options.shopKey || '').trim();
+
+    params.set('state', state);
+    params.set('limit', String(limit));
+    params.set('offset', String(Math.max(0, offset)));
+
+    return readJson(`${withActiveShopQuery(route, shopKey)}&${params.toString()}`);
+  }
+
+  async function fetchShopSections(options = {}) {
+    const route = getSectionsRoute();
+    if (!route) throw new Error('Route sections Etsy indisponible');
+    const shopKey = String(options.shopKey || '').trim();
+    return readJson(withActiveShopQuery(route, shopKey));
+  }
+
+  async function fetchListingSalesMap(listingIds = [], options = {}) {
+    const route = getListingSalesRoute();
+    if (!route) throw new Error('Route ventes Etsy indisponible');
+
+    const normalizedListingIds = (Array.isArray(listingIds) ? listingIds : [])
+      .map((listingId) => String(listingId || '').trim())
+      .filter(Boolean);
+    if (!normalizedListingIds.length) return {};
+
+    const shopKey = String(options.shopKey || '').trim();
+    const params = new URLSearchParams();
+    params.set('listing_ids', normalizedListingIds.join(','));
+    const payload = await readJson(`${withActiveShopQuery(route, shopKey)}&${params.toString()}`);
+    const salesByListing = payload?.payload?.sales_by_listing;
+    const salesWindowsByListing = payload?.payload?.sales_windows_by_listing;
+    const coverageByListing = payload?.payload?.coverage_by_listing;
+    return {
+      salesByListing: salesByListing && typeof salesByListing === 'object' ? salesByListing : {},
+      salesWindowsByListing: salesWindowsByListing && typeof salesWindowsByListing === 'object' ? salesWindowsByListing : {},
+      coverageByListing: coverageByListing && typeof coverageByListing === 'object' ? coverageByListing : {},
+    };
+  }
+
   async function submitListingPublication(publicationRequest) {
     const route = getDraftListingRoute();
     if (!route) throw new Error('Route publication draft Etsy indisponible');
@@ -116,8 +175,9 @@
           mediaPlan: publicationRequest.mediaPlan || {},
           attributes: publicationRequest.attributes || {},
           shopKey: String(publicationRequest.shopKey || getActiveShopKey()).trim() || 'grosgeek',
+          sourceShopKey: String(publicationRequest.sourceShopKey || '').trim(),
         }
-      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey() };
+      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey(), sourceShopKey: '' };
 
     const response = await fetch(withActiveShopQuery(route, normalizedRequest.shopKey), {
       method: 'POST',
@@ -203,11 +263,17 @@
     getDraftListingRoute,
     getListingPropertiesRoute,
     getListingTranslationRoute,
+    getListingsRoute,
+    getListingSalesRoute,
+    getSectionsRoute,
     extractApiErrorMessage,
     readJson,
     fetchTaxonomySearch,
     fetchListingPayload,
     fetchListingPropertiesPayload,
+    fetchShopListingsPage,
+    fetchShopSections,
+    fetchListingSalesMap,
     submitListingPublication,
     createDraftListing,
     updateExistingListing,

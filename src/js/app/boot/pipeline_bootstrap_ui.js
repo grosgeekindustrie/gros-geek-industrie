@@ -59,6 +59,7 @@
     if (rebuildPipeline) global.buildPipeline();
     if (rebuildEchelles) global.buildEchellesUI();
     if (reloadFormState) global.loadFormState();
+    if (rebuildPipeline) global.restorePipelineRuntimeState?.(global.pfx?.());
     global.loadAllFiles(silentFileLoad);
 
     if (showModeToast && modeToastMessage) {
@@ -73,6 +74,7 @@
     global.buildPipeline();
     global.buildEchellesUI();
     global.loadFormState();
+    global.restorePipelineRuntimeState?.(global.pfx?.());
     global.attachFormPersistence();
     initializeNavigationUis();
     global.loadAllFiles();

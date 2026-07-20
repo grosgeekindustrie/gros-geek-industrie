@@ -6,6 +6,7 @@
   const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
   const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
   const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
+  const PIPELINE_RUNTIME_STORAGE_PREFIX = 'pipeline.runtime.';
   const SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX = Object.freeze({
     tt: 'tabletop',
     col: 'collection',
@@ -89,6 +90,94 @@
     if (finalOutput) pipelineBody.appendChild(finalOutput);
   }
 
+  function getPipelineRuntimeStorageKey(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    return `${PIPELINE_RUNTIME_STORAGE_PREFIX}${prefix}`;
+  }
+
+  function buildPipelineRuntimePersistencePayload(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    const outputs = global.state?.outputs && typeof global.state.outputs === 'object'
+      ? { ...global.state.outputs }
+      : {};
+    const pipelineRun = global.state?.pipelineRun?.[prefix] && typeof global.state.pipelineRun[prefix] === 'object'
+      ? JSON.parse(JSON.stringify(global.state.pipelineRun[prefix]))
+      : null;
+    return { outputs, pipelineRun };
+  }
+
+  function persistPipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      localStorage.setItem(
+        getPipelineRuntimeStorageKey(prefix),
+        JSON.stringify(buildPipelineRuntimePersistencePayload(prefix)),
+      );
+    } catch (error) {}
+  }
+
+  function clearPipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      localStorage.removeItem(getPipelineRuntimeStorageKey(prefix));
+    } catch (error) {}
+  }
+
+  function restorePipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      const raw = localStorage.getItem(getPipelineRuntimeStorageKey(prefix));
+      if (!raw) return false;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return false;
+
+      const outputs = parsed.outputs && typeof parsed.outputs === 'object' ? parsed.outputs : {};
+      global.state.outputs = {
+        ...(global.state.outputs || {}),
+        ...outputs,
+      };
+
+      if (parsed.pipelineRun && typeof parsed.pipelineRun === 'object') {
+        global.state.pipelineRun = global.state.pipelineRun || {};
+        global.state.pipelineRun[prefix] = parsed.pipelineRun;
+      }
+
+      const agents = global.getPipelineRuntimeAgentsForPrefix?.(prefix) || [];
+      agents.forEach((agent) => {
+        const text = String(global.state.outputs?.[agent.id] || '').trim();
+        if (!text || agent.id === 'tags') return;
+
+        const outputNode = document.getElementById(`${prefix}-out-${agent.id}`);
+        if (outputNode) {
+          outputNode.className = 'output-box';
+          outputNode.textContent = text;
+        }
+
+        const card = document.getElementById(`${prefix}-card-${agent.id}`);
+        if (card) card.className = 'agent-card done';
+
+        const stat = document.getElementById(`${prefix}-stat-${agent.id}`);
+        if (stat) {
+          stat.className = 'agent-status s-done';
+          stat.textContent = 'done';
+        }
+
+        const rerunBtn = document.getElementById(`${prefix}-br-${agent.id}`);
+        const saveBtn = document.getElementById(`${prefix}-bs-${agent.id}`);
+        const promptBtn = document.getElementById(`${prefix}-bp-${agent.id}`);
+        if (rerunBtn) rerunBtn.disabled = false;
+        if (saveBtn) saveBtn.disabled = false;
+        if (promptBtn) promptBtn.disabled = false;
+      });
+
+      global.assembleFinal?.();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function assembleFinal() {
     const prefix = global.pfx();
     const titre = global.PipelineUIRender?.sanitizeFinalOutputText?.('titre_valide', global.state.outputs.titre_valide || '') || '';
@@ -111,6 +200,7 @@
 
     revealFinalOutput(prefix);
     global.persistPipelineSeedSnapshot?.(prefix);
+    persistPipelineRuntimeState(prefix);
     if (alt) global.showSocialEntryPanel(prefix);
     refreshFinalOutputTabs(prefix);
   }
@@ -310,6 +400,10 @@
     copySection,
     exportFinalOutputs,
     copyAll,
+    getPipelineRuntimeStorageKey,
+    persistPipelineRuntimeState,
+    restorePipelineRuntimeState,
+    clearPipelineRuntimeState,
   };
 
   global.PipelineUI.runtimeOutput = global.PipelineUI.runtimeOutput || {};

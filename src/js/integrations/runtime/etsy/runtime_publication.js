@@ -146,6 +146,7 @@
           targetListingId: String(snapshot.sourceListingId || '').trim(),
           mode: 'update_listing',
           shopKey: targetShopKey,
+          sourceShopKey: String(state.sourceShopKey || '').trim() || '',
         })
         : publicationMode === 'update_expired_listing'
           ? await deps.updateExpiredListing?.({
@@ -153,11 +154,13 @@
           targetListingId: String(snapshot.sourceListingId || '').trim(),
           mode: 'update_expired_listing',
           shopKey: targetShopKey,
+          sourceShopKey: String(state.sourceShopKey || '').trim() || '',
         })
           : await deps.createDraftListing?.({
             ...(snapshot.payload || {}),
             mode: 'create_draft',
             shopKey: targetShopKey,
+            sourceShopKey: String(state.sourceShopKey || '').trim() || '',
           });
       state.publicationResult = response || null;
       state.publicationError = '';

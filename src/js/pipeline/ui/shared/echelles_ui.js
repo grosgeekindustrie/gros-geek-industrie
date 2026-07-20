@@ -11,8 +11,9 @@
   const echellesData = global.PipelineUIDataEchelles || {};
   const TABLETOP_MODE = 'tabletop';
   const COLLECTION_MODE = 'collection';
-  const TABLETOP_SCALES = echellesData.ECHELLES_BY_MODE?.tabletop || ['28mm', '32mm', '40mm', '50mm', '54mm', '75mm', '90mm', '140mm', '1/10', '1/8', '1/6', 'Custom base'];
-  const COLLECTION_SCALES = echellesData.ECHELLES_BY_MODE?.collection || ['Buste', '75mm', '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6'];
+  const TABLETOP_SCALES = echellesData.ECHELLES_BY_MODE?.tabletop || ['28mm', '32mm', '40mm', '50mm', '54mm', '75mm', '90mm', '140mm', '1/10', '1/8', '1/6', '1/5', 'Custom base'];
+  const TABLETOP_DOUBLEX_SCALES = echellesData.ECHELLES_BY_MODE?.tabletop_doublex || TABLETOP_SCALES;
+  const COLLECTION_SCALES = echellesData.ECHELLES_BY_MODE?.collection || ['Buste', '75mm', '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6', '1/5', '1/4', '1/3'];
   const CUSTOM_COLLECTION_COUNT = Number.isInteger(echellesData.CUSTOM_COLLECTION_COUNT) ? echellesData.CUSTOM_COLLECTION_COUNT : 3;
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
   const MANUAL_COLLECTION_SCALE_LABELS = new Set(['buste', '75mm']);
@@ -21,7 +22,11 @@
   const getCurrentMode = () => global.currentMode;
   const resolveMode = (prefix = getPfx()) => (prefix === 'col' ? COLLECTION_MODE : TABLETOP_MODE);
   const isCollectionMode = (mode = getCurrentMode()) => mode === COLLECTION_MODE;
-  const getScaleList = (mode = getCurrentMode()) => (isCollectionMode(mode) ? COLLECTION_SCALES : TABLETOP_SCALES);
+  const getActiveShopKey = () => global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek';
+  const getScaleList = (mode = getCurrentMode()) => {
+    if (isCollectionMode(mode)) return COLLECTION_SCALES;
+    return getActiveShopKey() === 'doublex' ? TABLETOP_DOUBLEX_SCALES : TABLETOP_SCALES;
+  };
   const getRowCount = (mode = getCurrentMode()) => getScaleList(mode).length + (isCollectionMode(mode) ? CUSTOM_COLLECTION_COUNT : 0);
   const getDynamicToggle = (prefix = getPfx()) => document.getElementById(`${prefix}-fDynamicEchelles`);
   const isDynamicScaleEnabled = (prefix = getPfx()) => Boolean(getDynamicToggle(prefix)?.checked);
@@ -136,6 +141,28 @@
     }
 
     return null;
+  };
+
+  const getOriginScaleDimensions = (prefix = getPfx(), mode = resolveMode(prefix)) => {
+    const preferredOriginIndex = getOriginIndex(prefix, mode);
+    const fallbackIndex = preferredOriginIndex ?? getFirstCheckedIndex(mode);
+    if (!Number.isInteger(fallbackIndex)) return null;
+
+    const label = String(getScaleLabel(fallbackIndex, mode) || '').trim();
+    const dimensionsText = String(getRowEls(fallbackIndex).dimInput?.value || '').trim();
+    const dimensions = parseDimensions(dimensionsText);
+    if (!dimensions) return null;
+
+    const [height, width, depth] = dimensions;
+    return {
+      index: fallbackIndex,
+      label,
+      height,
+      width,
+      depth,
+      unit: 'mm',
+      raw: dimensionsText,
+    };
   };
 
   const updateOriginState = (prefix = getPfx(), mode = getCurrentMode()) => {
@@ -504,6 +531,7 @@
 
   Object.assign(global.PipelineUIEchelles, {
     ECHELLES: TABLETOP_SCALES,
+    ECHELLES_TABLETOP_DOUBLEX: TABLETOP_DOUBLEX_SCALES,
     ECHELLES_COLLECTION: COLLECTION_SCALES,
     CUSTOM_COLLECTION_COUNT,
     buildEchellesUI,
@@ -515,6 +543,7 @@
     setEchelleOrigin,
     getEchellesSelected,
     getDimsFromEchelles,
+    getOriginScaleDimensions,
     refreshCollectionAutoDimensions: recalculateCollectionDimensions,
   });
 

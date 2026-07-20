@@ -1,5 +1,6 @@
 const etsyUiSharedScriptPaths = Object.freeze([
   'integrations/ui/shared/etsy/workspace_core_ui.js',
+  'integrations/ui/shared/etsy/workspace_audit_ui.js',
   'integrations/ui/shared/etsy/workspace_media_ui.js',
   'integrations/ui/shared/etsy/workspace_details_ui.js',
   'integrations/ui/shared/etsy/workspace_attributes_ui.js',

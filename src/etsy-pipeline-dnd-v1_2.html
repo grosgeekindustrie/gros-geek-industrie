@@ -284,6 +284,10 @@
         <span class="collection-solo-tab-label">Traduction</span>
         <span class="collection-solo-tab-state" data-dnd-tab-state="translation">Disponible</span>
       </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-dnd-tab="audit">
+        <span class="collection-solo-tab-label">Audit</span>
+        <span class="collection-solo-tab-state" data-dnd-tab-state="audit">Disponible</span>
+      </button>
     </div>
 
     <div class="collection-solo-status" data-js="dnd-solo-status" aria-live="polite">
@@ -1251,6 +1255,13 @@ Cache : —</pre>
           </div>
         </div>
       </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="audit" hidden>
+        <div class="form-section etsy-audit-panel" id="etsyAuditPanel-tt">
+          <div class="etsy-audit-content" id="etsyAuditContent-tt"></div>
+          <p class="fetch-status" id="etsyAuditStatus-tt">Audit inactif.</p>
+        </div>
+      </section>
     </div>
   </div>
 </div><!-- /ui-tt -->
@@ -1286,6 +1297,10 @@ Cache : —</pre>
       <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="translation">
         <span class="collection-solo-tab-label">Traduction</span>
         <span class="collection-solo-tab-state" data-collection-tab-state="translation">Disponible</span>
+      </button>
+      <button class="collection-solo-tab" type="button" role="tab" aria-selected="false" data-collection-tab="audit">
+        <span class="collection-solo-tab-label">Audit</span>
+        <span class="collection-solo-tab-state" data-collection-tab-state="audit">Disponible</span>
       </button>
     </div>
 
@@ -2233,6 +2248,13 @@ Cache : —</pre>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
           </div>
           </div>
+        </div>
+      </section>
+
+      <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="audit" hidden>
+        <div class="form-section etsy-audit-panel" id="etsyAuditPanel-col">
+          <div class="etsy-audit-content" id="etsyAuditContent-col"></div>
+          <p class="fetch-status" id="etsyAuditStatus-col">Audit inactif.</p>
         </div>
       </section>
     </div>

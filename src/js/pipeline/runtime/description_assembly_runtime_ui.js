@@ -58,8 +58,9 @@
 
   function resolveDescriptionFamilyFromPrefix(prefix = '') {
     const baseFamily = PREFIX_TO_FAMILY[String(prefix || '').trim()] || 'collection';
-    if (baseFamily === 'collection' && getActiveShopKey() === 'doublex') {
-      return 'collection_doublex';
+    if (getActiveShopKey() === 'doublex') {
+      if (baseFamily === 'collection') return 'collection_doublex';
+      if (baseFamily === 'tabletop') return 'tabletop_doublex';
     }
     return baseFamily;
   }

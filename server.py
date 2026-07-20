@@ -38,7 +38,7 @@ SOLO_EXPORT_ROOT = 'export'
 ETSY_API_BASE_URL = 'https://api.etsy.com/v3'
 ETSY_OAUTH_CONNECT_URL = 'https://www.etsy.com/oauth/connect'
 ETSY_OAUTH_TOKEN_URL = f'{ETSY_API_BASE_URL}/public/oauth/token'
-ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w')
+ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w', 'transactions_r')
 OPERA_BROWSER_PATH = Path(r'C:\Users\raficraft\AppData\Local\Programs\Opera\opera.exe')
 ETSY_OAUTH_PENDING_FILE = ROOT / '.etsy_oauth_pending.json'
 ETSY_OAUTH_TOKEN_FILE = ROOT / '.etsy_oauth_tokens.json'
@@ -89,6 +89,12 @@ def get_anthropic_api_key(request_payload: dict | None = None) -> str:
 
 def get_env_value(name: str) -> str:
     return str(os.getenv(name) or '').strip()
+
+
+def chunk_list(values, size: int):
+    normalized_size = max(1, int(size or 1))
+    for index in range(0, len(values), normalized_size):
+        yield values[index:index + normalized_size]
 
 
 def get_etsy_keystring() -> str:
@@ -777,6 +783,237 @@ def normalize_etsy_association_collection(value) -> list[dict]:
     return []
 
 
+def extract_etsy_results_collection(value) -> list[dict]:
+    if isinstance(value, list):
+        return [entry for entry in value if isinstance(entry, dict)]
+    if isinstance(value, dict):
+        if isinstance(value.get('results'), list):
+            return [entry for entry in value.get('results') if isinstance(entry, dict)]
+        if isinstance(value.get('data'), list):
+            return [entry for entry in value.get('data') if isinstance(entry, dict)]
+        if isinstance(value.get('items'), list):
+            return [entry for entry in value.get('items') if isinstance(entry, dict)]
+    return []
+
+
+def extract_etsy_pagination_count(payload: dict) -> int:
+    if not isinstance(payload, dict):
+        return 0
+    raw_count = payload.get('count')
+    numeric_count = int(raw_count or 0) if str(raw_count or '').strip().isdigit() else 0
+    if numeric_count > 0:
+        return numeric_count
+    return len(extract_etsy_results_collection(payload))
+
+
+def parse_etsy_datetime_value(value) -> datetime | None:
+    if value is None or value == '':
+        return None
+
+    if isinstance(value, (int, float)):
+        timestamp = float(value)
+        if timestamp <= 0:
+            return None
+        if timestamp < 1e12:
+            timestamp = timestamp
+        else:
+            timestamp = timestamp / 1000.0
+        try:
+            return datetime.fromtimestamp(timestamp, timezone.utc)
+        except Exception:
+            return None
+
+    text = str(value or '').strip()
+    if not text:
+        return None
+
+    if text.isdigit():
+        try:
+            timestamp = float(text)
+            if timestamp > 1e12:
+                timestamp = timestamp / 1000.0
+            return datetime.fromtimestamp(timestamp, timezone.utc)
+        except Exception:
+            return None
+
+    try:
+        parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def resolve_etsy_transaction_datetime(transaction: dict, receipt: dict | None = None) -> tuple[datetime | None, str]:
+    transaction = transaction if isinstance(transaction, dict) else {}
+    receipt = receipt if isinstance(receipt, dict) else {}
+
+    transaction_fields = (
+        'create_timestamp',
+        'created_timestamp',
+        'transaction_timestamp',
+        'transaction_date',
+        'created_tsz',
+        'creation_tsz',
+        'create_date',
+    )
+    for field_name in transaction_fields:
+        parsed = parse_etsy_datetime_value(transaction.get(field_name))
+        if parsed is not None:
+            return parsed, f'transaction.{field_name}'
+
+    receipt_fields = (
+        'paid_timestamp',
+        'was_paid_tsz',
+        'create_timestamp',
+        'created_timestamp',
+        'created_tsz',
+        'creation_tsz',
+        'create_date',
+        'update_date',
+    )
+    for field_name in receipt_fields:
+        parsed = parse_etsy_datetime_value(receipt.get(field_name))
+        if parsed is not None:
+            return parsed, f'receipt.{field_name}'
+
+    return None, ''
+
+
+def aggregate_listing_sales_from_transactions(
+    transactions: list[dict],
+    sales_by_listing: dict[str, int],
+    sales_windows_by_listing: dict[str, dict[str, int]],
+    dated_sales_by_listing: dict[str, int],
+    coverage_by_listing: dict[str, dict[str, str | int]],
+    *,
+    receipt: dict | None = None,
+    now: datetime | None = None,
+):
+    now_dt = now if isinstance(now, datetime) else datetime.now(timezone.utc)
+    for transaction in transactions:
+        listing_id = str(transaction.get('listing_id') or transaction.get('listingId') or '').strip()
+        if not listing_id:
+            continue
+        try:
+            quantity = int(transaction.get('quantity') or 1)
+        except Exception:
+            quantity = 1
+        if quantity <= 0:
+            quantity = 1
+        sales_by_listing[listing_id] = int(sales_by_listing.get(listing_id, 0) or 0) + quantity
+        windows = sales_windows_by_listing.setdefault(listing_id, {
+            '7d': 0,
+            '30d': 0,
+            'lifetime': 0,
+        })
+        windows['lifetime'] = int(windows.get('lifetime', 0) or 0) + quantity
+
+        sale_datetime, sale_date_source = resolve_etsy_transaction_datetime(transaction, receipt)
+        coverage = coverage_by_listing.setdefault(listing_id, {
+            'dated_transactions': 0,
+            'undated_transactions': 0,
+            'last_date_source': '',
+        })
+        if sale_datetime is None:
+            coverage['undated_transactions'] = int(coverage.get('undated_transactions', 0) or 0) + 1
+            continue
+
+        coverage['dated_transactions'] = int(coverage.get('dated_transactions', 0) or 0) + 1
+        if sale_date_source:
+            coverage['last_date_source'] = sale_date_source
+        dated_sales_by_listing[listing_id] = int(dated_sales_by_listing.get(listing_id, 0) or 0) + quantity
+
+        delta_days = (now_dt - sale_datetime).total_seconds() / 86400.0
+        if delta_days < 0:
+            delta_days = 0
+        if delta_days <= 7:
+            windows['7d'] = int(windows.get('7d', 0) or 0) + quantity
+        if delta_days <= 30:
+            windows['30d'] = int(windows.get('30d', 0) or 0) + quantity
+
+
+def fetch_shop_receipt_transactions_summary(shop_id: str, shop_key: str = 'grosgeek') -> dict:
+    require_etsy_scope('transactions_r', shop_key)
+    sales_by_listing: dict[str, int] = {}
+    sales_windows_by_listing: dict[str, dict[str, int]] = {}
+    dated_sales_by_listing: dict[str, int] = {}
+    coverage_by_listing: dict[str, dict[str, str | int]] = {}
+    receipts_seen = 0
+    transactions_seen = 0
+    page_count = 0
+    offset = 0
+    limit = 100
+    now_dt = datetime.now(timezone.utc)
+
+    while True:
+        page_count += 1
+        receipts_payload = perform_etsy_get_request(
+            f'shops/{shop_id}/receipts?limit={limit}&offset={offset}&was_paid=true&includes=Transactions',
+            include_oauth=True,
+            shop_key=shop_key,
+        )
+        receipts = extract_etsy_results_collection(receipts_payload)
+        if not receipts:
+            break
+
+        receipts_seen += len(receipts)
+        for receipt in receipts:
+            transactions = (
+                extract_etsy_results_collection(receipt.get('Transactions'))
+                or extract_etsy_results_collection(receipt.get('transactions'))
+            )
+            if transactions:
+                transactions_seen += len(transactions)
+                aggregate_listing_sales_from_transactions(
+                    transactions,
+                    sales_by_listing,
+                    sales_windows_by_listing,
+                    dated_sales_by_listing,
+                    coverage_by_listing,
+                    receipt=receipt,
+                    now=now_dt,
+                )
+                continue
+
+            receipt_id = str(receipt.get('receipt_id') or receipt.get('receiptId') or '').strip()
+            if not receipt_id:
+                continue
+            receipt_transactions_payload = perform_etsy_get_request(
+                f'shops/{shop_id}/receipts/{receipt_id}/transactions',
+                include_oauth=True,
+                shop_key=shop_key,
+            )
+            receipt_transactions = extract_etsy_results_collection(receipt_transactions_payload)
+            if receipt_transactions:
+                transactions_seen += len(receipt_transactions)
+                aggregate_listing_sales_from_transactions(
+                    receipt_transactions,
+                    sales_by_listing,
+                    sales_windows_by_listing,
+                    dated_sales_by_listing,
+                    coverage_by_listing,
+                    receipt=receipt,
+                    now=now_dt,
+                )
+
+        total_count = extract_etsy_pagination_count(receipts_payload)
+        offset += len(receipts)
+        if len(receipts) < limit:
+            break
+        if total_count and offset >= total_count:
+            break
+
+    return {
+        'sales_by_listing': sales_by_listing,
+        'sales_windows_by_listing': sales_windows_by_listing,
+        'dated_sales_by_listing': dated_sales_by_listing,
+        'coverage_by_listing': coverage_by_listing,
+        'receipt_count': receipts_seen,
+        'transaction_count': transactions_seen,
+        'page_count': page_count,
+    }
+
+
 def extract_etsy_listing_image_ids(payload: dict) -> list[int]:
     source = payload if isinstance(payload, dict) else {}
     data = source.get('results', [{}])[0] if isinstance(source.get('results'), list) and source.get('results') else source.get('data', source)
@@ -909,6 +1146,8 @@ def upload_listing_image_payloads(
     shop_id: str,
     listing_id: str,
     prepared_images: list[dict],
+    *,
+    shop_key: str | None = None,
 ) -> list[dict]:
     uploaded_images = []
     for prepared_image in prepared_images:
@@ -916,6 +1155,7 @@ def upload_listing_image_payloads(
         image_response = perform_etsy_post_multipart_request(
             f'shops/{shop_id}/listings/{listing_id}/images',
             include_oauth=True,
+            shop_key=shop_key,
             fields=prepared_image['fields_sent'],
             file_field_name='image',
             filename=prepared_image['filename'],
@@ -1183,6 +1423,94 @@ def get_etsy_shop_context(shop_key: str = 'grosgeek') -> dict:
     }
 
 
+def list_etsy_shipping_profiles(shop_id: str, shop_key: str = 'grosgeek') -> list[dict]:
+    payload = perform_etsy_get_request(
+        f'shops/{shop_id}/shipping-profiles',
+        include_oauth=True,
+        shop_key=shop_key,
+    )
+    results = payload.get('results')
+    if isinstance(results, list):
+        return [entry for entry in results if isinstance(entry, dict)]
+    data = payload.get('data')
+    if isinstance(data, list):
+        return [entry for entry in data if isinstance(entry, dict)]
+    return []
+
+
+def resolve_etsy_shipping_profile_id_for_shop(
+    shop_id: str,
+    shop_key: str = 'grosgeek',
+    preferred_profile_id: int | str | None = None,
+) -> int:
+    profiles = list_etsy_shipping_profiles(shop_id, shop_key)
+    if not profiles:
+        return 0
+
+    preferred_id = int(preferred_profile_id or 0) or 0
+    if preferred_id:
+        for profile in profiles:
+            profile_id = int(profile.get('shipping_profile_id') or profile.get('profile_id') or 0) or 0
+            if profile_id == preferred_id:
+                return profile_id
+
+    for profile in profiles:
+        profile_id = int(profile.get('shipping_profile_id') or profile.get('profile_id') or 0) or 0
+        if profile_id:
+            return profile_id
+
+    return 0
+
+
+def list_etsy_readiness_state_definitions(shop_id: str, shop_key: str = 'grosgeek') -> list[dict]:
+    payload = perform_etsy_get_request(
+        f'shops/{shop_id}/readiness-state-definitions',
+        include_oauth=True,
+        shop_key=shop_key,
+    )
+    results = payload.get('results')
+    if isinstance(results, list):
+        return [entry for entry in results if isinstance(entry, dict)]
+    data = payload.get('data')
+    if isinstance(data, list):
+        return [entry for entry in data if isinstance(entry, dict)]
+    return []
+
+
+def resolve_etsy_readiness_state_id_for_shop(
+    shop_id: str,
+    shop_key: str = 'grosgeek',
+    preferred_readiness_state_id: int | str | None = None,
+) -> int:
+    definitions = list_etsy_readiness_state_definitions(shop_id, shop_key)
+    if not definitions:
+        return 0
+
+    preferred_id = int(preferred_readiness_state_id or 0) or 0
+    if preferred_id:
+        for definition in definitions:
+            readiness_state_id = int(
+                definition.get('readiness_state_id')
+                or definition.get('readinessStateId')
+                or definition.get('id')
+                or 0
+            ) or 0
+            if readiness_state_id == preferred_id:
+                return readiness_state_id
+
+    for definition in definitions:
+        readiness_state_id = int(
+            definition.get('readiness_state_id')
+            or definition.get('readinessStateId')
+            or definition.get('id')
+            or 0
+        ) or 0
+        if readiness_state_id:
+            return readiness_state_id
+
+    return 0
+
+
 def parse_etsy_listing_id(raw_value: str) -> str:
     value = str(raw_value or '').strip()
     if not value:
@@ -1214,6 +1542,22 @@ def get_listing_shop_id(listing_payload: dict) -> str:
     if not shop_id:
         raise ValueError('shop_id introuvable dans la fiche Etsy')
     return shop_id
+
+
+def infer_etsy_shop_key_from_shop_id(shop_id: str) -> str:
+    normalized_shop_id = str(shop_id or '').strip()
+    if not normalized_shop_id:
+        return 'grosgeek'
+
+    for candidate_shop_key in ETSY_SHOP_KEYS:
+        try:
+            shop_context = get_etsy_shop_context(candidate_shop_key)
+        except Exception:
+            continue
+        if str(shop_context.get('shop_id') or '').strip() == normalized_shop_id:
+            return candidate_shop_key
+
+    return 'grosgeek'
 
 
 def build_https_context() -> ssl.SSLContext:
@@ -1637,11 +1981,70 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 shop_context = get_etsy_shop_context(requested_shop_key)
                 shop_id = shop_context['shop_id']
+                requested_state = str((query_params.get('state') or ['active'])[0] or 'active').strip().lower() or 'active'
+                requested_buyer_country = str((query_params.get('buyer_country') or ['FR'])[0] or 'FR').strip().upper() or 'FR'
+                requested_currency = str((query_params.get('currency') or [shop_context['shop'].get('currency_code') or 'EUR'])[0] or (shop_context['shop'].get('currency_code') or 'EUR')).strip().upper() or 'EUR'
+                try:
+                    requested_limit = int(str((query_params.get('limit') or ['5'])[0] or '5').strip())
+                except ValueError:
+                    requested_limit = 5
+                try:
+                    requested_offset = int(str((query_params.get('offset') or ['0'])[0] or '0').strip())
+                except ValueError:
+                    requested_offset = 0
+
+                if requested_limit <= 0:
+                    requested_limit = 5
+                requested_limit = min(requested_limit, 100)
+                requested_offset = max(0, requested_offset)
                 payload = perform_etsy_get_request(
-                    f'shops/{shop_id}/listings?state=active&limit=5',
+                    f'shops/{shop_id}/listings?state={urllib.parse.quote(requested_state)}&limit={requested_limit}&offset={requested_offset}',
                     include_oauth=True,
                     shop_key=requested_shop_key,
                 )
+                results = payload.get('results') if isinstance(payload, dict) else []
+                if isinstance(results, list) and results:
+                    listing_ids = [
+                        str(item.get('listing_id') or '').strip()
+                        for item in results
+                        if isinstance(item, dict) and str(item.get('listing_id') or '').strip()
+                    ]
+                    buyer_price_by_listing_id = {}
+
+                    for listing_ids_chunk in chunk_list(listing_ids, 100):
+                        batch_query = urllib.parse.urlencode({
+                            'listing_ids': ','.join(str(listing_id).strip() for listing_id in listing_ids_chunk if str(listing_id).strip()),
+                            'includes': 'BuyerPrice',
+                            'legacy': 'true',
+                            'buyer_country': requested_buyer_country,
+                            'currency': requested_currency,
+                        })
+                        batch_payload = perform_etsy_get_request(
+                            f'listings/batch?{batch_query}',
+                            include_oauth=True,
+                            shop_key=requested_shop_key,
+                        )
+                        batch_results = batch_payload.get('results') if isinstance(batch_payload, dict) else []
+                        if not isinstance(batch_results, list):
+                            continue
+                        for batch_item in batch_results:
+                            if not isinstance(batch_item, dict):
+                                continue
+                            listing_id = str(batch_item.get('listing_id') or '').strip()
+                            buyer_price = batch_item.get('buyer_price')
+                            if not isinstance(buyer_price, dict):
+                                buyer_price = batch_item.get('buyerPrice')
+                            if listing_id and isinstance(buyer_price, dict):
+                                buyer_price_by_listing_id[listing_id] = buyer_price
+
+                    if buyer_price_by_listing_id:
+                        for item in results:
+                            if not isinstance(item, dict):
+                                continue
+                            listing_id = str(item.get('listing_id') or '').strip()
+                            if listing_id and listing_id in buyer_price_by_listing_id:
+                                item['buyer_price'] = buyer_price_by_listing_id[listing_id]
+
                 self.send_json(200, {
                     'ok': True,
                     'endpoint': f'shops/{shop_id}/listings',
@@ -1649,8 +2052,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'user_id': shop_context['user_id'],
                         'shop_id': shop_id,
                         'query': {
-                            'state': 'active',
-                            'limit': 5,
+                            'state': requested_state,
+                            'limit': requested_limit,
+                            'offset': requested_offset,
+                            'buyer_country': requested_buyer_country,
+                            'currency': requested_currency,
                         },
                         'data': payload,
                     },
@@ -1819,13 +2225,81 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     include_oauth=True,
                     shop_key=requested_shop_key,
                 )
+                source_shop_id = get_listing_shop_id(payload)
+                source_shop_key = infer_etsy_shop_key_from_shop_id(source_shop_id)
                 self.send_json(200, {
                     'ok': True,
                     'endpoint': f'listings/{listing_id}',
                     'payload': {
                         'listing_id': listing_id,
                         'includes': includes.split(','),
+                        'shop_id': source_shop_id,
+                        'source_shop_key': source_shop_key,
                         'data': payload,
+                    },
+                })
+            except ValueError as e:
+                self.send_json(400, {'error': str(e)})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': str(e)}
+                self.send_json(e.code, payload or {'error': str(e)})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/etsy/test/listing/sales':
+            try:
+                listing_ids_raw = str((query_params.get('listing_ids') or [''])[0] or '').strip()
+                listing_ids = [
+                    listing_id for listing_id in (
+                        str(part or '').strip() for part in listing_ids_raw.split(',')
+                    ) if listing_id
+                ]
+                if not listing_ids:
+                    self.send_json(400, {'error': 'listing_ids manquants pour lecture des ventes Etsy'})
+                    return
+
+                shop_context = get_etsy_shop_context(requested_shop_key)
+                shop_id = shop_context['shop_id']
+                summary = fetch_shop_receipt_transactions_summary(shop_id, requested_shop_key)
+                sales_by_listing = summary.get('sales_by_listing') if isinstance(summary, dict) else {}
+                filtered_sales = {
+                    listing_id: int(sales_by_listing.get(listing_id, 0) or 0)
+                    for listing_id in listing_ids
+                }
+                sales_windows_by_listing = summary.get('sales_windows_by_listing') if isinstance(summary, dict) else {}
+                coverage_by_listing = summary.get('coverage_by_listing') if isinstance(summary, dict) else {}
+                filtered_windows = {
+                    listing_id: (
+                        sales_windows_by_listing.get(listing_id)
+                        if isinstance(sales_windows_by_listing.get(listing_id), dict)
+                        else {'7d': 0, '30d': 0, 'lifetime': int(filtered_sales.get(listing_id, 0) or 0)}
+                    )
+                    for listing_id in listing_ids
+                }
+                filtered_coverage = {
+                    listing_id: (
+                        coverage_by_listing.get(listing_id)
+                        if isinstance(coverage_by_listing.get(listing_id), dict)
+                        else {'dated_transactions': 0, 'undated_transactions': 0, 'last_date_source': ''}
+                    )
+                    for listing_id in listing_ids
+                }
+                self.send_json(200, {
+                    'ok': True,
+                    'endpoint': f'shops/{shop_id}/receipts',
+                    'payload': {
+                        'shop_id': shop_id,
+                        'listing_ids': listing_ids,
+                        'sales_by_listing': filtered_sales,
+                        'sales_windows_by_listing': filtered_windows,
+                        'coverage_by_listing': filtered_coverage,
+                        'receipt_count': int(summary.get('receipt_count', 0) or 0),
+                        'transaction_count': int(summary.get('transaction_count', 0) or 0),
+                        'page_count': int(summary.get('page_count', 0) or 0),
                     },
                 })
             except ValueError as e:
@@ -2250,6 +2724,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return
 
                 publication_mode = str(data.get('mode') or 'create_draft').strip().lower() or 'create_draft'
+                source_shop_key_raw = str(
+                    data.get('sourceShopKey') or data.get('source_shop_key') or ''
+                ).strip()
+                source_shop_key = normalize_etsy_shop_key(source_shop_key_raw) if source_shop_key_raw else ''
                 target_listing_id = str(
                     data.get('targetListingId')
                     or listing_payload.get('listing_id')
@@ -2260,6 +2738,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 require_etsy_scope('listings_w', requested_shop_key)
                 shop_context = get_etsy_shop_context(requested_shop_key)
                 shop_id = shop_context['shop_id']
+                is_cross_shop_draft_copy = publication_mode == 'create_draft' and source_shop_key and source_shop_key != requested_shop_key
+                log_server_event(
+                    f'POST {path} publication_mode={publication_mode} source_shop={source_shop_key or "unknown"} '
+                    f'target_shop={requested_shop_key} cross_shop={str(is_cross_shop_draft_copy).lower()} '
+                    f'images={len(images_payload) if isinstance(images_payload, list) else 0} '
+                    f'videos={len(videos_payload) if isinstance(videos_payload, list) else 0}'
+                )
 
                 if publication_mode in {'update_listing', 'update_expired_listing'}:
                     if not target_listing_id:
@@ -2290,6 +2775,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         current_listing_response = perform_etsy_get_request(
                             f'shops/{shop_id}/listings/{target_listing_id}?includes=Images,Videos',
                             include_oauth=True,
+                            shop_key=requested_shop_key,
                         )
                     current_listing_data = current_listing_response.get('results', [{}])[0] if isinstance(current_listing_response.get('results'), list) and current_listing_response.get('results') else current_listing_response.get('data', current_listing_response)
                     current_listing_state = str(current_listing_data.get('state') or '').strip().lower()
@@ -2321,6 +2807,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if images_payload and not prepared_images:
                         self.send_json(400, {'error': 'Aucune image publiable preparee pour la mise a jour Etsy'})
                         return
+                    if images_payload and len(prepared_images) != len(images_payload):
+                        self.send_json(400, {
+                            'error': 'Certaines images n ont pas pu etre preparees pour la mise a jour Etsy',
+                            'requested_image_count': len(images_payload),
+                            'prepared_image_count': len(prepared_images),
+                            'source_image_count': int(media_plan_payload.get('sourceImageCount') or 0),
+                            'planned_image_count': int(media_plan_payload.get('plannedImageCount') or 0),
+                        })
+                        return
 
                     if normalized_update_listing_payload:
                         pause_etsy_publication_requests()
@@ -2328,6 +2823,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             f'shops/{shop_id}/listings/{target_listing_id}',
                             normalized_update_listing_payload,
                             include_oauth=True,
+                            shop_key=requested_shop_key,
                         )
                         operations.append({
                             'step': 'update_listing',
@@ -2355,6 +2851,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             delete_response = perform_etsy_delete_request(
                                 f'shops/{shop_id}/listings/{target_listing_id}/images/{image_id}',
                                 include_oauth=True,
+                                shop_key=requested_shop_key,
                             )
                             deleted_image_ids.append({
                                 'listing_image_id': image_id,
@@ -2368,6 +2865,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                 shop_id,
                                 target_listing_id,
                                 [remaining_prepared_images[0]],
+                                shop_key=requested_shop_key,
                             )
                             uploaded_images.extend(first_uploaded_images)
                             remaining_prepared_images = remaining_prepared_images[1:]
@@ -2376,6 +2874,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             retained_delete_response = perform_etsy_delete_request(
                                 f'shops/{shop_id}/listings/{target_listing_id}/images/{retained_image_id}',
                                 include_oauth=True,
+                                shop_key=requested_shop_key,
                             )
                             deleted_image_ids.append({
                                 'listing_image_id': retained_image_id,
@@ -2392,6 +2891,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                 shop_id,
                                 target_listing_id,
                                 remaining_prepared_images,
+                                shop_key=requested_shop_key,
                             ))
 
                         operations.append({
@@ -2415,6 +2915,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             delete_response = perform_etsy_delete_request(
                                 f'shops/{shop_id}/listings/{target_listing_id}/videos/{video_id}',
                                 include_oauth=True,
+                                shop_key=requested_shop_key,
                             )
                             deleted_video_ids.append({
                                 'listing_video_id': video_id,
@@ -2433,6 +2934,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         video_response = perform_etsy_post_multipart_request(
                             f'shops/{shop_id}/listings/{target_listing_id}/videos',
                             include_oauth=True,
+                            shop_key=requested_shop_key,
                             fields=prepared_video['fields_sent'],
                             file_field_name='video',
                             filename=prepared_video['filename'],
@@ -2466,16 +2968,89 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     })
                     return
 
+                prepared_images = prepare_publication_image_uploads(images_payload) if images_payload else []
+                prepared_videos = prepare_publication_video_uploads(videos_payload) if videos_payload else []
+
+                if images_payload and not prepared_images:
+                    self.send_json(400, {'error': 'Aucune image publiable preparee pour la creation du draft Etsy'})
+                    return
+                if images_payload and len(prepared_images) != len(images_payload):
+                    self.send_json(400, {
+                        'error': 'Certaines images n ont pas pu etre preparees pour la creation du draft Etsy',
+                        'requested_image_count': len(images_payload),
+                        'prepared_image_count': len(prepared_images),
+                        'source_image_count': int(media_plan_payload.get('sourceImageCount') or 0),
+                        'planned_image_count': int(media_plan_payload.get('plannedImageCount') or 0),
+                    })
+                    return
+
+                if videos_payload and not prepared_videos:
+                    self.send_json(400, {'error': 'Aucune video publiable preparee pour la creation du draft Etsy'})
+                    return
+
                 create_payload = {
                     key: value
                     for key, value in listing_payload.items()
                     if key not in {'listing_id', 'state', 'inventory', 'images', 'videos'}
                 }
 
+                if is_cross_shop_draft_copy:
+                    create_payload.pop('section_id', None)
+                    create_payload.pop('shop_section_id', None)
+                    update_payload = {
+                        key: value
+                        for key, value in update_payload.items()
+                        if key != 'section_id'
+                    }
+                    resolved_shipping_profile_id = resolve_etsy_shipping_profile_id_for_shop(
+                        shop_id,
+                        requested_shop_key,
+                        create_payload.get('shipping_profile_id'),
+                    )
+                    if resolved_shipping_profile_id:
+                        create_payload['shipping_profile_id'] = resolved_shipping_profile_id
+                    else:
+                        self.send_json(400, {'error': 'Aucun profil de livraison disponible sur la boutique cible pour le transfert inter-boutique'})
+                        return
+                    resolved_readiness_state_id = resolve_etsy_readiness_state_id_for_shop(
+                        shop_id,
+                        requested_shop_key,
+                        create_payload.get('readiness_state_id'),
+                    )
+                    if resolved_readiness_state_id:
+                        create_payload['readiness_state_id'] = resolved_readiness_state_id
+                    else:
+                        create_payload.pop('readiness_state_id', None)
+                    if isinstance(inventory_payload, dict):
+                        inventory_payload = {
+                            **inventory_payload,
+                            'readiness_state_on_property': [],
+                            'products': [
+                                {
+                                    **product,
+                                    'offerings': [
+                                        {
+                                            **offering,
+                                            **(
+                                                {'readiness_state_id': create_payload['readiness_state_id']}
+                                                if create_payload.get('readiness_state_id')
+                                                else {}
+                                            ),
+                                        }
+                                        for offering in (product.get('offerings') or [])
+                                        if isinstance(offering, dict)
+                                    ],
+                                }
+                                for product in (inventory_payload.get('products') or [])
+                                if isinstance(product, dict)
+                            ],
+                        }
+
                 create_response = perform_etsy_post_form_request(
                     f'shops/{shop_id}/listings',
                     create_payload,
                     include_oauth=True,
+                    shop_key=requested_shop_key,
                 )
                 created_listing_id = extract_etsy_listing_id(create_response)
                 if not created_listing_id:
@@ -2513,6 +3088,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         f'shops/{shop_id}/listings/{created_listing_id}',
                         normalized_update_payload,
                         include_oauth=True,
+                        shop_key=requested_shop_key,
                     )
                     operations.append({
                         'step': 'update_listing',
@@ -2599,6 +3175,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             f'listings/{created_listing_id}/inventory',
                             normalized_inventory_payload,
                             include_oauth=True,
+                            shop_key=requested_shop_key,
                         )
                         operations.append({
                             'step': 'update_listing_inventory',
@@ -2607,41 +3184,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'response': inventory_response,
                         })
 
-                uploaded_images = []
-                for image_index, image_entry in enumerate(images_payload):
-                    if not isinstance(image_entry, dict):
-                        continue
-
-                    mode = str(image_entry.get('mode') or '').strip().lower()
-                    if mode == 'upload':
-                        media_type, image_bytes = decode_data_url_payload(str(image_entry.get('data_url') or ''))
-                    elif mode == 'upload_remote':
-                        media_type, image_bytes = fetch_publication_image_payload(str(image_entry.get('remote_url') or ''))
-                    else:
-                        continue
-
-                    filename_hint = guess_filename(str(image_entry.get('filename') or f'etsy-image-{image_index + 1}'), media_type)
-                    image_fields = {
-                        'rank': int(image_entry.get('order') or image_index + 1),
-                        'alt_text': str(image_entry.get('alt_text') or '').strip(),
-                    }
-                    pause_etsy_publication_requests()
-                    image_response = perform_etsy_post_multipart_request(
-                        f'shops/{shop_id}/listings/{created_listing_id}/images',
-                        include_oauth=True,
-                        fields=image_fields,
-                        file_field_name='image',
-                        filename=filename_hint,
-                        media_type=media_type,
-                        payload=image_bytes,
-                    )
-
-                    uploaded_images.append({
-                        'index': image_index + 1,
-                        'mode': mode,
-                        'fields_sent': image_fields,
-                        'response': image_response,
-                    })
+                uploaded_images = upload_listing_image_payloads(
+                    shop_id,
+                    created_listing_id,
+                    prepared_images,
+                    shop_key=requested_shop_key,
+                ) if prepared_images else []
 
                 if uploaded_images:
                     operations.append({
@@ -2653,36 +3201,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     })
 
                 uploaded_videos = []
-                for video_index, video_entry in enumerate(videos_payload):
-                    if not isinstance(video_entry, dict):
-                        continue
-
-                    mode = str(video_entry.get('mode') or '').strip().lower()
-                    if mode == 'upload':
-                        media_type, video_bytes = decode_data_url_payload(str(video_entry.get('data_url') or ''))
-                    elif mode == 'upload_remote':
-                        media_type, video_bytes = fetch_publication_video_payload(str(video_entry.get('remote_url') or ''))
-                    else:
-                        continue
-                    filename_hint = guess_filename(str(video_entry.get('filename') or f'etsy-video-{video_index + 1}'), media_type)
-                    video_fields = {
-                        'name': filename_hint,
-                    }
+                for prepared_video in prepared_videos:
                     pause_etsy_publication_requests()
                     video_response = perform_etsy_post_multipart_request(
                         f'shops/{shop_id}/listings/{created_listing_id}/videos',
                         include_oauth=True,
-                        fields=video_fields,
+                        shop_key=requested_shop_key,
+                        fields=prepared_video['fields_sent'],
                         file_field_name='video',
-                        filename=filename_hint,
-                        media_type=media_type,
-                        payload=video_bytes,
+                        filename=prepared_video['filename'],
+                        media_type=prepared_video['media_type'],
+                        payload=prepared_video['payload'],
                     )
 
                     uploaded_videos.append({
-                        'index': video_index + 1,
-                        'mode': mode,
-                        'fields_sent': video_fields,
+                        'index': prepared_video['index'],
+                        'mode': prepared_video['mode'],
+                        'fields_sent': prepared_video['fields_sent'],
                         'response': video_response,
                     })
 
@@ -2713,6 +3248,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                 f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
                                 property_payload,
                                 include_oauth=True,
+                                shop_key=requested_shop_key,
                             )
                             operations.append({
                                 'step': 'update_listing_property_dimension',
@@ -2752,6 +3288,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                 f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
                                 property_payload,
                                 include_oauth=True,
+                                shop_key=requested_shop_key,
                             )
                             operations.append({
                                 'step': 'update_listing_property_occasion',

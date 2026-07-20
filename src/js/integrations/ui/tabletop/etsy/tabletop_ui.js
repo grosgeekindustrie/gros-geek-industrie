@@ -5,6 +5,7 @@
 
   function initTabletopWorkspace(deps = {}) {
     deps.initWorkspaceContext?.('tt');
+    deps.initAuditContext?.('tt');
   }
 
   function bootstrapTabletopWorkspaceWhenReady() {

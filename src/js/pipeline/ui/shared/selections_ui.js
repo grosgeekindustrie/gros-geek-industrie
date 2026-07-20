@@ -29,6 +29,14 @@
       || [];
   }
 
+  function shouldPreselectCommonTag(tag, source = 'generated') {
+    if (String(source || '').trim() !== 'common') return false;
+    const mode = String(global.currentMode || '').trim();
+    const shopKey = String(global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek').trim();
+    const normalizedTag = normalizeTagInputValue(tag).toLowerCase();
+    return shopKey === 'doublex' && mode === 'collection' && normalizedTag === 'mature';
+  }
+
   function getPipelineSeedStorageKey(prefix = getPfx()) {
     return `${PIPELINE_SEED_STORAGE_PREFIX}${String(prefix || '').trim()}`;
   }
@@ -294,10 +302,11 @@
     const escapedValue = helpers().escapeHtml ? helpers().escapeHtml(tag) : String(tag || '');
     const validateIcon = global.PipelineUIIcons?.renderIcon('check') || 'Valider';
     const blacklistIcon = global.PipelineUIIcons?.renderIcon('close') || 'Blacklister';
+    const checkedAttr = shouldPreselectCommonTag(tag, source) ? ' checked' : '';
     return `
       <article class="tags-selection-item titre-item" id="${getPfx()}-tags-item-${index}" data-tags-item data-tags-source="${escapeAttr(source)}">
         <label class="tags-selection-checkbox-wrap">
-          <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" data-tags-checkbox />
+          <input class="tags-selection-checkbox" type="checkbox" aria-label="Sélectionner ce tag" data-tags-checkbox${checkedAttr} />
         </label>
         <input class="tags-selection-input" type="text" value="${escapedValue}" maxlength="60" spellcheck="false" data-tags-input />
         <span class="tags-selection-length" data-tags-length>0</span>

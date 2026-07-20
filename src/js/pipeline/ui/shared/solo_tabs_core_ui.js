@@ -22,7 +22,7 @@
     COLLECTION: 'col',
   };
 
-  const TAB_IDS = ['form', 'pipeline', 'result', 'social', 'etsy', 'translation'];
+  const TAB_IDS = ['form', 'pipeline', 'result', 'social', 'etsy', 'translation', 'audit'];
   const TAB_STATE_CLASSNAMES = [
     'is-state-idle',
     'is-state-running',
@@ -54,6 +54,7 @@
       hasSocialPanel = () => false,
       hasEtsyPanel = () => false,
       hasTranslationPanel = () => false,
+      hasAuditPanel = () => false,
       onActiveTabChange = null,
       nameFieldIds = [],
     } = options;
@@ -151,6 +152,11 @@
           ? { label: 'Disponible', code: 'available' }
           : { label: 'Indispo', code: 'idle' };
       }
+      if (tabId === 'audit') {
+        return hasAuditPanel()
+          ? { label: 'Disponible', code: 'available' }
+          : { label: 'Indispo', code: 'idle' };
+      }
 
       return { label: '', code: 'idle' };
     };
@@ -162,6 +168,7 @@
       if (tabId === 'social') return hasSocialPanel();
       if (tabId === 'etsy') return hasEtsyPanel();
       if (tabId === 'translation') return hasTranslationPanel();
+      if (tabId === 'audit') return hasAuditPanel();
       return false;
     };
 

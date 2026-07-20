@@ -26,6 +26,9 @@
   function getDisplayPayloadValue(value, keyPath = []) {
     if (typeof value === 'string') {
       const currentKey = String(keyPath[keyPath.length - 1] || '').trim().toLowerCase();
+      if (currentKey === 'data_url' || currentKey === 'remote_url') {
+        return `[omitted ${currentKey} - ${value.length} chars]`;
+      }
       const shouldKeepFull = currentKey === 'description';
       if (!shouldKeepFull && value.length > MAX_DEBUG_STRING_LENGTH) {
         return `${value.slice(0, MAX_DEBUG_STRING_LENGTH)}… [${value.length} chars]`;
@@ -60,7 +63,7 @@
     const isExpiredUpdateMode = publicationMode === 'update_expired_listing';
     const isDirectUpdateMode = isUpdateMode || isExpiredUpdateMode;
     const sourceShopKey = normalizeShopKey(state.sourceShopKey || deps.getActiveShopKey?.() || 'grosgeek');
-    const primaryTargetShopKey = normalizeShopKey(
+    const primaryPublishShopKey = normalizeShopKey(
       deps.getPublicationTargetShopKey?.(state, {
         getActiveShopKey: deps.getActiveShopKey,
       }) || sourceShopKey
@@ -72,7 +75,7 @@
     const publishButtonLabel = state.publicationSubmitting
       ? (isDirectUpdateMode ? 'Mise a jour...' : 'Publication...')
       : (isExpiredUpdateMode ? 'Mettre a jour la fiche expiree' : (isUpdateMode ? 'Mettre a jour la fiche' : 'Publier en draft'));
-    const transferButtonLabel = state.publicationSubmitting ? 'Publication DoubleX...' : 'Publier en draft sur DoubleX';
+    const transferButtonLabel = state.publicationSubmitting ? 'Publication DoubleXindustrie...' : 'Publier en draft sur DoubleXindustrie';
     const modeNotes = isDirectUpdateMode
       ? [
         isExpiredUpdateMode
@@ -99,7 +102,7 @@
               <p>${isDirectUpdateMode ? 'Mise a jour editoriale et media de la fiche chargee.' : 'Creation du draft puis enrichissement progressif. Le listing source n est jamais ecrase.'}</p>
             </div>
             <div class="etsy-api-publication-actions">
-              <button class="btn ${isDirectUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" data-target-shop="${escapeHtml(primaryTargetShopKey)}" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
+              <button class="btn ${isDirectUpdateMode ? 'btn-warn' : 'btn-accent'}" type="button" data-js="etsy-publication-submit" data-target-shop="${escapeHtml(primaryPublishShopKey)}" ${state.publicationSubmitting ? 'disabled' : ''}>${publishButtonLabel}</button>
               ${canTransferToDoublex ? `<button class="btn btn-muted" type="button" data-js="etsy-publication-transfer-submit" data-target-shop="${transferTargetShopKey}" ${transferDisabled ? 'disabled' : ''}>${transferButtonLabel}</button>` : ''}
             </div>
           </div>
@@ -112,7 +115,7 @@
           <div class="etsy-api-publication-meta">
             <span class="etsy-api-publication-meta-item">Listing source: ${escapeHtml(snapshot.sourceListingId || 'aucun')}</span>
             <span class="etsy-api-publication-meta-item">Boutique source: ${escapeHtml(getShopLabel(sourceShopKey))}</span>
-            <span class="etsy-api-publication-meta-item">Boutique cible: ${escapeHtml(getShopLabel(primaryTargetShopKey))}</span>
+            <span class="etsy-api-publication-meta-item">Boutique publication: ${escapeHtml(getShopLabel(primaryPublishShopKey))}</span>
             <span class="etsy-api-publication-meta-item">Etat source: ${escapeHtml(sourceListingState || 'inconnu')}</span>
             <span class="etsy-api-publication-meta-item">Mode: ${isExpiredUpdateMode ? 'mise a jour de fiche expiree' : (isUpdateMode ? 'mise a jour de fiche' : 'duplication en draft')}</span>
           </div>
@@ -140,7 +143,7 @@
       });
     });
     host.querySelector('[data-js="etsy-publication-submit"]')?.addEventListener('click', () => {
-      const targetShopKey = host.querySelector('[data-js="etsy-publication-submit"]')?.dataset.targetShop || primaryTargetShopKey;
+      const targetShopKey = host.querySelector('[data-js="etsy-publication-submit"]')?.dataset.targetShop || primaryPublishShopKey;
       deps.publishDraftListing?.(prefix, { targetShopKey });
     });
     host.querySelector('[data-js="etsy-publication-transfer-submit"]')?.addEventListener('click', () => {

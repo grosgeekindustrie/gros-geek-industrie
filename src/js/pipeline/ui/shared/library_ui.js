@@ -105,6 +105,7 @@
   async function openPromptLightbox(id) {
     currentLbAgentId = id;
     currentLbPromptSpec = null;
+    const mode = getCurrentMode();
     const customPromptSpec = getCustomPromptSpec(id);
     if (customPromptSpec) {
       currentLbPromptSpec = {
@@ -145,10 +146,28 @@
     };
     const agents = getConfig().getPipelineAgents();
     const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
+    const state = getState();
+    let promptValue = state.promptsByMode?.[mode]?.[id] || '';
+
+    if (!promptValue) {
+      const map = getPromptFileMapForCurrentContext(mode);
+      const promptFolder = getPromptFolderForCurrentContext(mode);
+      const fileName = (map && map[id]) || id;
+
+      try {
+        const res = await fetch(`/files/${promptFolder}/${fileName}.md`);
+        if (!res.ok) throw new Error((await res.json()).error);
+        promptValue = await res.text();
+        state.promptsByMode[mode][id] = promptValue;
+      } catch (e) {
+        showToast(`Erreur: ${e.message}`, '#ff4757');
+        return;
+      }
+    }
 
     const titleEl = document.getElementById('lbTitle');
     global.PipelineUIIcons?.setIconLabel?.(titleEl, 'settings', `Prompt — ${label}`);
-    document.getElementById('lbTextarea').value = getState().promptsByMode[getCurrentMode()][id] || '';
+    document.getElementById('lbTextarea').value = promptValue;
     document.getElementById('promptLightbox').classList.add('visible');
   }
 

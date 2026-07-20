@@ -6,6 +6,10 @@
   const EtsyData = global.PipelineUIEtsyData || {};
   const CATEGORY_PICKER_OVERLAY_ID = 'etsyCategoryPickerOverlay';
 
+  function normalizeShopKey(shopKey = '') {
+    return String(shopKey || '').trim() === 'doublex' ? 'doublex' : 'grosgeek';
+  }
+
   function applyPipelineSeedToWorkspaceState(state, seed) {
     if (!state?.mediaPayload?.data) return;
     if (!seed) return;
@@ -76,6 +80,9 @@
 
     data.title = String(draft.title || '').trim();
     data.description = String(draft.description || '');
+
+    const taxonomyId = String(draft.taxonomyId || '').trim();
+    data.taxonomy_id = taxonomyId ? Number(taxonomyId) : null;
 
     const categoryPathParts = EtsyData.splitCategoryPath?.(draft.categoryPathText || '') || [];
     if (categoryPathParts.length) {
@@ -388,7 +395,13 @@
       if (deps.getActiveEditorSession?.()?.prefix === prefix) deps.closeImageEditorOverlay?.();
       deps.closeCategoryPickerOverlay?.();
       state.listingId = listingId;
-      state.sourceShopKey = String(deps.getActiveShopKey?.() || global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek').trim() || 'grosgeek';
+      state.sourceShopKey = normalizeShopKey(
+        payload?.payload?.source_shop_key
+        || payload?.payload?.sourceShopKey
+        || deps.getActiveShopKey?.()
+        || global.PipelineUIApp?.getActiveShopKey?.()
+        || 'grosgeek'
+      );
       state.payloadEnvelope = payload || null;
       state.listingPropertiesPayload = listingPropertiesPayload || null;
       state.listingPropertiesError = listingPropertiesError;
