@@ -28,9 +28,14 @@ local-certs/
 *.bak_*
 src/**/*.bak*
 
-.etsy_oauth_pending.json
-.etsy_oauth_tokens.json
+# Local Etsy OAuth credentials and temporary authorization state
+.etsy_oauth_pending*.json
+.etsy_oauth_tokens*.json
 .etsy_media_cache/
+
+# Local Pinterest OAuth credentials and temporary authorization state
+.pinterest_oauth_pending*.json
+.pinterest_oauth_tokens*.json
 *.pem
 *.key
 *.crt
