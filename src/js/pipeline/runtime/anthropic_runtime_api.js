@@ -60,6 +60,7 @@
     PIPELINE_PREFIXES.COLLECTION,
   ]);
   const AGENT_MAX_TOKENS = Object.freeze({
+    pinterest: 5000,
     traduction_listing_en: 4000,
     traduction_listing_de: 4000,
     traduction_listing_es: 4000,

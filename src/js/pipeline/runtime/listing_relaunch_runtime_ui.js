@@ -67,6 +67,15 @@
       : imageItems;
   }
 
+  function getRelaunchOverrides(prefix) {
+    const getValue = (field) => String(document.getElementById(`etsyApiRelaunch${field}-${prefix}`)?.value || '').trim();
+    return {
+      nom: getValue('Nom'),
+      univers: getValue('Univers'),
+      instructions: getValue('Instructions'),
+    };
+  }
+
   function readWorkspaceListingSource(prefix) {
     const runtime = global.PipelineUIEtsyRuntime || {};
     const etsyData = global.PipelineUIEtsyData || {};
@@ -94,6 +103,7 @@
       images,
       selectedImageCount: images.length,
       usedSelection: (runtime.getSelectedPipelineAltMediaKeys?.(prefix) || []).length > 0,
+      overrides: getRelaunchOverrides(prefix),
     };
   }
 
@@ -193,7 +203,8 @@
     const source = state.source;
     const sourceTags = Array.isArray(source.tags) ? source.tags : [];
     const sourceTagsCsv = sourceTags.join(', ');
-    const fallbackNom = buildListingRelaunchNom(source.title);
+    const overrides = source.overrides || {};
+    const fallbackNom = String(overrides.nom || '').trim() || buildListingRelaunchNom(source.title);
     const fallbackNomCourt = fallbackNom.split(/\s+/)[0] || fallbackNom;
     const description = String(source.description || '');
     const mode = String(options.mode || global.getPipelineModeByPrefix?.(prefix) || '').trim();
@@ -202,7 +213,7 @@
     const context = {
       nom: fallbackNom,
       nomCourt: fallbackNomCourt,
-      univers: '',
+      univers: String(overrides.univers || '').trim(),
       sculpteur: '',
       echelles: '',
       pieces: '',
@@ -212,8 +223,9 @@
       descriptionFigurine: description,
       resumePersonnage: description,
       particularites: sourceTagsCsv,
-      consignesExternes: '',
-      consignes_externes: '',
+      consignesExternes: String(overrides.instructions || '').trim(),
+      consignes_externes: String(overrides.instructions || '').trim(),
+      relaunch_user_instruction: String(overrides.instructions || '').trim(),
       archetypes: '',
       seoElargies: '',
       medium: '',
@@ -261,6 +273,9 @@
       `Images source retenues: ${source.selectedImageCount || 0}`,
       `Selection images: ${source.usedSelection ? 'selection utilisateur' : 'toutes les images visibles'}`,
     ];
+    if (source.overrides?.nom) lines.push(`Nom impose: ${source.overrides.nom}`);
+    if (source.overrides?.univers) lines.push(`Univers impose: ${source.overrides.univers}`);
+    if (source.overrides?.instructions) lines.push(`Instructions de relance: ${source.overrides.instructions}`);
     const description = String(source.description || '').replace(/\r\n?/g, '\n');
     if (description) lines.push(`Description source: ${description}`);
     return lines.join('\n');

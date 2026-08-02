@@ -283,16 +283,21 @@
     });
   };
 
-  const collectScaleEntries = (prefix, count) => Array.from({ length: count }, (_, index) => ({
+  const collectScaleEntries = (prefix, count, labels = []) => Array.from({ length: count }, (_, index) => ({
     checked: isElementChecked(`${prefix}-ec${index}`),
     dim: getElementValue(`${prefix}-ed${index}`),
     source: document.getElementById(`${prefix}-ei${index}`)?.dataset?.dimensionSource || '',
+    label: labels[index] || '',
   }));
 
-  const restoreScaleEntries = (entries, prefix) => {
+  const restoreScaleEntries = (entries, prefix, labels = []) => {
     if (!Array.isArray(entries)) return;
 
-    entries.forEach((entry, index) => {
+    entries.forEach((entry, savedIndex) => {
+      const labelIndex = entry.label ? labels.findIndex((label) => label === entry.label) : -1;
+      const index = labelIndex >= 0
+        ? labelIndex
+        : (prefix === 'col' && !entry.label ? savedIndex + 3 : savedIndex);
       const checkbox = getElementById(`${prefix}-ec${index}`);
       if (checkbox && entry.checked) {
         checkbox.checked = true;
@@ -774,6 +779,14 @@
       Object.assign(base, relaunchContext);
     }
 
+    const relaunchInstructions = String(base.relaunch_user_instruction || '').trim();
+    if (relaunchInstructions) {
+      base.correction = [
+        String(base.correction || '').trim(),
+        `Instructions de relance a appliquer :\n${relaunchInstructions}`,
+      ].filter(Boolean).join('\n\n');
+    }
+
     if (agentId === 'description' && String(base.relaunch_internal_instruction || '').trim()) {
       base.correction = [
         String(base.correction || '').trim(),
@@ -802,7 +815,7 @@
       data._buzz = isElementChecked('tt-fBuzz');
       data._buzzNote = getElementValue('tt-fBuzzNote');
     } else {
-      data._echelles = collectScaleEntries('col', (echellesApi.ECHELLES_COLLECTION || []).length);
+      data._echelles = collectScaleEntries('col', (echellesApi.ECHELLES_COLLECTION || []).length, echellesApi.ECHELLES_COLLECTION || []);
       data._dynamicEchelles = echellesApi.isDynamicScaleEnabled?.('col') || false;
       data._license = isElementChecked('col-fLicense');
       data._mediums = getCollectionMediumValues();
@@ -822,6 +835,9 @@
         const checked = document.querySelector('input[name="col-origin-scale"]:checked');
         return checked ? Number(checked.value) : null;
       })();
+      data._originEchelleLabel = Number.isInteger(data._originEchelleIndex)
+        ? (echellesApi.ECHELLES_COLLECTION || [])[data._originEchelleIndex] || ''
+        : '';
       data._customEchelles = [];
       for (let index = 0; index < (echellesApi.CUSTOM_COLLECTION_COUNT || 0); index += 1) {
         const scaleIndex = (echellesApi.ECHELLES_COLLECTION || []).length + index;
@@ -876,7 +892,7 @@
         echellesApi.setDynamicEchellesEnabled?.(data._dynamicEchelles !== undefined ? data._dynamicEchelles : true, { shouldSave: false });
 
         restoreFieldValues(COLLECTION_FORM_FIELDS, data);
-        restoreScaleEntries(data._echelles, 'col');
+        restoreScaleEntries(data._echelles, 'col', echellesApi.ECHELLES_COLLECTION || []);
 
         if (data._license !== undefined) {
           const licenseEl = getElementById('col-fLicense');
@@ -955,8 +971,14 @@
           }
         }
 
-        if (Number.isInteger(data._originEchelleIndex)) {
-          global.setEchelleOrigin(data._originEchelleIndex, { shouldSave: false, recalculate: false });
+        const originLabelIndex = data._originEchelleLabel
+          ? (echellesApi.ECHELLES_COLLECTION || []).findIndex((label) => label === data._originEchelleLabel)
+          : -1;
+        const originIndex = originLabelIndex >= 0
+          ? originLabelIndex
+          : (Number.isInteger(data._originEchelleIndex) ? data._originEchelleIndex + 3 : null);
+        if (Number.isInteger(originIndex)) {
+          global.setEchelleOrigin(originIndex, { shouldSave: false, recalculate: false });
         }
 
         echellesApi.refreshCollectionAutoDimensions?.({ shouldSave: false, force: true });

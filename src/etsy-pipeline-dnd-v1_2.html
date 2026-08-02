@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/07-tags-selection.css">
 <link rel="stylesheet" href="css/08-icons.css">
 <link rel="stylesheet" href="css/09-integrations.css">
+<link rel="stylesheet" href="css/10-pinterest.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -109,6 +110,12 @@
           <div class="home-card-title">Collection</div>
           <div class="home-card-desc">Figurines fan art, garage kits,<br>statues résine à peindre.</div>
           <div class="home-card-tag">6 agents · Jules → Eden</div>
+        </div>
+        <div class="home-card home-card-pinterest" data-ui-action="open-pinterest">
+          <div class="home-card-icon" data-svg-icon="pin"></div>
+          <div class="home-card-title">Pinterest</div>
+          <div class="home-card-desc">Récupérer une fiche Etsy,<br>préparer et ordonner ses épingles.</div>
+          <div class="home-card-tag">Etsy API · Agent Pinterest</div>
         </div>
       </div>
       <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
@@ -244,6 +251,80 @@
       </section>
     </div>
   </div>
+</div>
+
+<!-- VIEW PINTEREST -->
+<div class="view" id="view-pinterest" data-js="view" data-view="pinterest">
+  <main class="pinterest-workspace" aria-labelledby="pinterestWorkspaceTitle">
+    <header class="pinterest-hero">
+      <div>
+        <p class="pinterest-kicker">PINTEREST · PRÉPARATION</p>
+        <h1 id="pinterestWorkspaceTitle">Créer les épingles depuis Etsy</h1>
+        <p>Charge une fiche de la boutique active, organise ses images puis génère un paquet d’épingles éditable.</p>
+      </div>
+      <span class="pinterest-shop-badge" id="pinterestShopBadge">Gros Geek Industrie</span>
+    </header>
+
+    <section class="pinterest-panel pinterest-loader-panel" aria-labelledby="pinterestLoaderTitle">
+      <div class="pinterest-panel-heading">
+        <div>
+          <p class="pinterest-step">01 · SOURCE ETSY</p>
+          <h2 id="pinterestLoaderTitle">Fiche produit</h2>
+        </div>
+        <button class="btn btn-muted" type="button" id="pinterestDataBtn" disabled>
+          <span data-svg-icon="fileText"></span><span class="ui-icon-label">Data</span>
+        </button>
+      </div>
+      <div class="pinterest-listing-form">
+        <label for="pinterestListingId">ID de la fiche Etsy</label>
+        <div class="pinterest-listing-row">
+          <input type="text" id="pinterestListingId" inputmode="numeric" pattern="[0-9]*" placeholder="Ex. 1234567890" autocomplete="off">
+          <button class="btn btn-accent" type="button" id="pinterestLoadBtn">
+            <span data-svg-icon="search"></span><span class="ui-icon-label">Récupérer la fiche</span>
+          </button>
+        </div>
+        <p class="fetch-status" id="pinterestLoadStatus">Entre uniquement le listing_id Etsy.</p>
+      </div>
+      <pre class="pinterest-data-panel" id="pinterestDataPanel" hidden>Aucune donnée chargée.</pre>
+    </section>
+
+    <section class="pinterest-panel" aria-labelledby="pinterestMediaTitle">
+      <div class="pinterest-panel-heading">
+        <div>
+          <p class="pinterest-step">02 · MÉDIAS</p>
+          <h2 id="pinterestMediaTitle">Images de la fiche</h2>
+        </div>
+        <span class="pinterest-count" id="pinterestImageCount">0 image</span>
+      </div>
+      <p class="pinterest-help">Glisse les cartes pour choisir l’ordre des futures épingles.</p>
+      <div class="pinterest-image-grid is-empty" id="pinterestImageGrid">
+        <p class="pinterest-empty">Les images Etsy apparaîtront ici après le chargement.</p>
+      </div>
+    </section>
+
+    <section class="pinterest-panel" aria-labelledby="pinterestAgentTitle">
+      <div class="pinterest-panel-heading">
+        <div>
+          <p class="pinterest-step">03 · AGENT</p>
+          <h2 id="pinterestAgentTitle">Génération des épingles</h2>
+        </div>
+        <span class="pinterest-agent-state" id="pinterestAgentState">En attente</span>
+      </div>
+      <div class="field-action-row pinterest-agent-actions">
+        <button class="btn btn-accent" type="button" id="pinterestGenerateBtn" disabled>
+          <span data-svg-icon="play"></span><span class="ui-icon-label">Lancer la génération</span>
+        </button>
+        <button class="btn btn-error" type="button" id="pinterestStopBtn" disabled>
+          <span data-svg-icon="stop"></span><span class="ui-icon-label">Stopper</span>
+        </button>
+        <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="pinterest-publisher">
+          <span data-svg-icon="settings"></span><span class="ui-icon-label">Modifier le prompt</span>
+        </button>
+      </div>
+      <p class="pinterest-help">L’agent reçoit le prompt, le titre, les tags, la description et l’ordre des images. Aucune publication Pinterest n’est effectuée à ce stade.</p>
+      <textarea class="pinterest-output" id="pinterestOutput" spellcheck="false" placeholder="Le paquet d’épingles généré apparaîtra ici."></textarea>
+    </section>
+  </main>
 </div>
 
 <!-- VIEW FORM -->
@@ -873,6 +954,11 @@ Cache : —</pre>
                 <span class="collection-stepper-kicker">Relance pipeline</span>
                 <h3 class="collection-stepper-title">Relancer depuis la fiche Etsy</h3>
                 <p class="collection-stepper-subtitle">Les images cochees dans le workspace sont envoyees au pipeline. Si rien n'est coche, toutes les images visibles partent.</p>
+              </div>
+              <div class="form-grid">
+                <div class="fg"><label for="etsyApiRelaunchNom-tt">Nom du personnage (optionnel)</label><input type="text" id="etsyApiRelaunchNom-tt" placeholder="Remplace le nom déduit du titre Etsy" /></div>
+                <div class="fg"><label for="etsyApiRelaunchUnivers-tt">Univers (optionnel)</label><input type="text" id="etsyApiRelaunchUnivers-tt" placeholder="Ex. Kingdom Hearts" /></div>
+                <div class="fg full"><label for="etsyApiRelaunchInstructions-tt">Instructions de relance (optionnel)</label><textarea id="etsyApiRelaunchInstructions-tt" rows="3" placeholder="Consignes à appliquer à cette relance du pipeline..."></textarea></div>
               </div>
               <div class="field-action-row">
                 <button class="btn btn-accent" type="button" data-ui-action="run-etsy-listing-relaunch" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Relancer dans le pipeline</span></button>
@@ -1868,6 +1954,11 @@ Cache : —</pre>
                 <span class="collection-stepper-kicker">Relance pipeline</span>
                 <h3 class="collection-stepper-title">Relancer depuis la fiche Etsy</h3>
                 <p class="collection-stepper-subtitle">Les images cochees dans le workspace sont envoyees au pipeline. Si rien n'est coche, toutes les images visibles partent.</p>
+              </div>
+              <div class="form-grid">
+                <div class="fg"><label for="etsyApiRelaunchNom-col">Nom du personnage (optionnel)</label><input type="text" id="etsyApiRelaunchNom-col" placeholder="Remplace le nom déduit du titre Etsy" /></div>
+                <div class="fg"><label for="etsyApiRelaunchUnivers-col">Univers (optionnel)</label><input type="text" id="etsyApiRelaunchUnivers-col" placeholder="Ex. Kingdom Hearts" /></div>
+                <div class="fg full"><label for="etsyApiRelaunchInstructions-col">Instructions de relance (optionnel)</label><textarea id="etsyApiRelaunchInstructions-col" rows="3" placeholder="Consignes à appliquer à cette relance du pipeline..."></textarea></div>
               </div>
               <div class="field-action-row">
                 <button class="btn btn-accent" type="button" data-ui-action="run-etsy-listing-relaunch" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Relancer dans le pipeline</span></button>

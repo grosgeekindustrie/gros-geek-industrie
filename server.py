@@ -28,7 +28,7 @@ ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
 ENV_FILE = ROOT / '.env'
 ALLOWED_DIRS = {'prompts', 'biblios'}
-ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction', 'doubleX'}
+ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction', 'doubleX', 'pinterest'}
 LOCAL_HTTPS_FALLBACK_CERT_FILES = ('local-certs/localhost.crt', 'localhost.pem')
 LOCAL_HTTPS_FALLBACK_KEY_FILES = ('local-certs/localhost.key', 'localhost-key.pem')
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
@@ -2818,20 +2818,83 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         return
 
                     if normalized_update_listing_payload:
-                        pause_etsy_publication_requests()
-                        update_response = perform_etsy_patch_form_request(
-                            f'shops/{shop_id}/listings/{target_listing_id}',
-                            normalized_update_listing_payload,
-                            include_oauth=True,
-                            shop_key=requested_shop_key,
+                        update_tags = normalized_update_listing_payload.get('tags') or []
+                        has_long_tag = any(len(str(tag or '').strip()) > 20 for tag in update_tags)
+                        use_french_translation_tags = (
+                            publication_mode == 'update_expired_listing'
+                            and current_listing_state == 'expired'
+                            and has_long_tag
                         )
-                        operations.append({
-                            'step': 'update_listing',
-                            'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
-                            'mode': publication_mode,
-                            'payload_sent': normalized_update_listing_payload,
-                            'response': update_response,
-                        })
+                        main_update_payload = (
+                            {
+                                key: value
+                                for key, value in normalized_update_listing_payload.items()
+                                if key != 'tags'
+                            }
+                            if use_french_translation_tags
+                            else normalized_update_listing_payload
+                        )
+
+                        if main_update_payload:
+                            pause_etsy_publication_requests()
+                            update_response = perform_etsy_patch_form_request(
+                                f'shops/{shop_id}/listings/{target_listing_id}',
+                                main_update_payload,
+                                include_oauth=True,
+                                shop_key=requested_shop_key,
+                            )
+                            operations.append({
+                                'step': 'update_listing',
+                                'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
+                                'mode': publication_mode,
+                                'payload_sent': main_update_payload,
+                                'response': update_response,
+                            })
+
+                        if use_french_translation_tags:
+                            translation_path = f'shops/{shop_id}/listings/{target_listing_id}/translations/fr'
+                            translation_payload = {
+                                'title': str(normalized_update_listing_payload.get('title') or '').strip(),
+                                'description': str(normalized_update_listing_payload.get('description') or ''),
+                                'tags': [str(tag or '').strip() for tag in update_tags if str(tag or '').strip()],
+                            }
+                            try:
+                                perform_etsy_get_request(
+                                    translation_path,
+                                    include_oauth=True,
+                                    shop_key=requested_shop_key,
+                                )
+                                translation_method = 'PUT'
+                            except urllib.error.HTTPError as translation_get_error:
+                                if translation_get_error.code != 404:
+                                    raise
+                                translation_method = 'POST'
+
+                            pause_etsy_publication_requests()
+                            if translation_method == 'PUT':
+                                translation_response = perform_etsy_put_form_request(
+                                    translation_path,
+                                    translation_payload,
+                                    include_oauth=True,
+                                    shop_key=requested_shop_key,
+                                )
+                            else:
+                                translation_response = perform_etsy_post_form_request(
+                                    translation_path,
+                                    translation_payload,
+                                    include_oauth=True,
+                                    shop_key=requested_shop_key,
+                                )
+                            operations.append({
+                                'step': 'update_expired_listing_french_tags',
+                                'endpoint': translation_path,
+                                'method': translation_method,
+                                'payload_sent': translation_payload,
+                                'response': translation_response,
+                            })
+
+                        if not main_update_payload and not use_french_translation_tags:
+                            raise ValueError('Aucun champ de mise a jour Etsy exploitable')
 
                     if images_payload:
                         deleted_image_ids = []

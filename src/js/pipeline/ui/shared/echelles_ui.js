@@ -13,10 +13,15 @@
   const COLLECTION_MODE = 'collection';
   const TABLETOP_SCALES = echellesData.ECHELLES_BY_MODE?.tabletop || ['28mm', '32mm', '40mm', '50mm', '54mm', '75mm', '90mm', '140mm', '1/10', '1/8', '1/6', '1/5', 'Custom base'];
   const TABLETOP_DOUBLEX_SCALES = echellesData.ECHELLES_BY_MODE?.tabletop_doublex || TABLETOP_SCALES;
-  const COLLECTION_SCALES = echellesData.ECHELLES_BY_MODE?.collection || ['Buste', '75mm', '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6', '1/5', '1/4', '1/3'];
+  const COLLECTION_SCALES = echellesData.ECHELLES_BY_MODE?.collection || ['Chibi 100%', 'Chibi upscale 125%', 'Chibi upscale 150%', 'Buste', '75mm', '140mm', '1/12', '1/10', '1/9', '1/8', '1/7', '1/6', '1/5', '1/4', '1/3'];
   const CUSTOM_COLLECTION_COUNT = Number.isInteger(echellesData.CUSTOM_COLLECTION_COUNT) ? echellesData.CUSTOM_COLLECTION_COUNT : 3;
   const DIMENSION_PLACEHOLDER = echellesData.DIMENSION_PLACEHOLDER || '224mm * 200mm * 136mm';
   const MANUAL_COLLECTION_SCALE_LABELS = new Set(['buste', '75mm']);
+  const CHIBI_SCALE_FACTORS = Object.freeze({
+    'chibi100%': 1,
+    'chibiupscale125%': 1.25,
+    'chibiupscale150%': 1.5,
+  });
 
   const getPfx = () => global.PipelineUIShell.pfx();
   const getCurrentMode = () => global.currentMode;
@@ -50,6 +55,9 @@
 
   const parseScaleDescriptor = (label = '') => {
     const normalizedLabel = normalizeScaleLabel(label);
+    const chibiFactor = CHIBI_SCALE_FACTORS[normalizedLabel.toLowerCase()];
+    if (Number.isFinite(chibiFactor)) return { kind: 'chibi', value: chibiFactor };
+
     const ratioMatch = normalizedLabel.match(/^1[/:](\d+(?:[.,]\d+)?)$/i);
     if (ratioMatch) {
       const denominator = Number(ratioMatch[1].replace(',', '.'));
@@ -78,6 +86,7 @@
 
     if (originDescriptor.kind === 'ratio') return originDescriptor.value / targetDescriptor.value;
     if (originDescriptor.kind === 'millimeter') return targetDescriptor.value / originDescriptor.value;
+    if (originDescriptor.kind === 'chibi') return targetDescriptor.value / originDescriptor.value;
     return null;
   };
 

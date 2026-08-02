@@ -74,6 +74,7 @@
   const RAW_INPUT_COPIED_MESSAGE = 'Input copie';
   const HOME_HEADER_CONTEXT = 'Etsy Pipeline - Generation de fiches produit IA';
   const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
+  const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
   const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
   const PIPELINE_META_SEPARATOR = '&bull;';
@@ -246,6 +247,7 @@
     'paste-external-instruction-clipboard': (fieldId) => global.pasteClipboardToField?.(fieldId),
     'set-active-shop': (shopKey) => setActiveShop(shopKey),
     'select-mode': (mode) => selectMode(mode),
+    'open-pinterest': () => global.PipelineUIPinterest?.open?.(),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
@@ -476,6 +478,9 @@
     } else if (viewName === 'pipeline') {
       ctx.textContent = PIPELINE_RUNNING_CONTEXT;
       ctx.classList.add('mode-pipeline');
+    } else if (viewName === 'pinterest') {
+      ctx.textContent = PINTEREST_HEADER_CONTEXT;
+      ctx.classList.add('mode-pinterest');
     }
   }
 
@@ -544,6 +549,10 @@
       const controller = controllers[agent.id];
       if (controller) controller.abort();
       delete controllers[agent.id];
+    });
+    Object.keys(controllers).forEach((agentId) => {
+      controllers[agentId]?.abort?.();
+      delete controllers[agentId];
     });
     if (!silent) showToast(PIPELINE_STOPPED_MESSAGE, '#ff4757');
     setPipelineExecutionActive(false);
