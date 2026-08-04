@@ -249,55 +249,18 @@ def get_threads_profile() -> dict:
 
 
 
-def wait_for_threads_container(container_id: str, attempts: int = 30, delay_seconds: float = 2.0):
-    """Attendre qu'un conteneur Threads soit prêt avant sa publication."""
-    last_status = ''
-    last_detail = ''
+def wait_for_threads_container(container_id: str, attempts: int = 6, delay_seconds: float = 60.0):
     for attempt in range(attempts):
-        try:
-            payload = perform_threads_request(f'{container_id}?fields=status,error_message')
-        except ValueError as error:
-            # Juste après sa création, le conteneur peut ne pas être encore
-            # lisible sur tous les nœuds de l'API Threads.
-            last_detail = str(error)
-            if attempt < attempts - 1 and 'requested resource does not exist' in last_detail.lower():
-                time.sleep(delay_seconds)
-                continue
-            raise
-
+        payload = perform_threads_request(f'{container_id}?fields=status,error_message')
         status = str(payload.get('status') or '').strip().upper()
-        detail = str(payload.get('error_message') or '').strip()
-        last_status = status
-        last_detail = detail
-
         if status in {'FINISHED', 'PUBLISHED'}:
             return
         if status in {'ERROR', 'EXPIRED'}:
-            raise ValueError(f'Conteneur Threads non publiable : {detail or status}')
+            detail = str(payload.get('error_message') or status).strip()
+            raise ValueError(f'Conteneur Threads non publiable : {detail}')
         if attempt < attempts - 1:
             time.sleep(delay_seconds)
-
-    suffix = f' ({last_status or last_detail})' if (last_status or last_detail) else ''
-    raise ValueError(f'Le traitement du média Threads a dépassé le délai prévu{suffix}')
-
-
-def publish_threads_container(profile_id: str, container_id: str, attempts: int = 8, delay_seconds: float = 2.0) -> dict:
-    """Publier un conteneur Threads avec reprise sur propagation retardée."""
-    last_error = ''
-    for attempt in range(attempts):
-        try:
-            return perform_threads_request(
-                f'{profile_id}/threads_publish',
-                method='POST',
-                data={'creation_id': container_id},
-            )
-        except ValueError as error:
-            last_error = str(error)
-            retriable = 'requested resource does not exist' in last_error.lower()
-            if not retriable or attempt >= attempts - 1:
-                raise
-            time.sleep(delay_seconds)
-    raise ValueError(last_error or 'Publication Threads impossible')
+    raise ValueError('Le traitement de la vidéo Threads a dépassé le délai prévu')
 
 
 def get_instagram_graph_api_version() -> str:
@@ -498,33 +461,19 @@ def start_instagram_media_tunnel() -> tuple[subprocess.Popen, str, object]:
 
 
 def stop_instagram_media_tunnel():
-    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
-
+    global INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
     process = INSTAGRAM_MEDIA_TUNNEL_PROCESS
     log_handle = INSTAGRAM_MEDIA_TUNNEL_LOG
-
-    # Réinitialiser immédiatement l'état partagé pour éviter qu'une autre requête
-    # considère encore le tunnel comme disponible pendant son arrêt.
-    INSTAGRAM_MEDIA_PUBLIC_BASE = ''
     INSTAGRAM_MEDIA_TUNNEL_PROCESS = None
     INSTAGRAM_MEDIA_TUNNEL_LOG = None
-
     if process is not None and process.poll() is None:
         process.terminate()
         try:
             process.wait(timeout=3)
         except subprocess.TimeoutExpired:
             process.kill()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                pass
-
     if log_handle is not None:
-        try:
-            log_handle.close()
-        except OSError:
-            pass
+        log_handle.close()
 
 
 def ensure_instagram_media_tunnel(media_id: str = '') -> str:
@@ -3128,18 +3077,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                 if not container_id:
                     raise ValueError('Threads n’a pas retourné d’identifiant de conteneur')
-
-                # Threads crée les conteneurs de manière asynchrone. Attendre les
-                # enfants puis le parent évite de publier un ID pas encore propagé.
-                for child_id in child_container_ids:
-                    wait_for_threads_container(child_id)
-                wait_for_threads_container(
-                    container_id,
-                    attempts=90 if mode == 'reel' else 30,
-                    delay_seconds=2.0,
+                if mode == 'reel':
+                    time.sleep(30)
+                    wait_for_threads_container(container_id)
+                publication = perform_threads_request(
+                    f'{profile["id"]}/threads_publish',
+                    method='POST',
+                    data={'creation_id': container_id},
                 )
-
-                publication = publish_threads_container(profile['id'], container_id)
                 publication_id = str(publication.get('id') or '').strip()
                 if not publication_id:
                     raise ValueError('Threads n’a pas retourné d’identifiant de publication')
@@ -3159,14 +3104,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as error:
                 self.send_json(500, {'error': str(error)})
             finally:
-                # Ne supprimer les fichiers qu'après une publication réussie.
-                # En cas d'échec, ils restent disponibles pour une nouvelle tentative.
-                if 'publication_id' in locals() and publication_id:
-                    for media_path in media_paths:
-                        try:
-                            media_path.unlink()
-                        except OSError:
-                            pass
+                for media_path in media_paths:
+                    try:
+                        media_path.unlink()
+                    except OSError:
+                        pass
             return
 
         if path == '/instagram/test/publish':
@@ -4332,7 +4274,7 @@ def start_instagram_media_server() -> ThreadingLocalServer:
 
 
 def main():
-    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
+    global INSTAGRAM_MEDIA_PUBLIC_BASE
 
     load_dotenv_file()
     try:
@@ -4348,21 +4290,13 @@ def main():
 
     clear_instagram_media_cache()
     instagram_media_server = start_instagram_media_server()
-
-    # Le tunnel lancé au démarrage doit être enregistré dans les mêmes variables
-    # globales que celles utilisées par ensure_instagram_media_tunnel(). Sans cela,
-    # la première publication croit que le tunnel n'existe pas et en lance un second.
-    stop_instagram_media_tunnel()
+    instagram_tunnel_process = None
+    instagram_tunnel_log = None
     try:
-        (
-            INSTAGRAM_MEDIA_TUNNEL_PROCESS,
-            INSTAGRAM_MEDIA_PUBLIC_BASE,
-            INSTAGRAM_MEDIA_TUNNEL_LOG,
-        ) = start_instagram_media_tunnel()
+        instagram_tunnel_process, INSTAGRAM_MEDIA_PUBLIC_BASE, instagram_tunnel_log = (
+            start_instagram_media_tunnel()
+        )
     except ValueError as error:
-        INSTAGRAM_MEDIA_PUBLIC_BASE = ''
-        INSTAGRAM_MEDIA_TUNNEL_PROCESS = None
-        INSTAGRAM_MEDIA_TUNNEL_LOG = None
         print(f'  Avertissement Instagram : {error}')
 
     server_port = PORT
@@ -4401,10 +4335,10 @@ def main():
         server.server_close()
         instagram_media_server.shutdown()
         instagram_media_server.server_close()
-
-        # Arrêter le processus cloudflared réellement suivi par l'application, y
-        # compris s'il a été relancé pendant une tentative de publication.
-        stop_instagram_media_tunnel()
+        if instagram_tunnel_process is not None and instagram_tunnel_process.poll() is None:
+            instagram_tunnel_process.terminate()
+        if instagram_tunnel_log is not None:
+            instagram_tunnel_log.close()
         clear_instagram_media_cache()
 
 if __name__ == '__main__':
