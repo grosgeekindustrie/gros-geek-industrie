@@ -11,6 +11,7 @@ import http.server
 import json
 import os
 import re
+import shutil
 import ssl
 import subprocess
 import sys
@@ -21,14 +22,14 @@ import uuid
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Lock, Timer, local
+from threading import Lock, Thread, Timer, local
 
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
 STATIC_ROOT = ROOT / 'src'
 ENV_FILE = ROOT / '.env'
 ALLOWED_DIRS = {'prompts', 'biblios'}
-ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction', 'doubleX', 'pinterest'}
+ALLOWED_SUBDIRS = {'tabletop', 'collection', 'traduction', 'doubleX', 'pinterest', 'instagram'}
 LOCAL_HTTPS_FALLBACK_CERT_FILES = ('local-certs/localhost.crt', 'localhost.pem')
 LOCAL_HTTPS_FALLBACK_KEY_FILES = ('local-certs/localhost.key', 'localhost-key.pem')
 ANTHROPIC_FILES_CACHE = ROOT / '.anthropic_files_cache.json'
@@ -39,6 +40,18 @@ ETSY_API_BASE_URL = 'https://api.etsy.com/v3'
 ETSY_OAUTH_CONNECT_URL = 'https://www.etsy.com/oauth/connect'
 ETSY_OAUTH_TOKEN_URL = f'{ETSY_API_BASE_URL}/public/oauth/token'
 ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w', 'transactions_r')
+INSTAGRAM_GRAPH_API_BASE_URL = 'https://graph.instagram.com'
+INSTAGRAM_GRAPH_API_DEFAULT_VERSION = 'v22.0'
+THREADS_GRAPH_API_BASE_URL = 'https://graph.threads.net'
+THREADS_GRAPH_API_DEFAULT_VERSION = 'v1.0'
+INSTAGRAM_MEDIA_CACHE_DIR = ROOT / '.instagram_media_cache'
+INSTAGRAM_MEDIA_LOCAL_PORT = 8766
+INSTAGRAM_MEDIA_MAX_BYTES = 10 * 1024 * 1024
+INSTAGRAM_VIDEO_MAX_BYTES = 1024 * 1024 * 1024
+INSTAGRAM_MEDIA_PUBLIC_BASE = ''
+INSTAGRAM_MEDIA_TUNNEL_PROCESS = None
+INSTAGRAM_MEDIA_TUNNEL_LOG = None
+INSTAGRAM_MEDIA_TUNNEL_LOCK = Lock()
 OPERA_BROWSER_PATH = Path(r'C:\Users\raficraft\AppData\Local\Programs\Opera\opera.exe')
 ETSY_OAUTH_PENDING_FILE = ROOT / '.etsy_oauth_pending.json'
 ETSY_OAUTH_TOKEN_FILE = ROOT / '.etsy_oauth_tokens.json'
@@ -173,6 +186,327 @@ def decode_json_bytes(raw: bytes) -> dict:
         return {}
 
     return json.loads(text)
+
+
+def get_instagram_access_token() -> str:
+    return get_env_value('INSTAGRAM_ACCESS_TOKEN')
+
+
+def get_threads_access_token() -> str:
+    return get_env_value('THREADS_ACCESS_TOKEN')
+
+
+def get_threads_graph_api_version() -> str:
+    raw = get_env_value('THREADS_GRAPH_API_VERSION') or THREADS_GRAPH_API_DEFAULT_VERSION
+    normalized = raw.strip().lower()
+    if not re.fullmatch(r'v\d+\.\d+', normalized):
+        raise ValueError('Version Threads Graph API invalide')
+    return normalized
+
+
+def build_threads_graph_url(path: str) -> str:
+    version = get_threads_graph_api_version()
+    return f'{THREADS_GRAPH_API_BASE_URL}/{version}/{path.lstrip("/")}'
+
+
+def perform_threads_request(path: str, method: str = 'GET', data: dict | None = None) -> dict:
+    token = get_threads_access_token()
+    if not token:
+        raise ValueError('THREADS_ACCESS_TOKEN absent du fichier .env')
+
+    encoded_data = urllib.parse.urlencode(data).encode('utf-8') if data is not None else None
+    request = urllib.request.Request(
+        build_threads_graph_url(path),
+        data=encoded_data,
+        method=method,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        message = extract_instagram_error(payload, f'Threads API HTTP {error.code}')
+        raise ValueError(message) from error
+
+
+def get_threads_profile() -> dict:
+    payload = perform_threads_request('me?fields=id,username')
+    user_id = str(payload.get('id') or '').strip()
+    if not user_id:
+        raise ValueError('Identifiant du compte Threads introuvable')
+    return {
+        'id': user_id,
+        'username': str(payload.get('username') or '').strip(),
+    }
+
+
+
+def wait_for_threads_container(container_id: str, attempts: int = 6, delay_seconds: float = 60.0):
+    for attempt in range(attempts):
+        payload = perform_threads_request(f'{container_id}?fields=status,error_message')
+        status = str(payload.get('status') or '').strip().upper()
+        if status in {'FINISHED', 'PUBLISHED'}:
+            return
+        if status in {'ERROR', 'EXPIRED'}:
+            detail = str(payload.get('error_message') or status).strip()
+            raise ValueError(f'Conteneur Threads non publiable : {detail}')
+        if attempt < attempts - 1:
+            time.sleep(delay_seconds)
+    raise ValueError('Le traitement de la vidéo Threads a dépassé le délai prévu')
+
+
+def get_instagram_graph_api_version() -> str:
+    raw = get_env_value('INSTAGRAM_GRAPH_API_VERSION') or INSTAGRAM_GRAPH_API_DEFAULT_VERSION
+    normalized = raw.strip().lower()
+    if not re.fullmatch(r'v\d+\.\d+', normalized):
+        raise ValueError('Version Instagram Graph API invalide')
+    return normalized
+
+
+def build_instagram_graph_url(path: str) -> str:
+    version = get_instagram_graph_api_version()
+    return f'{INSTAGRAM_GRAPH_API_BASE_URL}/{version}/{path.lstrip("/")}'
+
+
+def extract_instagram_error(payload: dict, fallback: str) -> str:
+    error = payload.get('error') if isinstance(payload, dict) else None
+    if isinstance(error, dict):
+        message = str(error.get('message') or '').strip()
+        if message:
+            return message
+    return fallback
+
+
+def perform_instagram_request(path: str, method: str = 'GET', data: dict | None = None) -> dict:
+    token = get_instagram_access_token()
+    if not token:
+        raise ValueError('INSTAGRAM_ACCESS_TOKEN absent du fichier .env')
+
+    encoded_data = None
+    if data is not None:
+        encoded_data = urllib.parse.urlencode(data).encode('utf-8')
+
+    request = urllib.request.Request(
+        build_instagram_graph_url(path),
+        data=encoded_data,
+        method=method,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        message = extract_instagram_error(payload, f'Instagram API HTTP {error.code}')
+        raise ValueError(message) from error
+
+
+def get_instagram_profile() -> dict:
+    payload = perform_instagram_request('me?fields=user_id,username')
+    user_id = str(payload.get('user_id') or payload.get('id') or '').strip()
+    if not user_id:
+        raise ValueError('Identifiant du compte Instagram introuvable')
+    return {
+        'id': user_id,
+        'username': str(payload.get('username') or '').strip(),
+    }
+
+
+def wait_for_instagram_container(container_id: str, attempts: int = 6, delay_seconds: float = 2.0):
+    for attempt in range(attempts):
+        payload = perform_instagram_request(f'{container_id}?fields=status_code,status')
+        status_code = str(payload.get('status_code') or '').strip().upper()
+        if status_code == 'FINISHED':
+            return
+        if status_code in {'ERROR', 'EXPIRED'}:
+            status = str(payload.get('status') or status_code).strip()
+            raise ValueError(f'Conteneur Instagram non publiable : {status}')
+        if attempt < attempts - 1:
+            time.sleep(delay_seconds)
+    raise ValueError('Le traitement de l’image Instagram a dépassé le délai prévu')
+
+
+def clear_instagram_media_cache():
+    INSTAGRAM_MEDIA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    for path in INSTAGRAM_MEDIA_CACHE_DIR.iterdir():
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
+def store_instagram_media(payload: bytes) -> str:
+    if not payload:
+        raise ValueError('Le fichier image est vide')
+    if len(payload) > INSTAGRAM_MEDIA_MAX_BYTES:
+        raise ValueError('L’image dépasse la limite temporaire de 10 Mo')
+    if not payload.startswith(b'\xff\xd8\xff'):
+        raise ValueError('Le fichier préparé doit être une image JPEG')
+
+    media_id = f'{uuid.uuid4().hex}.jpg'
+    (INSTAGRAM_MEDIA_CACHE_DIR / media_id).write_bytes(payload)
+    return media_id
+
+
+def store_instagram_video_stream(source, length: int, content_type: str) -> str:
+    if length <= 0:
+        raise ValueError('Le fichier vidéo est vide')
+    if length > INSTAGRAM_VIDEO_MAX_BYTES:
+        raise ValueError('La vidéo dépasse la limite de 1 Go')
+    extension = '.mov' if content_type == 'video/quicktime' else '.mp4'
+    media_id = f'{uuid.uuid4().hex}{extension}'
+    target = INSTAGRAM_MEDIA_CACHE_DIR / media_id
+    remaining = length
+    try:
+        with target.open('wb') as output:
+            while remaining > 0:
+                chunk = source.read(min(1024 * 1024, remaining))
+                if not chunk:
+                    raise ValueError('Réception de la vidéo interrompue')
+                output.write(chunk)
+                remaining -= len(chunk)
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    return media_id
+
+
+def resolve_instagram_media_path(media_id: str) -> Path:
+    normalized = str(media_id or '').strip().lower()
+    if not re.fullmatch(r'[a-f0-9]{32}\.(?:jpg|mp4|mov)', normalized):
+        raise ValueError('Identifiant du média temporaire invalide')
+
+    target = (INSTAGRAM_MEDIA_CACHE_DIR / normalized).resolve()
+    try:
+        target.relative_to(INSTAGRAM_MEDIA_CACHE_DIR.resolve())
+    except ValueError as error:
+        raise ValueError('Chemin du média temporaire invalide') from error
+    if not target.is_file():
+        raise ValueError('Le média temporaire est introuvable, dépose-le de nouveau')
+    return target
+
+
+def get_instagram_media_public_url(media_id: str) -> str:
+    if not INSTAGRAM_MEDIA_PUBLIC_BASE:
+        raise ValueError('Le tunnel HTTPS temporaire Instagram n’est pas prêt')
+    return f'{INSTAGRAM_MEDIA_PUBLIC_BASE}/media/{urllib.parse.quote(media_id)}'
+
+
+def find_cloudflared_executable() -> str:
+    local_executable = ROOT / '.tools' / 'cloudflared.exe'
+    if local_executable.is_file():
+        return str(local_executable)
+
+    installed = shutil.which('cloudflared')
+    if installed:
+        return installed
+    raise ValueError('cloudflared est introuvable')
+
+
+def start_instagram_media_tunnel() -> tuple[subprocess.Popen, str, object]:
+    log_dir = ROOT / 'tmp'
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / 'instagram-media-tunnel.log'
+    log_handle = log_path.open('w', encoding='utf-8')
+    process = subprocess.Popen(
+        [
+            find_cloudflared_executable(),
+            'tunnel',
+            '--url',
+            f'http://127.0.0.1:{INSTAGRAM_MEDIA_LOCAL_PORT}',
+            '--no-autoupdate',
+        ],
+        cwd=str(ROOT),
+        stdout=log_handle,
+        stderr=subprocess.STDOUT,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+
+    deadline = time.time() + 30
+    public_base = ''
+    while time.time() < deadline:
+        if process.poll() is not None:
+            break
+        time.sleep(0.25)
+        try:
+            log_text = log_path.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        match = re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', log_text)
+        if match:
+            public_base = match.group(0)
+            break
+
+    if not public_base:
+        process.terminate()
+        log_handle.close()
+        raise ValueError('Impossible d’ouvrir le tunnel HTTPS temporaire Instagram')
+    return process, public_base, log_handle
+
+
+def stop_instagram_media_tunnel():
+    global INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
+    process = INSTAGRAM_MEDIA_TUNNEL_PROCESS
+    log_handle = INSTAGRAM_MEDIA_TUNNEL_LOG
+    INSTAGRAM_MEDIA_TUNNEL_PROCESS = None
+    INSTAGRAM_MEDIA_TUNNEL_LOG = None
+    if process is not None and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    if log_handle is not None:
+        log_handle.close()
+
+
+def ensure_instagram_media_tunnel(media_id: str = '') -> str:
+    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
+
+    def probe(public_base: str) -> bool:
+        if not public_base or not media_id:
+            return bool(public_base)
+        target = f'{public_base}/media/{urllib.parse.quote(media_id)}'
+        expected_type = 'video/' if media_id.endswith(('.mp4', '.mov')) else 'image/'
+        try:
+            request = urllib.request.Request(target, method='HEAD', headers={'User-Agent': 'Meta-Media-Preflight/1.0'})
+            with urllib.request.urlopen(request, timeout=8) as response:
+                content_type = str(response.headers.get('Content-Type') or '').lower()
+                return response.status == 200 and content_type.startswith(expected_type)
+        except Exception:
+            return False
+
+    with INSTAGRAM_MEDIA_TUNNEL_LOCK:
+        process_alive = INSTAGRAM_MEDIA_TUNNEL_PROCESS is not None and INSTAGRAM_MEDIA_TUNNEL_PROCESS.poll() is None
+        if process_alive and probe(INSTAGRAM_MEDIA_PUBLIC_BASE):
+            return INSTAGRAM_MEDIA_PUBLIC_BASE
+
+        stop_instagram_media_tunnel()
+        INSTAGRAM_MEDIA_PUBLIC_BASE = ''
+        INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_LOG = start_instagram_media_tunnel()
+        for _ in range(6):
+            if probe(INSTAGRAM_MEDIA_PUBLIC_BASE):
+                return INSTAGRAM_MEDIA_PUBLIC_BASE
+            time.sleep(1)
+        stop_instagram_media_tunnel()
+        INSTAGRAM_MEDIA_PUBLIC_BASE = ''
+        raise ValueError('Le tunnel HTTPS des médias est indisponible, réessaie la publication')
 
 
 def guess_media_extension(content_type: str, url: str) -> str:
@@ -1114,6 +1448,15 @@ def prepare_publication_image_uploads(images_payload: list[dict]) -> list[dict]:
     return prepared_images
 
 
+def get_oversized_publication_alt_text_indexes(images_payload: list[dict], max_length: int = 500) -> list[int]:
+    return [
+        image_index + 1
+        for image_index, image_entry in enumerate(images_payload)
+        if isinstance(image_entry, dict)
+        and len(str(image_entry.get('alt_text') or '').strip()) > max_length
+    ]
+
+
 def prepare_publication_video_uploads(videos_payload: list[dict]) -> list[dict]:
     prepared_videos: list[dict] = []
     for video_index, video_entry in enumerate(videos_payload):
@@ -1891,6 +2234,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         requested_shop_key = resolve_requested_shop_key(query_params=query_params, headers=self.headers)
         set_current_request_shop_key(requested_shop_key)
 
+        if path == '/instagram/test/status':
+            try:
+                self.send_json(200, {
+                    'ok': True,
+                    'configured': bool(get_instagram_access_token()),
+                    'apiVersion': get_instagram_graph_api_version(),
+                    'mediaUploadReady': bool(INSTAGRAM_MEDIA_PUBLIC_BASE),
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            return
+
+        if path == '/instagram/test/profile':
+            try:
+                profile = get_instagram_profile()
+                self.send_json(200, {'ok': True, 'profile': profile})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/threads/status':
+            try:
+                self.send_json(200, {
+                    'ok': True,
+                    'configured': bool(get_threads_access_token()),
+                    'apiVersion': get_threads_graph_api_version(),
+                    'mediaUploadReady': bool(INSTAGRAM_MEDIA_PUBLIC_BASE),
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            return
+
+        if path == '/threads/profile':
+            try:
+                profile = get_threads_profile()
+                self.send_json(200, {'ok': True, 'profile': profile})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path == '/etsy/auth/status':
             self.send_json(200, build_etsy_auth_status(requested_shop_key))
             return
@@ -2219,12 +2606,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/etsy/test/listing':
             try:
                 listing_id = require_etsy_listing_id(query_params)
-                includes = 'Images,Videos,Inventory,Shop,User,Shipping,Personalization'
+                includes = 'Images,Videos,Shop,User,Personalization'
                 payload = perform_etsy_get_request(
                     f'listings/{listing_id}?includes={urllib.parse.quote(includes, safe=",")}&legacy=true&allow_suggested_title=true',
                     include_oauth=True,
                     shop_key=requested_shop_key,
                 )
+                inventory_payload = perform_etsy_get_request(
+                    f'listings/batch/inventory?listing_ids={listing_id}',
+                    include_oauth=True,
+                    shop_key=requested_shop_key,
+                )
+                shipping_payload = perform_etsy_get_request(
+                    f'listings/batch/shipping?listing_ids={listing_id}',
+                    include_oauth=True,
+                    shop_key=requested_shop_key,
+                )
+                inventory_entries = extract_etsy_results_collection(inventory_payload)
+                shipping_entries = extract_etsy_results_collection(shipping_payload)
+                inventory_entry = inventory_entries[0] if inventory_entries else {}
+                shipping_entry = shipping_entries[0] if shipping_entries else {}
+                payload['inventory'] = inventory_entry.get('inventory')
+                payload['shipping_profile'] = shipping_entry.get('shipping_profile')
                 source_shop_id = get_listing_shop_id(payload)
                 source_shop_key = infer_etsy_shop_key_from_shop_id(source_shop_id)
                 self.send_json(200, {
@@ -2561,6 +2964,281 @@ class Handler(http.server.BaseHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(raw_qs)
         set_current_request_shop_key(resolve_requested_shop_key(query_params=query_params, headers=self.headers))
 
+        if path == '/instagram/test/media':
+            length = int(self.headers.get('Content-Length', 0))
+            try:
+                if length <= 0:
+                    raise ValueError('Aucune image reçue')
+                if length > INSTAGRAM_MEDIA_MAX_BYTES:
+                    raise ValueError('L’image dépasse la limite temporaire de 10 Mo')
+                media_id = store_instagram_media(self.rfile.read(length))
+                self.send_json(200, {
+                    'ok': True,
+                    'mediaId': media_id,
+                    'bytes': length,
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+        if path == '/instagram/test/video':
+            length = int(self.headers.get('Content-Length', 0))
+            content_type = str(self.headers.get('Content-Type') or '').split(';', 1)[0].strip().lower()
+            try:
+                if content_type not in {'video/mp4', 'video/quicktime'}:
+                    raise ValueError('La vidéo doit être un fichier MP4 ou MOV')
+                media_id = store_instagram_video_stream(self.rfile, length, content_type)
+                self.send_json(200, {
+                    'ok': True,
+                    'mediaId': media_id,
+                    'bytes': length,
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+
+        if path == '/threads/publish':
+            length = int(self.headers.get('Content-Length', 0))
+            media_paths = []
+            try:
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
+                media_ids = [
+                    str(media_id or '').strip()
+                    for media_id in raw_media_ids
+                    if str(media_id or '').strip()
+                ]
+                text = str(data.get('text') or '').strip()
+                mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
+
+                if not media_ids:
+                    raise ValueError('Aucun média préparé pour Threads')
+                if len(media_ids) > 20:
+                    raise ValueError('Threads accepte 20 médias maximum dans un carrousel')
+
+                media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
+                ensure_instagram_media_tunnel(media_ids[0])
+                image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+                profile = get_threads_profile()
+                child_container_ids = []
+
+                if mode == 'reel':
+                    if len(image_urls) != 1:
+                        raise ValueError('Une publication vidéo Threads exige un seul fichier')
+                    if media_paths[0].suffix not in {'.mp4', '.mov'}:
+                        raise ValueError('Le média Threads préparé n’est pas une vidéo')
+                    container = perform_threads_request(
+                        f'{profile["id"]}/threads',
+                        method='POST',
+                        data={'media_type': 'VIDEO', 'video_url': image_urls[0], 'text': text},
+                    )
+                    container_id = str(container.get('id') or '').strip()
+                elif len(image_urls) == 1:
+                    container = perform_threads_request(
+                        f'{profile["id"]}/threads',
+                        method='POST',
+                        data={
+                            'media_type': 'IMAGE',
+                            'image_url': image_urls[0],
+                            'text': text,
+                        },
+                    )
+                    container_id = str(container.get('id') or '').strip()
+                else:
+                    for image_url in image_urls:
+                        child = perform_threads_request(
+                            f'{profile["id"]}/threads',
+                            method='POST',
+                            data={
+                                'media_type': 'IMAGE',
+                                'image_url': image_url,
+                                'is_carousel_item': 'true',
+                            },
+                        )
+                        child_id = str(child.get('id') or '').strip()
+                        if not child_id:
+                            raise ValueError('Threads n’a pas retourné de conteneur enfant')
+                        child_container_ids.append(child_id)
+
+                    parent = perform_threads_request(
+                        f'{profile["id"]}/threads',
+                        method='POST',
+                        data={
+                            'media_type': 'CAROUSEL',
+                            'children': ','.join(child_container_ids),
+                            'text': text,
+                        },
+                    )
+                    container_id = str(parent.get('id') or '').strip()
+
+                if not container_id:
+                    raise ValueError('Threads n’a pas retourné d’identifiant de conteneur')
+                if mode == 'reel':
+                    time.sleep(30)
+                    wait_for_threads_container(container_id)
+                publication = perform_threads_request(
+                    f'{profile["id"]}/threads_publish',
+                    method='POST',
+                    data={'creation_id': container_id},
+                )
+                publication_id = str(publication.get('id') or '').strip()
+                if not publication_id:
+                    raise ValueError('Threads n’a pas retourné d’identifiant de publication')
+
+                self.send_json(200, {
+                    'ok': True,
+                    'profile': profile,
+                    'containerId': container_id,
+                    'childContainerIds': child_container_ids,
+                    'publicationId': publication_id,
+                    'mediaCount': len(media_ids),
+                })
+            except json.JSONDecodeError:
+                self.send_json(400, {'error': 'Corps JSON invalide'})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            finally:
+                for media_path in media_paths:
+                    try:
+                        media_path.unlink()
+                    except OSError:
+                        pass
+            return
+
+        if path == '/instagram/test/publish':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            media_paths = []
+            dry_run = False
+            try:
+                data = json.loads(body or '{}')
+                raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
+                media_ids = [str(media_id or '').strip() for media_id in raw_media_ids if str(media_id or '').strip()]
+                caption = str(data.get('caption') or '').strip()
+                first_comment = str(data.get('firstComment') or '').strip()
+                dry_run = bool(data.get('dryRun'))
+                mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
+
+                if not media_ids:
+                    raise ValueError('Aucun média préparé pour Instagram')
+                if len(media_ids) > 10:
+                    raise ValueError('Instagram accepte 10 images maximum dans ce carrousel')
+                if not caption:
+                    raise ValueError('Le texte de la publication est vide')
+                if len(caption) > 2200:
+                    raise ValueError('Le texte Instagram dépasse 2200 caractères')
+
+                media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
+                ensure_instagram_media_tunnel(media_ids[0])
+                image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+                if dry_run:
+                    self.send_json(200, {
+                        'ok': True,
+                        'dryRun': True,
+                        'mediaIds': media_ids,
+                        'mediaCount': len(media_ids),
+                        'imageUrls': image_urls,
+                    })
+                    return
+
+                profile = get_instagram_profile()
+                child_container_ids = []
+                if mode == 'reel':
+                    if len(image_urls) != 1:
+                        raise ValueError('Un Reel Instagram exige une seule vidéo')
+                    if media_paths[0].suffix not in {'.mp4', '.mov'}:
+                        raise ValueError('Le média Instagram préparé n’est pas une vidéo')
+                    container = perform_instagram_request(
+                        f'{profile["id"]}/media',
+                        method='POST',
+                        data={'media_type': 'REELS', 'video_url': image_urls[0], 'caption': caption},
+                    )
+                    container_id = str(container.get('id') or '').strip()
+                elif len(image_urls) == 1:
+                    container = perform_instagram_request(
+                        f'{profile["id"]}/media',
+                        method='POST',
+                        data={'image_url': image_urls[0], 'caption': caption},
+                    )
+                    container_id = str(container.get('id') or '').strip()
+                else:
+                    for image_url in image_urls:
+                        child = perform_instagram_request(
+                            f'{profile["id"]}/media',
+                            method='POST',
+                            data={'image_url': image_url, 'is_carousel_item': 'true'},
+                        )
+                        child_id = str(child.get('id') or '').strip()
+                        if not child_id:
+                            raise ValueError('Instagram n’a pas retourné un conteneur enfant du carrousel')
+                        wait_for_instagram_container(child_id)
+                        child_container_ids.append(child_id)
+                    parent = perform_instagram_request(
+                        f'{profile["id"]}/media',
+                        method='POST',
+                        data={
+                            'media_type': 'CAROUSEL',
+                            'children': ','.join(child_container_ids),
+                            'caption': caption,
+                        },
+                    )
+                    container_id = str(parent.get('id') or '').strip()
+
+                if not container_id:
+                    raise ValueError('Instagram n’a pas retourné d’identifiant de conteneur')
+                wait_for_instagram_container(container_id, attempts=90 if mode == 'reel' else 6)
+                publication = perform_instagram_request(
+                    f'{profile["id"]}/media_publish',
+                    method='POST',
+                    data={'creation_id': container_id},
+                )
+                publication_id = str(publication.get('id') or '').strip()
+                if not publication_id:
+                    raise ValueError('Instagram n’a pas retourné d’identifiant de publication')
+
+                comment_id = ''
+                comment_error = ''
+                if first_comment:
+                    try:
+                        comment = perform_instagram_request(
+                            f'{publication_id}/comments',
+                            method='POST',
+                            data={'message': first_comment},
+                        )
+                        comment_id = str(comment.get('id') or '').strip()
+                    except Exception as error:
+                        comment_error = str(error)
+
+                self.send_json(200, {
+                    'ok': True,
+                    'profile': profile,
+                    'containerId': container_id,
+                    'childContainerIds': child_container_ids,
+                    'publicationId': publication_id,
+                    'commentId': comment_id,
+                    'commentError': comment_error,
+                    'mediaCount': len(media_ids),
+                })
+            except json.JSONDecodeError:
+                self.send_json(400, {'error': 'Corps JSON invalide'})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            finally:
+                if not dry_run:
+                    for media_path in media_paths:
+                        try:
+                            media_path.unlink()
+                        except OSError:
+                            pass
+            return
         if path == '/etsy/media-cache/prepare':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
@@ -2721,6 +3399,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return
                 if attributes_payload and not isinstance(attributes_payload, dict):
                     self.send_json(400, {'error': 'Payload attributs Etsy invalide'})
+                    return
+
+                oversized_alt_indexes = get_oversized_publication_alt_text_indexes(images_payload)
+                if oversized_alt_indexes:
+                    self.send_json(400, {
+                        'error': 'Balise ALT Etsy superieure a 500 caracteres',
+                        'image_indexes': oversized_alt_indexes,
+                        'max_length': 500,
+                    })
                     return
 
                 publication_mode = str(data.get('mode') or 'create_draft').strip().lower() or 'create_draft'
@@ -3540,11 +4227,55 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json(200, {'ok': True, 'deleted': rel})
 
 
+class InstagramMediaHandler(http.server.BaseHTTPRequestHandler):
+    def send_media(self, include_body: bool):
+        path = urllib.parse.unquote(self.path.split('?', 1)[0])
+        if not path.startswith('/media/'):
+            self.send_error(404)
+            return
+
+        try:
+            media_path = resolve_instagram_media_path(path.removeprefix('/media/'))
+        except ValueError:
+            self.send_error(404)
+            return
+
+        size = media_path.stat().st_size
+        content_type = {'.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.mov': 'video/quicktime'}[media_path.suffix]
+        self.send_response(200)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', str(size))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        if include_body:
+            with media_path.open('rb') as source:
+                shutil.copyfileobj(source, self.wfile)
+
+    def do_GET(self):
+        self.send_media(include_body=True)
+
+    def do_HEAD(self):
+        self.send_media(include_body=False)
+
+    def log_message(self, format, *args):
+        return
+
+
 class ThreadingLocalServer(http.server.ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+
+def start_instagram_media_server() -> ThreadingLocalServer:
+    server = ThreadingLocalServer(('127.0.0.1', INSTAGRAM_MEDIA_LOCAL_PORT), InstagramMediaHandler)
+    Thread(target=server.serve_forever, name='instagram-media-server', daemon=True).start()
+    return server
+
+
 def main():
+    global INSTAGRAM_MEDIA_PUBLIC_BASE
+
     load_dotenv_file()
     try:
         sys.stdout.reconfigure(errors='replace')
@@ -3556,6 +4287,17 @@ def main():
         (ROOT / d).mkdir(exist_ok=True)
         for sub in ALLOWED_SUBDIRS:
             (ROOT / d / sub).mkdir(exist_ok=True)
+
+    clear_instagram_media_cache()
+    instagram_media_server = start_instagram_media_server()
+    instagram_tunnel_process = None
+    instagram_tunnel_log = None
+    try:
+        instagram_tunnel_process, INSTAGRAM_MEDIA_PUBLIC_BASE, instagram_tunnel_log = (
+            start_instagram_media_tunnel()
+        )
+    except ValueError as error:
+        print(f'  Avertissement Instagram : {error}')
 
     server_port = PORT
     scheme = 'http'
@@ -3580,6 +4322,7 @@ def main():
         pass
     print(f'  Racine  : {ROOT}')
     print(f'  URL     : {url}')
+    print(f'  Instagram media : {INSTAGRAM_MEDIA_PUBLIC_BASE or "tunnel indisponible"}')
     print(f'  Ctrl+C  : arrêter\n')
 
     Timer(0.8, lambda: webbrowser.open(url)).start()
@@ -3588,9 +4331,15 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         print('\n  Serveur arrêté.')
+    finally:
         server.server_close()
-        sys.exit(0)
-
+        instagram_media_server.shutdown()
+        instagram_media_server.server_close()
+        if instagram_tunnel_process is not None and instagram_tunnel_process.poll() is None:
+            instagram_tunnel_process.terminate()
+        if instagram_tunnel_log is not None:
+            instagram_tunnel_log.close()
+        clear_instagram_media_cache()
 
 if __name__ == '__main__':
     main()

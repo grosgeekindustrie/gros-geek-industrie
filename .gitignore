@@ -4,6 +4,8 @@ export/
 
 # Local caches
 .cache/
+.tools/
+.instagram_media_cache/
 .anthropic_files_cache.json
 __pycache__/
 *.pyc

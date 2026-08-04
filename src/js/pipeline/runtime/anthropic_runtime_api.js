@@ -61,6 +61,7 @@
   ]);
   const AGENT_MAX_TOKENS = Object.freeze({
     pinterest: 5000,
+    instagram: 1600,
     traduction_listing_en: 4000,
     traduction_listing_de: 4000,
     traduction_listing_es: 4000,
@@ -158,6 +159,7 @@
       promptDebug: promptData?.promptDebug || null,
       runtimeAgentId: String(promptData?.runtimeAgentId || '').trim() || agentId,
       overrideModel: String(promptData?.overrideModel || '').trim(),
+      workspacePrefix: String(promptData?.workspacePrefix || '').trim(),
     };
   }
 
@@ -631,8 +633,9 @@
       promptDebug,
       runtimeAgentId,
       overrideModel,
+      workspacePrefix,
     } = normalizedPromptData;
-    const prefix = global.pfx();
+    const prefix = workspacePrefix || global.pfx();
 
     global.abortControllers[agentId] = controller;
 

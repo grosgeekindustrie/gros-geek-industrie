@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/08-icons.css">
 <link rel="stylesheet" href="css/09-integrations.css">
 <link rel="stylesheet" href="css/10-pinterest.css">
+<link rel="stylesheet" href="css/11-instagram-test.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -116,6 +117,12 @@
           <div class="home-card-title">Pinterest</div>
           <div class="home-card-desc">Récupérer une fiche Etsy,<br>préparer et ordonner ses épingles.</div>
           <div class="home-card-tag">Etsy API · Agent Pinterest</div>
+        </div>
+        <div class="home-card home-card-instagram" data-ui-action="open-instagram-test">
+          <div class="home-card-icon">IG</div>
+          <div class="home-card-title">Instagram test</div>
+          <div class="home-card-desc">Tester une publication réelle<br>avec une image et un texte.</div>
+          <div class="home-card-tag">Meta API · POC manuel</div>
         </div>
       </div>
       <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
@@ -327,6 +334,165 @@
   </main>
 </div>
 
+<div class="view" id="view-instagram-test" data-js="view" data-view="instagram-test">
+  <main class="instagram-workspace">
+    <section class="instagram-hero">
+      <div class="instagram-hero-copy">
+        <p class="instagram-kicker">STUDIO SOCIAL</p>
+        <h1>Préparer une publication Instagram</h1>
+        <p>Une fiche Etsy, les bons médias, le bon ordre. Un seul écran à la fois, sans tunnel de scroll.</p>
+      </div>
+      <div class="instagram-connection">
+        <span class="instagram-state" id="instagramTestState">Non vérifié</span>
+        <span class="instagram-profile" id="instagramProfile">Compte non vérifié</span>
+        <button class="btn btn-muted" type="button" id="instagramVerifyBtn">Vérifier</button>
+      </div>
+    </section>
+
+    <nav class="instagram-progress" aria-label="Étapes de la publication">
+      <button type="button" class="is-active" data-instagram-step-target="source"><span>01</span>Source</button>
+      <button type="button" data-instagram-step-target="media"><span>02</span>Médias</button>
+      <button type="button" data-instagram-step-target="generation"><span>03</span>Génération</button>
+      <button type="button" data-instagram-step-target="review"><span>04</span>Vérification</button>
+    </nav>
+
+    <section class="instagram-screen is-active" data-instagram-screen="source">
+      <header class="instagram-screen-header">
+        <span class="instagram-step-number">01</span>
+        <div><p class="instagram-kicker">SOURCE ETSY</p><h2>Choisir et nettoyer la fiche</h2><p id="instagramSourceSummary">Choisir une boutique et charger une fiche</p></div>
+      </header>
+      <div class="instagram-screen-body">
+        <div class="instagram-source-bar">
+          <div class="instagram-segmented" id="instagramShopPicker" role="radiogroup" aria-label="Boutique Etsy">
+            <button type="button" data-instagram-shop="grosgeek" role="radio" aria-checked="true" class="is-active">Gros Geek</button>
+            <button type="button" data-instagram-shop="doublex" role="radio" aria-checked="false">Double X</button>
+          </div>
+          <label class="instagram-listing-field"><span>Listing ID</span><input id="instagramListingId" inputmode="numeric" autocomplete="off" placeholder="1234567890"></label>
+          <button class="btn btn-accent" type="button" id="instagramLoadListingBtn">Charger la fiche</button>
+        </div>
+        <p class="instagram-inline-status" id="instagramListingStatus">Aucune fiche chargée.</p>
+        <div class="instagram-listing-editor" id="instagramListingEditor" hidden>
+          <label><span>Titre source <em>modifiable</em></span><textarea id="instagramSourceTitle" rows="2" maxlength="500"></textarea></label>
+          <label><span>Description nettoyée <em>clique pour l’afficher entièrement</em></span><textarea id="instagramSourceDescription" rows="10"></textarea></label>
+          <div class="instagram-sculptor-fields">
+            <label><span>Sculpteur détecté</span><input id="instagramSculptorName" autocomplete="off" placeholder="Nom officiel du studio ou du sculpteur"></label>
+            <label><span>Compte Instagram vérifié</span><input id="instagramSculptorHandle" autocomplete="off" placeholder="@compte · jamais inventé par l’agent"></label>
+          </div>
+          <div class="instagram-sculptor-library-row">
+            <small class="instagram-sculptor-help" id="instagramSculptorHelp">Correspondance issue de la bibliothèque locale des sculpteurs.</small>
+            <button class="btn btn-muted" type="button" id="instagramSaveSculptorBtn">Enregistrer dans la bibliothèque</button>
+          </div>
+        </div>
+      </div>
+      <footer class="instagram-screen-footer"><span></span><button class="btn btn-accent" type="button" data-instagram-next="media">Continuer vers les médias</button></footer>
+    </section>
+
+    <section class="instagram-screen" data-instagram-screen="media" hidden>
+      <header class="instagram-screen-header">
+        <span class="instagram-step-number">02</span>
+        <div><p class="instagram-kicker">MISE EN SCÈNE</p><h2>Sélectionner et ordonner les médias</h2><p id="instagramMediaSummary">Charge d’abord une fiche Etsy</p></div>
+      </header>
+      <div class="instagram-screen-body">
+        <div class="instagram-media-toolbar">
+          <div class="instagram-segmented" id="instagramModePicker" role="radiogroup" aria-label="Type de publication">
+            <button type="button" data-instagram-mode="carousel" role="radio" aria-checked="true" class="is-active">Carrousel</button>
+            <button type="button" data-instagram-mode="reel" role="radio" aria-checked="false">Reel</button>
+          </div>
+          <div class="instagram-ratio-control" id="instagramRatioControl">
+            <button class="instagram-ratio-trigger" type="button" id="instagramRatioTrigger" aria-expanded="false"><span class="instagram-ratio-icon" id="instagramRatioIcon"></span><span id="instagramRatioLabel">Original</span></button>
+            <div class="instagram-ratio-menu" id="instagramRatioMenu" hidden>
+              <button type="button" data-instagram-ratio="original" class="is-active"><i class="ratio-original"></i>Original</button>
+              <button type="button" data-instagram-ratio="1:1"><i class="ratio-square"></i>1:1</button>
+              <button type="button" data-instagram-ratio="4:5"><i class="ratio-portrait"></i>4:5</button>
+              <button type="button" data-instagram-ratio="16:9"><i class="ratio-landscape"></i>16:9</button>
+            </div>
+          </div>
+          <button class="btn btn-muted instagram-add-media" type="button" id="instagramAddMediaBtn">+ Ajouter</button>
+          <input id="instagramLocalImages" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <input id="instagramLocalVideo" type="file" accept="video/mp4,video/quicktime" hidden>
+        </div>
+        <div class="instagram-media-hint"><span id="instagramMediaCount">0 média</span><span id="instagramMediaRule">Carrousel : 2 à 10 images. Glisse pour changer l’ordre.</span></div>
+        <div class="instagram-media-drop" id="instagramMediaDrop">
+          <div class="instagram-media-grid" id="instagramMediaGrid"></div>
+          <div class="instagram-empty-media" id="instagramEmptyMedia"><strong>Les images Etsy apparaîtront ici</strong><span>Tu pourras aussi déposer des fichiers locaux.</span></div>
+          <div class="instagram-video-stage" id="instagramVideoStage" hidden></div>
+        </div>
+      </div>
+      <footer class="instagram-screen-footer"><button class="btn btn-muted" type="button" data-instagram-previous="source">Retour à la source</button><button class="btn btn-accent" type="button" data-instagram-next="generation">Préparer la génération</button></footer>
+    </section>
+
+    <section class="instagram-screen" data-instagram-screen="generation" hidden>
+      <header class="instagram-screen-header">
+        <span class="instagram-step-number">03</span>
+        <div><p class="instagram-kicker">AGENT ÉDITORIAL</p><h2>Générer puis ajuster le post</h2><p id="instagramCopySummary">Contrat d’entrée prêt, prompt à définir ensemble</p></div>
+      </header>
+      <div class="instagram-screen-body">
+        <div class="instagram-agent-bar">
+          <div><span class="instagram-agent-state">Agent non configuré</span><p>Le titre, la description nettoyée et une seule image de référence seront envoyés à l’agent.</p></div>
+          <div class="instagram-agent-actions">
+            <button class="btn btn-muted" type="button" id="instagramAgentInputBtn">Voir l’input</button>
+            <button class="btn btn-muted" type="button" id="instagramAgentPromptBtn">Modifier le prompt</button>
+            <button class="btn btn-accent" type="button" id="instagramAgentRunBtn">Lancer l’agent</button>
+            <button class="btn btn-error" type="button" id="instagramAgentStopBtn" hidden>Stopper</button>
+          </div>
+        </div>
+<pre class="instagram-agent-input" id="instagramAgentInput" hidden></pre>
+        <label class="instagram-agent-correction">
+          <span>Consigne complémentaire pour cette génération</span>
+          <textarea id="instagramAgentCorrection" rows="3" placeholder="Ex. : insiste davantage sur la pose, réduis les emojis, rends l’accroche plus directe…"></textarea>
+        </label>
+        <div class="instagram-agent-cost" id="instagramAgentCost">Aucune génération Instagram dans cette session.</div>
+        <div class="instagram-copy-grid">
+          <label><span class="instagram-copy-field-header"><span>Légende Instagram</span><button class="btn btn-muted" type="button" id="instagramCopyCaptionBtn">Copier</button></span><textarea id="instagramCaption" rows="9" placeholder="La légende générée sera éditable ici."></textarea><small><span id="instagramCaptionCount">0</span> / 2200 Instagram · cible agent 2100</small></label>
+          <label><span class="instagram-copy-field-header"><span>Premier commentaire</span><button class="btn btn-muted" type="button" id="instagramCopyCommentBtn">Copier</button></span><textarea id="instagramFirstComment" rows="9" placeholder="Le premier commentaire généré sera éditable ici."></textarea><small><span id="instagramCommentCount">0</span> / 500–1000 Instagram</small></label>
+          <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Texte Threads (anglais)</span><button class="btn btn-muted" type="button" id="instagramCopyThreadsBtn">Copier</button></span><textarea id="instagramThreadsText" rows="5" placeholder="Le texte Threads anglais sera généré dans le même appel."></textarea><small><span id="instagramThreadsCount">0</span> / 420–500 Threads</small></label>
+        </div>
+      </div>
+      <footer class="instagram-screen-footer"><button class="btn btn-muted" type="button" data-instagram-previous="media">Retour aux médias</button><button class="btn btn-accent" type="button" data-instagram-next="review">Vérifier la publication</button></footer>
+    </section>
+
+    <section class="instagram-screen" data-instagram-screen="review" hidden>
+      <header class="instagram-screen-header">
+        <span class="instagram-step-number">04</span>
+        <div><p class="instagram-kicker">DERNIER CONTRÔLE</p><h2>Vérifier avant publication</h2><p>Cette étape accueillera l’aperçu final et les actions Instagram.</p></div>
+      </header>
+      <div class="instagram-screen-body">
+        <div class="instagram-review-layout">
+          <div class="instagram-review-preview" id="instagramReviewPreview"></div>
+          <div class="instagram-review-copy">
+            <span class="instagram-review-dot" id="instagramReviewDot"></span>
+            <div><strong id="instagramReviewTitle">Préparation incomplète</strong><small id="instagramReviewDetail">Charge une fiche Etsy pour commencer.</small></div>
+            <button class="btn btn-muted" type="button" id="instagramTestPublishBtn">Tester la préparation</button>
+            <div class="instagram-network-publish">
+              <span>PUBLICATIONS AUTONOMES</span>
+              <small id="threadsProfileState">Threads non vérifié</small>
+              <div><button class="btn btn-accent" type="button" id="instagramPublishBtn">Publier sur Instagram</button><button class="btn btn-muted" type="button" id="threadsPublishBtn">Publier sur Threads</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="instagram-screen-footer"><button class="btn btn-muted" type="button" data-instagram-previous="generation">Retour à la génération</button><span></span></footer>
+    </section>
+
+    <p class="instagram-result" id="instagramPublishResult" aria-live="polite"></p>
+  </main>
+
+  <div class="instagram-media-modal" id="instagramMediaModal" aria-hidden="true">
+    <div class="instagram-media-modal-backdrop" data-instagram-modal-close></div>
+    <section class="instagram-media-dialog" role="dialog" aria-modal="true" aria-labelledby="instagramMediaModalTitle">
+      <button class="instagram-modal-close" type="button" data-instagram-modal-close aria-label="Fermer">×</button>
+      <div class="instagram-dialog-preview" id="instagramDialogFrame"><img id="instagramDialogImage" alt=""></div>
+      <div class="instagram-dialog-panel">
+        <p class="instagram-kicker">DÉTAIL DU MÉDIA</p>
+        <h2 id="instagramMediaModalTitle">Image</h2>
+        <p id="instagramMediaDimensions">Dimensions en cours de lecture…</p>
+        <label><span>Texte alternatif</span><textarea id="instagramMediaAlt" maxlength="500" rows="7"></textarea><small><span id="instagramMediaAltCount">0</span> / 500</small></label>
+        <div class="instagram-dialog-actions"><button class="btn btn-muted" type="button" id="instagramReferenceBtn">Montrer à l’agent</button><button class="btn btn-muted" type="button" id="instagramCropBtn">Recadrer</button></div>
+        <p class="instagram-dialog-note">Le recadrage modifie uniquement cette copie de travail. Le cadrage Instagram commun reste visible dans la galerie.</p>
+      </div>
+    </section>
+  </div>
+</div>
 <!-- VIEW FORM -->
 <!-- Vue de saisie : les blocs Tabletop et Collection restent volontairement séparés tant qu’aucune abstraction stable n’est validée. -->
 <div class="view" id="view-form" data-js="view" data-view="form">

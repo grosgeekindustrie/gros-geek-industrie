@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 (function initPipelineUICostRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
@@ -95,6 +95,7 @@
         traduction_es: 'ES Mapping',
         traduction_listing_es: 'ES Listing',
         social: '06 Léo',
+        instagram: 'Instagram',
         camille: '07 Camille',
         iris: 'Iris',
         cache_aware: '00 Cache-aware',
@@ -112,6 +113,7 @@
         traduction_es: 'ES Mapping',
         traduction_listing_es: 'ES Listing',
         social: '05 Theo',
+        instagram: 'Instagram',
         camille: '06 Zoe',
         iris: 'Iris',
         cache_aware: '00 Cache-aware',
@@ -385,10 +387,11 @@
 
   function showAgentCost(agentId, usage, options = {}) {
     const entry = recordSessionCostEvent(agentId, usage, options);
-    if (!entry) return;
+    if (!entry) return null;
 
     refreshSessionCostDisplay();
     renderAgentCostBadge(entry.prefix, entry.agentId);
+    return entry;
   }
 
   function copyTokenReport() {

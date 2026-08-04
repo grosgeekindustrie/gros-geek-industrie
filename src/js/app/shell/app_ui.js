@@ -75,6 +75,7 @@
   const HOME_HEADER_CONTEXT = 'Etsy Pipeline - Generation de fiches produit IA';
   const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
   const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
+  const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
   const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
   const PIPELINE_META_SEPARATOR = '&bull;';
@@ -248,6 +249,7 @@
     'set-active-shop': (shopKey) => setActiveShop(shopKey),
     'select-mode': (mode) => selectMode(mode),
     'open-pinterest': () => global.PipelineUIPinterest?.open?.(),
+    'open-instagram-test': () => global.PipelineUIInstagram?.open?.(),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
@@ -481,6 +483,9 @@
     } else if (viewName === 'pinterest') {
       ctx.textContent = PINTEREST_HEADER_CONTEXT;
       ctx.classList.add('mode-pinterest');
+    } else if (viewName === 'instagram-test') {
+      ctx.textContent = INSTAGRAM_HEADER_CONTEXT;
+      ctx.classList.add('mode-instagram');
     }
   }
 

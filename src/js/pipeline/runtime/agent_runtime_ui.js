@@ -17,6 +17,7 @@
     description: 'claude-sonnet-4-5',
     social: 'claude-sonnet-4-5',
     pinterest: 'claude-sonnet-4-5',
+    instagram: 'claude-sonnet-4-5',
     camille: 'claude-sonnet-4-5',
     iris: 'claude-sonnet-4-5',
     cache_aware: 'claude-sonnet-4-5',

@@ -185,7 +185,10 @@
     const dynamicDescription = global.state.outputs.description_assembled || '';
     const assembledDescription = global.buildFinalPipelineDescription?.(prefix, dynamicDescription) || dynamicDescription;
     const desc = global.PipelineUIRender?.sanitizeFinalOutputText?.('description_final', assembledDescription) || '';
-    const alt = global.PipelineUIRender?.sanitizeFinalOutputText?.('alt', global.state.outputs.alt || '') || '';
+    const rawAlt = global.PipelineUIRender?.sanitizeFinalOutputText?.('alt', global.state.outputs.alt || '') || '';
+    const alt = rawAlt.length > 500
+      ? rawAlt.slice(0, 501).replace(/\s+\S*$/, '').trimEnd().slice(0, 500)
+      : rawAlt;
 
     if (!titre && !tags && !desc && !alt) return;
 

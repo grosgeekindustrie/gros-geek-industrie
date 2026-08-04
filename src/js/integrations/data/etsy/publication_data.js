@@ -475,6 +475,9 @@
     const videos = imagePlan.videos;
     const dimensionProperties = buildPublicationDimensionProperties(state, attributesDraft);
     const validationErrors = [];
+    const oversizedAltImageIndexes = images
+      .map((image, index) => (String(image?.alt_text || '').length > 500 ? index + 1 : 0))
+      .filter(Boolean);
 
     if (!Number.isFinite(createPayload.quantity)) validationErrors.push('quantity manquante');
     if (!createPayload.title) validationErrors.push('title manquant');
@@ -490,6 +493,9 @@
 
     if (inventory && !inventory.products.length) {
       validationErrors.push('inventory.products vide');
+    }
+    if (oversizedAltImageIndexes.length) {
+      validationErrors.push(`ALT Etsy superieure a 500 caracteres sur image(s) ${oversizedAltImageIndexes.join(' ')}`);
     }
 
     const warnings = [];

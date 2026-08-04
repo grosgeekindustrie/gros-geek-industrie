@@ -8,6 +8,7 @@ const socialBootstrapManifest = Object.freeze({
   runtime: Object.freeze([
     'social/runtime/social_runtime_ui.js',
     'social/pinterest/pinterest_ui.js',
+    'social/instagram/instagram_ui.js',
   ]),
 });
 
