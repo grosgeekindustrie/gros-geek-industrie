@@ -38,6 +38,14 @@ src/**/*.bak*
 # Local Pinterest OAuth credentials and temporary authorization state
 .pinterest_oauth_pending*.json
 .pinterest_oauth_tokens*.json
+.pinterest_queue.sqlite3*
+.pinterest_spool/
+.server-stdout.log
+.server-stderr.log
+
+# Local TikTok OAuth credentials and temporary authorization state
+.tiktok_oauth_pending*.json
+.tiktok_oauth_tokens*.json
 *.pem
 *.key
 *.crt

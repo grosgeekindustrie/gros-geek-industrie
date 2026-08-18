@@ -36,6 +36,11 @@
     rawPayload: null,
     images: [],
     video: null,
+    reelCoverMode: 'frame',
+    reelCoverTime: 0,
+    reelCoverDataUrl: '',
+    reelCustomCover: null,
+    draftVideoIdentity: null,
     mode: 'carousel',
     ratio: 'original',
     referenceId: '',
@@ -48,6 +53,9 @@
     agentRunning: false,
     publishing: false,
     preparedPublication: null,
+    recentInstagramMedia: [],
+    tiktokConnected: false,
+    tiktokCreator: null,
     lastAgentRaw: '',
     sculptors: [],
   };
@@ -389,12 +397,22 @@
       caption: String(getElement('instagramCaption')?.value || ''),
       firstComment: String(getElement('instagramFirstComment')?.value || ''),
       threadsText: String(getElement('instagramThreadsText')?.value || ''),
+      captionFr: String(getElement('instagramCaptionFr')?.value || ''),
+      firstCommentFr: String(getElement('instagramFirstCommentFr')?.value || ''),
+      threadsTextFr: String(getElement('instagramThreadsTextFr')?.value || ''),
       correction: String(getElement('instagramAgentCorrection')?.value || ''),
       sculptorName: String(getElement('instagramSculptorName')?.value || ''),
       sculptorHandle: String(getElement('instagramSculptorHandle')?.value || ''),
       mode: state.mode,
       ratio: state.ratio,
       referenceId: state.referenceId,
+      reelCoverMode: state.reelCoverMode,
+      reelCoverTime: state.reelCoverTime,
+      reelVideoIdentity: state.video ? {
+        name: state.video.name,
+        size: state.video.size,
+        lastModified: state.video.lastModified,
+      } : state.draftVideoIdentity,
       imageOrder: state.images.map(({ id }) => id),
       altById,
     };
@@ -414,17 +432,41 @@
     state.mode = draft.mode === 'reel' ? 'reel' : 'carousel';
     state.ratio = RATIOS[draft.ratio] ? draft.ratio : 'original';
     state.referenceId = String(draft.referenceId || '');
+    state.reelCoverMode = draft.reelCoverMode === 'image' ? 'image' : 'frame';
+    // Les fichiers locaux ne survivent pas à un rechargement de page.
+    if (state.reelCoverMode === 'image') state.reelCoverMode = 'frame';
+    state.reelCoverTime = Math.max(0, Number(draft.reelCoverTime) || 0);
+    state.draftVideoIdentity = draft.reelVideoIdentity && typeof draft.reelVideoIdentity === 'object'
+      ? draft.reelVideoIdentity
+      : null;
     state.draftImageOrder = Array.isArray(draft.imageOrder) ? draft.imageOrder.map(String) : [];
     state.draftListingId = String(draft.listingId || '');
     state.draftAltById = draft.altById && typeof draft.altById === 'object' ? draft.altById : {};
+
+    const splitLegacyDraft = (value) => {
+      const separator = '━━━━━━━━━━━━━━━';
+      const parts = String(value || '').split(separator);
+      return parts.length > 1
+        ? { french: parts.shift().trim(), english: parts.join(separator).trim() }
+        : { french: '', english: String(value || '') };
+    };
+    const legacyCaption = splitLegacyDraft(draft.caption);
+    const legacyFirstComment = splitLegacyDraft(draft.firstComment);
+    const restoredCaption = draft.captionFr ? draft.caption : legacyCaption.english;
+    const restoredCaptionFr = draft.captionFr || legacyCaption.french;
+    const restoredFirstComment = draft.firstCommentFr ? draft.firstComment : legacyFirstComment.english;
+    const restoredFirstCommentFr = draft.firstCommentFr || legacyFirstComment.french;
 
     const values = {
       instagramListingId: draft.listingId,
       instagramSourceTitle: draft.title,
       instagramSourceDescription: draft.description,
-      instagramCaption: draft.caption,
-      instagramFirstComment: draft.firstComment,
+      instagramCaption: restoredCaption,
+      instagramFirstComment: restoredFirstComment,
       instagramThreadsText: draft.threadsText,
+      instagramCaptionFr: restoredCaptionFr,
+      instagramFirstCommentFr: restoredFirstCommentFr,
+      instagramThreadsTextFr: draft.threadsTextFr,
       instagramAgentCorrection: draft.correction,
       instagramSculptorName: draft.sculptorName,
       instagramSculptorHandle: draft.sculptorHandle,
@@ -483,6 +525,103 @@
     });
   };
 
+  const formatVideoTime = (seconds = 0) => {
+    const safeSeconds = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainder = safeSeconds - (minutes * 60);
+    return minutes + ':' + remainder.toFixed(3).padStart(6, '0');
+  };
+
+  const drawReelCover = (video) => {
+    if (state.reelCoverMode !== 'frame') return;
+    const canvas = getElement('instagramReelCoverCanvas');
+    if (!canvas || !video?.videoWidth || !video?.videoHeight) return;
+    const scale = Math.min(1, 280 / video.videoWidth);
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      state.reelCoverDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    } catch (error) {
+      state.reelCoverDataUrl = '';
+    }
+    if (state.activeStep === 'review') renderReviewPreview();
+  };
+
+  const syncReelCoverControls = (video, time) => {
+    const duration = Number.isFinite(video?.duration) ? video.duration : Number(state.video?.duration) || 0;
+    const clampedTime = Math.min(Math.max(0, Number(time) || 0), Math.max(0, duration - 0.001));
+    state.reelCoverTime = clampedTime;
+    const slider = getElement('instagramReelCoverSlider');
+    const label = getElement('instagramReelCoverTime');
+    if (slider) {
+      slider.max = String(Math.max(0, duration));
+      slider.value = String(clampedTime);
+    }
+    if (label) label.textContent = formatVideoTime(clampedTime) + ' / ' + formatVideoTime(duration);
+  };
+
+  const seekReelCover = (time, { persist = true } = {}) => {
+    const video = getElement('instagramReelVideo');
+    if (!video) return;
+    syncReelCoverControls(video, time);
+    video.currentTime = state.reelCoverTime;
+    if (persist) saveDraft();
+  };
+
+  const clearCustomReelCover = () => {
+    if (state.reelCustomCover?.url?.startsWith('blob:')) {
+      URL.revokeObjectURL(state.reelCustomCover.url);
+    }
+    state.reelCustomCover = null;
+  };
+
+  const selectCustomReelCover = async (file) => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setResult('Choisis une couverture JPEG, PNG ou WebP.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setResult('La couverture personnalisée dépasse 10 Mo.', 'error');
+      return;
+    }
+
+    clearCustomReelCover();
+    const customCover = {
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      url: URL.createObjectURL(file),
+      width: null,
+      height: null,
+    };
+    await loadImageDimensions(customCover);
+    state.reelCustomCover = customCover;
+    state.reelCoverMode = 'image';
+    state.reelCoverDataUrl = customCover.url;
+    state.preparedPublication = null;
+    renderMedia();
+    saveDraft();
+    setResult('Couverture personnalisée ajoutée pour le Reel Instagram.', 'success');
+  };
+
+  const setReelCoverMode = (mode) => {
+    const normalizedMode = mode === 'image' ? 'image' : 'frame';
+    if (normalizedMode === 'image' && !state.reelCustomCover) {
+      getElement('instagramReelCustomCoverInput')?.click();
+      return;
+    }
+    state.reelCoverMode = normalizedMode;
+    state.reelCoverDataUrl = normalizedMode === 'image'
+      ? String(state.reelCustomCover?.url || '')
+      : '';
+    state.preparedPublication = null;
+    renderMedia();
+    saveDraft();
+  };
+
   const renderVideo = () => {
     const stage = getElement('instagramVideoStage');
     if (!stage) return;
@@ -494,16 +633,54 @@
       return;
     }
 
+    const customCoverSelected = state.reelCoverMode === 'image' && state.reelCustomCover;
+    const coverPreview = customCoverSelected
+      ? `<img src="${escapeHtml(state.reelCustomCover.url)}" alt="Couverture personnalisée"><span>Image</span>`
+      : '<canvas id="instagramReelCoverCanvas" aria-label="Couverture sélectionnée"></canvas><span>Frame</span>';
+    const coverControls = customCoverSelected
+      ? `<div class="instagram-reel-custom-cover">
+          <strong>${escapeHtml(state.reelCustomCover.name)}</strong>
+          <small>${state.reelCustomCover.width || '?'} × ${state.reelCustomCover.height || '?'} px</small>
+          <button type="button" class="instagram-frame-step" data-instagram-select-cover-image>Changer l'image</button>
+        </div>`
+      : `<div class="instagram-reel-scrubber">
+          <input id="instagramReelCoverSlider" type="range" min="0" max="${state.video.duration || 0}" step="0.001" value="${state.reelCoverTime}" aria-label="Choisir la couverture du Reel">
+          <div><button type="button" class="instagram-frame-step" data-instagram-cover-step="-0.033333">−1 image</button><strong id="instagramReelCoverTime">${formatVideoTime(state.reelCoverTime)} / ${formatVideoTime(state.video.duration)}</strong><button type="button" class="instagram-frame-step" data-instagram-cover-step="0.033333">+1 image</button></div>
+          <small>Déplace le curseur ou avance image par image.</small>
+        </div>`;
+
     stage.innerHTML = `
       <article class="instagram-video-card">
-        <video src="${escapeHtml(state.video.url)}" controls preload="metadata"></video>
-        <div>
+        <div class="instagram-reel-player">
+          <video id="instagramReelVideo" src="${escapeHtml(state.video.url)}" controls preload="metadata"></video>
+          <div class="instagram-reel-cover-mode" role="group" aria-label="Type de couverture du Reel">
+            <button type="button" class="${state.reelCoverMode === 'frame' ? 'is-active' : ''}" data-instagram-cover-mode="frame">Frame de la vidéo</button>
+            <button type="button" class="${state.reelCoverMode === 'image' ? 'is-active' : ''}" data-instagram-cover-mode="image">Image personnalisée</button>
+            <input id="instagramReelCustomCoverInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          </div>
+          <div class="instagram-reel-timeline">
+            <div class="instagram-reel-cover-preview">${coverPreview}</div>
+            ${coverControls}
+          </div>
+          <small class="instagram-reel-cover-note">L'image personnalisée est envoyée comme couverture Instagram. Les autres réseaux conservent leur couverture vidéo native.</small>
+        </div>
+        <div class="instagram-video-details">
           <strong>${escapeHtml(state.video.name)}</strong>
           <span>${state.video.width || '?'} × ${state.video.height || '?'} px · ${(state.video.size / (1024 * 1024)).toFixed(1)} Mo</span>
           <button class="btn btn-muted" type="button" data-instagram-remove-video>Retirer</button>
         </div>
       </article>
     `;
+
+    const video = getElement('instagramReelVideo');
+    video?.addEventListener('loadedmetadata', () => {
+      syncReelCoverControls(video, state.reelCoverTime);
+      seekReelCover(state.reelCoverTime, { persist: false });
+    }, { once: true });
+    video?.addEventListener('seeked', () => drawReelCover(video));
+    if (video?.readyState >= 1 && state.reelCoverMode === 'frame') {
+      seekReelCover(state.reelCoverTime, { persist: false });
+    }
   };
 
   const renderMedia = () => {
@@ -571,7 +748,7 @@
       ? state.images.length >= 2 && state.images.length <= 10
       : Boolean(state.video && state.video.size <= 1024 * 1024 * 1024);
     const caption = String(getElement('instagramCaption')?.value || '').trim();
-    const generationReady = Boolean(caption) && countTextCharacters(caption) <= 2200;
+    const generationReady = Boolean(caption) && countTextCharacters(caption) <= 2100;
     return {
       source: Boolean(state.listing),
       media: mediaReady,
@@ -707,53 +884,109 @@
     if (cleaned.startsWith(fence)) cleaned = cleaned.slice(cleaned.indexOf('\n') + 1);
     if (cleaned.endsWith(fence)) cleaned = cleaned.slice(0, -fence.length).trim();
     const parsed = JSON.parse(cleaned);
-    const caption = String(parsed?.caption || '').trim();
-    const firstComment = String(parsed?.first_comment || parsed?.firstComment || '').trim();
-    const threadsText = String(parsed?.threads_text || parsed?.threadsText || '').trim();
-    const shopUrl = SHOP_URLS[state.shopKey];
-    const frenchHeader = '🛒🔗 Disponible en boutique\n👉 ' + shopUrl;
-    const englishHeader = '🛒🔗 Available in shop\n👉 ' + shopUrl;
+    const english = parsed?.english && typeof parsed.english === 'object' ? parsed.english : {};
+    const french = parsed?.french && typeof parsed.french === 'object' ? parsed.french : {};
+    const readValue = (...values) => String(values.find((value) => typeof value === 'string' && value.trim()) || '').trim();
     const separator = '━━━━━━━━━━━━━━━';
-    if (!caption) throw new Error('La sortie JSON ne contient aucune légende.');
+    const splitLegacyValue = (value) => {
+      const parts = String(value || '').split(separator);
+      return parts.length > 1
+        ? { french: parts.shift().trim(), english: parts.join(separator).trim() }
+        : { french: '', english: '' };
+    };
+
+    let caption = readValue(english.caption, parsed?.caption_en, parsed?.captionEnglish);
+    let captionFr = readValue(french.caption, parsed?.caption_fr, parsed?.captionFrench);
+    const legacyCaption = splitLegacyValue(parsed?.caption);
+    if (!caption) caption = legacyCaption.english || readValue(parsed?.caption);
+    if (!captionFr) captionFr = legacyCaption.french;
+
+    let firstComment = readValue(
+      english.first_comment,
+      english.firstComment,
+      parsed?.first_comment_en,
+      parsed?.firstCommentEnglish,
+    );
+    let firstCommentFr = readValue(
+      french.first_comment,
+      french.firstComment,
+      parsed?.first_comment_fr,
+      parsed?.firstCommentFrench,
+    );
+    const legacyFirstComment = splitLegacyValue(parsed?.first_comment || parsed?.firstComment);
+    if (!firstComment) firstComment = legacyFirstComment.english || readValue(parsed?.first_comment, parsed?.firstComment);
+    if (!firstCommentFr) firstCommentFr = legacyFirstComment.french;
+
+    const threadsText = readValue(
+      english.threads_text,
+      english.threadsText,
+      parsed?.threads_text_en,
+      parsed?.threadsTextEnglish,
+      parsed?.threads_text,
+      parsed?.threadsText,
+    );
+    const threadsTextFr = readValue(
+      french.threads_text,
+      french.threadsText,
+      parsed?.threads_text_fr,
+      parsed?.threadsTextFrench,
+    );
+    const shopUrl = SHOP_URLS[state.shopKey];
+    const englishHeader = '🛒🔗 Available in shop\n👉 ' + shopUrl;
+    const frenchHeader = '🛒🔗 Disponible en boutique\n👉 ' + shopUrl;
+    if (!caption) throw new Error('La sortie JSON ne contient aucune légende anglaise publiable.');
     const warnings = [];
+    if (!captionFr) warnings.push('légende française de contrôle absente');
+    if (!firstComment) warnings.push('premier commentaire anglais absent');
+    if (!firstCommentFr) warnings.push('premier commentaire français de contrôle absent');
     if (!threadsText) warnings.push('texte Threads absent');
-    if (!caption.startsWith(frenchHeader)) warnings.push('bloc boutique français absent du début');
-    if (!caption.includes(separator + '\n\n' + englishHeader)) warnings.push('bloc anglais ou séparateur incorrect');
+    if (!threadsTextFr) warnings.push('texte Threads français de contrôle absent');
+    if (!caption.startsWith(englishHeader)) warnings.push('bloc boutique anglais absent du début de la légende');
+    if (captionFr && !captionFr.startsWith(frenchHeader)) warnings.push('bloc boutique français absent du début du contrôle de légende');
     if (/Boutique Etsy\s*:/i.test(caption)) warnings.push('ancien format « Boutique Etsy » détecté');
     if (countTextCharacters(caption) > 2100) warnings.push('légende supérieure à la limite interne de 2 100 caractères');
     const hashtags = caption.match(/#[\p{L}\p{N}_]+/gu) || [];
     const lastLine = caption.split('\n').map((line) => line.trim()).filter(Boolean).at(-1) || '';
     const lastLineHashtags = lastLine.match(/#[\p{L}\p{N}_]+/gu) || [];
     if (hashtags.length < 5 || hashtags.length > 6 || lastLineHashtags.length !== hashtags.length) {
-      warnings.push('les 5 ou 6 hashtags ne sont pas tous placés sur la dernière ligne');
+      warnings.push('les 5 ou 6 hashtags ne sont pas tous placés sur la dernière ligne anglaise');
     }
-    if (firstComment.includes('#')) warnings.push('hashtags présents dans le premier commentaire');
+    const frenchHashtags = captionFr.match(/#[\p{L}\p{N}_]+/gu) || [];
+    if (frenchHashtags.length) warnings.push('hashtags présents dans la légende française de contrôle');
+    if ([firstComment, firstCommentFr].some((value) => value.includes('#'))) warnings.push('hashtags présents dans un premier commentaire');
     const firstCommentLength = countTextCharacters(firstComment);
-    if (firstCommentLength < 500 || firstCommentLength > 1000) warnings.push('premier commentaire hors de la plage de 500 à 1 000 caractères');
+    const firstCommentFrLength = countTextCharacters(firstCommentFr);
+    if (firstCommentLength < 250 || firstCommentLength > 500) warnings.push('premier commentaire anglais hors de la plage de 250 à 500 caractères');
+    if (firstCommentFrLength < 250 || firstCommentFrLength > 500) warnings.push('premier commentaire français hors de la plage de 250 à 500 caractères');
     const threadsLength = countTextCharacters(threadsText);
-    if (threadsLength < 420 || threadsLength > 500) warnings.push('texte Threads hors de la plage de 420 à 500 caractères');
-    if (threadsText.includes('#')) warnings.push('hashtag interdit dans le texte Threads');
+    const threadsFrLength = countTextCharacters(threadsTextFr);
+    if (threadsLength < 420 || threadsLength > 500) warnings.push('texte Threads anglais hors de la plage de 420 à 500 caractères');
+    if (threadsFrLength < 420 || threadsFrLength > 500) warnings.push('texte Threads français hors de la plage de 420 à 500 caractères');
+    if ([threadsText, threadsTextFr].some((value) => value.includes('#'))) warnings.push('hashtag interdit dans une version Threads');
+    if (!firstComment.startsWith(englishHeader)) warnings.push('bloc boutique anglais absent du début du premier commentaire');
+    if (firstCommentFr && !firstCommentFr.startsWith(frenchHeader)) warnings.push('bloc boutique français absent du début du contrôle du premier commentaire');
     if (!threadsText.startsWith(englishHeader)) warnings.push('bloc boutique anglais absent du début du texte Threads');
-    if ([caption, firstComment, threadsText].some((value) => value.includes('—'))) warnings.push('tiret cadratin interdit');
-    const commentHeader = '🛒🔗 Disponible en boutique / Available in shop\n👉 ' + shopUrl;
-    const commentShopUrlCount = firstComment.split(shopUrl).length - 1;
-    if (!firstComment.startsWith(commentHeader) || !firstComment.includes('\n\n' + separator + '\n\n') || commentShopUrlCount !== 1) {
-      warnings.push('premier commentaire non bilingue ou séparateur manquant');
+    if (threadsTextFr && !threadsTextFr.startsWith(frenchHeader)) warnings.push('bloc boutique français absent du début du contrôle Threads');
+    if ([caption, firstComment, threadsText, captionFr, firstCommentFr, threadsTextFr].some((value) => (value.split(shopUrl).length - 1) !== 1)) {
+      warnings.push('URL boutique attendue une seule fois dans chacun des six champs');
     }
+    if ([caption, firstComment, threadsText, captionFr, firstCommentFr, threadsTextFr].some((value) => value.includes('—'))) warnings.push('tiret cadratin interdit');
+    if ([caption, firstComment, threadsText, captionFr, firstCommentFr, threadsTextFr].some((value) => /\[\[[A-Z_]+\]\]/.test(value))) warnings.push('placeholder non résolu');
     const handle = String(getElement('instagramSculptorHandle')?.value || '').trim();
     const sculptorCredit = handle || String(getElement('instagramSculptorName')?.value || '').trim();
     if (sculptorCredit) {
-      const creditCount = caption.split(sculptorCredit).length - 1;
-      const captionParts = caption.split(separator);
-      const frenchCredit = 'Sculpté par : ' + sculptorCredit;
+      const englishCreditCount = caption.split(sculptorCredit).length - 1;
+      const frenchCreditCount = captionFr.split(sculptorCredit).length - 1;
       const englishCredit = 'Sculpted by: ' + sculptorCredit;
-      if (creditCount !== 2 || !captionParts[0]?.includes(frenchCredit) || !captionParts[1]?.includes(englishCredit)) {
-        warnings.push('le crédit sculpteur doit être en français dans la partie française et en anglais dans la partie anglaise');
+      const frenchCredit = 'Sculpté par : ' + sculptorCredit;
+      if (englishCreditCount !== 1 || !caption.includes(englishCredit)) warnings.push('crédit sculpteur anglais incorrect');
+      if (captionFr && (frenchCreditCount !== 1 || !captionFr.includes(frenchCredit))) warnings.push('crédit sculpteur français de contrôle incorrect');
+      if ([firstComment, firstCommentFr, threadsText, threadsTextFr].some((value) => value.toLocaleLowerCase().includes(sculptorCredit.toLocaleLowerCase()))) {
+        warnings.push('le sculpteur ne doit apparaître que dans les légendes');
       }
-      if (threadsText.toLocaleLowerCase().includes(sculptorCredit.toLocaleLowerCase())) warnings.push('le sculpteur ne doit pas être cité dans le texte Threads');
     }
     if (findCopiedSourceSequence(caption)) warnings.push('reprise trop proche de la description source');
-    return { caption, firstComment, threadsText, warnings };
+    return { caption, firstComment, threadsText, captionFr, firstCommentFr, threadsTextFr, warnings };
   };
 
   const setAgentState = (message, type = '') => {
@@ -869,10 +1102,12 @@
       if (output.warnings.length) {
         setAgentState('Une relance corrective maximum…', 'running');
         const retryPrompt = [
+          filled,
+          'CORRECTION TECHNIQUE OBLIGATOIRE',
           'Réécris entièrement la proposition JSON ci-dessous pour corriger toutes ces erreurs :',
           output.warnings.join(' ; '),
-          'Règles absolues : caption obligatoirement complète en français puis séparateur puis anglais, jamais dans une seule langue, 2 100 caractères maximum espaces compris ; texte de vente très court ; tutoiement en français ; aucune phrase recopiée ; exactement 5 ou 6 hashtags uniquement sur la dernière ligne de caption ; sculpteur crédité exactement deux fois avec son @compte, sous la forme Sculpté par : dans la partie française puis Sculpted by: dans la partie anglaise, et nulle part ailleurs ; aucun sculpteur dans les lignes techniques ; first_comment obligatoirement en français puis séparateur puis anglais, entre 500 et 1 000 caractères, sans hashtag, avec un seul bloc boutique bilingue et un seul lien ' + SHOP_URLS[state.shopKey] + ' au début ; first_comment doit être une réaction humaine naturelle sous le post, jamais une seconde présentation, une description produit ou une répétition de caption ; threads_text uniquement en anglais, naturel et commercial, entre 420 et 500 caractères, structure libre, aucun hashtag, aucune mention du sculpteur, commençant exactement par 🛒🔗 Available in shop puis à la ligne 👉 ' + SHOP_URLS[state.shopKey] + ' ; ces trois emojis sont obligatoires ; le caractère tiret cadratin est interdit partout.',
-          'Conserve uniquement les faits déjà présents. Retourne seulement le JSON corrigé.',
+          'Respecte intégralement le prompt et son schéma JSON english/french ci-dessus. Conserve uniquement les faits déjà présents. Retourne seulement le JSON corrigé.',
+          'PROPOSITION À CORRIGER',
           state.lastAgentRaw,
         ].join('\n\n');
         response = await global.callClaude(AGENT_ID, {
@@ -888,6 +1123,9 @@
       getElement('instagramCaption').value = output.caption;
       getElement('instagramFirstComment').value = output.firstComment;
       getElement('instagramThreadsText').value = output.threadsText;
+      getElement('instagramCaptionFr').value = output.captionFr;
+      getElement('instagramFirstCommentFr').value = output.firstCommentFr;
+      getElement('instagramThreadsTextFr').value = output.threadsTextFr;
       updateTextCounters();
       saveDraft();
 
@@ -899,7 +1137,7 @@
         global.showToast?.(warning, '#f0b35d');
       } else {
         setAgentState('Génération terminée', 'success');
-        setResult('Légende, premier commentaire et texte Threads générés. Relis-les avant publication.', 'success');
+        setResult('Versions anglaises prêtes à publier et versions françaises séparées pour contrôle.', 'success');
         global.showToast?.('Post Instagram généré');
       }
     } catch (error) {
@@ -929,7 +1167,12 @@
     if (!preview) return;
     const caption = String(getElement('instagramCaption')?.value || '').trim();
     if (state.mode === 'reel' && state.video) {
-      preview.innerHTML = '<video src="' + escapeHtml(state.video.url) + '" controls></video><p>' + escapeHtml(caption || 'Légende vide') + '</p>';
+      const cover = state.reelCoverDataUrl
+        ? '<div class="instagram-review-reel-cover"><img src="' + escapeHtml(state.reelCoverDataUrl) + '" alt="Couverture du Reel"><span>' +
+          (state.reelCoverMode === 'image' ? 'Couverture personnalisée' : 'Couverture · ' + formatVideoTime(state.reelCoverTime)) +
+          '</span></div>'
+        : '<video src="' + escapeHtml(state.video.url) + '" controls></video>';
+      preview.innerHTML = cover + '<p>' + escapeHtml(caption || 'Légende vide') + '</p>';
       return;
     }
     if (!state.images.length) {
@@ -957,7 +1200,7 @@
     else if (state.mode === 'reel' && !state.video) message = 'Ajoute la vidéo du Reel.';
     else if (state.video?.size > 1024 * 1024 * 1024) message = 'La vidéo dépasse la limite de 1 Go.';
     else if (!String(getElement('instagramCaption')?.value || '').trim()) message = 'La légende est encore vide.';
-    else if (countTextCharacters(getElement('instagramCaption')?.value || '') > 2200) message = 'Raccourcis la légende à 2 200 caractères maximum pour Instagram.';
+    else if (countTextCharacters(getElement('instagramCaption')?.value || '') > 2100) message = 'Raccourcis la légende à 2 100 caractères maximum.';
 
     const ready = !message;
     title.textContent = ready ? 'Brouillon prêt pour le prochain jet' : 'Préparation incomplète';
@@ -967,10 +1210,20 @@
     dot.classList.toggle('is-ready', ready);
     const testButton = getElement('instagramTestPublishBtn');
     const publishButton = getElement('instagramPublishBtn');
+    const publishAllButton = getElement('instagramPublishAllBtn');
+    const facebookButton = getElement('facebookPublishBtn');
+    const recentFacebookButton = getElement('instagramRecentFacebookBtn');
     const threadsButton = getElement('threadsPublishBtn');
+    const tiktokButton = getElement('tiktokPublishBtn');
+    const tiktokConnectButton = getElement('tiktokConnectBtn');
     if (testButton) testButton.disabled = state.publishing;
     if (publishButton) publishButton.disabled = state.publishing;
+    if (publishAllButton) publishAllButton.disabled = state.publishing;
+    if (facebookButton) facebookButton.disabled = state.publishing;
+    if (recentFacebookButton) recentFacebookButton.disabled = state.publishing;
     if (threadsButton) threadsButton.disabled = state.publishing;
+    if (tiktokButton) tiktokButton.disabled = state.publishing;
+    if (tiktokConnectButton) tiktokConnectButton.disabled = state.publishing;
     syncProgress();
     if (state.activeStep === 'review') renderReviewPreview();
     syncAgentControls();
@@ -980,11 +1233,14 @@
     const caption = String(getElement('instagramCaption')?.value || '');
     const firstComment = String(getElement('instagramFirstComment')?.value || '');
     const threadsText = String(getElement('instagramThreadsText')?.value || '');
+    const captionFr = String(getElement('instagramCaptionFr')?.value || '');
+    const firstCommentFr = String(getElement('instagramFirstCommentFr')?.value || '');
+    const threadsTextFr = String(getElement('instagramThreadsTextFr')?.value || '');
     const alt = String(getElement('instagramMediaAlt')?.value || '');
     if (getElement('instagramCaptionCount')) {
       const captionLength = countTextCharacters(caption);
       getElement('instagramCaptionCount').textContent = captionLength;
-      getElement('instagramCaptionCount').classList.toggle('is-over-limit', captionLength > 2200);
+      getElement('instagramCaptionCount').classList.toggle('is-over-limit', captionLength > 2100);
     }
     if (getElement('instagramThreadsCount')) {
       const threadsLength = countTextCharacters(threadsText);
@@ -994,8 +1250,11 @@
     if (getElement('instagramCommentCount')) {
       const commentLength = countTextCharacters(firstComment);
       getElement('instagramCommentCount').textContent = commentLength;
-      getElement('instagramCommentCount').classList.toggle('is-over-limit', Boolean(commentLength) && (commentLength < 500 || commentLength > 1000));
+      getElement('instagramCommentCount').classList.toggle('is-over-limit', Boolean(commentLength) && (commentLength < 250 || commentLength > 500));
     }
+    if (getElement('instagramCaptionFrCount')) getElement('instagramCaptionFrCount').textContent = countTextCharacters(captionFr);
+    if (getElement('instagramCommentFrCount')) getElement('instagramCommentFrCount').textContent = countTextCharacters(firstCommentFr);
+    if (getElement('instagramThreadsFrCount')) getElement('instagramThreadsFrCount').textContent = countTextCharacters(threadsTextFr);
     if (getElement('instagramMediaAltCount')) getElement('instagramMediaAltCount').textContent = alt.length;
     syncSummaries();
     syncPreflight();
@@ -1031,7 +1290,12 @@
       const normalizedImages = normalizeImages(listing.images);
       if (state.draftListingId === listingId && state.draftImageOrder.length) {
         const imagesById = new Map(normalizedImages.map((media) => [media.id, media]));
-        state.images = state.draftImageOrder.map((id) => imagesById.get(id)).filter(Boolean);
+        const restoredImages = state.draftImageOrder.map((id) => imagesById.get(id)).filter(Boolean);
+        const restoredIds = new Set(restoredImages.map(({ id }) => id));
+        state.images = [
+          ...restoredImages,
+          ...normalizedImages.filter(({ id }) => !restoredIds.has(id)),
+        ];
       } else {
         state.images = normalizedImages;
       }
@@ -1127,13 +1391,26 @@
     if (state.video?.url) URL.revokeObjectURL(state.video.url);
     const video = document.createElement('video');
     const url = URL.createObjectURL(file);
+    const identityMatchesDraft = state.draftVideoIdentity
+      && state.draftVideoIdentity.name === file.name
+      && Number(state.draftVideoIdentity.size) === file.size
+      && Number(state.draftVideoIdentity.lastModified) === file.lastModified;
+    state.reelCoverTime = identityMatchesDraft ? state.reelCoverTime : 0;
+    if (!identityMatchesDraft) {
+      clearCustomReelCover();
+      state.reelCoverMode = 'frame';
+    }
+    state.reelCoverDataUrl = '';
     state.video = { file, name: file.name, size: file.size, type: file.type, lastModified: file.lastModified, url, width: null, height: null, duration: null };
+    state.draftVideoIdentity = { name: file.name, size: file.size, lastModified: file.lastModified };
 
     video.onloadedmetadata = () => {
       state.video.width = video.videoWidth;
       state.video.height = video.videoHeight;
       state.video.duration = video.duration;
+      state.reelCoverTime = Math.min(state.reelCoverTime, Math.max(0, video.duration - 0.001));
       renderMedia();
+      saveDraft();
     };
     video.src = url;
     renderMedia();
@@ -1329,6 +1606,49 @@
     return canvasToJpegBlob(canvas);
   };
 
+  const prepareCustomReelCoverBlob = async () => {
+    const cover = state.reelCustomCover;
+    if (!cover?.file || !cover.url) {
+      throw new Error('Ajoute de nouveau l’image de couverture du Reel.');
+    }
+    const image = await loadCanvasImage(cover.url);
+    const scale = Math.min(1, 1920 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvasToJpegBlob(canvas);
+  };
+
+  const prepareCustomReelCoverMediaId = async () => {
+    if (state.mode !== 'reel' || state.reelCoverMode !== 'image') return '';
+    const coverSignature = JSON.stringify({
+      name: state.reelCustomCover?.name,
+      size: state.reelCustomCover?.size,
+      type: state.reelCustomCover?.type,
+    });
+    if (
+      state.preparedPublication?.coverSignature === coverSignature
+      && state.preparedPublication?.coverMediaId
+    ) {
+      return state.preparedPublication.coverMediaId;
+    }
+    setResult('Envoi temporaire de la couverture personnalisée…');
+    const blob = await prepareCustomReelCoverBlob();
+    const response = await fetch('/instagram/test/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: blob,
+    });
+    const payload = await readJson(response);
+    const coverMediaId = String(payload.mediaId || '');
+    if (state.preparedPublication) {
+      state.preparedPublication.coverSignature = coverSignature;
+      state.preparedPublication.coverMediaId = coverMediaId;
+    }
+    return coverMediaId;
+  };
+
   const preparePublicationMedia = async () => {
     const signature = getPublicationSignature();
     if (state.preparedPublication?.signature === signature) return state.preparedPublication;
@@ -1381,6 +1701,7 @@
 
     try {
       const prepared = await preparePublicationMedia();
+      const coverMediaId = await prepareCustomReelCoverMediaId();
       const payload = await requestJson('/instagram/test/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1389,6 +1710,8 @@
           mode: state.mode,
           caption: String(getElement('instagramCaption')?.value || '').trim(),
           firstComment: String(getElement('instagramFirstComment')?.value || '').trim(),
+          thumbOffsetMs: state.mode === 'reel' ? Math.round(state.reelCoverTime * 1000) : null,
+          coverMediaId,
           dryRun,
         }),
       });
@@ -1450,6 +1773,457 @@
     }
   };
 
+  const publishFacebook = async () => {
+    if (state.publishing) return;
+
+    if (!global.confirm('Publier maintenant ' + (state.mode === 'reel' ? 'ce Reel' : 'ce carrousel') + ' sur Facebook ? Cette action crée une vraie publication sur la Page ' + SHOP_LABELS[state.shopKey] + '.')) return;
+
+    state.publishing = true;
+    syncPreflight();
+    const button = getElement('facebookPublishBtn');
+    if (button) button.textContent = 'Publication Facebook…';
+
+    try {
+      const prepared = await preparePublicationMedia();
+      const payload = await requestJson('/facebook/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaIds: prepared.mediaIds,
+          message: String(getElement('instagramCaption')?.value || '').trim(),
+          mode: state.mode,
+          shopKey: state.shopKey,
+        }),
+      });
+      state.preparedPublication = null;
+      const pageLabel = payload.profile?.name || SHOP_LABELS[state.shopKey];
+      setResult('Publication Facebook créée sur ' + pageLabel + ' (' + payload.mediaCount + ' média(s)).', 'success');
+      global.showToast?.('Publication Facebook créée');
+    } catch (error) {
+      state.preparedPublication = null;
+      setResult('Publication Facebook impossible : ' + error.message, 'error');
+      global.showToast?.(error.message, '#ff4757');
+    } finally {
+      state.publishing = false;
+      if (button) button.textContent = 'Publier sur Facebook';
+      syncPreflight();
+    }
+  };
+
+  const publishAllNetworks = async () => {
+    if (state.publishing) return;
+    if (!state.listing && /^\d+$/.test(String(getElement('instagramListingId')?.value || '').trim())) {
+      setResult('Rechargement automatique de la fiche mémorisée…');
+      await loadListing();
+    }
+
+    const mediaLabel = state.mode === 'reel' ? 'ce Reel' : 'ce carrousel';
+    if (!global.confirm(
+      'Publier maintenant ' + mediaLabel + ' sur Instagram, Threads et Facebook ? ' +
+      'Cette action crée trois vraies publications.',
+    )) return;
+
+    state.publishing = true;
+    syncPreflight();
+    const button = getElement('instagramPublishAllBtn');
+    const results = [];
+
+    const runNetwork = async (label, requestPublication) => {
+      if (button) button.textContent = 'Publication ' + (results.length + 1) + ' / 3…';
+      setResult('Publication sur ' + label + '…');
+      try {
+        const prepared = await preparePublicationMedia();
+        const outcome = await requestPublication(prepared);
+        results.push({ label, ok: true, warning: outcome.warning || '' });
+      } catch (error) {
+        results.push({ label, ok: false, error: error.message });
+      } finally {
+        // Chaque endpoint supprime ses médias temporaires après publication.
+        // Le réseau suivant doit donc recevoir une nouvelle copie préparée.
+        state.preparedPublication = null;
+      }
+    };
+
+    try {
+      await runNetwork('Instagram', async (prepared) => {
+        const coverMediaId = await prepareCustomReelCoverMediaId();
+        const payload = await requestJson('/instagram/test/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mediaIds: prepared.mediaIds,
+            mode: state.mode,
+            caption: String(getElement('instagramCaption')?.value || '').trim(),
+            firstComment: String(getElement('instagramFirstComment')?.value || '').trim(),
+            thumbOffsetMs: state.mode === 'reel' ? Math.round(state.reelCoverTime * 1000) : null,
+            coverMediaId,
+            dryRun: false,
+          }),
+        });
+        return {
+          warning: payload.commentError
+            ? 'publication créée, premier commentaire non publié : ' + payload.commentError
+            : '',
+        };
+      });
+
+      await runNetwork('Threads', async (prepared) => {
+        await requestJson('/threads/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mediaIds: prepared.mediaIds,
+            text: String(getElement('instagramThreadsText')?.value || '').trim(),
+            mode: state.mode,
+          }),
+        });
+        return {};
+      });
+
+      await runNetwork('Facebook', async (prepared) => {
+        await requestJson('/facebook/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mediaIds: prepared.mediaIds,
+            message: String(getElement('instagramCaption')?.value || '').trim(),
+            mode: state.mode,
+            shopKey: state.shopKey,
+          }),
+        });
+        return {};
+      });
+
+      const successful = results.filter(({ ok }) => ok).length;
+      const warnings = results.filter(({ warning }) => warning);
+      const failures = results.filter(({ ok }) => !ok);
+      const summary = results.map((result) => {
+        if (!result.ok) return result.label + ' ✗ (' + result.error + ')';
+        if (result.warning) return result.label + ' ✓ (' + result.warning + ')';
+        return result.label + ' ✓';
+      }).join(' · ');
+      const resultType = failures.length ? (successful ? 'warning' : 'error') : (warnings.length ? 'warning' : 'success');
+      setResult('Publications terminées : ' + summary, resultType);
+      if (failures.length) {
+        global.showToast?.(successful + ' réseau(x) publié(s), ' + failures.length + ' en échec', successful ? '#f0b35d' : '#ff4757');
+      } else {
+        global.showToast?.('Publication créée sur les trois réseaux');
+      }
+    } finally {
+      state.publishing = false;
+      if (button) button.textContent = 'Publier sur Instagram, Threads et Facebook';
+      syncPreflight();
+    }
+  };
+
+  const renderRecentInstagramMedia = () => {
+    const list = getElement('instagramRecentList');
+    if (!list) return;
+    if (!state.recentInstagramMedia.length) {
+      list.innerHTML = '<div class="instagram-review-empty">Aucune publication Instagram récente récupérable.</div>';
+      return;
+    }
+    list.innerHTML = state.recentInstagramMedia.map((media) => {
+      const previewUrl = String(media.thumbnail_url || media.media_url || '');
+      const caption = String(media.caption || '').trim() || 'Publication sans légende';
+      const type = String(media.media_product_type || media.media_type || 'MEDIA').replaceAll('_', ' ');
+      const timestamp = media.timestamp ? new Date(media.timestamp).toLocaleDateString('fr-FR') : 'Date inconnue';
+      return '<article class="instagram-recent-card">' +
+        (previewUrl ? '<img src="' + escapeHtml(previewUrl) + '" alt="Aperçu Instagram">' : '<div class="instagram-review-empty">Sans aperçu</div>') +
+        '<div><strong>' + escapeHtml(type) + ' · ' + escapeHtml(timestamp) + '</strong><p>' + escapeHtml(caption) + '</p>' +
+        '<button class="btn btn-muted" type="button" data-instagram-republish-id="' + escapeHtml(media.id) + '"' + (state.publishing ? ' disabled' : '') + '>Publier sur Facebook</button></div>' +
+      '</article>';
+    }).join('');
+  };
+
+  const closeRecentInstagramModal = () => {
+    const modal = getElement('instagramRecentModal');
+    modal?.classList.remove('is-visible');
+    modal?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('instagram-modal-open');
+  };
+
+  const openRecentInstagramModal = async () => {
+    const modal = getElement('instagramRecentModal');
+    const status = getElement('instagramRecentStatus');
+    if (!modal || !status) return;
+    modal.classList.add('is-visible');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('instagram-modal-open');
+    status.textContent = 'Chargement des publications Instagram…';
+    status.className = 'instagram-inline-status';
+    getElement('instagramRecentList').innerHTML = '';
+
+    try {
+      const payload = await requestJson('/instagram/media/recent?limit=30');
+      state.recentInstagramMedia = Array.isArray(payload.media) ? payload.media : [];
+      status.textContent = state.recentInstagramMedia.length + ' publication(s) Instagram disponible(s). Choisis uniquement celles absentes de Facebook.';
+      status.classList.add('is-success');
+      renderRecentInstagramMedia();
+    } catch (error) {
+      state.recentInstagramMedia = [];
+      status.textContent = 'Lecture Instagram impossible : ' + error.message;
+      status.classList.add('is-error');
+      renderRecentInstagramMedia();
+    }
+  };
+
+  const publishRecentInstagramToFacebook = async (instagramMediaId) => {
+    if (state.publishing) return;
+    const media = state.recentInstagramMedia.find((item) => String(item.id) === String(instagramMediaId));
+    if (!media) return;
+    const pageLabel = SHOP_LABELS[state.shopKey];
+    if (!global.confirm('Republier cette publication Instagram sur la Page Facebook ' + pageLabel + ' ? Cette action crée une vraie publication.')) return;
+
+    state.publishing = true;
+    syncPreflight();
+    renderRecentInstagramMedia();
+    try {
+      const payload = await requestJson('/facebook/publish-instagram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instagramMediaId: media.id,
+          shopKey: state.shopKey,
+        }),
+      });
+      closeRecentInstagramModal();
+      setResult('Publication Instagram rattrapée sur Facebook (' + payload.mediaCount + ' média(s)).', 'success');
+      global.showToast?.('Publication Instagram rattrapée sur Facebook');
+    } catch (error) {
+      const status = getElement('instagramRecentStatus');
+      if (status) {
+        status.textContent = error.message;
+        status.className = 'instagram-inline-status is-error';
+      }
+      global.showToast?.(error.message, '#ff4757');
+    } finally {
+      state.publishing = false;
+      syncPreflight();
+      renderRecentInstagramMedia();
+    }
+  };
+
+  const TIKTOK_PRIVACY_LABELS = Object.freeze({
+    PUBLIC_TO_EVERYONE: 'Tout le monde',
+    FOLLOWER_OF_CREATOR: 'Abonnés',
+    MUTUAL_FOLLOW_FRIENDS: 'Amis',
+    SELF_ONLY: 'Moi uniquement',
+  });
+
+  const renderTikTokCreatorSettings = () => {
+    const creator = state.tiktokCreator;
+    const panel = getElement('tiktokPublishSettings');
+    const select = getElement('tiktokPrivacyLevel');
+    if (!panel || !select) return;
+    panel.hidden = !creator;
+    if (!creator) return;
+
+    const previousValue = select.value;
+    const privacyOptions = Array.isArray(creator.privacy_level_options)
+      ? creator.privacy_level_options
+      : [];
+    select.innerHTML = '<option value="">Choisir la visibilité…</option>' + privacyOptions.map((value) => (
+      '<option value="' + escapeHtml(value) + '">' +
+      escapeHtml(TIKTOK_PRIVACY_LABELS[value] || value) +
+      '</option>'
+    )).join('');
+    select.value = privacyOptions.includes(previousValue)
+      ? previousValue
+      : (privacyOptions.includes('SELF_ONLY') ? 'SELF_ONLY' : '');
+
+    [
+      ['tiktokAllowComment', 'comment_disabled'],
+      ['tiktokAllowDuet', 'duet_disabled'],
+      ['tiktokAllowStitch', 'stitch_disabled'],
+    ].forEach(([elementId, creatorKey]) => {
+      const input = getElement(elementId);
+      if (!input) return;
+      const forcedDisabled = Boolean(creator[creatorKey]);
+      input.checked = false;
+      input.disabled = forcedDisabled;
+    });
+  };
+
+  const syncTikTokCommercialSettings = () => {
+    const enabled = Boolean(getElement('tiktokCommercialContent')?.checked);
+    const options = getElement('tiktokCommercialOptions');
+    const ownBrand = getElement('tiktokOwnBrand');
+    const brandedContent = getElement('tiktokBrandedContent');
+    const notice = getElement('tiktokCommercialNotice');
+    if (options) options.hidden = !enabled;
+    if (!enabled) {
+      if (ownBrand) ownBrand.checked = false;
+      if (brandedContent) brandedContent.checked = false;
+    }
+    if (notice) {
+      notice.textContent = brandedContent?.checked
+        ? 'La vidéo sera étiquetée « Partenariat rémunéré ».'
+        : (ownBrand?.checked ? 'La vidéo sera étiquetée « Contenu promotionnel ».' : '');
+    }
+  };
+
+  const waitForTikTokPublishStatus = async (publishId) => {
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      await new Promise((resolve) => global.setTimeout(resolve, 2000));
+      const payload = await requestJson('/tiktok/publish/status?publishId=' + encodeURIComponent(publishId));
+      const status = payload.status || {};
+      if (status.status === 'PUBLISH_COMPLETE') return status;
+      if (status.status === 'FAILED') {
+        throw new Error('Traitement TikTok échoué : ' + (status.fail_reason || 'raison inconnue'));
+      }
+      setResult('TikTok traite la vidéo… statut : ' + (status.status || 'en attente'), 'working');
+    }
+    return null;
+  };
+
+  const verifyTikTokConnection = async ({ quiet = false } = {}) => {
+    const element = getElement('tiktokProfileState');
+    const connectButton = getElement('tiktokConnectBtn');
+    if (!element) return false;
+    if (!quiet) element.textContent = 'TikTok : vérification…';
+    try {
+      const status = await requestJson('/tiktok/oauth/status');
+      if (!status.configured) {
+        state.tiktokConnected = false;
+        state.tiktokCreator = null;
+        element.textContent = 'TikTok : configuration .env incomplète (' + status.missingConfig.join(', ') + ')';
+        if (connectButton) connectButton.textContent = 'Configurer TikTok';
+        renderTikTokCreatorSettings();
+        return false;
+      }
+      if (!status.connected) {
+        state.tiktokConnected = false;
+        state.tiktokCreator = null;
+        element.textContent = 'TikTok prêt à être connecté';
+        if (connectButton) connectButton.textContent = 'Connecter TikTok';
+        renderTikTokCreatorSettings();
+        return false;
+      }
+
+      const [profilePayload, creatorPayload] = await Promise.all([
+        requestJson('/tiktok/profile'),
+        requestJson('/tiktok/creator-info'),
+      ]);
+      const profile = profilePayload.profile || {};
+      state.tiktokConnected = true;
+      state.tiktokCreator = creatorPayload.creator || null;
+      const label = profile.display_name || state.tiktokCreator?.creator_nickname || profile.open_id;
+      element.textContent = 'TikTok connecté : ' + (label || 'compte autorisé');
+      if (connectButton) connectButton.textContent = 'Reconnecter TikTok';
+      renderTikTokCreatorSettings();
+      return true;
+    } catch (error) {
+      state.tiktokConnected = false;
+      state.tiktokCreator = null;
+      element.textContent = 'TikTok : ' + error.message;
+      if (connectButton) connectButton.textContent = 'Connecter TikTok';
+      renderTikTokCreatorSettings();
+      return false;
+    }
+  };
+
+  const connectTikTok = async () => {
+    const element = getElement('tiktokProfileState');
+    try {
+      const payload = await requestJson('/tiktok/oauth/start');
+      const popup = global.open(payload.authUrl, '_blank');
+      if (!popup) throw new Error('Le navigateur a bloqué la fenêtre OAuth TikTok');
+      if (element) element.textContent = 'TikTok : autorisation dans le navigateur…';
+
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        await new Promise((resolve) => global.setTimeout(resolve, 2000));
+        if (await verifyTikTokConnection({ quiet: true })) {
+          global.showToast?.('Compte TikTok connecté');
+          return;
+        }
+        if (popup.closed && attempt > 2) break;
+      }
+      if (element) element.textContent = 'TikTok : autorisation non terminée';
+    } catch (error) {
+      if (element) element.textContent = 'TikTok : ' + error.message;
+      global.showToast?.(error.message, '#ff4757');
+    }
+  };
+
+  const publishTikTok = async () => {
+    if (state.publishing) return;
+    if (state.mode !== 'reel' || !state.video?.file) {
+      setResult('TikTok review : sélectionne le mode Reel et ajoute une vidéo MP4 ou MOV.', 'error');
+      return;
+    }
+    // TikTok requires fresh creator information immediately before posting.
+    // This also refreshes the available privacy levels after the account is
+    // switched between public and private in the TikTok mobile application.
+    if (!await verifyTikTokConnection({ quiet: true })) return;
+
+    const privacyLevel = String(getElement('tiktokPrivacyLevel')?.value || '');
+    if (!privacyLevel) {
+      setResult('TikTok review : choisis manuellement la visibilité.', 'error');
+      return;
+    }
+    const commercialContent = Boolean(getElement('tiktokCommercialContent')?.checked);
+    const brandOrganic = commercialContent && Boolean(getElement('tiktokOwnBrand')?.checked);
+    const brandContent = commercialContent && Boolean(getElement('tiktokBrandedContent')?.checked);
+    if (commercialContent && !brandOrganic && !brandContent) {
+      setResult('TikTok review : indique si le contenu promeut ta marque, une marque tierce, ou les deux.', 'error');
+      return;
+    }
+    if (brandContent && privacyLevel === 'SELF_ONLY') {
+      setResult('TikTok review : un partenariat rémunéré ne peut pas être privé.', 'error');
+      return;
+    }
+    const privacyLabel = TIKTOK_PRIVACY_LABELS[privacyLevel] || privacyLevel;
+    const creatorLabel = state.tiktokCreator?.creator_nickname || 'le compte connecté';
+    if (!global.confirm(
+      'Publier maintenant cette vidéo sur TikTok (' + creatorLabel + ') avec la visibilité « ' +
+      privacyLabel + ' » ? Cette action crée une vraie publication TikTok.',
+    )) return;
+
+    state.publishing = true;
+    syncPreflight();
+    const button = getElement('tiktokPublishBtn');
+    if (button) button.textContent = 'Publication TikTok…';
+    try {
+      const prepared = await preparePublicationMedia();
+      const payload = await requestJson('/tiktok/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaIds: prepared.mediaIds,
+          mode: 'reel',
+          title: String(getElement('instagramCaption')?.value || '').trim(),
+          privacyLevel,
+          disableComment: !Boolean(getElement('tiktokAllowComment')?.checked),
+          disableDuet: !Boolean(getElement('tiktokAllowDuet')?.checked),
+          disableStitch: !Boolean(getElement('tiktokAllowStitch')?.checked),
+          brandOrganic,
+          brandContent,
+          coverTimestampMs: Math.round(state.reelCoverTime * 1000),
+          durationSeconds: Number(state.video.duration || 0),
+        }),
+      });
+      state.preparedPublication = null;
+      setResult('Vidéo envoyée à TikTok, traitement en cours…', 'working');
+      const finalStatus = await waitForTikTokPublishStatus(payload.publishId);
+      if (finalStatus) {
+        setResult('Publication TikTok terminée.', 'success');
+        global.showToast?.('Publication TikTok terminée');
+      } else {
+        setResult('Vidéo envoyée à TikTok. Le traitement continue et peut prendre quelques minutes.', 'success');
+        global.showToast?.('Vidéo envoyée à TikTok');
+      }
+    } catch (error) {
+      state.preparedPublication = null;
+      setResult('Publication TikTok impossible : ' + error.message, 'error');
+      global.showToast?.(error.message, '#ff4757');
+    } finally {
+      state.publishing = false;
+      if (button) button.textContent = 'Publier sur TikTok';
+      syncPreflight();
+    }
+  };
+
   const verifyThreadsConnection = async () => {
     const element = getElement('threadsProfileState');
     if (!element) return;
@@ -1459,6 +2233,19 @@
       element.textContent = 'Threads connecté : ' + (profile.username ? '@' + profile.username : profile.id);
     } catch (error) {
       element.textContent = 'Threads : ' + error.message;
+    }
+  };
+
+  const verifyFacebookConnection = async () => {
+    const element = getElement('facebookProfileState');
+    if (!element) return;
+    element.textContent = 'Facebook : vérification…';
+    try {
+      const payload = await requestJson('/facebook/profile?shop=' + encodeURIComponent(state.shopKey));
+      const profile = payload.profile || {};
+      element.textContent = 'Facebook connecté : ' + (profile.name || profile.id);
+    } catch (error) {
+      element.textContent = 'Facebook : ' + error.message;
     }
   };
 
@@ -1553,8 +2340,21 @@
     getElement('instagramAgentStopBtn')?.addEventListener('click', stopInstagramAgent);
     getElement('instagramVerifyBtn')?.addEventListener('click', verifyConnection);
     getElement('instagramTestPublishBtn')?.addEventListener('click', () => publishInstagram({ dryRun: true }));
+    getElement('instagramPublishAllBtn')?.addEventListener('click', publishAllNetworks);
     getElement('instagramPublishBtn')?.addEventListener('click', () => publishInstagram({ dryRun: false }));
+    getElement('facebookPublishBtn')?.addEventListener('click', publishFacebook);
     getElement('threadsPublishBtn')?.addEventListener('click', publishThreads);
+    getElement('tiktokConnectBtn')?.addEventListener('click', connectTikTok);
+    getElement('tiktokPublishBtn')?.addEventListener('click', publishTikTok);
+    getElement('tiktokCommercialContent')?.addEventListener('change', syncTikTokCommercialSettings);
+    getElement('tiktokOwnBrand')?.addEventListener('change', syncTikTokCommercialSettings);
+    getElement('tiktokBrandedContent')?.addEventListener('change', syncTikTokCommercialSettings);
+    getElement('instagramRecentFacebookBtn')?.addEventListener('click', openRecentInstagramModal);
+    document.querySelectorAll('[data-instagram-recent-close]').forEach((button) => button.addEventListener('click', closeRecentInstagramModal));
+    getElement('instagramRecentList')?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-instagram-republish-id]');
+      if (button) publishRecentInstagramToFacebook(button.dataset.instagramRepublishId);
+    });
     getElement('instagramLoadListingBtn')?.addEventListener('click', loadListing);
     getElement('instagramListingId')?.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') loadListing();
@@ -1566,6 +2366,8 @@
       state.shopKey = button.dataset.instagramShop === 'doublex' ? 'doublex' : 'grosgeek';
       syncShopPicker();
       saveDraft();
+      closeRecentInstagramModal();
+      verifyFacebookConnection();
     });
 
     getElement('instagramModePicker')?.addEventListener('click', (event) => {
@@ -1630,10 +2432,37 @@
       openMediaModal(card.dataset.instagramMediaId);
     });
     getElement('instagramVideoStage')?.addEventListener('click', (event) => {
-      if (!event.target.closest('[data-instagram-remove-video]')) return;
-      if (state.video?.url) URL.revokeObjectURL(state.video.url);
-      state.video = null;
-      renderMedia();
+      const coverModeButton = event.target.closest('[data-instagram-cover-mode]');
+      if (coverModeButton) {
+        setReelCoverMode(coverModeButton.dataset.instagramCoverMode);
+        return;
+      }
+      if (event.target.closest('[data-instagram-select-cover-image]')) {
+        getElement('instagramReelCustomCoverInput')?.click();
+        return;
+      }
+      const stepButton = event.target.closest('[data-instagram-cover-step]');
+      if (stepButton) {
+        seekReelCover(state.reelCoverTime + Number(stepButton.dataset.instagramCoverStep || 0));
+        return;
+      }
+      if (event.target.closest('[data-instagram-remove-video]')) {
+        if (state.video?.url) URL.revokeObjectURL(state.video.url);
+        state.video = null;
+        clearCustomReelCover();
+        state.reelCoverMode = 'frame';
+        state.reelCoverDataUrl = '';
+        renderMedia();
+        saveDraft();
+      }
+    });
+    getElement('instagramVideoStage')?.addEventListener('input', (event) => {
+      if (event.target.id === 'instagramReelCoverSlider') seekReelCover(event.target.value);
+    });
+    getElement('instagramVideoStage')?.addEventListener('change', (event) => {
+      if (event.target.id === 'instagramReelCustomCoverInput') {
+        selectCustomReelCover(event.target.files?.[0]);
+      }
     });
 
     document.querySelectorAll('[data-instagram-modal-close]').forEach((button) => button.addEventListener('click', closeMediaModal));
@@ -1647,7 +2476,7 @@
       if (event.key === 'Escape' && state.activeMediaId) closeMediaModal();
     });
 
-    ['instagramSourceTitle', 'instagramSourceDescription', 'instagramCaption', 'instagramFirstComment', 'instagramThreadsText', 'instagramAgentCorrection', 'instagramSculptorName', 'instagramSculptorHandle'].forEach((id) => {
+    ['instagramSourceTitle', 'instagramSourceDescription', 'instagramCaption', 'instagramFirstComment', 'instagramThreadsText', 'instagramCaptionFr', 'instagramFirstCommentFr', 'instagramThreadsTextFr', 'instagramAgentCorrection', 'instagramSculptorName', 'instagramSculptorHandle'].forEach((id) => {
       getElement(id)?.addEventListener('input', (event) => {
         if (id === 'instagramSculptorName') syncSculptorFields('', { preserveHandle: false });
         if (id === 'instagramSourceTitle') autoGrowTextarea(event.currentTarget);
@@ -1695,7 +2524,10 @@
   showStep(state.activeStep);
   syncAgentControls();
   updateInstagramCostDisplay();
+  syncTikTokCommercialSettings();
   verifyThreadsConnection();
+  verifyFacebookConnection();
+  verifyTikTokConnection();
   const restoredListingId = String(getElement('instagramListingId')?.value || '').trim();
   if (/^\d+$/.test(restoredListingId)) {
     global.setTimeout(() => loadListing(), 0);
@@ -1705,7 +2537,14 @@
     open,
     loadListing,
     verifyConnection,
+    verifyFacebookConnection,
     verifyThreadsConnection,
+    publishAllNetworks,
+    publishFacebook,
+    publishTikTok,
+    connectTikTok,
+    verifyTikTokConnection,
+    openRecentInstagramModal,
     publishThreads,
     runInstagramAgent,
     stopInstagramAgent,

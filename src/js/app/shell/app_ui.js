@@ -76,6 +76,7 @@
   const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
   const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
   const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
+  const COST_CALCULATOR_HEADER_CONTEXT = 'Outils - Calculateur de cout figurine';
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
   const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
   const PIPELINE_META_SEPARATOR = '&bull;';
@@ -250,6 +251,10 @@
     'select-mode': (mode) => selectMode(mode),
     'open-pinterest': () => global.PipelineUIPinterest?.open?.(),
     'open-instagram-test': () => global.PipelineUIInstagram?.open?.(),
+    'open-cost-calculator': () => {
+      showView('cost-calculator');
+      global.scrollTo({ top: 0, behavior: 'instant' });
+    },
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
@@ -486,6 +491,9 @@
     } else if (viewName === 'instagram-test') {
       ctx.textContent = INSTAGRAM_HEADER_CONTEXT;
       ctx.classList.add('mode-instagram');
+    } else if (viewName === 'cost-calculator') {
+      ctx.textContent = COST_CALCULATOR_HEADER_CONTEXT;
+      ctx.classList.add('mode-calculator');
     }
   }
 

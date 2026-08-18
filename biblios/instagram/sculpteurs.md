@@ -5,3 +5,9 @@
 
 Bulkamancers | @bulkamancers | bulkamancer
 CA3D studio | @ca.3d.studios | ca3d, ca3d studio
+
+Kuru Figure | @kurufigure |
+
+Neko figurines | @neko_figurines |
+
+Nomnom figures | @nomnomfigures |

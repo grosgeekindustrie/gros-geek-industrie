@@ -699,6 +699,147 @@
   background: #000;
 }
 
+.instagram-reel-player {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.instagram-reel-timeline {
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  background: rgba(0, 0, 0, .22);
+}
+
+.instagram-reel-cover-preview {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+
+.instagram-reel-cover-preview canvas,
+.instagram-reel-cover-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.instagram-reel-cover-mode {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.instagram-reel-cover-mode button {
+  padding: 7px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text2);
+  background: var(--surface2);
+  font: 700 9px/1.3 'JetBrains Mono', monospace;
+  cursor: pointer;
+}
+
+.instagram-reel-cover-mode button.is-active {
+  color: #fff;
+  border-color: var(--ig-accent);
+  background: color-mix(in srgb, var(--ig-accent), transparent 70%);
+}
+
+.instagram-reel-custom-cover {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  align-content: center;
+}
+
+.instagram-reel-custom-cover strong,
+.instagram-reel-custom-cover small,
+.instagram-reel-cover-note {
+  font: 700 9px/1.4 'JetBrains Mono', monospace;
+}
+
+.instagram-reel-custom-cover strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instagram-reel-custom-cover small,
+.instagram-reel-cover-note {
+  color: var(--text3);
+}
+
+.instagram-reel-cover-preview span,
+.instagram-review-reel-cover span {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(0, 0, 0, .72);
+  font: 800 8px/1 'JetBrains Mono', monospace;
+}
+
+.instagram-reel-scrubber {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.instagram-reel-scrubber input[type="range"] {
+  width: 100%;
+  accent-color: var(--ig-accent);
+}
+
+.instagram-reel-scrubber > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.instagram-reel-scrubber strong,
+.instagram-reel-scrubber small,
+.instagram-frame-step {
+  font: 700 9px/1.4 'JetBrains Mono', monospace;
+}
+
+.instagram-reel-scrubber small {
+  color: var(--text3);
+}
+
+.instagram-frame-step {
+  padding: 5px 8px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  color: var(--text2);
+  background: var(--surface2);
+  cursor: pointer;
+}
+
+.instagram-review-reel-cover {
+  position: relative;
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+.instagram-review-reel-cover img {
+  max-height: 520px;
+  object-fit: contain;
+}
+
 .instagram-video-card > div {
   display: grid;
   gap: 10px;
@@ -721,6 +862,54 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.instagram-language-section {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .018);
+}
+
+.instagram-language-section.is-control {
+  border-style: dashed;
+  background: rgba(255, 255, 255, .009);
+}
+
+.instagram-language-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.instagram-language-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.instagram-language-heading strong {
+  color: var(--text);
+  font: 800 11px/1.2 'JetBrains Mono', monospace;
+}
+
+.instagram-language-heading span {
+  color: var(--text3);
+  font: 600 9px/1.35 'JetBrains Mono', monospace;
+}
+
+.instagram-language-badge {
+  padding: 5px 8px;
+  border: 1px solid var(--ig-accent);
+  border-radius: 999px;
+  color: var(--ig-accent) !important;
+  white-space: nowrap;
+}
+
+.instagram-language-section.is-control .instagram-language-badge {
+  border-color: var(--border2);
+  color: var(--text3) !important;
 }
 
 .instagram-copy-grid label {
@@ -814,6 +1003,115 @@
 
 .instagram-media-modal.is-visible {
   display: grid;
+}
+
+.instagram-recent-modal {
+  position: fixed;
+  z-index: 10050;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 24px;
+}
+
+.instagram-recent-modal.is-visible {
+  display: grid;
+}
+
+.instagram-recent-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 100%);
+  max-height: min(760px, 90vh);
+  padding: 22px;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .55);
+}
+
+.instagram-recent-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.instagram-recent-dialog > header h2 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.instagram-recent-dialog .instagram-modal-close {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.instagram-recent-list {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  scrollbar-color: var(--border2) transparent;
+  scrollbar-width: thin;
+}
+
+.instagram-recent-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  background: var(--surface2);
+}
+
+.instagram-recent-card img {
+  width: 88px;
+  height: 110px;
+  border-radius: 9px;
+  object-fit: cover;
+  background: #000;
+}
+
+.instagram-recent-card > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.instagram-recent-card strong,
+.instagram-recent-card small {
+  font: 700 9px/1.4 'JetBrains Mono', monospace;
+}
+
+.instagram-recent-card small {
+  color: var(--text3);
+}
+
+.instagram-recent-card p {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.instagram-recent-card .btn {
+  justify-self: start;
+  min-height: 30px;
+  padding: 5px 9px;
 }
 
 .instagram-media-modal-backdrop {
@@ -916,6 +1214,10 @@
 }
 
 @media (max-width: 800px) {
+  .instagram-recent-list {
+    grid-template-columns: 1fr;
+  }
+
   .instagram-workspace {
     width: min(100% - 24px, 1160px);
     padding-top: 82px;
@@ -961,6 +1263,10 @@
   .instagram-video-card,
   .instagram-media-dialog {
     grid-template-columns: 1fr;
+  }
+
+  .instagram-reel-timeline {
+    grid-template-columns: 58px minmax(0, 1fr);
   }
 
   .instagram-dialog-preview {
@@ -1205,7 +1511,7 @@
 }
 
 .instagram-screen .instagram-copy-grid {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .instagram-review-layout {
@@ -1334,15 +1640,62 @@
 
 .instagram-network-publish > div {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.instagram-network-publish > .tiktok-publish-settings {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  background: rgba(255, 255, 255, .025);
+}
+
+.instagram-network-publish > .tiktok-publish-settings[hidden] {
+  display: none;
+}
+
+.tiktok-publish-settings label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--text2);
+  font: 600 10px/1.4 'JetBrains Mono', monospace;
+}
+
+.tiktok-publish-settings label:first-child,
+.tiktok-publish-settings > small {
+  grid-column: 1 / -1;
+}
+
+.tiktok-publish-settings select {
+  min-width: 170px;
+  padding: 7px 9px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface2);
+}
+
+.tiktok-commercial-options {
+  display: contents;
+}
+
+.tiktok-commercial-options[hidden] {
+  display: none;
 }
 
 .instagram-review-copy .instagram-network-publish .btn {
   grid-column: auto;
 }
 
-@media (max-width: 520px) {
+.instagram-review-copy .instagram-network-publish .instagram-publish-all {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
   .instagram-network-publish > div {
     grid-template-columns: 1fr;
   }

@@ -7,6 +7,7 @@ Ctrl+C pour arrêter.
 
 import base64
 import hashlib
+import http.client
 import http.server
 import json
 import os
@@ -23,6 +24,8 @@ import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock, Thread, Timer, local
+
+from pinterest_service import PinterestAPIError, PinterestService
 
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
@@ -42,8 +45,14 @@ ETSY_OAUTH_TOKEN_URL = f'{ETSY_API_BASE_URL}/public/oauth/token'
 ETSY_OAUTH_SCOPES = ('shops_r', 'listings_r', 'listings_w', 'transactions_r')
 INSTAGRAM_GRAPH_API_BASE_URL = 'https://graph.instagram.com'
 INSTAGRAM_GRAPH_API_DEFAULT_VERSION = 'v22.0'
+FACEBOOK_GRAPH_API_BASE_URL = 'https://graph.facebook.com'
+FACEBOOK_GRAPH_API_DEFAULT_VERSION = 'v26.0'
 THREADS_GRAPH_API_BASE_URL = 'https://graph.threads.net'
 THREADS_GRAPH_API_DEFAULT_VERSION = 'v1.0'
+TIKTOK_API_BASE_URL = 'https://open.tiktokapis.com'
+TIKTOK_AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/'
+TIKTOK_OAUTH_TOKEN_URL = f'{TIKTOK_API_BASE_URL}/v2/oauth/token/'
+TIKTOK_OAUTH_SCOPES = ('user.info.basic', 'video.publish')
 INSTAGRAM_MEDIA_CACHE_DIR = ROOT / '.instagram_media_cache'
 INSTAGRAM_MEDIA_LOCAL_PORT = 8766
 INSTAGRAM_MEDIA_MAX_BYTES = 10 * 1024 * 1024
@@ -58,6 +67,14 @@ ETSY_OAUTH_TOKEN_FILE = ROOT / '.etsy_oauth_tokens.json'
 ETSY_OAUTH_CALLBACK_ROUTE = '/etsy/oauth/callback'
 LOCAL_HTTPS_DEFAULT_PORT = 8443
 ETSY_OAUTH_EXPIRY_SKEW_SECONDS = 60
+TIKTOK_OAUTH_PENDING_FILE = ROOT / '.tiktok_oauth_pending.json'
+TIKTOK_OAUTH_TOKEN_FILE = ROOT / '.tiktok_oauth_tokens.json'
+TIKTOK_OAUTH_CALLBACK_ROUTE = '/tiktok/oauth/callback'
+TIKTOK_OAUTH_EXPIRY_SKEW_SECONDS = 120
+TIKTOK_UPLOAD_CHUNK_BYTES = 10_000_000
+TIKTOK_MAX_SINGLE_CHUNK_BYTES = 64_000_000
+TIKTOK_VIDEO_MAX_BYTES = 4 * 1024 * 1024 * 1024
+TIKTOK_TOKEN_LOCK = Lock()
 ETSY_OAUTH_TOKEN_LOCK = Lock()
 ETSY_MEDIA_CACHE_DIR = ROOT / '.etsy_media_cache'
 ETSY_TAXONOMY_CACHE_TTL_SECONDS = 1800
@@ -72,6 +89,13 @@ ETSY_TAXONOMY_CACHE = {
 
 ETSY_SHOP_KEYS = ('grosgeek', 'doublex')
 REQUEST_CONTEXT = local()
+PINTEREST_SERVICE = None
+
+
+def get_pinterest_service() -> PinterestService:
+    if PINTEREST_SERVICE is None:
+        raise RuntimeError('Le service Pinterest n’est pas encore démarré')
+    return PINTEREST_SERVICE
 
 
 def load_dotenv_file(path: Path = ENV_FILE):
@@ -102,6 +126,378 @@ def get_anthropic_api_key(request_payload: dict | None = None) -> str:
 
 def get_env_value(name: str) -> str:
     return str(os.getenv(name) or '').strip()
+
+
+def get_tiktok_client_key() -> str:
+    return get_env_value('TIKTOK_CLIENT_KEY')
+
+
+def get_tiktok_client_secret() -> str:
+    return get_env_value('TIKTOK_CLIENT_SECRET')
+
+
+def get_tiktok_redirect_uri() -> str:
+    return get_env_value('TIKTOK_REDIRECT_URI') or 'https://127.0.0.1:8443/tiktok/oauth/callback'
+
+
+def build_tiktok_pkce_challenge(verifier: str) -> str:
+    # TikTok Desktop demande explicitement le SHA-256 encodé en hexadécimal.
+    return hashlib.sha256(verifier.encode('ascii')).hexdigest()
+
+
+def build_tiktok_auth_status() -> dict:
+    token_data = load_json_file(TIKTOK_OAUTH_TOKEN_FILE, {})
+    pending_data = load_json_file(TIKTOK_OAUTH_PENDING_FILE, {})
+    missing_config = []
+    if not get_tiktok_client_key():
+        missing_config.append('TIKTOK_CLIENT_KEY')
+    if not get_tiktok_client_secret():
+        missing_config.append('TIKTOK_CLIENT_SECRET')
+    redirect_uri = get_tiktok_redirect_uri()
+    if not re.fullmatch(r'https?://(?:localhost|127\.0\.0\.1):\d+/[^?#]+', redirect_uri):
+        missing_config.append('TIKTOK_REDIRECT_URI (loopback avec port requis)')
+
+    return {
+        'configured': not missing_config,
+        'connected': bool(token_data.get('access_token') or token_data.get('refresh_token')),
+        'pending': bool(pending_data.get('state')),
+        'missingConfig': missing_config,
+        'redirectUri': redirect_uri,
+        'scopes': list(TIKTOK_OAUTH_SCOPES),
+        'expiresAt': token_data.get('expires_at'),
+        'refreshExpiresAt': token_data.get('refresh_expires_at'),
+        'lastAuthAt': token_data.get('created_at'),
+        'openId': token_data.get('open_id'),
+    }
+
+
+def build_tiktok_authorization_url() -> str:
+    status = build_tiktok_auth_status()
+    if not status['configured']:
+        raise ValueError(f"Configuration TikTok incomplète : {', '.join(status['missingConfig'])}")
+
+    state = uuid.uuid4().hex
+    verifier = generate_pkce_verifier()
+    redirect_uri = get_tiktok_redirect_uri()
+    save_json_file(TIKTOK_OAUTH_PENDING_FILE, {
+        'state': state,
+        'code_verifier': verifier,
+        'redirect_uri': redirect_uri,
+        'created_at': datetime.now(timezone.utc).isoformat(),
+    })
+    query = urllib.parse.urlencode({
+        'client_key': get_tiktok_client_key(),
+        'response_type': 'code',
+        'scope': ','.join(TIKTOK_OAUTH_SCOPES),
+        'redirect_uri': redirect_uri,
+        'state': state,
+        'code_challenge': build_tiktok_pkce_challenge(verifier),
+        'code_challenge_method': 'S256',
+    })
+    return f'{TIKTOK_AUTHORIZE_URL}?{query}'
+
+
+def perform_tiktok_token_request(form_data: dict) -> dict:
+    request = urllib.request.Request(
+        TIKTOK_OAUTH_TOKEN_URL,
+        data=urllib.parse.urlencode(form_data).encode('utf-8'),
+        method='POST',
+        headers={
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cache-Control': 'no-cache',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            payload = decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        message = str(payload.get('error_description') or payload.get('error') or f'TikTok OAuth HTTP {error.code}')
+        raise ValueError(message) from error
+    if payload.get('error'):
+        raise ValueError(str(payload.get('error_description') or payload.get('error')))
+    return payload
+
+
+def persist_tiktok_token_payload(token_payload: dict):
+    access_token = str(token_payload.get('access_token') or '').strip()
+    refresh_token = str(token_payload.get('refresh_token') or '').strip()
+    if not access_token or not refresh_token:
+        raise ValueError('TikTok n’a pas retourné les jetons OAuth attendus')
+
+    now = datetime.now(timezone.utc)
+    expires_in = int(token_payload.get('expires_in') or 0)
+    refresh_expires_in = int(token_payload.get('refresh_expires_in') or 0)
+    payload = {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'token_type': str(token_payload.get('token_type') or 'Bearer').strip(),
+        'open_id': str(token_payload.get('open_id') or '').strip(),
+        'scope': str(token_payload.get('scope') or '').strip(),
+        'expires_in': expires_in,
+        'refresh_expires_in': refresh_expires_in,
+        'expires_at': datetime.fromtimestamp(now.timestamp() + expires_in, timezone.utc).isoformat(),
+        'refresh_expires_at': datetime.fromtimestamp(
+            now.timestamp() + refresh_expires_in,
+            timezone.utc,
+        ).isoformat(),
+        'created_at': now.isoformat(),
+    }
+    save_json_file(TIKTOK_OAUTH_TOKEN_FILE, payload)
+    if TIKTOK_OAUTH_PENDING_FILE.exists():
+        TIKTOK_OAUTH_PENDING_FILE.unlink()
+
+
+def exchange_tiktok_authorization_code(code: str, pending_payload: dict) -> dict:
+    return perform_tiktok_token_request({
+        'client_key': get_tiktok_client_key(),
+        'client_secret': get_tiktok_client_secret(),
+        'code': urllib.parse.unquote(str(code or '')),
+        'grant_type': 'authorization_code',
+        'redirect_uri': pending_payload['redirect_uri'],
+        'code_verifier': pending_payload['code_verifier'],
+    })
+
+
+def refresh_tiktok_access_token(token_data: dict) -> dict:
+    refresh_token = str(token_data.get('refresh_token') or '').strip()
+    if not refresh_token:
+        raise ValueError('Refresh token TikTok introuvable, reconnecte le compte')
+    payload = perform_tiktok_token_request({
+        'client_key': get_tiktok_client_key(),
+        'client_secret': get_tiktok_client_secret(),
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token,
+    })
+    persist_tiktok_token_payload(payload)
+    return load_json_file(TIKTOK_OAUTH_TOKEN_FILE, {})
+
+
+def get_tiktok_valid_token_data() -> dict:
+    with TIKTOK_TOKEN_LOCK:
+        token_data = load_json_file(TIKTOK_OAUTH_TOKEN_FILE, {})
+        expires_at = parse_iso_datetime(token_data.get('expires_at'))
+        if token_data.get('access_token') and expires_at:
+            deadline = expires_at.timestamp() - TIKTOK_OAUTH_EXPIRY_SKEW_SECONDS
+            if datetime.now(timezone.utc).timestamp() < deadline:
+                return token_data
+        return refresh_tiktok_access_token(token_data)
+
+
+def get_tiktok_access_token() -> str:
+    return str(get_tiktok_valid_token_data().get('access_token') or '').strip()
+
+
+def extract_tiktok_api_error(payload: dict, fallback: str) -> str:
+    error = payload.get('error') if isinstance(payload, dict) else None
+    if not isinstance(error, dict):
+        return fallback
+    code = str(error.get('code') or '').strip()
+    message = str(error.get('message') or '').strip()
+    log_id = str(error.get('log_id') or error.get('logid') or '').strip()
+    if code and code != 'ok':
+        details = message or code
+        return f'{details} (code TikTok {code}' + (f', log {log_id}' if log_id else '') + ')'
+    return fallback
+
+
+def perform_tiktok_json_request(path: str, payload: dict | None = None) -> dict:
+    token = get_tiktok_access_token()
+    if not token:
+        raise ValueError('Compte TikTok non connecté')
+    request = urllib.request.Request(
+        f'{TIKTOK_API_BASE_URL}/{path.lstrip("/")}',
+        data=json.dumps(payload or {}, ensure_ascii=False).encode('utf-8'),
+        method='POST',
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json; charset=UTF-8',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            response_payload = decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            response_payload = decode_json_bytes(error.read())
+        except Exception:
+            response_payload = {}
+        raise ValueError(extract_tiktok_api_error(response_payload, f'TikTok API HTTP {error.code}')) from error
+
+    api_error = response_payload.get('error') if isinstance(response_payload, dict) else None
+    if isinstance(api_error, dict) and str(api_error.get('code') or 'ok') != 'ok':
+        raise ValueError(extract_tiktok_api_error(response_payload, 'TikTok API a refusé la requête'))
+    return response_payload
+
+
+def get_tiktok_profile() -> dict:
+    token = get_tiktok_access_token()
+    fields = 'open_id,union_id,avatar_url,display_name'
+    request = urllib.request.Request(
+        f'{TIKTOK_API_BASE_URL}/v2/user/info/?fields={urllib.parse.quote(fields, safe=",")}',
+        method='GET',
+        headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            payload = decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        raise ValueError(extract_tiktok_api_error(payload, f'Profil TikTok HTTP {error.code}')) from error
+    api_error = payload.get('error') if isinstance(payload, dict) else None
+    if isinstance(api_error, dict) and str(api_error.get('code') or 'ok') != 'ok':
+        raise ValueError(extract_tiktok_api_error(payload, 'Lecture du profil TikTok impossible'))
+    data = payload.get('data') if isinstance(payload.get('data'), dict) else {}
+    user = data.get('user') if isinstance(data.get('user'), dict) else {}
+    return user
+
+
+def get_tiktok_creator_info() -> dict:
+    payload = perform_tiktok_json_request('/v2/post/publish/creator_info/query/')
+    return payload.get('data') if isinstance(payload.get('data'), dict) else {}
+
+
+def get_tiktok_publish_status(publish_id: str) -> dict:
+    normalized_publish_id = str(publish_id or '').strip()
+    if not normalized_publish_id:
+        raise ValueError('Identifiant de publication TikTok manquant')
+    payload = perform_tiktok_json_request('/v2/post/publish/status/fetch/', {
+        'publish_id': normalized_publish_id,
+    })
+    return payload.get('data') if isinstance(payload.get('data'), dict) else {}
+
+
+def get_tiktok_upload_plan(file_size: int) -> tuple[int, int]:
+    if file_size <= 0:
+        raise ValueError('La vidéo TikTok est vide')
+    if file_size > TIKTOK_VIDEO_MAX_BYTES:
+        raise ValueError('La vidéo TikTok dépasse la limite de 4 Go')
+    # TikTok expects decimal byte counts for its 5 MB-64 MB chunk range.
+    # With a single chunk, advertise the exact file size: TikTok rejects plans
+    # where total_chunk_count=1 but chunk_size and video_size differ.
+    if file_size <= TIKTOK_MAX_SINGLE_CHUNK_BYTES:
+        return file_size, 1
+    chunk_size = TIKTOK_UPLOAD_CHUNK_BYTES
+    return chunk_size, max(1, file_size // chunk_size)
+
+
+def is_allowed_tiktok_upload_url(upload_url: str) -> bool:
+    parsed = urllib.parse.urlparse(str(upload_url or '').strip())
+    hostname = str(parsed.hostname or '').lower().rstrip('.')
+    return bool(
+        parsed.scheme == 'https'
+        and not parsed.username
+        and not parsed.password
+        and re.fullmatch(r'(?:open-upload|upload(?:\.[a-z0-9-]+)*)\.tiktokapis\.com', hostname)
+    )
+
+
+def upload_tiktok_video(upload_url: str, video_path: Path, chunk_size: int, total_chunk_count: int):
+    if not is_allowed_tiktok_upload_url(upload_url):
+        raise ValueError('TikTok a retourné une URL d’upload non autorisée')
+    file_size = video_path.stat().st_size
+    offset = 0
+    with video_path.open('rb') as source:
+        for chunk_index in range(total_chunk_count):
+            is_last = chunk_index == total_chunk_count - 1
+            bytes_to_read = file_size - offset if is_last else min(chunk_size, file_size - offset)
+            chunk = source.read(bytes_to_read)
+            if len(chunk) != bytes_to_read:
+                raise ValueError('Lecture incomplète de la vidéo TikTok')
+            last_byte = offset + len(chunk) - 1
+            request = urllib.request.Request(
+                upload_url,
+                data=chunk,
+                method='PUT',
+                headers={
+                    'Content-Type': {
+                        '.mov': 'video/quicktime',
+                        '.webm': 'video/webm',
+                    }.get(video_path.suffix.lower(), 'video/mp4'),
+                    'Content-Length': str(len(chunk)),
+                    'Content-Range': f'bytes {offset}-{last_byte}/{file_size}',
+                },
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=180) as response:
+                    expected_status = 201 if is_last else 206
+                    if response.status != expected_status:
+                        raise ValueError(
+                            f'Upload TikTok inattendu : HTTP {response.status}, attendu {expected_status}'
+                        )
+            except urllib.error.HTTPError as error:
+                raise ValueError(f'Upload vidéo TikTok HTTP {error.code}') from error
+            offset = last_byte + 1
+
+
+def publish_tiktok_video(
+    video_path: Path,
+    *,
+    title: str,
+    privacy_level: str,
+    disable_comment: bool,
+    disable_duet: bool,
+    disable_stitch: bool,
+    brand_organic: bool,
+    brand_content: bool,
+    cover_timestamp_ms: int,
+    duration_seconds: float,
+) -> dict:
+    creator = get_tiktok_creator_info()
+    privacy_options = [str(value) for value in creator.get('privacy_level_options') or []]
+    if privacy_level not in privacy_options:
+        raise ValueError('Niveau de confidentialité TikTok non disponible pour ce compte')
+    max_duration = int(creator.get('max_video_post_duration_sec') or 0)
+    if max_duration and duration_seconds > max_duration:
+        raise ValueError(f'La vidéo dépasse la limite TikTok de ce compte ({max_duration} s)')
+    if brand_content and privacy_level == 'SELF_ONLY':
+        raise ValueError('Le contenu de marque tierce ne peut pas être publié en mode privé')
+
+    file_size = video_path.stat().st_size
+    chunk_size, total_chunk_count = get_tiktok_upload_plan(file_size)
+    print(
+        f'[TikTok] Plan upload : video_size={file_size}, chunk_size={chunk_size}, '
+        f'total_chunk_count={total_chunk_count}',
+        flush=True,
+    )
+    init_payload = perform_tiktok_json_request('/v2/post/publish/video/init/', {
+        'post_info': {
+            'title': str(title or '')[:2200],
+            'privacy_level': privacy_level,
+            'disable_comment': bool(disable_comment or creator.get('comment_disabled')),
+            'disable_duet': bool(disable_duet or creator.get('duet_disabled')),
+            'disable_stitch': bool(disable_stitch or creator.get('stitch_disabled')),
+            'video_cover_timestamp_ms': max(0, int(cover_timestamp_ms or 0)),
+            'brand_content_toggle': bool(brand_content),
+            'brand_organic_toggle': bool(brand_organic),
+            'is_aigc': False,
+        },
+        'source_info': {
+            'source': 'FILE_UPLOAD',
+            'video_size': file_size,
+            'chunk_size': chunk_size,
+            'total_chunk_count': total_chunk_count,
+        },
+    })
+    data = init_payload.get('data') if isinstance(init_payload.get('data'), dict) else {}
+    publish_id = str(data.get('publish_id') or '').strip()
+    upload_url = str(data.get('upload_url') or '').strip()
+    if not publish_id or not upload_url:
+        raise ValueError('TikTok n’a pas retourné les informations d’upload')
+    upload_tiktok_video(upload_url, video_path, chunk_size, total_chunk_count)
+    return {
+        'publishId': publish_id,
+        'creator': creator,
+        'privacyLevel': privacy_level,
+    }
 
 
 def chunk_list(values, size: int):
@@ -192,6 +588,317 @@ def get_instagram_access_token() -> str:
     return get_env_value('INSTAGRAM_ACCESS_TOKEN')
 
 
+def get_facebook_graph_api_version() -> str:
+    raw = get_env_value('FACEBOOK_GRAPH_API_VERSION') or FACEBOOK_GRAPH_API_DEFAULT_VERSION
+    normalized = raw.strip().lower()
+    if not re.fullmatch(r'v\d+\.\d+', normalized):
+        raise ValueError('Version Facebook Graph API invalide')
+    return normalized
+
+
+def get_facebook_page_id(shop_key: str = '') -> str:
+    # Les deux boutiques Etsy publient sur l'unique Page Facebook Gros Geek.
+    # shop_key décrit la source commerciale du contenu, pas une Page Facebook.
+    return get_env_value('FACEBOOK_GROSGEEK_PAGE_ID') or get_env_value('FACEBOOK_PAGE_ID')
+
+
+def get_facebook_page_access_token(shop_key: str = '') -> str:
+    return (
+        get_env_value('FACEBOOK_GROSGEEK_PAGE_ACCESS_TOKEN')
+        or get_env_value('FACEBOOK_PAGE_ACCESS_TOKEN')
+    )
+
+
+def set_current_facebook_page_access_token(token: str = ''):
+    REQUEST_CONTEXT.facebook_page_access_token = str(token or '').strip()
+
+
+def get_current_facebook_page_access_token() -> str:
+    return str(getattr(REQUEST_CONTEXT, 'facebook_page_access_token', '') or '').strip()
+
+
+def build_facebook_graph_url(path: str) -> str:
+    version = get_facebook_graph_api_version()
+    return f'{FACEBOOK_GRAPH_API_BASE_URL}/{version}/{path.lstrip("/")}'
+
+
+class FacebookAPIError(ValueError):
+    def __init__(self, message: str, *, http_status: int = 0, endpoint: str = '', payload: dict | None = None):
+        super().__init__(message)
+        self.http_status = int(http_status or 0)
+        self.endpoint = str(endpoint or '')
+        self.payload = payload if isinstance(payload, dict) else {}
+
+    def public_details(self) -> dict:
+        error = self.payload.get('error') if isinstance(self.payload, dict) else None
+        error = error if isinstance(error, dict) else {}
+        details = {
+            'httpStatus': self.http_status or None,
+            'endpoint': self.endpoint,
+            'type': str(error.get('type') or '').strip() or None,
+            'code': error.get('code'),
+            'subcode': error.get('error_subcode'),
+            'fbtraceId': str(error.get('fbtrace_id') or '').strip() or None,
+        }
+        return {key: value for key, value in details.items() if value not in (None, '')}
+
+
+def perform_facebook_request(
+    path: str,
+    method: str = 'GET',
+    data: dict | None = None,
+    *,
+    shop_key: str = '',
+    access_token: str = '',
+) -> dict:
+    token = (
+        str(access_token or '').strip()
+        or get_current_facebook_page_access_token()
+        or get_facebook_page_access_token(shop_key)
+    )
+    if not token:
+        normalized_shop_key = normalize_etsy_shop_key(shop_key or get_current_request_shop_key())
+        raise ValueError(f'Token Facebook de Page absent pour la boutique {normalized_shop_key}')
+
+    endpoint = path.split('?', 1)[0]
+    encoded_data = urllib.parse.urlencode(data).encode('utf-8') if data is not None else None
+    request = urllib.request.Request(
+        build_facebook_graph_url(path),
+        data=encoded_data,
+        method=method,
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        message = extract_instagram_error(payload, f'Facebook API HTTP {error.code}')
+        raise FacebookAPIError(
+            message,
+            http_status=error.code,
+            endpoint=endpoint,
+            payload=payload,
+        ) from error
+    except urllib.error.URLError as error:
+        raise FacebookAPIError(
+            f'Connexion à Facebook impossible : {getattr(error, "reason", error)}',
+            endpoint=endpoint,
+        ) from error
+
+
+def get_facebook_page_profile(shop_key: str = '') -> dict:
+    normalized_shop_key = normalize_etsy_shop_key(shop_key or get_current_request_shop_key())
+    configured_token = get_facebook_page_access_token(normalized_shop_key)
+    if not configured_token:
+        raise ValueError(f'Token Facebook absent pour la boutique {normalized_shop_key}')
+
+    set_current_facebook_page_access_token('')
+    derived_from_user_token = False
+    try:
+        payload = perform_facebook_request(
+            'me?fields=id,name,category',
+            shop_key=normalized_shop_key,
+            access_token=configured_token,
+        )
+        page_token = configured_token
+    except FacebookAPIError as error:
+        error_message = str(error).lower()
+        facebook_error = error.payload.get('error') if isinstance(error.payload, dict) else None
+        facebook_error = facebook_error if isinstance(facebook_error, dict) else {}
+        is_user_token = facebook_error.get('code') == 100 and 'category' in error_message
+        if not is_user_token:
+            raise
+
+        accounts_payload = perform_facebook_request(
+            'me/accounts?fields=id,name,access_token,tasks',
+            shop_key=normalized_shop_key,
+            access_token=configured_token,
+        )
+        pages = accounts_payload.get('data') if isinstance(accounts_payload.get('data'), list) else []
+        if not pages:
+            raise ValueError('Le token utilisateur Facebook ne donne accès à aucune Page gérée')
+
+        configured_page_id = get_facebook_page_id(normalized_shop_key)
+        selected_pages = [
+            page for page in pages
+            if configured_page_id and str(page.get('id') or '') == str(configured_page_id)
+        ]
+        if not selected_pages:
+            expected_names = ('gros geek', 'grosgeek')
+            selected_pages = [
+                page for page in pages
+                if any(expected in str(page.get('name') or '').lower() for expected in expected_names)
+            ]
+        if not selected_pages and len(pages) == 1:
+            selected_pages = pages
+        if len(selected_pages) != 1:
+            available_pages = ', '.join(
+                f'{str(page.get("name") or "Page sans nom")} ({str(page.get("id") or "ID inconnu")})'
+                for page in pages
+            )
+            raise ValueError(
+                'Impossible de choisir automatiquement la Page Facebook. '
+                f'Pages disponibles : {available_pages}. Configure le PAGE_ID correspondant.'
+            )
+
+        selected_page = selected_pages[0]
+        page_token = str(selected_page.get('access_token') or '').strip()
+        if not page_token:
+            raise ValueError('Facebook n’a pas retourné de Page Access Token pour la Page sélectionnée')
+        payload = {
+            'id': str(selected_page.get('id') or '').strip(),
+            'name': str(selected_page.get('name') or '').strip(),
+        }
+        derived_from_user_token = True
+
+    set_current_facebook_page_access_token(page_token)
+    resolved_page_id = str(payload.get('id') or '').strip()
+    if not resolved_page_id:
+        raise ValueError('Facebook n’a pas retourné l’identifiant de la Page')
+    return {
+        'id': resolved_page_id,
+        'name': str(payload.get('name') or '').strip(),
+        'shopKey': normalized_shop_key,
+        'derivedFromUserToken': derived_from_user_token,
+    }
+
+
+def upload_facebook_hosted_reel(upload_url: str, video_url: str, shop_key: str = '') -> dict:
+    parsed_upload_url = urllib.parse.urlparse(str(upload_url or '').strip())
+    if parsed_upload_url.scheme != 'https' or parsed_upload_url.hostname != 'rupload.facebook.com':
+        raise ValueError('Facebook a retourné une URL d’upload Reel non autorisée')
+
+    token = get_current_facebook_page_access_token() or get_facebook_page_access_token(shop_key)
+    request = urllib.request.Request(
+        upload_url,
+        data=b'',
+        method='POST',
+        headers={
+            'Authorization': f'OAuth {token}',
+            'Accept': 'application/json',
+            'file_url': video_url,
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            return decode_json_bytes(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            payload = decode_json_bytes(error.read())
+        except Exception:
+            payload = {}
+        message = extract_instagram_error(payload, f'Upload Reel Facebook HTTP {error.code}')
+        raise FacebookAPIError(
+            message,
+            http_status=error.code,
+            endpoint='rupload.facebook.com/video-upload',
+            payload=payload,
+        ) from error
+    except urllib.error.URLError as error:
+        raise FacebookAPIError(
+            f'Upload du Reel Facebook impossible : {getattr(error, "reason", error)}',
+            endpoint='rupload.facebook.com/video-upload',
+        ) from error
+
+
+def upload_facebook_local_reel(upload_url: str, video_path: Path, shop_key: str = '') -> dict:
+    parsed_upload_url = urllib.parse.urlparse(str(upload_url or '').strip())
+    if parsed_upload_url.scheme != 'https' or parsed_upload_url.hostname != 'rupload.facebook.com':
+        raise ValueError('Facebook a retourné une URL d’upload Reel non autorisée')
+
+    resolved_video_path = Path(video_path).resolve()
+    if not resolved_video_path.is_file():
+        raise ValueError('Le fichier vidéo à transférer vers Facebook est introuvable')
+    file_size = resolved_video_path.stat().st_size
+    if file_size <= 0:
+        raise ValueError('Le fichier vidéo à transférer vers Facebook est vide')
+    if file_size > INSTAGRAM_VIDEO_MAX_BYTES:
+        raise ValueError('La vidéo à transférer vers Facebook dépasse la limite de 1 Go')
+
+    token = get_current_facebook_page_access_token() or get_facebook_page_access_token(shop_key)
+    request_path = parsed_upload_url.path or '/'
+    if parsed_upload_url.query:
+        request_path = f'{request_path}?{parsed_upload_url.query}'
+
+    connection = http.client.HTTPSConnection('rupload.facebook.com', timeout=120)
+    try:
+        connection.putrequest('POST', request_path)
+        connection.putheader('Authorization', f'OAuth {token}')
+        connection.putheader('offset', '0')
+        connection.putheader('file_size', str(file_size))
+        connection.putheader('Content-Type', 'application/octet-stream')
+        connection.putheader('Content-Length', str(file_size))
+        connection.endheaders()
+        with resolved_video_path.open('rb') as source:
+            while True:
+                chunk = source.read(1024 * 1024)
+                if not chunk:
+                    break
+                connection.send(chunk)
+
+        response = connection.getresponse()
+        raw_payload = response.read()
+        try:
+            payload = decode_json_bytes(raw_payload)
+        except Exception:
+            payload = {}
+        if response.status < 200 or response.status >= 300:
+            message = extract_instagram_error(payload, f'Upload Reel Facebook HTTP {response.status}')
+            raise FacebookAPIError(
+                message,
+                http_status=response.status,
+                endpoint='rupload.facebook.com/video-upload',
+                payload=payload,
+            )
+        return payload
+    except FacebookAPIError:
+        raise
+    except OSError as error:
+        raise FacebookAPIError(
+            f'Upload du Reel Facebook impossible : {error}',
+            endpoint='rupload.facebook.com/video-upload',
+        ) from error
+    finally:
+        connection.close()
+
+
+def download_instagram_reel(video_url: str) -> Path:
+    parsed_video_url = urllib.parse.urlparse(str(video_url or '').strip())
+    if parsed_video_url.scheme != 'https' or not parsed_video_url.hostname:
+        raise ValueError('Instagram a retourné une URL vidéo non sécurisée')
+
+    request = urllib.request.Request(
+        video_url,
+        method='GET',
+        headers={'User-Agent': 'GrosGeekPublisher/1.0'},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            content_type = str(response.headers.get_content_type() or '').lower()
+            if content_type not in {'video/mp4', 'video/quicktime', 'application/octet-stream'}:
+                raise ValueError(f'Instagram a retourné un type de vidéo inattendu : {content_type or "inconnu"}')
+            raw_length = str(response.headers.get('Content-Length') or '').strip()
+            if not raw_length.isdigit():
+                raise ValueError('Instagram n’a pas indiqué la taille de la vidéo à récupérer')
+            return resolve_instagram_media_path(
+                store_instagram_video_stream(response, int(raw_length), content_type)
+            )
+    except urllib.error.HTTPError as error:
+        raise ValueError(f'Téléchargement du Reel Instagram impossible : HTTP {error.code}') from error
+    except urllib.error.URLError as error:
+        raise ValueError(
+            f'Téléchargement du Reel Instagram impossible : {getattr(error, "reason", error)}'
+        ) from error
+
+
 def get_threads_access_token() -> str:
     return get_env_value('THREADS_ACCESS_TOKEN')
 
@@ -209,11 +916,50 @@ def build_threads_graph_url(path: str) -> str:
     return f'{THREADS_GRAPH_API_BASE_URL}/{version}/{path.lstrip("/")}'
 
 
+class ThreadsAPIError(ValueError):
+    def __init__(self, message: str, *, http_status: int = 0, endpoint: str = '', payload: dict | None = None):
+        super().__init__(message)
+        self.http_status = int(http_status or 0)
+        self.endpoint = str(endpoint or '')
+        self.payload = payload if isinstance(payload, dict) else {}
+
+    def public_details(self) -> dict:
+        error = self.payload.get('error') if isinstance(self.payload, dict) else None
+        error = error if isinstance(error, dict) else {}
+        details = {
+            'httpStatus': self.http_status or None,
+            'endpoint': self.endpoint,
+            'type': str(error.get('type') or '').strip() or None,
+            'code': error.get('code'),
+            'subcode': error.get('error_subcode'),
+            'fbtraceId': str(error.get('fbtrace_id') or '').strip() or None,
+        }
+        return {key: value for key, value in details.items() if value not in (None, '')}
+
+
+def format_threads_api_error(error: ThreadsAPIError) -> str:
+    details = error.public_details()
+    extras = []
+    if details.get('httpStatus'):
+        extras.append(f"HTTP {details['httpStatus']}")
+    if details.get('code') is not None:
+        extras.append(f"code Meta {details['code']}")
+    if details.get('subcode') is not None:
+        extras.append(f"sous-code {details['subcode']}")
+    if details.get('type'):
+        extras.append(str(details['type']))
+    if details.get('fbtraceId'):
+        extras.append(f"trace {details['fbtraceId']}")
+    suffix = f" ({', '.join(extras)})" if extras else ''
+    return f'{str(error)}{suffix}'
+
+
 def perform_threads_request(path: str, method: str = 'GET', data: dict | None = None) -> dict:
     token = get_threads_access_token()
     if not token:
         raise ValueError('THREADS_ACCESS_TOKEN absent du fichier .env')
 
+    endpoint = path.split('?', 1)[0]
     encoded_data = urllib.parse.urlencode(data).encode('utf-8') if data is not None else None
     request = urllib.request.Request(
         build_threads_graph_url(path),
@@ -234,7 +980,18 @@ def perform_threads_request(path: str, method: str = 'GET', data: dict | None = 
         except Exception:
             payload = {}
         message = extract_instagram_error(payload, f'Threads API HTTP {error.code}')
-        raise ValueError(message) from error
+        api_error = ThreadsAPIError(
+            message,
+            http_status=error.code,
+            endpoint=endpoint,
+            payload=payload,
+        )
+        print(f'[Threads API] {method} {endpoint} -> {format_threads_api_error(api_error)}')
+        raise api_error from error
+    except urllib.error.URLError as error:
+        message = f'Connexion à Threads impossible : {getattr(error, "reason", error)}'
+        print(f'[Threads API] {method} {endpoint} -> {message}')
+        raise ThreadsAPIError(message, endpoint=endpoint) from error
 
 
 def get_threads_profile() -> dict:
@@ -300,6 +1057,45 @@ def publish_threads_container(profile_id: str, container_id: str, attempts: int 
     raise ValueError(last_error or 'Publication Threads impossible')
 
 
+def create_threads_carousel_container(
+    profile_id: str,
+    child_container_ids: list[str],
+    text: str,
+    attempts: int = 5,
+    delay_seconds: float = 2.0,
+) -> dict:
+    """Créer le parent après propagation des enfants, avec reprise ciblée Meta."""
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            return perform_threads_request(
+                f'{profile_id}/threads',
+                method='POST',
+                data={
+                    'media_type': 'CAROUSEL',
+                    'children': ','.join(child_container_ids),
+                    'text': text,
+                },
+            )
+        except ThreadsAPIError as error:
+            last_error = error
+            details = error.public_details()
+            propagation_error = (
+                details.get('code') == 100
+                and details.get('subcode') == 4279004
+            )
+            if not propagation_error or attempt >= attempts - 1:
+                raise
+            print(
+                '[Threads] Parent carrousel pas encore accepté par Meta; '
+                f'nouvel essai {attempt + 2}/{attempts}'
+            )
+            time.sleep(delay_seconds)
+    if last_error is not None:
+        raise last_error
+    raise ValueError('Création du carrousel Threads impossible')
+
+
 def get_instagram_graph_api_version() -> str:
     raw = get_env_value('INSTAGRAM_GRAPH_API_VERSION') or INSTAGRAM_GRAPH_API_DEFAULT_VERSION
     normalized = raw.strip().lower()
@@ -363,6 +1159,44 @@ def get_instagram_profile() -> dict:
         'id': user_id,
         'username': str(payload.get('username') or '').strip(),
     }
+
+
+def build_instagram_reel_container_data(
+    video_url: str,
+    caption: str,
+    thumb_offset_ms: int,
+    cover_url: str = '',
+) -> dict:
+    payload = {
+        'media_type': 'REELS',
+        'video_url': video_url,
+        'caption': caption,
+    }
+    if cover_url:
+        payload['cover_url'] = cover_url
+    else:
+        payload['thumb_offset'] = str(max(0, int(thumb_offset_ms or 0)))
+    return payload
+
+
+def get_instagram_media_item(media_id: str) -> dict:
+    normalized_media_id = str(media_id or '').strip()
+    if not re.fullmatch(r'\d+', normalized_media_id):
+        raise ValueError('Identifiant de publication Instagram invalide')
+    fields = ','.join((
+        'id',
+        'caption',
+        'media_type',
+        'media_product_type',
+        'media_url',
+        'permalink',
+        'thumbnail_url',
+        'timestamp',
+        'children{id,media_type,media_url,thumbnail_url}',
+    ))
+    return perform_instagram_request(
+        f'{normalized_media_id}?fields={urllib.parse.quote(fields, safe=",{}")}'
+    )
 
 
 def wait_for_instagram_container(container_id: str, attempts: int = 6, delay_seconds: float = 2.0):
@@ -915,6 +1749,14 @@ def build_home_redirect_url(result: str, message: str) -> str:
     query = urllib.parse.urlencode({
         'etsy_oauth': result,
         'etsy_message': message,
+    })
+    return f'/?{query}'
+
+
+def build_tiktok_home_redirect_url(result: str, message: str) -> str:
+    query = urllib.parse.urlencode({
+        'tiktok_oauth': result,
+        'tiktok_message': message,
     })
     return f'/?{query}'
 
@@ -2285,6 +3127,86 @@ class Handler(http.server.BaseHTTPRequestHandler):
         requested_shop_key = resolve_requested_shop_key(query_params=query_params, headers=self.headers)
         set_current_request_shop_key(requested_shop_key)
 
+        if path == '/pinterest/status':
+            try:
+                service = get_pinterest_service()
+                status = service.status()
+                if status['connected']:
+                    try:
+                        status['profile'] = service.profile()
+                    except Exception as error:
+                        status['connectionError'] = str(error)
+                self.send_json(200, status)
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/pinterest/oauth/start':
+            try:
+                self.send_json(200, {'ok': True, 'authUrl': get_pinterest_service().build_authorization_url()})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/pinterest/oauth/callback':
+            error_code = str(query_params.get('error', [''])[0] or '').strip()
+            error_description = str(query_params.get('error_description', [''])[0] or '').strip()
+            if error_code:
+                message = urllib.parse.quote(error_description or error_code)
+                self.send_redirect(f'/?pinterest_oauth=error&message={message}')
+                return
+            try:
+                code = str(query_params.get('code', [''])[0] or '').strip()
+                state = str(query_params.get('state', [''])[0] or '').strip()
+                if not code:
+                    raise ValueError('Code OAuth Pinterest absent')
+                get_pinterest_service().complete_oauth(code, state)
+                self.send_redirect('/?pinterest_oauth=success')
+            except Exception as error:
+                self.send_redirect(f'/?pinterest_oauth=error&message={urllib.parse.quote(str(error))}')
+            return
+
+        if path == '/pinterest/boards':
+            try:
+                boards = get_pinterest_service().list_boards()
+                self.send_json(200, {'ok': True, 'boards': boards, 'count': len(boards)})
+            except PinterestAPIError as error:
+                self.send_json(error.status, {'error': str(error), 'pinterest': error.payload})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/pinterest/queue':
+            try:
+                include_history = str(query_params.get('history', ['0'])[0]).lower() in {'1', 'true', 'yes'}
+                self.send_json(200, get_pinterest_service().queue_snapshot(include_history))
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/pinterest/settings':
+            try:
+                self.send_json(200, {'ok': True, **get_pinterest_service().get_settings()})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path.startswith('/pinterest/spool/'):
+            try:
+                target = get_pinterest_service().resolve_spool(path.removeprefix('/pinterest/spool/'))
+                content_type = {
+                    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+                    '.webp': 'image/webp', '.gif': 'image/gif',
+                }.get(target.suffix.lower(), 'application/octet-stream')
+                self.send_binary_file(target, content_type)
+            except (FileNotFoundError, ValueError):
+                self.send_json(404, {'error': 'Image Pinterest introuvable'})
+            return
+
         if path == '/instagram/test/status':
             try:
                 self.send_json(200, {
@@ -2307,6 +3229,61 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(error)})
             return
 
+        if path == '/instagram/media/recent':
+            try:
+                raw_limit = query_params.get('limit', ['25'])[0]
+                limit = min(50, max(1, int(raw_limit)))
+                fields = ','.join((
+                    'id',
+                    'caption',
+                    'media_type',
+                    'media_product_type',
+                    'media_url',
+                    'permalink',
+                    'thumbnail_url',
+                    'timestamp',
+                    'children{id,media_type,media_url,thumbnail_url}',
+                ))
+                payload = perform_instagram_request(
+                    f'me/media?fields={urllib.parse.quote(fields, safe=",{}")}&limit={limit}'
+                )
+                media = payload.get('data') if isinstance(payload.get('data'), list) else []
+                self.send_json(200, {'ok': True, 'media': media, 'count': len(media)})
+            except (TypeError, ValueError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/facebook/status':
+            try:
+                shop_key = normalize_etsy_shop_key(requested_shop_key)
+                self.send_json(200, {
+                    'ok': True,
+                    'configured': bool(get_facebook_page_access_token(shop_key)),
+                    'pageIdConfigured': bool(get_facebook_page_id(shop_key)),
+                    'apiVersion': get_facebook_graph_api_version(),
+                    'shopKey': shop_key,
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            return
+
+        if path == '/facebook/profile':
+            try:
+                profile = get_facebook_page_profile(requested_shop_key)
+                self.send_json(200, {'ok': True, 'profile': profile})
+            except FacebookAPIError as error:
+                self.send_json(
+                    error.http_status if 400 <= error.http_status < 600 else 502,
+                    {'error': str(error), 'facebook': error.public_details()},
+                )
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path == '/threads/status':
             try:
                 self.send_json(200, {
@@ -2323,6 +3300,85 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 profile = get_threads_profile()
                 self.send_json(200, {'ok': True, 'profile': profile})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/tiktok/oauth/status':
+            try:
+                self.send_json(200, build_tiktok_auth_status())
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/tiktok/oauth/start':
+            try:
+                self.send_json(200, {
+                    'ok': True,
+                    'authUrl': build_tiktok_authorization_url(),
+                    'scopes': list(TIKTOK_OAUTH_SCOPES),
+                })
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == TIKTOK_OAUTH_CALLBACK_ROUTE:
+            error_code = str(query_params.get('error', [''])[0] or '').strip()
+            error_description = str(query_params.get('error_description', [''])[0] or '').strip()
+            state = str(query_params.get('state', [''])[0] or '').strip()
+            code = str(query_params.get('code', [''])[0] or '').strip()
+            pending_payload = load_json_file(TIKTOK_OAUTH_PENDING_FILE, {})
+
+            if error_code:
+                self.send_redirect(build_tiktok_home_redirect_url(
+                    'error',
+                    f'OAuth TikTok refusé : {error_description or error_code}',
+                ))
+                return
+            if not code or not state:
+                self.send_redirect(build_tiktok_home_redirect_url('error', 'Réponse OAuth TikTok incomplète'))
+                return
+            if not pending_payload or str(pending_payload.get('state') or '') != state:
+                self.send_redirect(build_tiktok_home_redirect_url('error', 'State OAuth TikTok invalide'))
+                return
+
+            try:
+                token_payload = exchange_tiktok_authorization_code(code, pending_payload)
+                persist_tiktok_token_payload(token_payload)
+                self.send_redirect(build_tiktok_home_redirect_url('success', 'Compte TikTok autorisé'))
+            except Exception as error:
+                self.send_redirect(build_tiktok_home_redirect_url(
+                    'error',
+                    f'Échange OAuth TikTok échoué : {error}',
+                ))
+            return
+
+        if path == '/tiktok/profile':
+            try:
+                self.send_json(200, {'ok': True, 'profile': get_tiktok_profile()})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/tiktok/creator-info':
+            try:
+                self.send_json(200, {'ok': True, 'creator': get_tiktok_creator_info()})
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/tiktok/publish/status':
+            try:
+                publish_id = str(query_params.get('publishId', [''])[0] or '').strip()
+                self.send_json(200, {'ok': True, 'status': get_tiktok_publish_status(publish_id)})
             except ValueError as error:
                 self.send_json(400, {'error': str(error)})
             except Exception as error:
@@ -2663,6 +3719,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     include_oauth=True,
                     shop_key=requested_shop_key,
                 )
+                images_payload = perform_etsy_get_request(
+                    f'listings/{listing_id}/images',
+                    include_oauth=False,
+                    shop_key=requested_shop_key,
+                )
+                videos_payload = perform_etsy_get_request(
+                    f'listings/{listing_id}/videos',
+                    include_oauth=False,
+                    shop_key=requested_shop_key,
+                )
                 inventory_payload = perform_etsy_get_request(
                     f'listings/batch/inventory?listing_ids={listing_id}',
                     include_oauth=True,
@@ -2677,6 +3743,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 shipping_entries = extract_etsy_results_collection(shipping_payload)
                 inventory_entry = inventory_entries[0] if inventory_entries else {}
                 shipping_entry = shipping_entries[0] if shipping_entries else {}
+                payload['images'] = extract_etsy_results_collection(images_payload)
+                payload['videos'] = extract_etsy_results_collection(videos_payload)
                 payload['inventory'] = inventory_entry.get('inventory')
                 payload['shipping_profile'] = shipping_entry.get('shipping_profile')
                 source_shop_id = get_listing_shop_id(payload)
@@ -3015,6 +4083,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(raw_qs)
         set_current_request_shop_key(resolve_requested_shop_key(query_params=query_params, headers=self.headers))
 
+        if path.startswith('/pinterest/'):
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                service = get_pinterest_service()
+                if path == '/pinterest/boards/create':
+                    result = service.create_board(
+                        str(data.get('name') or ''),
+                        str(data.get('description') or ''),
+                        str(data.get('privacy') or 'PUBLIC'),
+                    )
+                elif path == '/pinterest/boards/update':
+                    result = service.update_board(
+                        str(data.get('boardId') or ''),
+                        str(data.get('name') or ''),
+                        str(data.get('description') or ''),
+                    )
+                elif path == '/pinterest/boards/delete':
+                    result = service.delete_board(str(data.get('boardId') or ''))
+                elif path == '/pinterest/sections/create':
+                    result = service.create_section(str(data.get('boardId') or ''), str(data.get('name') or ''))
+                elif path == '/pinterest/sections/update':
+                    result = service.update_section(
+                        str(data.get('boardId') or ''),
+                        str(data.get('sectionId') or ''),
+                        str(data.get('name') or ''),
+                    )
+                elif path == '/pinterest/sections/delete':
+                    result = service.delete_section(
+                        str(data.get('boardId') or ''),
+                        str(data.get('sectionId') or ''),
+                    )
+                elif path == '/pinterest/queue/enqueue':
+                    result = service.enqueue_batch(data)
+                elif path == '/pinterest/queue/action':
+                    result = service.queue_action(
+                        str(data.get('action') or ''),
+                        str(data.get('jobId') or ''),
+                        str(data.get('batchId') or ''),
+                    )
+                elif path == '/pinterest/settings':
+                    result = service.update_settings(data.get('intervalSeconds'), data.get('paused'))
+                else:
+                    self.send_json(404, {'error': 'Route Pinterest inconnue'})
+                    return
+                self.send_json(200, {'ok': True, 'result': result})
+            except PinterestAPIError as error:
+                self.send_json(error.status, {'error': str(error), 'pinterest': error.payload})
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path == '/instagram/test/media':
             length = int(self.headers.get('Content-Length', 0))
             try:
@@ -3051,10 +4173,61 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(error)})
             return
 
+        if path == '/tiktok/publish':
+            length = int(self.headers.get('Content-Length', 0))
+            media_paths = []
+            try:
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                if str(data.get('mode') or '').strip().lower() != 'reel':
+                    raise ValueError(
+                        'La review TikTok utilise une vidéo. Les carrousels photo nécessitent '
+                        'un hébergement média stable vérifié.'
+                    )
+                raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
+                media_ids = [
+                    str(media_id or '').strip()
+                    for media_id in raw_media_ids
+                    if str(media_id or '').strip()
+                ]
+                if len(media_ids) != 1:
+                    raise ValueError('Une publication vidéo TikTok exige exactement un fichier')
+                media_paths = [resolve_instagram_media_path(media_ids[0])]
+                video_path = media_paths[0]
+                if video_path.suffix.lower() not in {'.mp4', '.mov', '.webm'}:
+                    raise ValueError('Le média TikTok préparé n’est pas une vidéo compatible')
+
+                result = publish_tiktok_video(
+                    video_path,
+                    title=str(data.get('title') or '').strip(),
+                    privacy_level=str(data.get('privacyLevel') or 'SELF_ONLY').strip(),
+                    disable_comment=bool(data.get('disableComment')),
+                    disable_duet=bool(data.get('disableDuet')),
+                    disable_stitch=bool(data.get('disableStitch')),
+                    brand_organic=bool(data.get('brandOrganic')),
+                    brand_content=bool(data.get('brandContent')),
+                    cover_timestamp_ms=int(data.get('coverTimestampMs') or 0),
+                    duration_seconds=float(data.get('durationSeconds') or 0),
+                )
+                self.send_json(200, {'ok': True, **result})
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            finally:
+                for media_path in media_paths:
+                    try:
+                        media_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+            return
+
 
         if path == '/threads/publish':
             length = int(self.headers.get('Content-Length', 0))
             media_paths = []
+            publication_id = ''
+            stage = 'lecture de la demande'
+            stage_details = {}
             try:
                 data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
                 raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
@@ -3071,17 +4244,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if len(media_ids) > 20:
                     raise ValueError('Threads accepte 20 médias maximum dans un carrousel')
 
+                stage = 'vérification des médias locaux'
                 media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
+                stage = 'vérification du tunnel HTTPS'
                 ensure_instagram_media_tunnel(media_ids[0])
                 image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+
+                stage = 'lecture du profil Threads'
                 profile = get_threads_profile()
                 child_container_ids = []
+                print(f'[Threads] Début publication mode={mode} médias={len(media_ids)} compte={profile.get("username") or profile["id"]}')
 
                 if mode == 'reel':
                     if len(image_urls) != 1:
                         raise ValueError('Une publication vidéo Threads exige un seul fichier')
                     if media_paths[0].suffix not in {'.mp4', '.mov'}:
                         raise ValueError('Le média Threads préparé n’est pas une vidéo')
+                    stage = 'création du conteneur vidéo'
                     container = perform_threads_request(
                         f'{profile["id"]}/threads',
                         method='POST',
@@ -3089,6 +4268,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     )
                     container_id = str(container.get('id') or '').strip()
                 elif len(image_urls) == 1:
+                    stage = 'création du conteneur image'
                     container = perform_threads_request(
                         f'{profile["id"]}/threads',
                         method='POST',
@@ -3100,7 +4280,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     )
                     container_id = str(container.get('id') or '').strip()
                 else:
-                    for image_url in image_urls:
+                    total_children = len(image_urls)
+                    for index, image_url in enumerate(image_urls, start=1):
+                        stage = f'création du conteneur enfant {index}/{total_children}'
+                        stage_details = {'childIndex': index, 'childCount': total_children}
                         child = perform_threads_request(
                             f'{profile["id"]}/threads',
                             method='POST',
@@ -3112,38 +4295,52 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         )
                         child_id = str(child.get('id') or '').strip()
                         if not child_id:
-                            raise ValueError('Threads n’a pas retourné de conteneur enfant')
+                            raise ValueError(f'Threads n’a pas retourné de conteneur enfant ({index}/{total_children})')
                         child_container_ids.append(child_id)
+                        print(f'[Threads] Conteneur enfant {index}/{total_children} créé : {child_id}')
 
-                    parent = perform_threads_request(
-                        f'{profile["id"]}/threads',
-                        method='POST',
-                        data={
-                            'media_type': 'CAROUSEL',
-                            'children': ','.join(child_container_ids),
-                            'text': text,
-                        },
+                    # Meta ne peut rattacher au parent que des enfants dont le
+                    # média a fini d'être téléchargé et traité. L'ancien ordre
+                    # créait le parent immédiatement, puis attendait les enfants,
+                    # ce qui provoquait par intermittence le sous-code 4279004.
+                    for index, child_id in enumerate(child_container_ids, start=1):
+                        stage = f'attente du conteneur enfant {index}/{len(child_container_ids)}'
+                        stage_details = {
+                            'childIndex': index,
+                            'childCount': len(child_container_ids),
+                            'containerId': child_id,
+                        }
+                        wait_for_threads_container(child_id)
+
+                    stage = 'création du conteneur carrousel'
+                    stage_details = {'childCount': len(child_container_ids)}
+                    parent = create_threads_carousel_container(
+                        profile['id'],
+                        child_container_ids,
+                        text,
                     )
                     container_id = str(parent.get('id') or '').strip()
 
                 if not container_id:
                     raise ValueError('Threads n’a pas retourné d’identifiant de conteneur')
+                print(f'[Threads] Conteneur principal créé : {container_id}')
 
-                # Threads crée les conteneurs de manière asynchrone. Attendre les
-                # enfants puis le parent évite de publier un ID pas encore propagé.
-                for child_id in child_container_ids:
-                    wait_for_threads_container(child_id)
+                stage = 'attente du conteneur principal'
+                stage_details = {'containerId': container_id}
                 wait_for_threads_container(
                     container_id,
                     attempts=90 if mode == 'reel' else 30,
                     delay_seconds=2.0,
                 )
 
+                stage = 'publication du conteneur Threads'
+                stage_details = {'containerId': container_id}
                 publication = publish_threads_container(profile['id'], container_id)
                 publication_id = str(publication.get('id') or '').strip()
                 if not publication_id:
                     raise ValueError('Threads n’a pas retourné d’identifiant de publication')
 
+                print(f'[Threads] Publication réussie : {publication_id}')
                 self.send_json(200, {
                     'ok': True,
                     'profile': profile,
@@ -3153,15 +4350,387 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     'mediaCount': len(media_ids),
                 })
             except json.JSONDecodeError:
-                self.send_json(400, {'error': 'Corps JSON invalide'})
+                self.send_json(400, {'error': 'Corps JSON invalide', 'stage': stage})
+            except ThreadsAPIError as error:
+                readable_error = format_threads_api_error(error)
+                diagnostic = {
+                    'error': f'Échec Threads pendant {stage} : {readable_error}',
+                    'stage': stage,
+                    'threads': error.public_details(),
+                    **stage_details,
+                }
+                print(f'[Threads] ÉCHEC étape={stage} détails={json.dumps(diagnostic, ensure_ascii=False)}')
+                self.send_json(error.http_status if 400 <= error.http_status < 600 else 502, diagnostic)
             except ValueError as error:
-                self.send_json(400, {'error': str(error)})
+                diagnostic = {
+                    'error': f'Échec Threads pendant {stage} : {error}',
+                    'stage': stage,
+                    **stage_details,
+                }
+                print(f'[Threads] ÉCHEC étape={stage} erreur={error}')
+                self.send_json(400, diagnostic)
             except Exception as error:
-                self.send_json(500, {'error': str(error)})
+                diagnostic = {
+                    'error': f'Échec Threads pendant {stage} : {type(error).__name__}: {error}',
+                    'stage': stage,
+                    **stage_details,
+                }
+                print(f'[Threads] ERREUR INATTENDUE étape={stage} type={type(error).__name__} erreur={error}')
+                self.send_json(500, diagnostic)
             finally:
-                # Ne supprimer les fichiers qu'après une publication réussie.
-                # En cas d'échec, ils restent disponibles pour une nouvelle tentative.
-                if 'publication_id' in locals() and publication_id:
+                if publication_id:
+                    for media_path in media_paths:
+                        try:
+                            media_path.unlink()
+                        except OSError:
+                            pass
+            return
+
+        if path == '/facebook/publish-instagram':
+            length = int(self.headers.get('Content-Length', 0))
+            stage = 'lecture de la demande'
+            stage_details = {}
+            try:
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                shop_key = normalize_etsy_shop_key(data.get('shopKey') or get_current_request_shop_key())
+                set_current_request_shop_key(shop_key)
+                instagram_media_id = str(data.get('instagramMediaId') or '').strip()
+
+                stage = 'lecture de la publication Instagram'
+                instagram_media = get_instagram_media_item(instagram_media_id)
+                message = str(instagram_media.get('caption') or '').strip()
+                media_type = str(instagram_media.get('media_type') or '').strip().upper()
+                stage = 'vérification de la connexion Facebook'
+                profile = get_facebook_page_profile(shop_key)
+                child_media_ids = []
+                video_id = ''
+
+                if media_type == 'VIDEO':
+                    media_url = str(instagram_media.get('media_url') or '').strip()
+                    if not media_url:
+                        raise ValueError('La vidéo Instagram n’a pas d’URL récupérable')
+                    stage = 'téléchargement du Reel Instagram'
+                    downloaded_reel_path = download_instagram_reel(media_url)
+                    stage = 'création de la session Reel Facebook'
+                    try:
+                        reel = perform_facebook_request(
+                            'me/video_reels',
+                            method='POST',
+                            data={'upload_phase': 'start'},
+                            shop_key=shop_key,
+                        )
+                        video_id = str(reel.get('video_id') or '').strip()
+                        upload_url = str(reel.get('upload_url') or '').strip()
+                        if not video_id or not upload_url:
+                            raise ValueError('Facebook n’a pas retourné de session d’upload Reel complète')
+                        stage_details = {'videoId': video_id, 'instagramMediaId': instagram_media_id}
+                        stage = 'transfert du Reel Instagram vers Facebook'
+                        uploaded = upload_facebook_local_reel(upload_url, downloaded_reel_path, shop_key)
+                        if uploaded.get('success') is not True:
+                            raise ValueError('Facebook n’a pas confirmé le transfert du Reel')
+                        stage = 'publication du Reel Facebook'
+                        finished = perform_facebook_request(
+                            'me/video_reels',
+                            method='POST',
+                            data={
+                                'upload_phase': 'finish',
+                                'video_id': video_id,
+                                'video_state': 'PUBLISHED',
+                                'description': message,
+                            },
+                            shop_key=shop_key,
+                        )
+                        if finished.get('success') is not True:
+                            raise ValueError('Facebook n’a pas confirmé la publication du Reel')
+                    finally:
+                        downloaded_reel_path.unlink(missing_ok=True)
+                    publication_id = video_id
+                    mode = 'reel'
+                    media_count = 1
+                elif media_type == 'CAROUSEL_ALBUM':
+                    children = instagram_media.get('children', {}).get('data', [])
+                    children = children if isinstance(children, list) else []
+                    if not children:
+                        raise ValueError('Le carrousel Instagram ne contient aucun média récupérable')
+                    if len(children) > 10:
+                        raise ValueError('Le carrousel Instagram dépasse la limite de 10 médias de cet écran')
+                    non_image_children = [
+                        child for child in children
+                        if str(child.get('media_type') or '').strip().upper() != 'IMAGE'
+                    ]
+                    if non_image_children:
+                        raise ValueError(
+                            'Le rattrapage automatique ne prend pas encore en charge les carrousels Instagram contenant des vidéos'
+                        )
+                    for index, child in enumerate(children, start=1):
+                        media_url = str(child.get('media_url') or '').strip()
+                        if not media_url:
+                            raise ValueError(f'La photo Instagram {index} n’a pas d’URL récupérable')
+                        stage = f'préparation de la photo Facebook {index}/{len(children)}'
+                        stage_details = {
+                            'mediaIndex': index,
+                            'mediaCount': len(children),
+                            'instagramMediaId': instagram_media_id,
+                        }
+                        photo = perform_facebook_request(
+                            f'{profile["id"]}/photos',
+                            method='POST',
+                            data={'url': media_url, 'published': 'false'},
+                            shop_key=shop_key,
+                        )
+                        photo_id = str(photo.get('id') or '').strip()
+                        if not photo_id:
+                            raise ValueError(f'Facebook n’a pas retourné l’identifiant de la photo {index}')
+                        child_media_ids.append(photo_id)
+                    stage = 'publication du carrousel Facebook'
+                    feed_data = {'message': message}
+                    for index, photo_id in enumerate(child_media_ids):
+                        feed_data[f'attached_media[{index}]'] = json.dumps({'media_fbid': photo_id})
+                    post = perform_facebook_request(
+                        f'{profile["id"]}/feed',
+                        method='POST',
+                        data=feed_data,
+                        shop_key=shop_key,
+                    )
+                    publication_id = str(post.get('id') or '').strip()
+                    mode = 'carousel'
+                    media_count = len(children)
+                elif media_type == 'IMAGE':
+                    media_url = str(instagram_media.get('media_url') or '').strip()
+                    if not media_url:
+                        raise ValueError('La photo Instagram n’a pas d’URL récupérable')
+                    stage = 'publication de la photo Facebook'
+                    photo = perform_facebook_request(
+                        f'{profile["id"]}/photos',
+                        method='POST',
+                        data={'url': media_url, 'message': message},
+                        shop_key=shop_key,
+                    )
+                    publication_id = str(photo.get('post_id') or photo.get('id') or '').strip()
+                    mode = 'image'
+                    media_count = 1
+                else:
+                    raise ValueError(f'Type de publication Instagram non pris en charge : {media_type or "inconnu"}')
+
+                if not publication_id:
+                    raise ValueError('Facebook n’a pas retourné d’identifiant de publication')
+                print(
+                    f'[Facebook] Rattrapage Instagram réussi : instagram={instagram_media_id} '
+                    f'facebook={publication_id} boutique={shop_key}'
+                )
+                self.send_json(200, {
+                    'ok': True,
+                    'profile': profile,
+                    'instagramMediaId': instagram_media_id,
+                    'publicationId': publication_id,
+                    'videoId': video_id or None,
+                    'childMediaIds': child_media_ids,
+                    'mediaCount': media_count,
+                    'mode': mode,
+                    'shopKey': shop_key,
+                })
+            except json.JSONDecodeError:
+                self.send_json(400, {'error': 'Corps JSON invalide', 'stage': stage})
+            except FacebookAPIError as error:
+                diagnostic = {
+                    'error': f'Échec du rattrapage Facebook pendant {stage} : {error}',
+                    'stage': stage,
+                    'facebook': error.public_details(),
+                    **stage_details,
+                }
+                print(f'[Facebook] ÉCHEC RATTRAPAGE étape={stage} détails={json.dumps(diagnostic, ensure_ascii=False)}')
+                self.send_json(error.http_status if 400 <= error.http_status < 600 else 502, diagnostic)
+            except ValueError as error:
+                self.send_json(400, {
+                    'error': f'Échec du rattrapage Facebook pendant {stage} : {error}',
+                    'stage': stage,
+                    **stage_details,
+                })
+            except Exception as error:
+                self.send_json(500, {
+                    'error': f'Échec du rattrapage Facebook pendant {stage} : {type(error).__name__}: {error}',
+                    'stage': stage,
+                    **stage_details,
+                })
+            return
+
+        if path == '/facebook/publish':
+            length = int(self.headers.get('Content-Length', 0))
+            media_paths = []
+            publication_id = ''
+            stage = 'lecture de la demande'
+            stage_details = {}
+            dry_run = False
+            try:
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                shop_key = normalize_etsy_shop_key(data.get('shopKey') or get_current_request_shop_key())
+                set_current_request_shop_key(shop_key)
+                raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
+                media_ids = [
+                    str(media_id or '').strip()
+                    for media_id in raw_media_ids
+                    if str(media_id or '').strip()
+                ]
+                message = str(data.get('message') or '').strip()
+                mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
+                dry_run = bool(data.get('dryRun'))
+
+                if not media_ids:
+                    raise ValueError('Aucun média préparé pour Facebook')
+                if len(media_ids) > 10:
+                    raise ValueError('La publication Facebook est limitée à 10 médias dans cet écran')
+                if not message:
+                    raise ValueError('Le texte de la publication Facebook est vide')
+
+                stage = 'vérification de la configuration Facebook'
+                profile = get_facebook_page_profile(shop_key)
+                stage = 'vérification des médias locaux'
+                media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
+                stage = 'vérification du tunnel HTTPS'
+                ensure_instagram_media_tunnel(media_ids[0])
+                media_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+
+                if dry_run:
+                    self.send_json(200, {
+                        'ok': True,
+                        'dryRun': True,
+                        'profile': profile,
+                        'mediaIds': media_ids,
+                        'mediaCount': len(media_ids),
+                        'mode': mode,
+                    })
+                    return
+
+                print(
+                    f'[Facebook] Début publication mode={mode} médias={len(media_ids)} '
+                    f'page={profile.get("name") or profile["id"]} boutique={shop_key}'
+                )
+                child_media_ids = []
+                video_id = ''
+
+                if mode == 'reel':
+                    if len(media_urls) != 1:
+                        raise ValueError('Un Reel Facebook exige une seule vidéo')
+                    if media_paths[0].suffix not in {'.mp4', '.mov'}:
+                        raise ValueError('Le média Facebook préparé n’est pas une vidéo')
+
+                    stage = 'création de la session Reel Facebook'
+                    reel = perform_facebook_request(
+                        'me/video_reels',
+                        method='POST',
+                        data={'upload_phase': 'start'},
+                        shop_key=shop_key,
+                    )
+                    video_id = str(reel.get('video_id') or '').strip()
+                    upload_url = str(reel.get('upload_url') or '').strip()
+                    if not video_id or not upload_url:
+                        raise ValueError('Facebook n’a pas retourné de session d’upload Reel complète')
+
+                    stage = 'upload du Reel Facebook'
+                    stage_details = {'videoId': video_id}
+                    uploaded = upload_facebook_local_reel(upload_url, media_paths[0], shop_key)
+                    if uploaded.get('success') is not True:
+                        raise ValueError('Facebook n’a pas confirmé l’upload du Reel')
+
+                    stage = 'publication du Reel Facebook'
+                    finished = perform_facebook_request(
+                        'me/video_reels',
+                        method='POST',
+                        data={
+                            'upload_phase': 'finish',
+                            'video_id': video_id,
+                            'video_state': 'PUBLISHED',
+                            'description': message,
+                        },
+                        shop_key=shop_key,
+                    )
+                    if finished.get('success') is not True:
+                        raise ValueError('Facebook n’a pas confirmé la publication du Reel')
+                    publication_id = video_id
+                elif len(media_urls) == 1:
+                    if media_paths[0].suffix != '.jpg':
+                        raise ValueError('La publication photo Facebook attend une image JPEG')
+                    stage = 'publication de la photo Facebook'
+                    photo = perform_facebook_request(
+                        f'{profile["id"]}/photos',
+                        method='POST',
+                        data={'url': media_urls[0], 'message': message},
+                        shop_key=shop_key,
+                    )
+                    publication_id = str(photo.get('post_id') or photo.get('id') or '').strip()
+                else:
+                    for index, media_url in enumerate(media_urls, start=1):
+                        if media_paths[index - 1].suffix != '.jpg':
+                            raise ValueError('Le carrousel Facebook attend uniquement des images JPEG')
+                        stage = f'préparation de la photo Facebook {index}/{len(media_urls)}'
+                        stage_details = {'mediaIndex': index, 'mediaCount': len(media_urls)}
+                        photo = perform_facebook_request(
+                            f'{profile["id"]}/photos',
+                            method='POST',
+                            data={'url': media_url, 'published': 'false'},
+                            shop_key=shop_key,
+                        )
+                        photo_id = str(photo.get('id') or '').strip()
+                        if not photo_id:
+                            raise ValueError(f'Facebook n’a pas retourné l’identifiant de la photo {index}')
+                        child_media_ids.append(photo_id)
+
+                    stage = 'publication du carrousel Facebook'
+                    stage_details = {'childCount': len(child_media_ids)}
+                    feed_data = {'message': message}
+                    for index, photo_id in enumerate(child_media_ids):
+                        feed_data[f'attached_media[{index}]'] = json.dumps({'media_fbid': photo_id})
+                    post = perform_facebook_request(
+                        f'{profile["id"]}/feed',
+                        method='POST',
+                        data=feed_data,
+                        shop_key=shop_key,
+                    )
+                    publication_id = str(post.get('id') or '').strip()
+
+                if not publication_id:
+                    raise ValueError('Facebook n’a pas retourné d’identifiant de publication')
+
+                print(f'[Facebook] Publication réussie : {publication_id}')
+                self.send_json(200, {
+                    'ok': True,
+                    'profile': profile,
+                    'publicationId': publication_id,
+                    'videoId': video_id or None,
+                    'childMediaIds': child_media_ids,
+                    'mediaCount': len(media_ids),
+                    'mode': mode,
+                    'shopKey': shop_key,
+                })
+            except json.JSONDecodeError:
+                self.send_json(400, {'error': 'Corps JSON invalide', 'stage': stage})
+            except FacebookAPIError as error:
+                diagnostic = {
+                    'error': f'Échec Facebook pendant {stage} : {error}',
+                    'stage': stage,
+                    'facebook': error.public_details(),
+                    **stage_details,
+                }
+                print(f'[Facebook] ÉCHEC étape={stage} détails={json.dumps(diagnostic, ensure_ascii=False)}')
+                self.send_json(error.http_status if 400 <= error.http_status < 600 else 502, diagnostic)
+            except ValueError as error:
+                diagnostic = {
+                    'error': f'Échec Facebook pendant {stage} : {error}',
+                    'stage': stage,
+                    **stage_details,
+                }
+                print(f'[Facebook] ÉCHEC étape={stage} erreur={error}')
+                self.send_json(400, diagnostic)
+            except Exception as error:
+                diagnostic = {
+                    'error': f'Échec Facebook pendant {stage} : {type(error).__name__}: {error}',
+                    'stage': stage,
+                    **stage_details,
+                }
+                print(f'[Facebook] ERREUR INATTENDUE étape={stage} type={type(error).__name__} erreur={error}')
+                self.send_json(500, diagnostic)
+            finally:
+                if publication_id and not dry_run:
                     for media_path in media_paths:
                         try:
                             media_path.unlink()
@@ -3180,8 +4749,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 media_ids = [str(media_id or '').strip() for media_id in raw_media_ids if str(media_id or '').strip()]
                 caption = str(data.get('caption') or '').strip()
                 first_comment = str(data.get('firstComment') or '').strip()
+                cover_media_id = str(data.get('coverMediaId') or '').strip()
                 dry_run = bool(data.get('dryRun'))
                 mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
+                if cover_media_id and mode != 'reel':
+                    raise ValueError('Une couverture personnalisée est réservée aux Reels Instagram')
+                raw_thumb_offset = data.get('thumbOffsetMs')
+                thumb_offset_ms = 0
+                if mode == 'reel' and raw_thumb_offset not in (None, ''):
+                    try:
+                        thumb_offset_ms = int(raw_thumb_offset)
+                    except (TypeError, ValueError) as error:
+                        raise ValueError('La position de la couverture du Reel est invalide') from error
+                    if thumb_offset_ms < 0:
+                        raise ValueError('La position de la couverture du Reel doit être positive')
 
                 if not media_ids:
                     raise ValueError('Aucun média préparé pour Instagram')
@@ -3193,8 +4774,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     raise ValueError('Le texte Instagram dépasse 2200 caractères')
 
                 media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
+                cover_path = None
+                if cover_media_id:
+                    cover_path = resolve_instagram_media_path(cover_media_id)
+                    if cover_path.suffix != '.jpg':
+                        raise ValueError('La couverture personnalisée Instagram doit être une image JPEG')
+                    media_paths.append(cover_path)
                 ensure_instagram_media_tunnel(media_ids[0])
                 image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+                cover_url = get_instagram_media_public_url(cover_media_id) if cover_media_id else ''
                 if dry_run:
                     self.send_json(200, {
                         'ok': True,
@@ -3202,6 +4790,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'mediaIds': media_ids,
                         'mediaCount': len(media_ids),
                         'imageUrls': image_urls,
+                        'thumbOffsetMs': thumb_offset_ms if mode == 'reel' else None,
+                        'coverMediaId': cover_media_id or None,
+                        'coverUrl': cover_url or None,
                     })
                     return
 
@@ -3212,10 +4803,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         raise ValueError('Un Reel Instagram exige une seule vidéo')
                     if media_paths[0].suffix not in {'.mp4', '.mov'}:
                         raise ValueError('Le média Instagram préparé n’est pas une vidéo')
+                    reel_data = build_instagram_reel_container_data(
+                        image_urls[0],
+                        caption,
+                        thumb_offset_ms,
+                        cover_url,
+                    )
                     container = perform_instagram_request(
                         f'{profile["id"]}/media',
                         method='POST',
-                        data={'media_type': 'REELS', 'video_url': image_urls[0], 'caption': caption},
+                        data=reel_data,
                     )
                     container_id = str(container.get('id') or '').strip()
                 elif len(image_urls) == 1:
@@ -4332,9 +5929,11 @@ def start_instagram_media_server() -> ThreadingLocalServer:
 
 
 def main():
-    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
+    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG, PINTEREST_SERVICE
 
     load_dotenv_file()
+    PINTEREST_SERVICE = PinterestService(ROOT)
+    PINTEREST_SERVICE.start()
     try:
         sys.stdout.reconfigure(errors='replace')
     except Exception:
@@ -4391,13 +5990,16 @@ def main():
     print(f'  Instagram media : {INSTAGRAM_MEDIA_PUBLIC_BASE or "tunnel indisponible"}')
     print(f'  Ctrl+C  : arrêter\n')
 
-    Timer(0.8, lambda: webbrowser.open(url)).start()
+    if get_env_value('GROS_GEEK_NO_BROWSER').lower() not in {'1', 'true', 'yes', 'on'}:
+        Timer(0.8, lambda: webbrowser.open(url)).start()
 
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print('\n  Serveur arrêté.')
     finally:
+        if PINTEREST_SERVICE is not None:
+            PINTEREST_SERVICE.stop()
         server.server_close()
         instagram_media_server.shutdown()
         instagram_media_server.server_close()

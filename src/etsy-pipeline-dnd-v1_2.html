@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="css/09-integrations.css">
 <link rel="stylesheet" href="css/10-pinterest.css">
 <link rel="stylesheet" href="css/11-instagram-test.css">
+<link rel="stylesheet" href="css/12-cost-calculator.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -123,6 +124,12 @@
           <div class="home-card-title">Instagram test</div>
           <div class="home-card-desc">Tester une publication réelle<br>avec une image et un texte.</div>
           <div class="home-card-tag">Meta API · POC manuel</div>
+        </div>
+        <div class="home-card home-card-calculator" data-ui-action="open-cost-calculator">
+          <div class="home-card-icon">€</div>
+          <div class="home-card-title">Calculateur de coûts</div>
+          <div class="home-card-desc">Calculer rapidement le prix conseillé<br>d’une figurine imprimée.</div>
+          <div class="home-card-tag">Résine · Plateaux · Marge</div>
         </div>
       </div>
       <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
@@ -264,15 +271,27 @@
 <div class="view" id="view-pinterest" data-js="view" data-view="pinterest">
   <main class="pinterest-workspace" aria-labelledby="pinterestWorkspaceTitle">
     <header class="pinterest-hero">
-      <div>
-        <p class="pinterest-kicker">PINTEREST · PRÉPARATION</p>
-        <h1 id="pinterestWorkspaceTitle">Créer les épingles depuis Etsy</h1>
-        <p>Charge une fiche de la boutique active, organise ses images puis génère un paquet d’épingles éditable.</p>
+      <div class="pinterest-hero-copy">
+        <p class="pinterest-kicker">PINTEREST · POC SANDBOX</p>
+        <h1 id="pinterestWorkspaceTitle">Pinterest Publisher</h1>
+        <p>Prépare, classe et programme les épingles sans toucher aux autres réseaux.</p>
       </div>
-      <span class="pinterest-shop-badge" id="pinterestShopBadge">Gros Geek Industrie</span>
+      <div class="pinterest-hero-status">
+        <span class="pinterest-shop-badge" id="pinterestShopBadge">Gros Geek Industrie</span>
+        <span class="pinterest-connection-state" id="pinterestConnectionState">Pinterest : vérification…</span>
+        <button class="btn btn-muted" type="button" id="pinterestConnectBtn">Connecter Pinterest</button>
+      </div>
     </header>
 
-    <section class="pinterest-panel pinterest-loader-panel" aria-labelledby="pinterestLoaderTitle">
+    <nav class="pinterest-stepper" id="pinterestStepper" aria-label="Étapes Pinterest">
+      <button type="button" class="is-active" data-pinterest-step="product"><span>01</span>Produit</button>
+      <button type="button" data-pinterest-step="media"><span>02</span>Médias</button>
+      <button type="button" data-pinterest-step="boards"><span>03</span>Tableaux</button>
+      <button type="button" data-pinterest-step="content"><span>04</span>Contenu</button>
+      <button type="button" data-pinterest-step="queue"><span>05</span>File d’attente</button>
+    </nav>
+
+    <section class="pinterest-panel pinterest-stage is-active" data-pinterest-stage="product" aria-labelledby="pinterestLoaderTitle">
       <div class="pinterest-panel-heading">
         <div>
           <p class="pinterest-step">01 · SOURCE ETSY</p>
@@ -292,10 +311,18 @@
         </div>
         <p class="fetch-status" id="pinterestLoadStatus">Entre uniquement le listing_id Etsy.</p>
       </div>
+      <div class="pinterest-source-fields" id="pinterestSourceFields" hidden>
+        <label><span>Titre source <em>modifiable</em></span><textarea id="pinterestSourceTitle" rows="2" maxlength="500"></textarea></label>
+        <label><span>Description nettoyée <em>modifiable</em></span><textarea id="pinterestSourceDescription" rows="10"></textarea></label>
+        <label><span>Tags Etsy</span><textarea id="pinterestSourceTags" rows="3"></textarea></label>
+      </div>
       <pre class="pinterest-data-panel" id="pinterestDataPanel" hidden>Aucune donnée chargée.</pre>
+      <div class="pinterest-stage-footer">
+        <button class="btn btn-accent" type="button" data-pinterest-next="media" disabled>Continuer vers les médias</button>
+      </div>
     </section>
 
-    <section class="pinterest-panel" aria-labelledby="pinterestMediaTitle">
+    <section class="pinterest-panel pinterest-stage" data-pinterest-stage="media" aria-labelledby="pinterestMediaTitle">
       <div class="pinterest-panel-heading">
         <div>
           <p class="pinterest-step">02 · MÉDIAS</p>
@@ -307,30 +334,132 @@
       <div class="pinterest-image-grid is-empty" id="pinterestImageGrid">
         <p class="pinterest-empty">Les images Etsy apparaîtront ici après le chargement.</p>
       </div>
+      <div class="pinterest-stage-footer">
+        <button class="btn btn-muted" type="button" data-pinterest-back="product">Retour</button>
+        <button class="btn btn-accent" type="button" data-pinterest-next="boards" disabled>Attribuer les tableaux</button>
+      </div>
     </section>
 
-    <section class="pinterest-panel" aria-labelledby="pinterestAgentTitle">
+    <section class="pinterest-panel pinterest-stage" data-pinterest-stage="boards" aria-labelledby="pinterestBoardsTitle">
       <div class="pinterest-panel-heading">
         <div>
-          <p class="pinterest-step">03 · AGENT</p>
-          <h2 id="pinterestAgentTitle">Génération des épingles</h2>
+          <p class="pinterest-step">03 · DESTINATIONS</p>
+          <h2 id="pinterestBoardsTitle">Tableaux et sections</h2>
+        </div>
+        <button class="btn btn-muted" type="button" id="pinterestRefreshBoardsBtn">Synchroniser</button>
+      </div>
+      <div class="pinterest-subtabs" role="tablist">
+        <button type="button" class="is-active" data-pinterest-board-tab="assign">Attribution des images</button>
+        <button type="button" data-pinterest-board-tab="manage">Gestion des tableaux</button>
+      </div>
+      <div class="pinterest-subpanel is-active" data-pinterest-board-panel="assign">
+        <p class="pinterest-help">Chaque image possède sa propre destination. La section est facultative.</p>
+        <div class="pinterest-assignment-list" id="pinterestAssignmentList"></div>
+      </div>
+      <div class="pinterest-subpanel" data-pinterest-board-panel="manage">
+        <div class="pinterest-board-create">
+          <label><span>Nouveau tableau</span><input type="text" id="pinterestNewBoardName" maxlength="180" placeholder="Ex. Figurines imprimées en 3D"></label>
+          <label><span>Description</span><input type="text" id="pinterestNewBoardDescription" maxlength="500" placeholder="Description facultative"></label>
+          <button class="btn btn-accent" type="button" id="pinterestCreateBoardBtn">Créer le tableau</button>
+        </div>
+        <div class="pinterest-board-manager" id="pinterestBoardManager"></div>
+      </div>
+      <p class="fetch-status" id="pinterestBoardStatus">Connecte Pinterest puis synchronise les tableaux Sandbox.</p>
+      <div class="pinterest-stage-footer">
+        <button class="btn btn-muted" type="button" data-pinterest-back="media">Retour</button>
+        <button class="btn btn-accent" type="button" data-pinterest-next="content" disabled>Préparer le contenu</button>
+      </div>
+    </section>
+
+    <section class="pinterest-panel pinterest-stage" data-pinterest-stage="content" aria-labelledby="pinterestAgentTitle">
+      <div class="pinterest-panel-heading">
+        <div>
+          <p class="pinterest-step">04 · AGENT</p>
+          <h2 id="pinterestAgentTitle">Contenu Pinterest</h2>
         </div>
         <span class="pinterest-agent-state" id="pinterestAgentState">En attente</span>
       </div>
-      <div class="field-action-row pinterest-agent-actions">
-        <button class="btn btn-accent" type="button" id="pinterestGenerateBtn" disabled>
-          <span data-svg-icon="play"></span><span class="ui-icon-label">Lancer la génération</span>
-        </button>
-        <button class="btn btn-error" type="button" id="pinterestStopBtn" disabled>
-          <span data-svg-icon="stop"></span><span class="ui-icon-label">Stopper</span>
-        </button>
-        <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="pinterest-publisher">
-          <span data-svg-icon="settings"></span><span class="ui-icon-label">Modifier le prompt</span>
-        </button>
+      <div class="pinterest-agent-toolbar">
+        <button class="btn btn-muted" type="button" id="pinterestRawInputBtn">Input brut</button>
+        <button class="btn btn-muted" type="button" data-ui-action="open-prompt-lightbox" data-action-arg="pinterest-publisher">Modifier le prompt</button>
+        <button class="btn btn-accent" type="button" id="pinterestGenerateBtn" disabled>Lancer l’agent</button>
+        <button class="btn btn-error" type="button" id="pinterestStopBtn" disabled>Stopper</button>
       </div>
-      <p class="pinterest-help">L’agent reçoit le prompt, le titre, les tags, la description et l’ordre des images. Aucune publication Pinterest n’est effectuée à ce stade.</p>
-      <textarea class="pinterest-output" id="pinterestOutput" spellcheck="false" placeholder="Le paquet d’épingles généré apparaîtra ici."></textarea>
+      <label class="pinterest-field"><span>Consigne complémentaire pour cette génération</span><textarea id="pinterestAgentCorrection" rows="3" placeholder="Ex. : privilégie l’angle garage kit et évite les formulations trop commerciales."></textarea></label>
+      <div class="pinterest-language-grid">
+        <article>
+          <div class="pinterest-language-heading"><strong>English</strong><span>Contenu publié</span></div>
+          <div id="pinterestTitlesEn" class="pinterest-title-list"></div>
+          <label class="pinterest-field"><span>Description unique <small id="pinterestDescriptionEnCount">0 / 800</small></span><textarea id="pinterestDescriptionEn" rows="9" maxlength="800"></textarea></label>
+          <label class="pinterest-field"><span>Texte alternatif de base <small id="pinterestAltEnCount">0 / 500</small></span><textarea id="pinterestAltEn" rows="5" maxlength="500"></textarea></label>
+          <label class="pinterest-field"><span>Lien de destination</span><input type="url" id="pinterestLink" maxlength="2048"></label>
+        </article>
+        <article class="is-control">
+          <div class="pinterest-language-heading"><strong>Français</strong><span>Contrôle uniquement</span></div>
+          <div id="pinterestTitlesFr" class="pinterest-title-list"></div>
+          <label class="pinterest-field"><span>Contrôle de la description</span><textarea id="pinterestDescriptionFr" rows="9"></textarea></label>
+          <label class="pinterest-field"><span>Contrôle du texte alternatif</span><textarea id="pinterestAltFr" rows="5"></textarea></label>
+        </article>
+      </div>
+      <div class="pinterest-stage-footer">
+        <button class="btn btn-muted" type="button" data-pinterest-back="boards">Retour</button>
+        <button class="btn btn-accent" type="button" data-pinterest-next="queue" disabled>Vérifier le lot</button>
+      </div>
     </section>
+
+    <section class="pinterest-panel pinterest-stage" data-pinterest-stage="queue" aria-labelledby="pinterestQueueTitle">
+      <div class="pinterest-panel-heading">
+        <div>
+          <p class="pinterest-step">05 · PUBLICATION DIFFÉRÉE</p>
+          <h2 id="pinterestQueueTitle">File d’attente Pinterest</h2>
+        </div>
+        <span class="pinterest-count" id="pinterestQueueCount">0 en attente</span>
+      </div>
+      <div class="pinterest-queue-settings">
+        <label><span id="pinterestIntervalLabel">Intervalle de test Sandbox</span><select id="pinterestIntervalSelect"></select></label>
+        <p id="pinterestIntervalHelp">Les intervalles courts sont réservés au POC Sandbox et indisponibles en production.</p>
+        <button class="btn btn-muted" type="button" id="pinterestPauseQueueBtn">Mettre en pause</button>
+      </div>
+      <div class="pinterest-subtabs" role="tablist">
+        <button type="button" class="is-active" data-pinterest-queue-tab="staging">Lot à ajouter</button>
+        <button type="button" data-pinterest-queue-tab="active">File active</button>
+      </div>
+      <div class="pinterest-subpanel is-active" data-pinterest-queue-panel="staging">
+        <div class="pinterest-staging-summary" id="pinterestStagingSummary"></div>
+        <div class="pinterest-staging-list" id="pinterestStagingList"></div>
+        <div class="pinterest-queue-submit">
+          <div><strong id="pinterestStagingCount">0 épingle</strong><span id="pinterestStagingDuration">Aucun lot préparé</span></div>
+          <button class="btn btn-accent" type="button" id="pinterestEnqueueBtn" disabled>Ajouter le lot à la file</button>
+        </div>
+      </div>
+      <div class="pinterest-subpanel" data-pinterest-queue-panel="active">
+        <div class="pinterest-queue-overview" id="pinterestQueueOverview"></div>
+        <div class="pinterest-active-queue" id="pinterestActiveQueue"></div>
+      </div>
+      <div class="pinterest-stage-footer">
+        <button class="btn btn-muted" type="button" data-pinterest-back="content">Retour</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- VIEW CALCULATEUR DE COÛTS -->
+<div class="view" id="view-cost-calculator" data-js="view" data-view="cost-calculator">
+  <main class="cost-calculator-workspace" aria-labelledby="costCalculatorTitle">
+    <header class="cost-calculator-hero">
+      <div>
+        <p>OUTIL · PRICING</p>
+        <h1 id="costCalculatorTitle">Calculateur de coût figurine</h1>
+        <span>Version autonome intégrée à la Home. Le raccordement au pipeline viendra plus tard.</span>
+      </div>
+      <span class="cost-calculator-badge">v4</span>
+    </header>
+    <iframe
+      class="cost-calculator-frame"
+      src="tools/calculateur_cout_figurine_v4.html"
+      title="Calculateur de coût figurine"
+      loading="eager"
+    ></iframe>
   </main>
 </div>
 
@@ -442,10 +571,21 @@
           <textarea id="instagramAgentCorrection" rows="3" placeholder="Ex. : insiste davantage sur la pose, réduis les emojis, rends l’accroche plus directe…"></textarea>
         </label>
         <div class="instagram-agent-cost" id="instagramAgentCost">Aucune génération Instagram dans cette session.</div>
-        <div class="instagram-copy-grid">
-          <label><span class="instagram-copy-field-header"><span>Légende Instagram</span><button class="btn btn-muted" type="button" id="instagramCopyCaptionBtn">Copier</button></span><textarea id="instagramCaption" rows="9" placeholder="La légende générée sera éditable ici."></textarea><small><span id="instagramCaptionCount">0</span> / 2200 Instagram · cible agent 2100</small></label>
-          <label><span class="instagram-copy-field-header"><span>Premier commentaire</span><button class="btn btn-muted" type="button" id="instagramCopyCommentBtn">Copier</button></span><textarea id="instagramFirstComment" rows="9" placeholder="Le premier commentaire généré sera éditable ici."></textarea><small><span id="instagramCommentCount">0</span> / 500–1000 Instagram</small></label>
-          <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Texte Threads (anglais)</span><button class="btn btn-muted" type="button" id="instagramCopyThreadsBtn">Copier</button></span><textarea id="instagramThreadsText" rows="5" placeholder="Le texte Threads anglais sera généré dans le même appel."></textarea><small><span id="instagramThreadsCount">0</span> / 420–500 Threads</small></label>
+        <div class="instagram-language-section is-published">
+          <div class="instagram-language-heading"><div><strong>ANGLAIS</strong><span>Version publiée sur les réseaux</span></div><span class="instagram-language-badge">PUBLICATION</span></div>
+          <div class="instagram-copy-grid">
+            <label><span class="instagram-copy-field-header"><span>Légende Instagram / Facebook / TikTok</span><button class="btn btn-muted" type="button" id="instagramCopyCaptionBtn">Copier</button></span><textarea id="instagramCaption" rows="9" placeholder="La légende anglaise publiée sera éditable ici."></textarea><small><span id="instagramCaptionCount">0</span> / 2100</small></label>
+            <label><span class="instagram-copy-field-header"><span>Premier commentaire Instagram</span><button class="btn btn-muted" type="button" id="instagramCopyCommentBtn">Copier</button></span><textarea id="instagramFirstComment" rows="9" placeholder="Le commentaire anglais publié sera éditable ici."></textarea><small><span id="instagramCommentCount">0</span> / 250–500</small></label>
+            <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Texte Threads</span><button class="btn btn-muted" type="button" id="instagramCopyThreadsBtn">Copier</button></span><textarea id="instagramThreadsText" rows="5" placeholder="Le texte Threads anglais sera généré dans le même appel."></textarea><small><span id="instagramThreadsCount">0</span> / 420–500</small></label>
+          </div>
+        </div>
+        <div class="instagram-language-section is-control">
+          <div class="instagram-language-heading"><div><strong>FRANÇAIS</strong><span>Traduction de contrôle, jamais publiée</span></div><span class="instagram-language-badge">CONTRÔLE UNIQUEMENT</span></div>
+          <div class="instagram-copy-grid">
+            <label><span class="instagram-copy-field-header"><span>Contrôle de la légende</span></span><textarea id="instagramCaptionFr" rows="9" placeholder="La version française de contrôle apparaîtra ici."></textarea><small><span id="instagramCaptionFrCount">0</span> caractères · non publié</small></label>
+            <label><span class="instagram-copy-field-header"><span>Contrôle du premier commentaire</span></span><textarea id="instagramFirstCommentFr" rows="9" placeholder="La version française de contrôle apparaîtra ici."></textarea><small><span id="instagramCommentFrCount">0</span> caractères · non publié</small></label>
+            <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Contrôle du texte Threads</span></span><textarea id="instagramThreadsTextFr" rows="5" placeholder="La version française de contrôle apparaîtra ici."></textarea><small><span id="instagramThreadsFrCount">0</span> caractères · non publié</small></label>
+          </div>
         </div>
       </div>
       <footer class="instagram-screen-footer"><button class="btn btn-muted" type="button" data-instagram-previous="media">Retour aux médias</button><button class="btn btn-accent" type="button" data-instagram-next="review">Vérifier la publication</button></footer>
@@ -466,7 +606,22 @@
             <div class="instagram-network-publish">
               <span>PUBLICATIONS AUTONOMES</span>
               <small id="threadsProfileState">Threads non vérifié</small>
-              <div><button class="btn btn-accent" type="button" id="instagramPublishBtn">Publier sur Instagram</button><button class="btn btn-muted" type="button" id="threadsPublishBtn">Publier sur Threads</button></div>
+              <small id="facebookProfileState">Facebook non vérifié</small>
+              <small id="tiktokProfileState">TikTok non connecté</small>
+              <div class="tiktok-publish-settings" id="tiktokPublishSettings" hidden>
+                <label>Visibilité TikTok <select id="tiktokPrivacyLevel"></select></label>
+                <label><input id="tiktokAllowComment" type="checkbox"> Autoriser les commentaires</label>
+                <label><input id="tiktokAllowDuet" type="checkbox"> Autoriser les Duos</label>
+                <label><input id="tiktokAllowStitch" type="checkbox"> Autoriser les Collages</label>
+                <label><input id="tiktokCommercialContent" type="checkbox"> Ce contenu promeut une marque, un produit ou un service</label>
+                <div class="tiktok-commercial-options" id="tiktokCommercialOptions" hidden>
+                  <label><input id="tiktokOwnBrand" type="checkbox"> Ma marque / ma propre activité</label>
+                  <label><input id="tiktokBrandedContent" type="checkbox"> Une marque tierce / partenariat rémunéré</label>
+                  <small id="tiktokCommercialNotice"></small>
+                </div>
+                <small>En publiant, tu acceptes la <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener noreferrer">confirmation d'utilisation de musique de TikTok</a>.</small>
+              </div>
+              <div><button class="btn btn-accent instagram-publish-all" type="button" id="instagramPublishAllBtn">Publier sur Instagram, Threads et Facebook</button><button class="btn btn-accent" type="button" id="instagramPublishBtn">Publier sur Instagram</button><button class="btn btn-muted" type="button" id="facebookPublishBtn">Publier sur Facebook</button><button class="btn btn-muted" type="button" id="threadsPublishBtn">Publier sur Threads</button><button class="btn btn-muted" type="button" id="tiktokConnectBtn">Connecter TikTok</button><button class="btn btn-muted" type="button" id="tiktokPublishBtn">Publier sur TikTok</button><button class="btn btn-muted" type="button" id="instagramRecentFacebookBtn">Rattraper depuis Instagram</button></div>
             </div>
           </div>
         </div>
@@ -476,6 +631,15 @@
 
     <p class="instagram-result" id="instagramPublishResult" aria-live="polite"></p>
   </main>
+
+  <div class="instagram-recent-modal" id="instagramRecentModal" aria-hidden="true">
+    <div class="instagram-media-modal-backdrop" data-instagram-recent-close></div>
+    <section class="instagram-recent-dialog" role="dialog" aria-modal="true" aria-labelledby="instagramRecentTitle">
+      <header><div><p class="instagram-kicker">RATTRAPAGE FACEBOOK</p><h2 id="instagramRecentTitle">Publications Instagram récentes</h2></div><button class="instagram-modal-close" type="button" data-instagram-recent-close aria-label="Fermer">×</button></header>
+      <p class="instagram-inline-status" id="instagramRecentStatus">Chargement des publications Instagram…</p>
+      <div class="instagram-recent-list" id="instagramRecentList"></div>
+    </section>
+  </div>
 
   <div class="instagram-media-modal" id="instagramMediaModal" aria-hidden="true">
     <div class="instagram-media-modal-backdrop" data-instagram-modal-close></div>
