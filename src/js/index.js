@@ -159,3 +159,4 @@ const bootstrapClassicRuntime = async () => {
 };
 
 await bootstrapClassicRuntime();
+window.PipelineUIApp?.restoreAppRouteFromHash?.();

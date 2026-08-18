@@ -77,6 +77,22 @@
   const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
   const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
   const COST_CALCULATOR_HEADER_CONTEXT = 'Outils - Calculateur de cout figurine';
+  const APP_ROUTE_HASHES = Object.freeze({
+    home: '#home',
+    tabletop: '#tabletop',
+    collection: '#collection',
+    pinterest: '#pinterest',
+    instagram: '#instagram',
+    'cost-calculator': '#cost-calculator',
+  });
+  const APP_PAGE_TITLES = Object.freeze({
+    home: 'Gros Geek Industrie · Pipeline',
+    tabletop: 'Gros Geek Industrie · Tabletop',
+    collection: 'Gros Geek Industrie · Collection',
+    pinterest: 'Gros Geek Industrie · Pinterest',
+    instagram: 'Gros Geek Industrie · Instagram',
+    'cost-calculator': 'Gros Geek Industrie · Calculateur de coûts',
+  });
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
   const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
   const PIPELINE_META_SEPARATOR = '&bull;';
@@ -248,13 +264,10 @@
     'toggle-external-instruction-dictation': (fieldId) => global.toggleExternalInstructionDictation?.(fieldId),
     'paste-external-instruction-clipboard': (fieldId) => global.pasteClipboardToField?.(fieldId),
     'set-active-shop': (shopKey) => setActiveShop(shopKey),
-    'select-mode': (mode) => selectMode(mode),
-    'open-pinterest': () => global.PipelineUIPinterest?.open?.(),
-    'open-instagram-test': () => global.PipelineUIInstagram?.open?.(),
-    'open-cost-calculator': () => {
-      showView('cost-calculator');
-      global.scrollTo({ top: 0, behavior: 'instant' });
-    },
+    'select-mode': (mode) => openAppRoute(mode),
+    'open-pinterest': () => openAppRoute('pinterest'),
+    'open-instagram-test': () => openAppRoute('instagram'),
+    'open-cost-calculator': () => openAppRoute('cost-calculator'),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
@@ -303,6 +316,15 @@
 
     const trigger = dom.getClosestByData?.(event.target, 'uiAction');
     if (!trigger || trigger.disabled) return;
+
+    const preservesNativeLinkBehavior = trigger.matches('a[href]') && (
+      event.ctrlKey
+      || event.metaKey
+      || event.shiftKey
+      || event.altKey
+      || trigger.target === '_blank'
+    );
+    if (preservesNativeLinkBehavior) return;
 
     event.preventDefault();
     const action = String(trigger.dataset.uiAction || '').trim();
@@ -471,6 +493,50 @@
     }
   }
 
+  function normalizeAppRoute(hash = global.location.hash) {
+    const route = String(hash || '').replace(/^#/, '').trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(APP_ROUTE_HASHES, route) ? route : '';
+  }
+
+  function writeAppRoute(route, { replace = false } = {}) {
+    const hash = APP_ROUTE_HASHES[route];
+    if (!hash || global.location.hash === hash) return;
+    global.history[replace ? 'replaceState' : 'pushState'](null, '', hash);
+  }
+
+  function openAppRoute(route, { updateHash = true } = {}) {
+    const normalizedRoute = normalizeAppRoute(APP_ROUTE_HASHES[route] || route);
+    if (!normalizedRoute) return false;
+    if (updateHash) writeAppRoute(normalizedRoute);
+
+    if (normalizedRoute === 'home') {
+      showView('home');
+    } else if (normalizedRoute === 'tabletop') {
+      selectMode(PIPELINE_MODES.TABLETOP);
+    } else if (normalizedRoute === 'collection') {
+      selectMode(PIPELINE_MODES.COLLECTION);
+    } else if (normalizedRoute === 'pinterest') {
+      global.PipelineUIPinterest?.open?.();
+    } else if (normalizedRoute === 'instagram') {
+      global.PipelineUIInstagram?.open?.();
+    } else if (normalizedRoute === 'cost-calculator') {
+      showView('cost-calculator');
+      global.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    document.title = APP_PAGE_TITLES[normalizedRoute] || APP_PAGE_TITLES.home;
+    return true;
+  }
+
+  function restoreAppRouteFromHash() {
+    const route = normalizeAppRoute();
+    if (!route) {
+      document.title = APP_PAGE_TITLES.home;
+      return false;
+    }
+    return openAppRoute(route, { updateHash: false });
+  }
+
   function updateHeaderContext(viewName) {
     const ctx = dom.getByData?.('js', 'header-context') || document.getElementById('headerContext');
     if (!ctx) return;
@@ -550,7 +616,9 @@
     const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
     if (timeline) timeline.style.display = '';
 
+    writeAppRoute('home');
     showView('home');
+    document.title = APP_PAGE_TITLES.home;
   }
 
   function stopAllAgents(options = {}) {
@@ -618,6 +686,7 @@
   bindPipelineActionDelegation();
   bindUiActionDelegation();
   window.addEventListener('scroll', syncScrollTopButton, { passive: true });
+  window.addEventListener('hashchange', () => restoreAppRouteFromHash());
   syncScrollTopButton();
   syncActiveShopUi();
 
@@ -645,6 +714,8 @@
     syncActiveShopUi,
     bindPipelineActionDelegation,
     bindUiActionDelegation,
+    openAppRoute,
+    restoreAppRouteFromHash,
     getCurrentView: () => currentView,
   };
 
@@ -670,5 +741,6 @@
     getActiveShopKey,
     setActiveShop,
     syncActiveShopUi,
+    openAppRoute,
   });
 })(window);

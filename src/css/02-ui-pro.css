@@ -128,6 +128,13 @@ body.shop-doublex #view-home {
   transition: border-color .2s, transform .2s, box-shadow .2s;
   position: relative;
   overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .home-card::after {
