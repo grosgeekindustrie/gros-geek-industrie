@@ -94,6 +94,12 @@
         traduction_listing_de: 'DE Listing',
         traduction_es: 'ES Mapping',
         traduction_listing_es: 'ES Listing',
+        traduction_it: 'IT Mapping',
+        traduction_listing_it: 'IT Listing',
+        traduction_nl: 'NL Mapping',
+        traduction_listing_nl: 'NL Listing',
+        traduction_pt: 'PT Mapping',
+        traduction_listing_pt: 'PT Listing',
         social: '06 Léo',
         instagram: 'Instagram',
         camille: '07 Camille',
@@ -112,6 +118,12 @@
         traduction_listing_de: 'DE Listing',
         traduction_es: 'ES Mapping',
         traduction_listing_es: 'ES Listing',
+        traduction_it: 'IT Mapping',
+        traduction_listing_it: 'IT Listing',
+        traduction_nl: 'NL Mapping',
+        traduction_listing_nl: 'NL Listing',
+        traduction_pt: 'PT Mapping',
+        traduction_listing_pt: 'PT Listing',
         social: '05 Theo',
         instagram: 'Instagram',
         camille: '06 Zoe',
@@ -137,7 +149,7 @@
     if (entry.source === 'cache-aware-prelaunch' || entry.agentId === 'cache_aware') return 'cache_aware_prelaunch';
     if (entry.isWarmupEvent) return 'warmup';
     if (entry.source === 'iris' || entry.agentId === 'iris') return 'iris';
-    if (entry.source === 'translation' || ['traduction_en', 'traduction_listing_en', 'traduction_de', 'traduction_listing_de', 'traduction_es', 'traduction_listing_es'].includes(entry.agentId)) return 'translation';
+    if (entry.source === 'translation' || ['traduction_en', 'traduction_listing_en', 'traduction_de', 'traduction_listing_de', 'traduction_es', 'traduction_listing_es', 'traduction_it', 'traduction_listing_it', 'traduction_nl', 'traduction_listing_nl', 'traduction_pt', 'traduction_listing_pt'].includes(entry.agentId)) return 'translation';
     if (entry.source === 'social' || entry.source === 'camille') return 'social';
     if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
     if (entry.source === 'rerun') return 'rerun';

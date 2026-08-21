@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="css/10-pinterest.css">
 <link rel="stylesheet" href="css/11-instagram-test.css">
 <link rel="stylesheet" href="css/12-cost-calculator.css">
+<link rel="stylesheet" href="css/13-pipeline-pricing.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -738,6 +739,10 @@
           </button>
           <button class="collection-stepper-pill" type="button" data-js="dnd-stepper-jump" data-step-index="4">
             <span class="collection-stepper-pill-index">05</span>
+            <span class="collection-stepper-pill-label">Pricing</span>
+          </button>
+          <button class="collection-stepper-pill" type="button" data-js="dnd-stepper-jump" data-step-index="5">
+            <span class="collection-stepper-pill-index">06</span>
             <span class="collection-stepper-pill-label">Lancement</span>
           </button>
         </div>
@@ -953,6 +958,10 @@
         </section>
 
         <section class="collection-step" data-js="dnd-step" data-step-index="4">
+          <div class="pipeline-pricing" data-pricing-prefix="tt"></div>
+        </section>
+
+        <section class="collection-step" data-js="dnd-step" data-step-index="5">
           <div class="collection-step-stack">
             <div class="form-section">
               <h2>Lancement</h2>
@@ -993,7 +1002,7 @@ Cache : —</pre>
       <div class="collection-stepper-footer">
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="dnd-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
-          <span class="collection-stepper-footer-label" data-js="dnd-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
+          <span class="collection-stepper-footer-label" data-js="dnd-stepper-footer-label">Étape 1 sur 6 · Visuels de référence</span>
           <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-tt"><span data-svg-icon="alert"></span><span class="ui-icon-label">Charge au moins une image avant de lancer le pipeline.</span></div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="dnd-stepper-next">Suivant →</button>
@@ -1329,11 +1338,13 @@ Cache : —</pre>
               <div class="field-action-row translation-en-actions">
                 <button class="btn btn-accent" type="button" id="tt-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
                 <button class="btn btn-accent" type="button" id="tt-translation-bulk-translate" data-ui-action="run-translation-all" data-action-arg="tt"><span data-svg-icon="play"></span><span class="ui-icon-label">Tout traduire</span></button>
+                <button class="btn btn-accent" type="button" id="tt-translation-update-translate" data-ui-action="run-translation-update" data-action-arg="tt" title="Traduire uniquement en italien, néerlandais et portugais"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduction update IT/NL/PT</span></button>
                 <button class="btn btn-muted" type="button" id="tt-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="tt" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
                 <button class="btn btn-muted" type="button" id="tt-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="tt" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
+                <button class="btn btn-muted" type="button" id="tt-translation-update-publish" data-ui-action="publish-translation-update" data-action-arg="tt" title="Publier uniquement les traductions italienne, néerlandaise et portugaise" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Publication update IT/NL/PT</span></button>
               </div>
               <p class="fetch-status" id="tt-translation-en-source-status">En attente d’une fiche Etsy source.</p>
-              <p class="fetch-status" id="tt-translation-bulk-status">En attente d’un lancement global EN / DE / ES.</p>
+              <p class="fetch-status" id="tt-translation-bulk-status">En attente d’un lancement global EN / DE / ES / IT / NL / PT.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">
@@ -1757,6 +1768,10 @@ Cache : —</pre>
           </button>
           <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="4">
             <span class="collection-stepper-pill-index">05</span>
+            <span class="collection-stepper-pill-label">Pricing</span>
+          </button>
+          <button class="collection-stepper-pill" type="button" data-js="collection-stepper-jump" data-step-index="5">
+            <span class="collection-stepper-pill-index">06</span>
             <span class="collection-stepper-pill-label">Lancement</span>
           </button>
         </div>
@@ -1953,6 +1968,10 @@ Cache : —</pre>
         </section>
 
         <section class="collection-step" data-js="collection-step" data-step-index="4">
+          <div class="pipeline-pricing" data-pricing-prefix="col"></div>
+        </section>
+
+        <section class="collection-step" data-js="collection-step" data-step-index="5">
           <div class="collection-step-stack">
             <div class="form-section">
               <h2>Lancement</h2>
@@ -1993,7 +2012,7 @@ Cache : —</pre>
       <div class="collection-stepper-footer">
         <button class="btn btn-muted collection-stepper-nav-btn" type="button" data-js="collection-stepper-prev">← Précédent</button>
         <div class="collection-stepper-footer-meta">
-          <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 5 · Visuels de référence</span>
+          <span class="collection-stepper-footer-label" data-js="collection-stepper-footer-label">Étape 1 sur 6 · Visuels de référence</span>
           <div class="warning-box collection-stepper-warning is-hidden" id="imgWarning-col"><span data-svg-icon="alert"></span><span class="ui-icon-label">Charge au moins une image avant de lancer le pipeline.</span></div>
         </div>
         <button class="btn btn-accent collection-stepper-nav-btn" type="button" data-js="collection-stepper-next">Suivant →</button>
@@ -2329,11 +2348,13 @@ Cache : —</pre>
               <div class="field-action-row translation-en-actions">
                 <button class="btn btn-accent" type="button" id="col-translation-en-load-source" data-ui-action="load-translation-en-source" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Charger la fiche source</span></button>
                 <button class="btn btn-accent" type="button" id="col-translation-bulk-translate" data-ui-action="run-translation-all" data-action-arg="col"><span data-svg-icon="play"></span><span class="ui-icon-label">Tout traduire</span></button>
+                <button class="btn btn-accent" type="button" id="col-translation-update-translate" data-ui-action="run-translation-update" data-action-arg="col" title="Traduire uniquement en italien, néerlandais et portugais"><span data-svg-icon="play"></span><span class="ui-icon-label">Traduction update IT/NL/PT</span></button>
                 <button class="btn btn-muted" type="button" id="col-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="col" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
                 <button class="btn btn-muted" type="button" id="col-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="col" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
+                <button class="btn btn-muted" type="button" id="col-translation-update-publish" data-ui-action="publish-translation-update" data-action-arg="col" title="Publier uniquement les traductions italienne, néerlandaise et portugaise" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Publication update IT/NL/PT</span></button>
               </div>
               <p class="fetch-status" id="col-translation-en-source-status">En attente d’une fiche Etsy source.</p>
-              <p class="fetch-status" id="col-translation-bulk-status">En attente d’un lancement global EN / DE / ES.</p>
+              <p class="fetch-status" id="col-translation-bulk-status">En attente d’un lancement global EN / DE / ES / IT / NL / PT.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">

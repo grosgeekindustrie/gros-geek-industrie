@@ -9,10 +9,13 @@
   const TRANSLATION_LISTING_PROMPT_PATH = 'prompts/traduction/traduction_listing_en.md';
   const STORAGE_KEY_PREFIX = 'pipeline.translation.en.';
   const PREFIXES = ['tt', 'col'];
+  const TRANSLATION_LANGUAGES = ['en', 'de', 'es', 'it', 'nl', 'pt'];
+  const UPDATE_TRANSLATION_LANGUAGES = ['it', 'nl', 'pt'];
+  const TRANSLATION_SUBTABS = ['fr', ...TRANSLATION_LANGUAGES];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
   const TRANSLATION_MODEL = 'claude-sonnet-4-6';
-  const DEFAULT_BULK_STATUS = 'En attente dâ€™un lancement global EN / DE / ES.';
+  const DEFAULT_BULK_STATUS = 'En attente d’un lancement global EN / DE / ES / IT / NL / PT.';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
   const DEFAULT_SOURCE_STATUS = 'En attente d’une fiche Etsy source.';
@@ -58,16 +61,25 @@
       en: 'idle',
       de: 'idle',
       es: 'idle',
+      it: 'idle',
+      nl: 'idle',
+      pt: 'idle',
     },
     retryCounts: {
       en: 0,
       de: 0,
       es: 0,
+      it: 0,
+      nl: 0,
+      pt: 0,
     },
     timers: {
       en: { startedAt: 0, lastDurationMs: 0 },
       de: { startedAt: 0, lastDurationMs: 0 },
       es: { startedAt: 0, lastDurationMs: 0 },
+      it: { startedAt: 0, lastDurationMs: 0 },
+      nl: { startedAt: 0, lastDurationMs: 0 },
+      pt: { startedAt: 0, lastDurationMs: 0 },
     },
   });
 
@@ -104,7 +116,7 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(getStorageKey(prefix)) || '{}');
       Object.assign(entry, {
-        activeSubtab: ['en', 'de', 'es'].includes(parsed.activeSubtab) ? parsed.activeSubtab : 'fr',
+        activeSubtab: TRANSLATION_LANGUAGES.includes(parsed.activeSubtab) ? parsed.activeSubtab : 'fr',
         characterFr: String(parsed.characterFr || ''),
         universeFr: String(parsed.universeFr || ''),
         characterEn: String(parsed.characterEn || ''),
@@ -147,11 +159,17 @@
           en: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.en) ? bulk.languages.en : 'idle',
           de: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.de) ? bulk.languages.de : 'idle',
           es: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.es) ? bulk.languages.es : 'idle',
+          it: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.it) ? bulk.languages.it : 'idle',
+          nl: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.nl) ? bulk.languages.nl : 'idle',
+          pt: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.pt) ? bulk.languages.pt : 'idle',
         },
         retryCounts: {
           en: Number.isFinite(Number(bulk.retryCounts?.en)) ? Number(bulk.retryCounts.en) : 0,
           de: Number.isFinite(Number(bulk.retryCounts?.de)) ? Number(bulk.retryCounts.de) : 0,
           es: Number.isFinite(Number(bulk.retryCounts?.es)) ? Number(bulk.retryCounts.es) : 0,
+          it: Number.isFinite(Number(bulk.retryCounts?.it)) ? Number(bulk.retryCounts.it) : 0,
+          nl: Number.isFinite(Number(bulk.retryCounts?.nl)) ? Number(bulk.retryCounts.nl) : 0,
+          pt: Number.isFinite(Number(bulk.retryCounts?.pt)) ? Number(bulk.retryCounts.pt) : 0,
         },
         timers: {
           en: {
@@ -166,6 +184,18 @@
             startedAt: Number.isFinite(Number(bulk.timers?.es?.startedAt)) ? Number(bulk.timers.es.startedAt) : 0,
             lastDurationMs: Number.isFinite(Number(bulk.timers?.es?.lastDurationMs)) ? Number(bulk.timers.es.lastDurationMs) : 0,
           },
+          it: {
+            startedAt: Number.isFinite(Number(bulk.timers?.it?.startedAt)) ? Number(bulk.timers.it.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.it?.lastDurationMs)) ? Number(bulk.timers.it.lastDurationMs) : 0,
+          },
+          nl: {
+            startedAt: Number.isFinite(Number(bulk.timers?.nl?.startedAt)) ? Number(bulk.timers.nl.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.nl?.lastDurationMs)) ? Number(bulk.timers.nl.lastDurationMs) : 0,
+          },
+          pt: {
+            startedAt: Number.isFinite(Number(bulk.timers?.pt?.startedAt)) ? Number(bulk.timers.pt.startedAt) : 0,
+            lastDurationMs: Number.isFinite(Number(bulk.timers?.pt?.lastDurationMs)) ? Number(bulk.timers.pt.lastDurationMs) : 0,
+          },
         },
       };
     } catch (error) {}
@@ -175,12 +205,15 @@
   const getBulkState = (prefix) => {
     const entry = ensurePrefixState(prefix);
     entry.bulk = entry.bulk || createEmptyBulkState();
-    entry.bulk.languages = entry.bulk.languages || { en: 'idle', de: 'idle', es: 'idle' };
-    entry.bulk.retryCounts = entry.bulk.retryCounts || { en: 0, de: 0, es: 0 };
+    entry.bulk.languages = entry.bulk.languages || createEmptyBulkState().languages;
+    entry.bulk.retryCounts = entry.bulk.retryCounts || createEmptyBulkState().retryCounts;
     entry.bulk.timers = entry.bulk.timers || {
       en: { startedAt: 0, lastDurationMs: 0 },
       de: { startedAt: 0, lastDurationMs: 0 },
       es: { startedAt: 0, lastDurationMs: 0 },
+      it: { startedAt: 0, lastDurationMs: 0 },
+      nl: { startedAt: 0, lastDurationMs: 0 },
+      pt: { startedAt: 0, lastDurationMs: 0 },
     };
     return entry.bulk;
   };
@@ -206,13 +239,13 @@
 
   const hasAnyRunningTranslationTimer = () => PREFIXES.some((prefix) => {
     const bulk = getBulkState(prefix);
-    return ['en', 'de', 'es'].some((language) => bulk.languages?.[language] === 'running');
+    return TRANSLATION_LANGUAGES.some((language) => bulk.languages?.[language] === 'running');
   });
 
   const renderTranslationSubtabs = (prefix) => {
     const entry = ensurePrefixState(prefix);
     const bulk = getBulkState(prefix);
-    ['fr', 'en', 'de', 'es'].forEach((subtab) => {
+    TRANSLATION_SUBTABS.forEach((subtab) => {
       const tabButton = readField(prefix, `translation-subtab-${subtab}`);
       const panel = readField(prefix, `translation-subpanel-${subtab}`);
       const isActive = entry.activeSubtab === subtab;
@@ -270,15 +303,11 @@
     bulk.running = false;
     bulk.cancelRequested = false;
     bulk.status = '';
-    bulk.languages.en = 'idle';
-    bulk.languages.de = 'idle';
-    bulk.languages.es = 'idle';
-    bulk.retryCounts.en = 0;
-    bulk.retryCounts.de = 0;
-    bulk.retryCounts.es = 0;
-    bulk.timers.en = { startedAt: 0, lastDurationMs: 0 };
-    bulk.timers.de = { startedAt: 0, lastDurationMs: 0 };
-    bulk.timers.es = { startedAt: 0, lastDurationMs: 0 };
+    TRANSLATION_LANGUAGES.forEach((language) => {
+      bulk.languages[language] = 'idle';
+      bulk.retryCounts[language] = 0;
+      bulk.timers[language] = { startedAt: 0, lastDurationMs: 0 };
+    });
     syncTranslationTimerTicker();
     persistPrefixState(prefix);
     renderPrefixState(prefix);
@@ -286,7 +315,7 @@
 
   const resetTranslationLanguageRunState = (prefix, language) => {
     const bulk = getBulkState(prefix);
-    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    const normalizedLanguage = TRANSLATION_LANGUAGES.includes(language) ? language : '';
     if (!normalizedLanguage) return;
     bulk.languages[normalizedLanguage] = 'idle';
     bulk.retryCounts[normalizedLanguage] = 0;
@@ -322,7 +351,7 @@
 
   const setTranslationLanguageStatus = (prefix, language, status) => {
     const bulk = getBulkState(prefix);
-    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    const normalizedLanguage = TRANSLATION_LANGUAGES.includes(language) ? language : '';
     const normalizedStatus = ['idle', 'running', 'success', 'error'].includes(status) ? status : 'idle';
     if (!normalizedLanguage) return;
     const timer = bulk.timers?.[normalizedLanguage] || { startedAt: 0, lastDurationMs: 0 };
@@ -347,7 +376,7 @@
 
   const incrementTranslationRetryCount = (prefix, language) => {
     const bulk = getBulkState(prefix);
-    const normalizedLanguage = ['en', 'de', 'es'].includes(language) ? language : '';
+    const normalizedLanguage = TRANSLATION_LANGUAGES.includes(language) ? language : '';
     if (!normalizedLanguage) return;
     bulk.retryCounts[normalizedLanguage] = Math.max(0, Number(bulk.retryCounts[normalizedLanguage] || 0)) + 1;
     persistPrefixState(prefix);
@@ -388,7 +417,7 @@
   const buildTranslationCacheWarmupPromptData = (prefix, listingDraft) => {
     const filled = [
       'PHASE TECHNIQUE — CACHE-AWARE TRADUCTION',
-      'Objectif : amorcer SOURCE_FR_LISTING avant les traductions EN / DE / ES.',
+      'Objectif : amorcer SOURCE_FR_LISTING avant les traductions EN / DE / ES / IT / NL / PT.',
       'Réponds uniquement : CACHE_TRANSLATION_READY',
     ].join('\n\n');
     const fixedContentBlocks = buildTranslationCacheBlocks(prefix, listingDraft);
@@ -582,7 +611,7 @@
 
   const setActiveSubtab = (prefix, subtab = 'fr') => {
     const entry = ensurePrefixState(prefix);
-    entry.activeSubtab = ['en', 'de', 'es'].includes(subtab) ? subtab : 'fr';
+    entry.activeSubtab = TRANSLATION_LANGUAGES.includes(subtab) ? subtab : 'fr';
     renderPrefixState(prefix);
     persistPrefixState(prefix);
   };
@@ -792,10 +821,17 @@
 
     const bulkTranslateButton = readField(prefix, 'translation-bulk-translate');
     if (bulkTranslateButton) bulkTranslateButton.disabled = bulk.running === true;
+    const updateTranslateButton = readField(prefix, 'translation-update-translate');
+    if (updateTranslateButton) updateTranslateButton.disabled = bulk.running === true;
     const bulkStopButton = readField(prefix, 'translation-bulk-stop');
     if (bulkStopButton) bulkStopButton.disabled = bulk.running !== true;
     const bulkPublishButton = readField(prefix, 'translation-bulk-publish');
     if (bulkPublishButton) bulkPublishButton.disabled = !canPublishAllTranslations(prefix);
+    const updatePublishButton = readField(prefix, 'translation-update-publish');
+    if (updatePublishButton) {
+      updatePublishButton.disabled = bulk.running === true
+        || !UPDATE_TRANSLATION_LANGUAGES.some((language) => bulk.languages?.[language] === 'success');
+    }
     const bulkStatusNode = readField(prefix, 'translation-bulk-status');
     if (bulkStatusNode) bulkStatusNode.textContent = bulk.status || DEFAULT_BULK_STATUS;
 
@@ -999,6 +1035,39 @@
           translationStatus: '',
         };
       }
+      [
+        [global.PipelineUITranslationItRuntime, 'ensureTranslationItState'],
+        [global.PipelineUITranslationNlRuntime, 'ensureTranslationNlState'],
+        [global.PipelineUITranslationPtRuntime, 'ensureTranslationPtState'],
+      ].forEach(([runtime, ensureStateMethod]) => {
+        const targetEntry = runtime?.[ensureStateMethod]?.(prefix);
+        if (!targetEntry) return;
+        Object.assign(targetEntry, {
+          characterFr: '',
+          universeFr: '',
+          characterEn: '',
+          universeEn: '',
+          output: '',
+          status: '',
+          lastInput: '',
+          listingDraft: {
+            ...targetEntry.listingDraft,
+            listingRef: listingDraft.listingRef,
+            sourceTitle: listingDraft.sourceTitle,
+            sourceDescription: listingDraft.sourceDescription,
+            sourceTags: [...listingDraft.sourceTags],
+            pendingSourceTagsInput: '',
+            sourceStatus: listingDraft.sourceStatus,
+            translatedTitle: '',
+            translatedDescription: '',
+            translatedTags: [],
+            pendingTranslatedTagsInput: '',
+            translationOutput: '',
+            translationInput: '',
+            translationStatus: '',
+          },
+        });
+      });
       setSourceStatus(prefix, `Fiche source ${listingId} chargee.`);
       renderPrefixState(prefix);
       persistPrefixState(prefix);
@@ -1006,6 +1075,12 @@
       global.PipelineUITranslationDeRuntime?.persistTranslationDeState?.(prefix);
       global.PipelineUITranslationEsRuntime?.renderTranslationEsState?.(prefix);
       global.PipelineUITranslationEsRuntime?.persistTranslationEsState?.(prefix);
+      global.PipelineUITranslationItRuntime?.renderTranslationItState?.(prefix);
+      global.PipelineUITranslationItRuntime?.persistTranslationItState?.(prefix);
+      global.PipelineUITranslationNlRuntime?.renderTranslationNlState?.(prefix);
+      global.PipelineUITranslationNlRuntime?.persistTranslationNlState?.(prefix);
+      global.PipelineUITranslationPtRuntime?.renderTranslationPtState?.(prefix);
+      global.PipelineUITranslationPtRuntime?.persistTranslationPtState?.(prefix);
       global.showToast('Fiche source EN chargee');
     } catch (error) {
       setSourceStatus(prefix, `Lecture Etsy impossible : ${error.message}`);
@@ -1109,21 +1184,32 @@
     }
   }
 
-  async function runAllTranslations(prefix = global.pfx()) {
+  async function runAllTranslations(prefix = global.pfx(), targetLanguages = TRANSLATION_LANGUAGES) {
+    const selectedLanguages = TRANSLATION_LANGUAGES.filter((language) => targetLanguages.includes?.(language));
+    const languageLabel = selectedLanguages.map((language) => language.toUpperCase()).join(' / ');
+    if (!selectedLanguages.length) return { ok: false, successCount: 0, errorCount: 0 };
     const entry = ensurePrefixState(prefix);
     const listingDraft = entry.listingDraft;
     if (!listingDraft.sourceTitle || !listingDraft.sourceDescription || !(Array.isArray(listingDraft.sourceTags) && listingDraft.sourceTags.length)) {
       setBulkTranslationStatus(prefix, 'Source FR incomplete : charge la fiche puis corrige titre, tags et description.');
       global.showToast('Source FR incomplete pour la traduction globale', '#ff4757');
-      return { ok: false, successCount: 0, errorCount: 3 };
+      return { ok: false, successCount: 0, errorCount: selectedLanguages.length };
     }
 
     resetBulkTranslationState(prefix);
-    const ownsCacheRun = beginTranslationCacheRun(prefix, 'traduction globale EN / DE / ES', [
-      TRANSLATION_LISTING_AGENT_ID,
-      'traduction_listing_de',
-      'traduction_listing_es',
-    ]);
+    const listingAgentByLanguage = {
+      en: TRANSLATION_LISTING_AGENT_ID,
+      de: 'traduction_listing_de',
+      es: 'traduction_listing_es',
+      it: 'traduction_listing_it',
+      nl: 'traduction_listing_nl',
+      pt: 'traduction_listing_pt',
+    };
+    const ownsCacheRun = beginTranslationCacheRun(
+      prefix,
+      `traduction ${languageLabel}`,
+      selectedLanguages.map((language) => listingAgentByLanguage[language]),
+    );
     setBulkTranslationRunning(prefix, true);
     setBulkTranslationStatus(prefix, 'Warmup cache traduction en cours...');
 
@@ -1135,17 +1221,20 @@
       setBulkTranslationStatus(prefix, message);
       global.showToast(message, '#ff4757');
       finalizeTranslationCacheRun(prefix, message, ownsCacheRun);
-      return { ok: false, successCount: 0, errorCount: 3, warmupFailed: true };
+      return { ok: false, successCount: 0, errorCount: selectedLanguages.length, warmupFailed: true };
     }
 
-    setBulkTranslationStatus(prefix, 'Traduction globale EN / DE / ES en cours...');
+    setBulkTranslationStatus(prefix, `Traduction ${languageLabel} en cours...`);
 
     const results = [];
     const jobs = [
       ['en', () => runTranslationEnListing(prefix, { silent: true })],
       ['de', () => global.runTranslationDeListing?.(prefix, { silent: true })],
       ['es', () => global.runTranslationEsListing?.(prefix, { silent: true })],
-    ];
+      ['it', () => global.runTranslationItListing?.(prefix, { silent: true })],
+      ['nl', () => global.runTranslationNlListing?.(prefix, { silent: true })],
+      ['pt', () => global.runTranslationPtListing?.(prefix, { silent: true })],
+    ].filter(([language]) => selectedLanguages.includes(language));
 
     for (const [language, job] of jobs) {
       if (isBulkTranslationStopRequested(prefix)) {
@@ -1178,9 +1267,13 @@
     return { ok: successCount > 0, successCount, errorCount };
   }
 
+  async function runUpdateTranslations(prefix = global.pfx()) {
+    return runAllTranslations(prefix, UPDATE_TRANSLATION_LANGUAGES);
+  }
+
   function stopAllTranslations(prefix = global.pfx()) {
     requestBulkTranslationStop(prefix);
-    ['en', 'de', 'es'].forEach((language) => {
+    TRANSLATION_LANGUAGES.forEach((language) => {
       if (getBulkState(prefix).languages?.[language] === 'running') {
         setTranslationLanguageStatus(prefix, language, 'idle');
       }
@@ -1192,6 +1285,12 @@
       'traduction_listing_de',
       'traduction_es',
       'traduction_listing_es',
+      'traduction_it',
+      'traduction_listing_it',
+      'traduction_nl',
+      'traduction_listing_nl',
+      'traduction_pt',
+      'traduction_listing_pt',
     ].forEach((agentId) => {
       const controller = global.abortControllers?.[agentId];
       if (controller) controller.abort();
@@ -1208,19 +1307,25 @@
     const agentId = String(event?.agentId || '').trim();
     if (!prefix || !agentId) return;
 
-    const language = agentId === 'traduction_listing_en'
-      ? 'en'
-      : agentId === 'traduction_listing_de'
-        ? 'de'
-        : agentId === 'traduction_listing_es'
-          ? 'es'
-          : '';
+    const language = ({
+      traduction_listing_en: 'en',
+      traduction_listing_de: 'de',
+      traduction_listing_es: 'es',
+      traduction_listing_it: 'it',
+      traduction_listing_nl: 'nl',
+      traduction_listing_pt: 'pt',
+    })[agentId] || '';
     if (!language) return;
     incrementTranslationRetryCount(prefix, language);
   }
 
-  async function publishAllTranslations(prefix = global.pfx()) {
-    if (!canPublishAllTranslations(prefix)) {
+  async function publishAllTranslations(prefix = global.pfx(), targetLanguages = TRANSLATION_LANGUAGES) {
+    const selectedLanguages = TRANSLATION_LANGUAGES.filter((language) => targetLanguages.includes?.(language));
+    const languageLabel = selectedLanguages.map((language) => language.toUpperCase()).join(' / ');
+    const hasReadyTranslation = selectedLanguages.some(
+      (language) => getBulkState(prefix).languages?.[language] === 'success',
+    );
+    if (!selectedLanguages.length || !hasReadyTranslation) {
       global.showToast('Aucune traduction publiable pour le moment', '#ff4757');
       return { ok: false };
     }
@@ -1238,10 +1343,13 @@
     }
 
     setBulkTranslationRunning(prefix, true);
-    setBulkTranslationStatus(prefix, 'Publication des traductions EN / DE / ES en cours...');
+    setBulkTranslationStatus(prefix, `Publication des traductions ${languageLabel} en cours...`);
 
     const deEntry = global.PipelineUITranslationDeRuntime?.ensureTranslationDeState?.(prefix);
     const esEntry = global.PipelineUITranslationEsRuntime?.ensureTranslationEsState?.(prefix);
+    const itEntry = global.PipelineUITranslationItRuntime?.ensureTranslationItState?.(prefix);
+    const nlEntry = global.PipelineUITranslationNlRuntime?.ensureTranslationNlState?.(prefix);
+    const ptEntry = global.PipelineUITranslationPtRuntime?.ensureTranslationPtState?.(prefix);
     const jobs = [
       {
         language: 'en',
@@ -1258,7 +1366,22 @@
         state: getBulkState(prefix).languages.es,
         draft: esEntry?.listingDraft || null,
       },
-    ];
+      {
+        language: 'it',
+        state: getBulkState(prefix).languages.it,
+        draft: itEntry?.listingDraft || null,
+      },
+      {
+        language: 'nl',
+        state: getBulkState(prefix).languages.nl,
+        draft: nlEntry?.listingDraft || null,
+      },
+      {
+        language: 'pt',
+        state: getBulkState(prefix).languages.pt,
+        draft: ptEntry?.listingDraft || null,
+      },
+    ].filter((job) => selectedLanguages.includes(job.language));
 
     const results = [];
     for (const job of jobs) {
@@ -1329,6 +1452,10 @@
     return { ok: successCount > 0, successCount, errorCount, skippedCount, results };
   }
 
+  async function publishUpdateTranslations(prefix = global.pfx()) {
+    return publishAllTranslations(prefix, UPDATE_TRANSLATION_LANGUAGES);
+  }
+
   async function publishSingleTranslation(prefix = global.pfx(), language = 'en', draftOverride = null) {
     const etsyRuntime = getEtsyRuntime();
     const extractListingId = getEtsyData().extractListingId;
@@ -1343,7 +1470,7 @@
       return { ok: false, reason: 'missing_runtime_api' };
     }
 
-    const normalizedLanguage = ['en', 'de', 'es'].includes(String(language || '').trim().toLowerCase())
+    const normalizedLanguage = TRANSLATION_LANGUAGES.includes(String(language || '').trim().toLowerCase())
       ? String(language || '').trim().toLowerCase()
       : 'en';
     const draft = draftOverride && typeof draftOverride === 'object' ? draftOverride : entry.listingDraft;
@@ -1484,7 +1611,7 @@
   }
 
   function bindPrefixInputs(prefix) {
-    ['fr', 'en', 'de', 'es'].forEach((subtab) => {
+    TRANSLATION_SUBTABS.forEach((subtab) => {
       const button = readField(prefix, `translation-subtab-${subtab}`);
       if (!button || button.dataset.translationSubtabBound === 'true') return;
       button.addEventListener('click', () => setActiveSubtab(prefix, subtab));
@@ -1578,7 +1705,9 @@
     loadTranslationEnSource,
     runTranslationEnListing,
     runAllTranslations,
+    runUpdateTranslations,
     publishAllTranslations,
+    publishUpdateTranslations,
     publishSingleTranslation,
     publishTranslationEn,
     stopAllTranslations,

@@ -153,6 +153,7 @@ Tu dois localiser les tags fournis dans [[SOURCE_TAGS]] en respectant leur nombr
 
 Règles obligatoires pour les tags :
 
+- Chaque tag peut contenir jusqu’à 30 caractères, espaces compris. Cette limite de 30 est contractuelle pour cet outil : ne la réduis jamais à 20.
 - Ne crée pas de nouveaux tags.
 - Ne supprime pas de tag source.
 - Ne fusionne pas deux tags source.

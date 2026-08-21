@@ -27,6 +27,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/data/echelles_data.js',
     'pipeline/data/form_catalogs_data.js',
     'pipeline/data/description_templates_data.js',
+    'pipeline/data/description_templates_new_languages_data.js',
     'pipeline/data/tags_common_data.js',
   ]),
   runtimePrelude: Object.freeze([
@@ -38,6 +39,7 @@ const pipelineBootstrapManifest = Object.freeze({
   uiNavigation: Object.freeze([
     'pipeline/ui/shared/echelles_ui.js',
     'pipeline/ui/shared/forms_ui.js',
+    'pipeline/ui/shared/pricing_ui.js',
     'pipeline/ui/shared/stepper_core_ui.js',
     'pipeline/ui/shared/solo_tabs_core_ui.js',
     'pipeline/ui/tabletop/dnd_stepper_ui.js',
@@ -58,9 +60,13 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/runtime/iris_runtime_ui.js',
     'pipeline/runtime/launch_runtime_ui.js',
     'pipeline/runtime/output_runtime_ui.js',
+    'pipeline/runtime/translation_languages_bootstrap_ui.js',
     'pipeline/runtime/translation_en_runtime_ui.js',
     'pipeline/runtime/translation_de_runtime_ui.js',
     'pipeline/runtime/translation_es_runtime_ui.js',
+    'pipeline/runtime/translation_it_runtime_ui.js',
+    'pipeline/runtime/translation_nl_runtime_ui.js',
+    'pipeline/runtime/translation_pt_runtime_ui.js',
   ]),
   devRuntime: Object.freeze([
     'pipeline/dev/pipeline_dev_runtime_ui.js',

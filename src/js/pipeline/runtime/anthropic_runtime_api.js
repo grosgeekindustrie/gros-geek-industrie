@@ -65,6 +65,9 @@
     traduction_listing_en: 4000,
     traduction_listing_de: 4000,
     traduction_listing_es: 4000,
+    traduction_listing_it: 6000,
+    traduction_listing_nl: 6000,
+    traduction_listing_pt: 6000,
   });
 
   function getAnthropicBetaHeader({ useFiles = false } = {}) {

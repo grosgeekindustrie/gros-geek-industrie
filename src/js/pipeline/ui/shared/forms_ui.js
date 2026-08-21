@@ -814,6 +814,7 @@
       data._genres = getTabletopGenreValues();
       data._buzz = isElementChecked('tt-fBuzz');
       data._buzzNote = getElementValue('tt-fBuzzNote');
+      data._pricing = global.PipelineUIPricing?.serialize?.('tt') || null;
     } else {
       data._echelles = collectScaleEntries('col', (echellesApi.ECHELLES_COLLECTION || []).length, echellesApi.ECHELLES_COLLECTION || []);
       data._dynamicEchelles = echellesApi.isDynamicScaleEnabled?.('col') || false;
@@ -831,6 +832,7 @@
       data._lienPerso = getElementValue('col-fLienPerso');
       data._buzz = isElementChecked('col-fBuzzCollection');
       data._buzzNote = getElementValue('col-fBuzzCollectionNote');
+      data._pricing = global.PipelineUIPricing?.serialize?.('col') || null;
       data._originEchelleIndex = (() => {
         const checked = document.querySelector('input[name="col-origin-scale"]:checked');
         return checked ? Number(checked.value) : null;
@@ -888,6 +890,8 @@
         if (data._buzzNote !== undefined) {
           setElementValue('tt-fBuzzNote', data._buzzNote);
         }
+
+        global.PipelineUIPricing?.restore?.('tt', data._pricing);
       } else {
         echellesApi.setDynamicEchellesEnabled?.(data._dynamicEchelles !== undefined ? data._dynamicEchelles : true, { shouldSave: false });
 
@@ -982,6 +986,7 @@
         }
 
         echellesApi.refreshCollectionAutoDimensions?.({ shouldSave: false, force: true });
+        global.PipelineUIPricing?.restore?.('col', data._pricing);
       }
     } catch (error) {}
   }

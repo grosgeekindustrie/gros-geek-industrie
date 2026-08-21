@@ -36,6 +36,12 @@
   const getDynamicToggle = (prefix = getPfx()) => document.getElementById(`${prefix}-fDynamicEchelles`);
   const isDynamicScaleEnabled = (prefix = getPfx()) => Boolean(getDynamicToggle(prefix)?.checked);
 
+  const notifyScaleSelectionChanged = (prefix = getPfx()) => {
+    document.dispatchEvent(new CustomEvent('pipeline:scales-changed', {
+      detail: { prefix },
+    }));
+  };
+
   const getRowEls = (index) => {
     const prefix = getPfx();
 
@@ -278,6 +284,7 @@
       recalculateCollectionDimensions({ shouldSave: false });
     }
 
+    notifyScaleSelectionChanged(prefix);
     if (shouldSave) global.saveFormState();
   };
 
@@ -384,6 +391,7 @@
           applyAutoDimensions(index, { shouldSave: false, force: true });
         }
 
+        notifyScaleSelectionChanged(getPfx());
         global.saveFormState();
       });
     }
@@ -426,6 +434,7 @@
     grid.innerHTML = html;
     bindEchellesUI({ list, isCollection: !isTabletop });
     updateOriginState(prefix, mode);
+    notifyScaleSelectionChanged(prefix);
   }
 
   function toggleEch(index, options = {}) {
@@ -467,6 +476,7 @@
       updateOriginState();
     }
 
+    notifyScaleSelectionChanged(getPfx());
     if (shouldSave) global.saveFormState();
   }
 
@@ -514,6 +524,45 @@
     return [...standard, ...customs].join(', ');
   }
 
+  function getSelectedScaleEntries(prefix = getPfx()) {
+    const mode = resolveMode(prefix);
+    const list = getScaleList(mode);
+    const origin = document.querySelector(`input[name="${prefix}-origin-scale"]:checked`);
+    const originIndex = origin ? Number(origin.value) : null;
+    const entries = [];
+
+    for (let index = 0; index < list.length; index += 1) {
+      const checkbox = document.getElementById(`${prefix}-ec${index}`);
+      if (!checkbox?.checked) continue;
+      entries.push({
+        key: `scale-${index}`,
+        index,
+        label: String(list[index] || '').trim(),
+        dimension: String(document.getElementById(`${prefix}-ed${index}`)?.value || '').trim(),
+        isOrigin: originIndex === index,
+      });
+    }
+
+    if (mode === COLLECTION_MODE) {
+      for (let customOffset = 0; customOffset < CUSTOM_COLLECTION_COUNT; customOffset += 1) {
+        const index = list.length + customOffset;
+        const checkbox = document.getElementById(`${prefix}-ec${index}`);
+        const label = String(document.getElementById(`${prefix}-elabel${index}`)?.value || '').trim();
+        if (!checkbox?.checked || !label) continue;
+        entries.push({
+          key: `scale-${index}`,
+          index,
+          label,
+          dimension: String(document.getElementById(`${prefix}-ed${index}`)?.value || '').trim(),
+          isOrigin: originIndex === index,
+        });
+      }
+    }
+
+    if (entries.length && !entries.some((entry) => entry.isOrigin)) entries[0].isOrigin = true;
+    return entries;
+  }
+
   function getDimsFromEchelles() {
     const prefix = getPfx();
     const mode = getCurrentMode();
@@ -551,6 +600,7 @@
     setRowDimensionSource,
     setEchelleOrigin,
     getEchellesSelected,
+    getSelectedScaleEntries,
     getDimsFromEchelles,
     getOriginScaleDimensions,
     refreshCollectionAutoDimensions: recalculateCollectionDimensions,

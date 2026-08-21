@@ -5765,7 +5765,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if not listing_id:
                     self.send_json(400, {'error': 'listing_id traduction Etsy manquant'})
                     return
-                if language not in {'en', 'de', 'es', 'fr', 'it'}:
+                if language not in {'en', 'de', 'es', 'fr', 'it', 'nl', 'pt'}:
                     self.send_json(400, {'error': f'Langue traduction Etsy non supportee: {language or "vide"}'})
                     return
                 if not title:
