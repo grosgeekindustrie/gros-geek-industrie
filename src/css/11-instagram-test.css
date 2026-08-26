@@ -938,6 +938,13 @@
   padding: 5px 10px;
 }
 
+.instagram-copy-field-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .instagram-copy-grid small,
 .instagram-dialog-panel label small {
   color: var(--text3);
@@ -1467,6 +1474,78 @@
     var(--surface2);
 }
 
+.instagram-content-mode-bar {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: rgba(255, 255, 255, .018);
+}
+
+.instagram-content-mode-bar > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.instagram-content-mode-bar strong {
+  color: var(--text);
+  font: 750 12px/1.25 'Clash Display', 'Syne', sans-serif;
+}
+
+.instagram-content-mode-bar > div:first-child span {
+  color: var(--text3);
+  font: 600 9px/1.45 'JetBrains Mono', monospace;
+}
+
+.instagram-manual-workspace {
+  padding: 16px;
+  border: 1px solid rgba(255, 93, 143, .28);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 85% 0, rgba(255, 93, 143, .11), transparent 44%),
+    var(--surface2);
+}
+
+.instagram-manual-workspace[hidden] {
+  display: none;
+}
+
+.instagram-manual-workspace > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.instagram-manual-workspace strong {
+  color: var(--text);
+  font: 750 14px/1.25 'Clash Display', 'Syne', sans-serif;
+}
+
+.instagram-manual-workspace p {
+  margin: 0;
+  color: var(--text3);
+  font: 600 10px/1.5 'JetBrains Mono', monospace;
+}
+
+.instagram-manual-badge {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 93, 143, .35);
+  border-radius: 999px;
+  color: var(--ig-accent);
+  background: rgba(255, 93, 143, .08);
+  font: 800 9px/1 'JetBrains Mono', monospace;
+}
+
 .instagram-agent-bar > div:first-child {
   min-width: 0;
 }
@@ -1720,6 +1799,20 @@
   .instagram-agent-bar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .instagram-content-mode-bar,
+  .instagram-manual-workspace {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .instagram-content-mode-bar .instagram-segmented {
+    width: 100%;
+  }
+
+  .instagram-content-mode-bar .instagram-segmented button {
+    flex: 1 1 50%;
   }
 
   .instagram-agent-actions {

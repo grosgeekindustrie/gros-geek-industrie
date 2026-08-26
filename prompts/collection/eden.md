@@ -4,13 +4,31 @@ DONNÉES REÇUES
 
 Matière de rédaction
 
-Personnage : [[NOM]]Univers : [[UNIVERS]]Pose : [[POSE]]Particularités : [[PARTICULARITES]]Description figurine : [[DESCRIPTION_FIGURINE]]Résumé personnage : [[RESUME_PERSONNAGE]]Buzz licence : [[BUZZ_LICENCE]]Medium : [[MEDIUM]]Sous-catégories medium : [[SOUS_CATEGORIES_MEDIUM]]Genres transverses : [[GENRES_TRANSVERSES]]Contexte medium : [[CONTEXTE_MEDIUM]]Archétypes : [[ARCHETYPES]]SEO élargi : [[SEO_ELARGIES]]Analyse marché Luna : [[MARCHE]]
+Personnage : [[NOM]]
+Univers : [[UNIVERS]]
+Pose : [[POSE]]
+Particularités : [[PARTICULARITES]]
+Description figurine : [[DESCRIPTION_FIGURINE]]
+Résumé personnage : [[RESUME_PERSONNAGE]]
+Buzz licence : [[BUZZ_LICENCE]]
+Medium : [[MEDIUM]]
+Sous-catégories medium : [[SOUS_CATEGORIES_MEDIUM]]
+Genres transverses : [[GENRES_TRANSVERSES]]
+Contexte medium : [[CONTEXTE_MEDIUM]]
+Archétypes : [[ARCHETYPES]]
+SEO élargi : [[SEO_ELARGIES]]
+Analyse marché Luna : [[MARCHE]]
 
-Titre validé : [[TITRE]]Tags validés : [[TAGS]]
+Titre validé : [[TITRE]]
+Tags validés : [[TAGS]]
 
 Données de recopie technique
 
-Sculpteur : [[SCULPTEUR]]Licence protégée : [[LICENSE_SENSIBLE]]Échelles : [[ECHELLES]]Dimensions : [[DIMENSIONS]]Nombre de pièces : [[PIECES]]
+Sculpteur : [[SCULPTEUR]]
+Licence protégée : [[LICENSE_SENSIBLE]]
+Échelles : [[ECHELLES]]
+Dimensions : [[DIMENSIONS]]
+Nombre de pièces : [[PIECES]]
 
 MISSION
 
@@ -24,6 +42,8 @@ CONTRAT ABSOLU
 
 La sortie contient exactement :
 
+le bloc technique
+
 cinq accroches
 
 deux paragraphes principaux
@@ -31,8 +51,6 @@ deux paragraphes principaux
 trois à cinq conseils de peinture
 
 cinq appels à l'action
-
-le bloc technique
 
 le bloc Fan Art et artiste
 
@@ -78,7 +96,7 @@ Pendant la rédaction des accroches, du paragraphe, des conseils et des appels �
 
 Ne transforme jamais une quantité de pièces, une plage d'échelles, une dimension, le besoin d'assemblage ou le format du kit en argument de vente. Ne les paraphrase pas. Ne les évoque pas indirectement par le choix de taille, l'espace d'exposition, l'ampleur du projet, la modularité, la facilité de travail ou l'organisation de la peinture.
 
-Rédige le bloc technique seulement après avoir finalisé les autres blocs.
+Dans la sortie finale, le bloc technique apparaît en premier. Pour préparer et rédiger les blocs commerciaux qui suivent, traite néanmoins ses données comme indisponibles : leur position en tête ne les autorise jamais à nourrir les accroches, la description, les conseils ou les appels à l'action.
 
 SOURCES AUTORISÉES ET GARDE-FOUS
 
@@ -228,9 +246,47 @@ FORMAT OBLIGATOIRE DE SORTIE
 
 Respecte exactement cet ordre. N'ajoute aucun titre aux accroches, au paragraphe ou aux appels à l'action. N'ajoute aucun séparateur Markdown et aucun titre commençant par un caractère dièse.
 
+Bloc technique
+
+Le bloc technique est obligatoirement le premier bloc de la sortie. Utilise ce titre exact :
+
+🛠️ Détails de ta figurine [[NOM]]:
+
+Affiche ensuite, dans cet ordre :
+
+• Personnage : [[NOM]]
+• Univers : [[UNIVERS]]
+• Échelles disponibles : [valeur calculée]
+• Dimensions :
+
+• [une ligne par échelle]
+
+• Nombre de pièces : [[PIECES]]
+• Matériau : Résine 14k renforcée
+• Assemblage requis : Oui
+• Sculpteur : [[SCULPTEUR]]
+• Particularités : [[PARTICULARITES]]
+• Usage idéal : [formulation courte, factuelle et spécifique]
+
+Pour la ligne des échelles disponibles :
+
+avec une échelle, affiche cette échelle
+
+avec deux échelles, affiche les deux
+
+avec plus de deux échelles, affiche une plage de la plus petite à la plus grande
+
+Reprends chaque dimension fournie sans conversion ni reformulation. Affiche une ligne par échelle. Supprime entièrement la ligne Particularités lorsque le champ est vide.
+
+La ligne Usage idéal contient de 6 à 14 mots. Elle indique simplement le type de public ou de projet auquel le modèle correspond. Elle ne répète ni l'échelle, ni les pièces, ni les dimensions, ni un argument commercial déjà utilisé.
+
 Accroches
 
-A1→ [emoji] [accroche]A2→ [emoji] [accroche]A3→ [emoji] [accroche]A4→ [emoji] [accroche]A5→ [emoji] [accroche]
+A1→ [emoji] [accroche]
+A2→ [emoji] [accroche]
+A3→ [emoji] [accroche]
+A4→ [emoji] [accroche]
+A5→ [emoji] [accroche]
 
 Description principale
 
@@ -246,33 +302,11 @@ Affiche ensuite trois à cinq conseils, chacun précédé de la puce •.
 
 Appels à l'action
 
-C1→ [emoji] [appel à l'action]C2→ [emoji] [appel à l'action]C3→ [emoji] [appel à l'action]C4→ [emoji] [appel à l'action]C5→ [emoji] [appel à l'action]
-
-Bloc technique
-
-Utilise ce titre exact :
-
-🛠️ Détails de ta figurine [[NOM]]:
-
-Affiche ensuite, dans cet ordre :
-
-• Personnage : [[NOM]]• Univers : [[UNIVERS]]• Échelles disponibles : [valeur calculée]• Dimensions :
-
-• [une ligne par échelle]
-
-• Nombre de pièces : [[PIECES]]• Matériau : Résine 14k renforcée• Assemblage requis : Oui• Sculpteur : [[SCULPTEUR]]• Particularités : [[PARTICULARITES]]• Usage idéal : [formulation courte, factuelle et spécifique]
-
-Pour la ligne des échelles disponibles :
-
-avec une échelle, affiche cette échelle
-
-avec deux échelles, affiche les deux
-
-avec plus de deux échelles, affiche une plage de la plus petite à la plus grande
-
-Reprends chaque dimension fournie sans conversion ni reformulation. Affiche une ligne par échelle. Supprime entièrement la ligne Particularités lorsque le champ est vide.
-
-La ligne Usage idéal contient de 6 à 14 mots. Elle indique simplement le type de public ou de projet auquel le modèle correspond. Elle ne répète ni l'échelle, ni les pièces, ni les dimensions, ni un argument commercial déjà utilisé.
+C1→ [emoji] [appel à l'action]
+C2→ [emoji] [appel à l'action]
+C3→ [emoji] [appel à l'action]
+C4→ [emoji] [appel à l'action]
+C5→ [emoji] [appel à l'action]
 
 Fan Art et artiste
 
@@ -282,13 +316,15 @@ Utilise ce titre exact :
 
 Affiche exactement :
 
-Cette figurine est un fan art original inspiré de [[UNIVERS]].✔️ Sculpté par : [[SCULPTEUR]]✔️ Gros Geek Industrie est un revendeur agréé de ses créations.
+Cette figurine est un fan art original inspiré de [[UNIVERS]].
+✔️ Sculpté par : [[SCULPTEUR]]
+✔️ Gros Geek Industrie est un revendeur agréé de ses créations.
 
 CONTRÔLE FINAL SILENCIEUX
 
 Avant de répondre, effectue une seule relecture :
 
-La sortie contient exactement cinq accroches, deux paragraphes, trois à cinq conseils, cinq CTA, le bloc technique et le bloc Fan Art.
+La sortie commence par le bloc technique, puis contient exactement cinq accroches, deux paragraphes, trois à cinq conseils, cinq CTA et se termine par le bloc Fan Art.
 
 Chaque objet, matière, action, lieu et fait narratif possède une source autorisée.
 

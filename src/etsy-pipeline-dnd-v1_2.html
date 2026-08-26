@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="css/11-instagram-test.css">
 <link rel="stylesheet" href="css/12-cost-calculator.css">
 <link rel="stylesheet" href="css/13-pipeline-pricing.css">
+<link rel="stylesheet" href="css/14-design-system.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -131,6 +132,12 @@
           <div class="home-card-title">Calculateur de coûts</div>
           <div class="home-card-desc">Calculer rapidement le prix conseillé<br>d’une figurine imprimée.</div>
           <div class="home-card-tag">Résine · Plateaux · Marge</div>
+        </a>
+        <a class="home-card home-card-design-system" href="#design-system" data-ui-action="open-design-system">
+          <div class="home-card-icon">DS</div>
+          <div class="home-card-title">Design System</div>
+          <div class="home-card-desc">Valider les fondations, composants<br>et états avant la refonte globale.</div>
+          <div class="home-card-tag">POC isolé · GG / DoubleX</div>
         </a>
       </div>
       <section class="home-integration-panel" id="etsyAuthHomePanel" aria-labelledby="etsyAuthHomeTitle">
@@ -464,6 +471,201 @@
   </main>
 </div>
 
+<!-- VIEW DESIGN SYSTEM -->
+<div class="view" id="view-design-system" data-js="view" data-view="design-system">
+  <main class="design-system-workspace" aria-labelledby="designSystemTitle">
+    <header class="ds-hero">
+      <div class="ds-hero-copy">
+        <span class="ds-kicker">GROS GEEK INDUSTRIE · UI FOUNDATION</span>
+        <h1 id="designSystemTitle">Design system</h1>
+        <p>Laboratoire visuel isolé. Aucun composant présenté ici ne modifie encore les écrans de production.</p>
+        <div class="ds-hero-meta">
+          <span class="ds-status ds-status-success"><span></span> POC actif</span>
+          <span class="ds-version">Fondation 0.1</span>
+        </div>
+      </div>
+      <div class="ds-theme-switch" role="tablist" aria-label="Prévisualiser la charte d’une boutique">
+        <span class="ds-field-label">CHARTE ACTIVE</span>
+        <button class="ds-theme-button is-active" type="button" data-js="shop-toggle-button" data-shop-key="grosgeek" data-ui-action="set-active-shop" data-action-arg="grosgeek" aria-selected="true">
+          <strong>Gros Geek</strong><small>Or industriel</small>
+        </button>
+        <button class="ds-theme-button" type="button" data-js="shop-toggle-button" data-shop-key="doublex" data-ui-action="set-active-shop" data-action-arg="doublex" aria-selected="false">
+          <strong>DoubleX</strong><small>Rose cuivre</small>
+        </button>
+      </div>
+    </header>
+
+    <div class="ds-layout">
+      <nav class="ds-index" aria-label="Sommaire du design system">
+        <span class="ds-index-title">SOMMAIRE</span>
+        <a href="#ds-foundations">01 · Fondations</a>
+        <a href="#ds-actions">02 · Actions</a>
+        <a href="#ds-forms">03 · Formulaires</a>
+        <a href="#ds-navigation">04 · Navigation</a>
+        <a href="#ds-feedback">05 · Retours</a>
+        <a href="#ds-surfaces">06 · Surfaces</a>
+        <a href="#ds-data">07 · Données</a>
+        <a href="#ds-media">08 · Images</a>
+        <p>Cette page est la référence de validation avant migration.</p>
+      </nav>
+
+      <div class="ds-content">
+        <section class="ds-section" id="ds-foundations">
+          <div class="ds-section-heading"><span>01</span><div><p>FONDATIONS</p><h2>Couleurs et typographie</h2></div></div>
+          <p class="ds-section-intro">Les rôles restent identiques entre les boutiques. Seules les valeurs de charte changent.</p>
+          <div class="ds-swatches">
+            <article class="ds-swatch"><span style="--swatch:var(--ds-canvas)"></span><strong>Canvas</strong><code>--ds-canvas</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-surface)"></span><strong>Surface</strong><code>--ds-surface</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-surface-raised)"></span><strong>Raised</strong><code>--ds-surface-raised</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-accent)"></span><strong>Accent</strong><code>--ds-accent</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-accent-secondary)"></span><strong>Secondary</strong><code>--ds-accent-secondary</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-success)"></span><strong>Success</strong><code>--ds-success</code></article>
+            <article class="ds-swatch"><span style="--swatch:var(--ds-danger)"></span><strong>Danger</strong><code>--ds-danger</code></article>
+          </div>
+          <div class="ds-type-specimen">
+            <div><span>DISPLAY · 52/56</span><h3>Créer sans friction.</h3></div>
+            <div><span>HEADING · 28/34</span><h4>Une interface pour produire.</h4></div>
+            <div><span>BODY · 15/24</span><p>Le texte courant privilégie la lisibilité. Le monospace reste réservé aux données, identifiants et indications techniques.</p></div>
+            <div><span>MONO · 12/18</span><code>listing_id · 1554039201 · connecté</code></div>
+          </div>
+        </section>
+
+        <section class="ds-section" id="ds-actions">
+          <div class="ds-section-heading"><span>02</span><div><p>ACTIONS</p><h2>Boutons et priorités</h2></div></div>
+          <p class="ds-section-intro">Une seule action primaire par zone. Les actions dangereuses ne reprennent jamais la couleur de marque.</p>
+          <div class="ds-component-grid ds-component-grid-2">
+            <article class="ds-demo-card"><span class="ds-demo-label">HIÉRARCHIE</span><div class="ds-action-row"><button class="ds-button ds-button-primary" type="button">Action principale</button><button class="ds-button ds-button-secondary" type="button">Secondaire</button><button class="ds-button ds-button-ghost" type="button">Discrète</button></div></article>
+            <article class="ds-demo-card"><span class="ds-demo-label">ÉTATS</span><div class="ds-action-row"><button class="ds-button ds-button-success" type="button">Valider</button><button class="ds-button ds-button-danger" type="button">Supprimer</button><button class="ds-button ds-button-secondary" type="button" disabled>Indisponible</button></div></article>
+            <article class="ds-demo-card"><span class="ds-demo-label">TAILLES</span><div class="ds-action-row ds-action-row-end"><button class="ds-button ds-button-secondary ds-button-small" type="button">Compact</button><button class="ds-button ds-button-primary" type="button">Standard</button><button class="ds-button ds-button-primary ds-button-large" type="button">Action majeure</button></div></article>
+            <article class="ds-demo-card"><span class="ds-demo-label">COMPTEUR NUMÉRIQUE</span><label class="ds-number-input"><input id="dsPriceDemo" type="number" min="0" step="5" value="95"><span>€</span></label><small class="ds-component-help">Les contrôles natifs du champ appliquent directement un pas de 5 €.</small></article>
+          </div>
+        </section>
+
+        <section class="ds-section" id="ds-forms">
+          <div class="ds-section-heading"><span>03</span><div><p>FORMULAIRES</p><h2>Saisie claire et confortable</h2></div></div>
+          <p class="ds-section-intro">Les labels restent visibles, les aides ne concurrencent pas la donnée et les zones longues sont ouvertes par défaut.</p>
+          <div class="ds-form-grid">
+            <label class="ds-field"><span class="ds-field-label">NOM DU PERSONNAGE</span><input type="text" value="Astra the Voidwalker"><small>Nom affiché dans la fiche produit.</small></label>
+            <label class="ds-field"><span class="ds-field-label">UNIVERS</span><select><option>Science-fiction</option><option>Fantasy</option><option>Manga</option></select><small>Catégorie éditoriale principale.</small></label>
+            <label class="ds-field"><span class="ds-field-label">CHAMP AVEC ERREUR</span><input class="is-error" type="text" value=""><small class="is-error">Cette information est nécessaire.</small></label>
+            <label class="ds-field"><span class="ds-field-label">RECHERCHE</span><input type="search" placeholder="Rechercher une fiche Etsy…"><small>Identifiant, titre ou URL complète.</small></label>
+            <label class="ds-field ds-field-wide"><span class="ds-field-label">DÉTAILS ET CONTEXTE <em>OPTIONNEL</em></span><textarea rows="6">Figurine en résine non peinte, fournie avec son socle. Prévoir deux variantes de tête et une arme alternative.</textarea><small>La hauteur suit le contenu ; aucune boîte fermée à ouvrir manuellement.</small></label>
+          </div>
+          <div class="ds-choice-row">
+            <label class="ds-check"><input type="checkbox" checked><span></span>Inclure le socle</label>
+            <label class="ds-check"><input type="checkbox"><span></span>Version NSFW</label>
+            <label class="ds-radio"><input type="radio" name="ds-quality" checked><span></span>Standard</label>
+            <label class="ds-radio"><input type="radio" name="ds-quality"><span></span>Premium</label>
+            <label class="ds-toggle"><input type="checkbox" checked><span></span><strong>Publication automatique</strong></label>
+          </div>
+        </section>
+
+        <section class="ds-section" id="ds-navigation">
+          <div class="ds-section-heading"><span>04</span><div><p>NAVIGATION</p><h2>Étapes, onglets et contexte</h2></div></div>
+          <div class="ds-demo-stack">
+            <article class="ds-demo-card"><span class="ds-demo-label">STEPPER</span><div class="ds-stepper"><button class="is-complete" type="button"><span>01</span><strong>Images</strong><small>20 médias</small></button><button class="is-complete" type="button"><span>02</span><strong>Identité</strong><small>Complète</small></button><button class="is-current" type="button"><span>03</span><strong>Échelles</strong><small>En cours</small></button><button type="button"><span>04</span><strong>Contexte</strong><small>À compléter</small></button><button type="button"><span>05</span><strong>Pricing</strong><small>À venir</small></button></div></article>
+            <article class="ds-demo-card"><span class="ds-demo-label">ONGLETS</span><div class="ds-tabs" role="tablist"><button class="is-active" type="button">Préparation <span>12</span></button><button type="button">Pipeline</button><button type="button">Traductions <span>6</span></button><button type="button">Audit</button></div></article>
+            <article class="ds-breadcrumb"><a href="#home">Accueil</a><span>›</span><a href="#ds-navigation">Collection</a><span>›</span><strong>Échelles</strong></article>
+          </div>
+        </section>
+
+        <section class="ds-section" id="ds-feedback">
+          <div class="ds-section-heading"><span>05</span><div><p>RETOURS</p><h2>États, alertes et progression</h2></div></div>
+          <div class="ds-feedback-grid">
+            <div class="ds-alert ds-alert-info"><strong>Information</strong><p>La fiche source a été chargée et nettoyée.</p></div>
+            <div class="ds-alert ds-alert-success"><strong>Publication terminée</strong><p>La fiche Etsy est disponible en brouillon.</p></div>
+            <div class="ds-alert ds-alert-warning"><strong>Contrôle nécessaire</strong><p>Deux échelles n’ont pas encore de prix.</p></div>
+            <div class="ds-alert ds-alert-danger"><strong>Échec de connexion</strong><p>Le jeton doit être renouvelé avant de continuer.</p></div>
+          </div>
+          <article class="ds-demo-card ds-progress-card"><div><span class="ds-demo-label">PIPELINE EN COURS</span><strong>Claire · Description Etsy</strong></div><span>68 %</span><div class="ds-progress"><i style="width:68%"></i></div></article>
+          <div class="ds-status-row"><span class="ds-status ds-status-neutral"><span></span>En attente</span><span class="ds-status ds-status-running"><span></span>En cours</span><span class="ds-status ds-status-success"><span></span>Terminé</span><span class="ds-status ds-status-danger"><span></span>Erreur</span></div>
+        </section>
+
+        <section class="ds-section" id="ds-surfaces">
+          <div class="ds-section-heading"><span>06</span><div><p>SURFACES</p><h2>Cartes, panneaux et dialogue</h2></div></div>
+          <p class="ds-section-intro">Le travail reste léger et translucide. Le résultat important prend une surface pleine, plus dense et immédiatement identifiable.</p>
+          <div class="ds-work-result-demo">
+            <article class="ds-work-panel">
+              <span class="ds-demo-label">SURFACE DE TRAVAIL</span>
+              <h3>Calculateur de coût</h3>
+              <p>Une surface transparente laisse vivre le fond et accueille les contrôles sans devenir un gros bloc opaque.</p>
+              <div class="ds-work-fields"><span>Coût résine</span><strong>18,50 €</strong><span>Multiplicateur</span><strong>× 8</strong></div>
+            </article>
+            <article class="ds-result-panel">
+              <span>PRIX CONSEILLÉ</span>
+              <strong>148,00 €</strong>
+              <p>Résultat principal</p>
+              <div><span>Total matière</span><b>25,90 €</b></div>
+              <div><span>Marge finale</span><b class="is-positive">122,10 €</b></div>
+            </article>
+          </div>
+          <div class="ds-component-grid ds-component-grid-3">
+            <article class="ds-product-card"><div class="ds-product-visual"><span>3D</span></div><div><span class="ds-status ds-status-success"><span></span>Prêt</span><h3>Fiche produit</h3><p>Surface interactive avec une action principale clairement identifiée.</p><button class="ds-text-action" type="button">Ouvrir la fiche →</button></div></article>
+            <article class="ds-product-card is-selected"><div class="ds-product-visual"><span>AI</span></div><div><span class="ds-status ds-status-running"><span></span>Actif</span><h3>Agent commercial</h3><p>La sélection utilise la couleur de marque sans saturer toute la carte.</p><button class="ds-text-action" type="button">Voir l’agent →</button></div></article>
+            <article class="ds-product-card"><div class="ds-product-visual"><span>API</span></div><div><span class="ds-status ds-status-neutral"><span></span>Connecté</span><h3>Intégration</h3><p>Les informations techniques conservent un traitement monospace distinct.</p><button class="ds-text-action" type="button">Configurer →</button></div></article>
+          </div>
+          <div class="ds-action-row"><button class="ds-button ds-button-secondary" type="button" data-ui-action="open-design-dialog">Prévisualiser le dialogue</button><button class="ds-button ds-button-ghost" type="button" data-ui-action="preview-design-toast">Prévisualiser le toast</button></div>
+        </section>
+
+        <section class="ds-section" id="ds-data">
+          <div class="ds-section-heading"><span>07</span><div><p>DONNÉES</p><h2>Tableaux et valeurs métier</h2></div></div>
+          <div class="ds-table-wrap"><table class="ds-table"><thead><tr><th>Échelle</th><th>Prix FR</th><th>Compensation</th><th>Prix US</th><th>État</th></tr></thead><tbody><tr><td><strong>1/10</strong><small>Origine</small></td><td>95,00 €</td><td>+ 10,00 €</td><td><strong>$124.99</strong></td><td><span class="ds-status ds-status-success"><span></span>Prêt</span></td></tr><tr class="is-highlighted"><td><strong>1/8</strong></td><td>135,00 €</td><td>+ 15,00 €</td><td><strong>$176.99</strong></td><td><span class="ds-status ds-status-running"><span></span>Conseillé</span></td></tr><tr><td><strong>1/6</strong></td><td>185,00 €</td><td>+ 20,00 €</td><td><strong>$241.99</strong></td><td><span class="ds-status ds-status-warning"><span></span>À vérifier</span></td></tr></tbody></table></div>
+        </section>
+
+        <section class="ds-section" id="ds-media">
+          <div class="ds-section-heading"><span>08</span><div><p>IMAGES &amp; MÉDIAS</p><h2>Sélection, ordre et suppression</h2></div></div>
+          <p class="ds-section-intro">Les carrés numérotés remplacent volontairement de vraies images. Ils permettent de valider les états sans ajouter de contenu parasite au projet.</p>
+          <div class="ds-media-toolbar">
+            <div><strong>5 médias</strong><span>3 sélectionnés pour la publication</span></div>
+            <div class="ds-action-row"><button class="ds-button ds-button-secondary ds-button-small" type="button">Tout sélectionner</button><button class="ds-button ds-button-ghost ds-button-small" type="button">Effacer la sélection</button></div>
+          </div>
+          <div class="ds-media-grid" aria-label="Exemples de cartes médias">
+            <article class="ds-media-card" tabindex="0">
+              <label class="ds-media-check" title="Sélectionner le média"><input type="checkbox" checked><span></span></label>
+              <button class="ds-media-delete" type="button" aria-label="Supprimer le média 1">×</button>
+              <div class="ds-media-placeholder"><strong>1</strong><span>IMAGE</span></div>
+              <footer><div><strong>Vue principale</strong><small>2048 × 2048 · JPG</small></div><span class="ds-media-order">01</span></footer>
+            </article>
+            <article class="ds-media-card" tabindex="0">
+              <label class="ds-media-check" title="Sélectionner le média"><input type="checkbox" checked><span></span></label>
+              <button class="ds-media-delete" type="button" aria-label="Supprimer le média 2">×</button>
+              <div class="ds-media-placeholder"><strong>2</strong><span>IMAGE</span></div>
+              <footer><div><strong>Profil gauche</strong><small>2048 × 2048 · JPG</small></div><span class="ds-media-order">02</span></footer>
+            </article>
+            <article class="ds-media-card" tabindex="0">
+              <label class="ds-media-check" title="Sélectionner le média"><input type="checkbox" checked><span></span></label>
+              <button class="ds-media-delete" type="button" aria-label="Supprimer le média 3">×</button>
+              <div class="ds-media-placeholder"><strong>3</strong><span>IMAGE</span></div>
+              <footer><div><strong>Détail visage</strong><small>2048 × 2048 · JPG</small></div><span class="ds-media-order">03</span></footer>
+            </article>
+            <article class="ds-media-card" tabindex="0">
+              <label class="ds-media-check" title="Sélectionner le média"><input type="checkbox"><span></span></label>
+              <button class="ds-media-delete" type="button" aria-label="Supprimer le média 4">×</button>
+              <div class="ds-media-placeholder"><strong>4</strong><span>IMAGE</span></div>
+              <footer><div><strong>Vue arrière</strong><small>2048 × 2048 · JPG</small></div><span class="ds-media-order">04</span></footer>
+            </article>
+            <article class="ds-media-card" tabindex="0">
+              <label class="ds-media-check" title="Sélectionner le média"><input type="checkbox"><span></span></label>
+              <button class="ds-media-delete" type="button" aria-label="Supprimer le média 5">×</button>
+              <div class="ds-media-placeholder"><strong>5</strong><span>IMAGE</span></div>
+              <footer><div><strong>Accessoires</strong><small>2048 × 2048 · JPG</small></div><span class="ds-media-order">05</span></footer>
+            </article>
+          </div>
+          <div class="ds-media-dropzone"><span>+</span><div><strong>Ajouter des images</strong><small>Glisser-déposer ou cliquer pour parcourir</small></div></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog class="ds-dialog" id="designSystemDialog">
+    <form method="dialog">
+      <div class="ds-dialog-icon">!</div>
+      <div><span class="ds-kicker">CONFIRMATION</span><h2>Supprimer ce tableau ?</h2><p>Cette action retirera le tableau et ses affectations locales. Les épingles déjà publiées ne seront pas supprimées.</p></div>
+      <div class="ds-dialog-actions"><button class="ds-button ds-button-ghost" value="cancel">Annuler</button><button class="ds-button ds-button-danger" value="confirm">Supprimer</button></div>
+    </form>
+  </dialog>
+</div>
+
 <div class="view" id="view-instagram-test" data-js="view" data-view="instagram-test">
   <main class="instagram-workspace">
     <section class="instagram-hero">
@@ -557,30 +759,43 @@
         <div><p class="instagram-kicker">AGENT ÉDITORIAL</p><h2>Générer puis ajuster le post</h2><p id="instagramCopySummary">Contrat d’entrée prêt, prompt à définir ensemble</p></div>
       </header>
       <div class="instagram-screen-body">
-        <div class="instagram-agent-bar">
-          <div><span class="instagram-agent-state">Agent non configuré</span><p>Le titre, la description nettoyée et une seule image de référence seront envoyés à l’agent.</p></div>
-          <div class="instagram-agent-actions">
-            <button class="btn btn-muted" type="button" id="instagramAgentInputBtn">Voir l’input</button>
-            <button class="btn btn-muted" type="button" id="instagramAgentPromptBtn">Modifier le prompt</button>
-            <button class="btn btn-accent" type="button" id="instagramAgentRunBtn">Lancer l’agent</button>
-            <button class="btn btn-error" type="button" id="instagramAgentStopBtn" hidden>Stopper</button>
+        <div class="instagram-content-mode-bar">
+          <div><strong>Origine du contenu</strong><span>Les brouillons IA et manuel sont enregistrés séparément.</span></div>
+          <div class="instagram-segmented" id="instagramContentModePicker" role="radiogroup" aria-label="Origine du contenu éditorial">
+            <button type="button" data-instagram-content-mode="agent" role="radio" aria-checked="true" class="is-active">Génération IA</button>
+            <button type="button" data-instagram-content-mode="manual" role="radio" aria-checked="false">Mode manuel</button>
           </div>
         </div>
-<pre class="instagram-agent-input" id="instagramAgentInput" hidden></pre>
-        <label class="instagram-agent-correction">
-          <span>Consigne complémentaire pour cette génération</span>
-          <textarea id="instagramAgentCorrection" rows="3" placeholder="Ex. : insiste davantage sur la pose, réduis les emojis, rends l’accroche plus directe…"></textarea>
-        </label>
-        <div class="instagram-agent-cost" id="instagramAgentCost">Aucune génération Instagram dans cette session.</div>
+        <div id="instagramAgentWorkspace">
+          <div class="instagram-agent-bar">
+            <div><span class="instagram-agent-state">Agent non configuré</span><p>Le titre, la description nettoyée et une seule image de référence seront envoyés à l’agent.</p></div>
+            <div class="instagram-agent-actions">
+              <button class="btn btn-muted" type="button" id="instagramAgentInputBtn">Voir l’input</button>
+              <button class="btn btn-muted" type="button" id="instagramAgentPromptBtn">Modifier le prompt</button>
+              <button class="btn btn-accent" type="button" id="instagramAgentRunBtn">Lancer l’agent</button>
+              <button class="btn btn-error" type="button" id="instagramAgentStopBtn" hidden>Stopper</button>
+            </div>
+          </div>
+          <pre class="instagram-agent-input" id="instagramAgentInput" hidden></pre>
+          <label class="instagram-agent-correction">
+            <span>Consigne complémentaire pour cette génération</span>
+            <textarea id="instagramAgentCorrection" rows="3" placeholder="Ex. : insiste davantage sur la pose, réduis les emojis, rends l’accroche plus directe…"></textarea>
+          </label>
+          <div class="instagram-agent-cost" id="instagramAgentCost">Aucune génération Instagram dans cette session.</div>
+        </div>
+        <div class="instagram-manual-workspace" id="instagramManualWorkspace" hidden>
+          <div><span class="instagram-manual-badge">BROUILLON AUTONOME</span><strong>Colle ici ton contenu déjà préparé</strong><p>Aucun appel IA. Ce brouillon est sauvegardé sans modifier la dernière génération de l’agent.</p></div>
+          <button class="btn btn-muted" type="button" id="instagramManualClearBtn">Nouveau contenu vide</button>
+        </div>
         <div class="instagram-language-section is-published">
-          <div class="instagram-language-heading"><div><strong>ANGLAIS</strong><span>Version publiée sur les réseaux</span></div><span class="instagram-language-badge">PUBLICATION</span></div>
+          <div class="instagram-language-heading"><div><strong id="instagramPublishedLanguageTitle">ANGLAIS</strong><span id="instagramPublishedLanguageSubtitle">Version publiée sur les réseaux</span></div><span class="instagram-language-badge" id="instagramPublishedLanguageBadge">PUBLICATION</span></div>
           <div class="instagram-copy-grid">
-            <label><span class="instagram-copy-field-header"><span>Légende Instagram / Facebook / TikTok</span><button class="btn btn-muted" type="button" id="instagramCopyCaptionBtn">Copier</button></span><textarea id="instagramCaption" rows="9" placeholder="La légende anglaise publiée sera éditable ici."></textarea><small><span id="instagramCaptionCount">0</span> / 2100</small></label>
-            <label><span class="instagram-copy-field-header"><span>Premier commentaire Instagram</span><button class="btn btn-muted" type="button" id="instagramCopyCommentBtn">Copier</button></span><textarea id="instagramFirstComment" rows="9" placeholder="Le commentaire anglais publié sera éditable ici."></textarea><small><span id="instagramCommentCount">0</span> / 250–500</small></label>
-            <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Texte Threads</span><button class="btn btn-muted" type="button" id="instagramCopyThreadsBtn">Copier</button></span><textarea id="instagramThreadsText" rows="5" placeholder="Le texte Threads anglais sera généré dans le même appel."></textarea><small><span id="instagramThreadsCount">0</span> / 420–500</small></label>
+            <label><span class="instagram-copy-field-header"><span>Légende Instagram / Facebook / TikTok</span><span class="instagram-copy-field-actions"><button class="btn btn-muted" type="button" id="instagramPasteCaptionBtn">Coller</button><button class="btn btn-muted" type="button" id="instagramCopyCaptionBtn">Copier</button></span></span><textarea id="instagramCaption" rows="9" placeholder="La légende publiée sera éditable ici."></textarea><small><span id="instagramCaptionCount">0</span> / 2100</small></label>
+            <label><span class="instagram-copy-field-header"><span>Premier commentaire Instagram</span><span class="instagram-copy-field-actions"><button class="btn btn-muted" type="button" id="instagramPasteCommentBtn">Coller</button><button class="btn btn-muted" type="button" id="instagramCopyCommentBtn">Copier</button></span></span><textarea id="instagramFirstComment" rows="9" placeholder="Le commentaire publié sera éditable ici."></textarea><small><span id="instagramCommentCount">0</span> / 250–500</small></label>
+            <label class="instagram-copy-field-wide"><span class="instagram-copy-field-header"><span>Texte Threads</span><span class="instagram-copy-field-actions"><button class="btn btn-muted" type="button" id="instagramPasteThreadsBtn">Coller</button><button class="btn btn-muted" type="button" id="instagramCopyThreadsBtn">Copier</button></span></span><textarea id="instagramThreadsText" rows="5" maxlength="500" placeholder="Le texte publié sur Threads sera éditable ici."></textarea><small><span id="instagramThreadsCount">0</span> / 420–500</small></label>
           </div>
         </div>
-        <div class="instagram-language-section is-control">
+        <div class="instagram-language-section is-control" id="instagramFrenchControlSection">
           <div class="instagram-language-heading"><div><strong>FRANÇAIS</strong><span>Traduction de contrôle, jamais publiée</span></div><span class="instagram-language-badge">CONTRÔLE UNIQUEMENT</span></div>
           <div class="instagram-copy-grid">
             <label><span class="instagram-copy-field-header"><span>Contrôle de la légende</span></span><textarea id="instagramCaptionFr" rows="9" placeholder="La version française de contrôle apparaîtra ici."></textarea><small><span id="instagramCaptionFrCount">0</span> caractères · non publié</small></label>

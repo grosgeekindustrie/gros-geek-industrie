@@ -8,6 +8,7 @@
   const PROMPT_SPEC_ID = 'instagram-publisher';
   const PROMPT_STATE_KEY = 'instagramPublisher';
   const PROMPT_PATH = 'prompts/instagram/instagram.md';
+  const THREADS_TEXT_MAX_LENGTH = 500;
   const SHOP_URLS = Object.freeze({
     grosgeek: 'https://grosgeekindustrie.etsy.com',
     doublex: 'https://doublexindustrie.etsy.com',
@@ -21,6 +22,22 @@
     '1:1': { label: '1:1', value: 1, className: 'ratio-square' },
     '4:5': { label: '4:5', value: 4 / 5, className: 'ratio-portrait' },
     '16:9': { label: '16:9', value: 16 / 9, className: 'ratio-landscape' },
+  });
+  const CONTENT_FIELD_IDS = Object.freeze({
+    caption: 'instagramCaption',
+    firstComment: 'instagramFirstComment',
+    threadsText: 'instagramThreadsText',
+    captionFr: 'instagramCaptionFr',
+    firstCommentFr: 'instagramFirstCommentFr',
+    threadsTextFr: 'instagramThreadsTextFr',
+  });
+  const createEmptyContentDraft = () => ({
+    caption: '',
+    firstComment: '',
+    threadsText: '',
+    captionFr: '',
+    firstCommentFr: '',
+    threadsTextFr: '',
   });
 
   let sculptorLibraryPromise = null;
@@ -58,6 +75,11 @@
     tiktokCreator: null,
     lastAgentRaw: '',
     sculptors: [],
+    contentMode: 'agent',
+    contentDrafts: {
+      agent: createEmptyContentDraft(),
+      manual: createEmptyContentDraft(),
+    },
   };
 
   const getElement = (id) => document.getElementById(id);
@@ -121,6 +143,55 @@
       }, 1400);
     } catch (error) {
       global.showToast?.('Impossible de copier ' + label.toLowerCase(), '#ff4757');
+    }
+  };
+
+  const normalizeContentDraft = (draft = {}) => ({
+    caption: String(draft?.caption || ''),
+    firstComment: String(draft?.firstComment || ''),
+    threadsText: String(draft?.threadsText || ''),
+    captionFr: String(draft?.captionFr || ''),
+    firstCommentFr: String(draft?.firstCommentFr || ''),
+    threadsTextFr: String(draft?.threadsTextFr || ''),
+  });
+
+  const readContentFields = () => Object.fromEntries(
+    Object.entries(CONTENT_FIELD_IDS).map(([key, id]) => [key, String(getElement(id)?.value || '')]),
+  );
+
+  const writeContentFields = (draft = {}) => {
+    const normalized = normalizeContentDraft(draft);
+    Object.entries(CONTENT_FIELD_IDS).forEach(([key, id]) => {
+      const field = getElement(id);
+      if (field) field.value = normalized[key];
+    });
+  };
+
+  const captureActiveContentDraft = () => {
+    state.contentDrafts[state.contentMode] = readContentFields();
+    return state.contentDrafts[state.contentMode];
+  };
+
+  const pasteInstagramField = async (fieldId, buttonId, label) => {
+    const field = getElement(fieldId);
+    const button = getElement(buttonId);
+    if (!field) return;
+    try {
+      const value = await navigator.clipboard.readText();
+      if (!value) {
+        global.showToast?.('Presse-papiers vide', '#f0b35d');
+        return;
+      }
+      field.value = value;
+      updateTextCounters();
+      saveDraft();
+      if (button) button.textContent = 'Collé ✓';
+      global.showToast?.(label + ' collé');
+      global.setTimeout(() => {
+        if (button) button.textContent = 'Coller';
+      }, 1400);
+    } catch (error) {
+      global.showToast?.('Impossible de lire le presse-papiers', '#ff4757');
     }
   };
 
@@ -388,18 +459,26 @@
   const getMediaById = (id) => state.images.find((media) => media.id === id) || null;
 
   const saveDraft = () => {
+    captureActiveContentDraft();
     const altById = Object.fromEntries(state.images.map(({ id, altText }) => [id, altText || '']));
+    const agentContent = normalizeContentDraft(state.contentDrafts.agent);
+    const manualContent = normalizeContentDraft(state.contentDrafts.manual);
     const draft = {
       shopKey: state.shopKey,
       listingId: String(getElement('instagramListingId')?.value || ''),
       title: String(getElement('instagramSourceTitle')?.value || ''),
       description: String(getElement('instagramSourceDescription')?.value || ''),
-      caption: String(getElement('instagramCaption')?.value || ''),
-      firstComment: String(getElement('instagramFirstComment')?.value || ''),
-      threadsText: String(getElement('instagramThreadsText')?.value || ''),
-      captionFr: String(getElement('instagramCaptionFr')?.value || ''),
-      firstCommentFr: String(getElement('instagramFirstCommentFr')?.value || ''),
-      threadsTextFr: String(getElement('instagramThreadsTextFr')?.value || ''),
+      // Les champs historiques restent branches sur le brouillon IA pour ne
+      // jamais remplacer une generation existante par le contenu manuel.
+      caption: agentContent.caption,
+      firstComment: agentContent.firstComment,
+      threadsText: agentContent.threadsText,
+      captionFr: agentContent.captionFr,
+      firstCommentFr: agentContent.firstCommentFr,
+      threadsTextFr: agentContent.threadsTextFr,
+      contentMode: state.contentMode,
+      agentContent,
+      manualContent,
       correction: String(getElement('instagramAgentCorrection')?.value || ''),
       sculptorName: String(getElement('instagramSculptorName')?.value || ''),
       sculptorHandle: String(getElement('instagramSculptorHandle')?.value || ''),
@@ -456,17 +535,26 @@
     const restoredCaptionFr = draft.captionFr || legacyCaption.french;
     const restoredFirstComment = draft.firstCommentFr ? draft.firstComment : legacyFirstComment.english;
     const restoredFirstCommentFr = draft.firstCommentFr || legacyFirstComment.french;
+    const legacyAgentContent = {
+      caption: restoredCaption,
+      firstComment: restoredFirstComment,
+      threadsText: draft.threadsText,
+      captionFr: restoredCaptionFr,
+      firstCommentFr: restoredFirstCommentFr,
+      threadsTextFr: draft.threadsTextFr,
+    };
+    state.contentMode = draft.contentMode === 'manual' ? 'manual' : 'agent';
+    state.contentDrafts.agent = normalizeContentDraft(
+      draft.agentContent && typeof draft.agentContent === 'object' ? draft.agentContent : legacyAgentContent,
+    );
+    state.contentDrafts.manual = normalizeContentDraft(
+      draft.manualContent && typeof draft.manualContent === 'object' ? draft.manualContent : {},
+    );
 
     const values = {
       instagramListingId: draft.listingId,
       instagramSourceTitle: draft.title,
       instagramSourceDescription: draft.description,
-      instagramCaption: restoredCaption,
-      instagramFirstComment: restoredFirstComment,
-      instagramThreadsText: draft.threadsText,
-      instagramCaptionFr: restoredCaptionFr,
-      instagramFirstCommentFr: restoredFirstCommentFr,
-      instagramThreadsTextFr: draft.threadsTextFr,
       instagramAgentCorrection: draft.correction,
       instagramSculptorName: draft.sculptorName,
       instagramSculptorHandle: draft.sculptorHandle,
@@ -475,6 +563,7 @@
       const element = getElement(id);
       if (element && value) element.value = value;
     });
+    writeContentFields(state.contentDrafts[state.contentMode]);
   };
 
   const syncChoiceButtons = (containerId, dataName, value) => {
@@ -487,6 +576,49 @@
 
   const syncShopPicker = () => syncChoiceButtons('instagramShopPicker', 'instagram-shop', state.shopKey);
   const syncModePicker = () => syncChoiceButtons('instagramModePicker', 'instagram-mode', state.mode);
+
+  const syncContentModeUi = () => {
+    const manual = state.contentMode === 'manual';
+    syncChoiceButtons('instagramContentModePicker', 'instagram-content-mode', state.contentMode);
+    getElement('instagramAgentWorkspace')?.toggleAttribute('hidden', manual);
+    getElement('instagramManualWorkspace')?.toggleAttribute('hidden', !manual);
+    getElement('instagramFrenchControlSection')?.toggleAttribute('hidden', manual);
+    const title = getElement('instagramPublishedLanguageTitle');
+    const subtitle = getElement('instagramPublishedLanguageSubtitle');
+    const badge = getElement('instagramPublishedLanguageBadge');
+    if (title) title.textContent = manual ? 'CONTENU MANUEL' : 'ANGLAIS';
+    if (subtitle) subtitle.textContent = manual
+      ? 'Brouillon sauvegardé séparément de la génération IA'
+      : 'Version publiée sur les réseaux';
+    if (badge) badge.textContent = manual ? 'SAUVEGARDE AUTO' : 'PUBLICATION';
+  };
+
+  const setContentMode = (mode) => {
+    const nextMode = mode === 'manual' ? 'manual' : 'agent';
+    if (nextMode === state.contentMode) return;
+    captureActiveContentDraft();
+    state.contentMode = nextMode;
+    writeContentFields(state.contentDrafts[nextMode]);
+    syncContentModeUi();
+    updateTextCounters();
+    saveDraft();
+    setResult(nextMode === 'manual'
+      ? 'Mode manuel actif. Le brouillon IA reste intact.'
+      : 'Génération IA restaurée. Le brouillon manuel reste enregistré.', 'success');
+  };
+
+  const clearManualContent = () => {
+    if (state.contentMode !== 'manual') return;
+    const current = readContentFields();
+    const hasContent = [current.caption, current.firstComment, current.threadsText].some((value) => value.trim());
+    if (hasContent && !global.confirm('Vider les trois champs du brouillon manuel ? La génération IA ne sera pas modifiée.')) return;
+    state.contentDrafts.manual = createEmptyContentDraft();
+    writeContentFields(state.contentDrafts.manual);
+    updateTextCounters();
+    saveDraft();
+    getElement('instagramCaption')?.focus();
+    global.showToast?.('Nouveau brouillon manuel vide');
+  };
 
   const syncRatioPicker = () => {
     const option = RATIOS[state.ratio] || RATIOS.original;
@@ -737,11 +869,28 @@
       ? state.images.length + ' image' + (state.images.length > 1 ? 's' : '') + ' · ' + RATIOS[state.ratio].label
       : (state.video ? state.video.name : 'Aucune vidéo');
     if (copySummary) copySummary.textContent = captionLength
-      ? captionLength + ' caractères · premier commentaire ' + (getElement('instagramFirstComment')?.value.trim() ? 'prêt' : 'vide')
-      : 'Rédaction manuelle pour ce premier jet';
+      ? (state.contentMode === 'manual' ? 'Manuel · ' : 'IA · ') + captionLength + ' caractères · premier commentaire ' + (getElement('instagramFirstComment')?.value.trim() ? 'prêt' : 'vide')
+      : (state.contentMode === 'manual' ? 'Brouillon manuel vide · prêt à recevoir ton texte' : 'Génération IA à lancer');
   };
 
   const countTextCharacters = (value = '') => Array.from(String(value || '')).length;
+
+  const getThreadsPublicationText = () => String(getElement('instagramThreadsText')?.value || '').trim();
+
+  const validateThreadsPublicationText = () => {
+    const text = getThreadsPublicationText();
+    const length = countTextCharacters(text);
+    if (length > THREADS_TEXT_MAX_LENGTH) {
+      return `Raccourcis le texte Threads : ${length} caractères sur ${THREADS_TEXT_MAX_LENGTH} maximum.`;
+    }
+    return '';
+  };
+
+  const reportThreadsValidationError = (message) => {
+    setResult(message, 'error');
+    global.showToast?.(message, '#ff4757');
+    getElement('instagramThreadsText')?.focus();
+  };
 
   const getReadiness = () => {
     const mediaReady = state.mode === 'carousel'
@@ -750,10 +899,10 @@
     const caption = String(getElement('instagramCaption')?.value || '').trim();
     const generationReady = Boolean(caption) && countTextCharacters(caption) <= 2100;
     return {
-      source: Boolean(state.listing),
+      source: state.contentMode === 'manual' || Boolean(state.listing),
       media: mediaReady,
       generation: generationReady,
-      review: Boolean(state.listing && mediaReady && generationReady),
+      review: Boolean((state.contentMode === 'manual' || state.listing) && mediaReady && generationReady),
     };
   };
 
@@ -1001,8 +1150,8 @@
     const runButton = getElement('instagramAgentRunBtn');
     const stopButton = getElement('instagramAgentStopBtn');
     const promptButton = getElement('instagramAgentPromptBtn');
-    if (runButton) runButton.disabled = state.agentRunning || !state.listing;
-    if (promptButton) promptButton.disabled = state.agentRunning;
+    if (runButton) runButton.disabled = state.contentMode !== 'agent' || state.agentRunning || !state.listing;
+    if (promptButton) promptButton.disabled = state.contentMode !== 'agent' || state.agentRunning;
     if (stopButton) stopButton.hidden = !state.agentRunning;
   };
 
@@ -1194,13 +1343,14 @@
     if (!title || !detail || !dot) return;
 
     let message = '';
-    if (!state.listing) message = 'Charge une fiche Etsy pour commencer.';
+    if (state.contentMode !== 'manual' && !state.listing) message = 'Charge une fiche Etsy pour commencer.';
     else if (state.mode === 'carousel' && state.images.length < 2) message = 'Un carrousel exige au moins 2 images.';
     else if (state.mode === 'carousel' && state.images.length > 10) message = 'Retire ' + (state.images.length - 10) + ' image(s) pour respecter la limite de 10.';
     else if (state.mode === 'reel' && !state.video) message = 'Ajoute la vidéo du Reel.';
     else if (state.video?.size > 1024 * 1024 * 1024) message = 'La vidéo dépasse la limite de 1 Go.';
     else if (!String(getElement('instagramCaption')?.value || '').trim()) message = 'La légende est encore vide.';
     else if (countTextCharacters(getElement('instagramCaption')?.value || '') > 2100) message = 'Raccourcis la légende à 2 100 caractères maximum.';
+    else if (validateThreadsPublicationText()) message = validateThreadsPublicationText();
 
     const ready = !message;
     title.textContent = ready ? 'Brouillon prêt pour le prochain jet' : 'Préparation incomplète';
@@ -1741,6 +1891,12 @@
   const publishThreads = async () => {
     if (state.publishing) return;
 
+    const validationError = validateThreadsPublicationText();
+    if (validationError) {
+      reportThreadsValidationError(validationError);
+      return;
+    }
+
     if (!global.confirm('Publier maintenant ' + (state.mode === 'reel' ? 'cette vidéo' : 'ce carrousel') + ' sur Threads ? Cette action crée une vraie publication.')) return;
 
     state.publishing = true;
@@ -1755,7 +1911,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mediaIds: prepared.mediaIds,
-          text: String(getElement('instagramThreadsText')?.value || '').trim(),
+          text: getThreadsPublicationText(),
           mode: state.mode,
         }),
       });
@@ -1817,6 +1973,12 @@
       await loadListing();
     }
 
+    const threadsValidationError = validateThreadsPublicationText();
+    if (threadsValidationError) {
+      reportThreadsValidationError(threadsValidationError);
+      return;
+    }
+
     const mediaLabel = state.mode === 'reel' ? 'ce Reel' : 'ce carrousel';
     if (!global.confirm(
       'Publier maintenant ' + mediaLabel + ' sur Instagram, Threads et Facebook ? ' +
@@ -1873,7 +2035,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             mediaIds: prepared.mediaIds,
-            text: String(getElement('instagramThreadsText')?.value || '').trim(),
+            text: getThreadsPublicationText(),
             mode: state.mode,
           }),
         });
@@ -2333,7 +2495,15 @@
       delete getCustomPromptState()[PROMPT_STATE_KEY];
       global.openPromptLightbox?.(PROMPT_SPEC_ID);
     });
+    getElement('instagramContentModePicker')?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-instagram-content-mode]');
+      if (button) setContentMode(button.dataset.instagramContentMode);
+    });
+    getElement('instagramManualClearBtn')?.addEventListener('click', clearManualContent);
     getElement('instagramAgentRunBtn')?.addEventListener('click', runInstagramAgent);
+    getElement('instagramPasteCaptionBtn')?.addEventListener('click', () => pasteInstagramField('instagramCaption', 'instagramPasteCaptionBtn', 'Légende'));
+    getElement('instagramPasteCommentBtn')?.addEventListener('click', () => pasteInstagramField('instagramFirstComment', 'instagramPasteCommentBtn', 'Premier commentaire'));
+    getElement('instagramPasteThreadsBtn')?.addEventListener('click', () => pasteInstagramField('instagramThreadsText', 'instagramPasteThreadsBtn', 'Texte Threads'));
     getElement('instagramCopyCaptionBtn')?.addEventListener('click', () => copyInstagramField('instagramCaption', 'instagramCopyCaptionBtn', 'Légende'));
     getElement('instagramCopyCommentBtn')?.addEventListener('click', () => copyInstagramField('instagramFirstComment', 'instagramCopyCommentBtn', 'Premier commentaire'));
     getElement('instagramCopyThreadsBtn')?.addEventListener('click', () => copyInstagramField('instagramThreadsText', 'instagramCopyThreadsBtn', 'Texte Threads'));
@@ -2518,6 +2688,7 @@
     .catch(() => syncSculptorFields('', { preserveHandle: true }));
   syncShopPicker();
   syncModePicker();
+  syncContentModeUi();
   syncRatioPicker();
   renderMedia();
   updateTextCounters();

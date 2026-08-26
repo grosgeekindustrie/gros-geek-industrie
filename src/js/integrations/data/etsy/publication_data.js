@@ -5,6 +5,10 @@
   const DEFAULT_WHO_MADE = 'i_did';
   const DEFAULT_WHEN_MADE = 'made_to_order';
   const DEFAULT_IS_SUPPLY = false;
+  const ETSY_SCALE_PROPERTY_ID = 513;
+  const ETSY_SCALE_PROPERTY_NAME = 'Please choose your scale';
+  const ETSY_VARIATION_QUANTITY = 2;
+  const ETSY_SKU_MAX_LENGTH = 32;
   const CREATE_PAYLOAD_EXCLUDED_KEYS = new Set([
     'listing_id',
     'shop_id',
@@ -353,6 +357,139 @@
     };
   }
 
+  function normalizeSkuSegment(value = '') {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/_+/g, '_');
+  }
+
+  function getFirstNameToken(value = '') {
+    return String(value || '').trim().split(/\s+/)[0] || '';
+  }
+
+  function getFormFieldValue(prefix, suffix) {
+    return String(document.getElementById(`${prefix}-${suffix}`)?.value || '').trim();
+  }
+
+  function getSkuContext(prefix) {
+    const sculptor = getFormFieldValue(prefix, 'fSculpteur');
+    const character = getFormFieldValue(prefix, 'fNomCourt') || getFormFieldValue(prefix, 'fNom');
+    const sculptorPrefix = normalizeSkuSegment(getFirstNameToken(sculptor)).slice(0, 4) || 'scpt';
+    const characterToken = normalizeSkuSegment(getFirstNameToken(character)) || 'figure';
+    return { sculptorPrefix, characterToken };
+  }
+
+  function buildScaleSku(prefix, scaleLabel) {
+    const { sculptorPrefix, characterToken } = getSkuContext(prefix);
+    const scaleSegment = (normalizeSkuSegment(scaleLabel) || 'scale').slice(0, 12);
+    const fixedLength = sculptorPrefix.length + scaleSegment.length + 2;
+    const availableCharacterLength = Math.max(1, ETSY_SKU_MAX_LENGTH - fixedLength);
+    const normalizedCharacter = characterToken.slice(0, availableCharacterLength).replace(/_+$/g, '') || 'x';
+    return `${sculptorPrefix}_${normalizedCharacter}_${scaleSegment}`.slice(0, ETSY_SKU_MAX_LENGTH);
+  }
+
+  function parseFirstDimension(value = '') {
+    const match = String(value || '').match(/\d+(?:[.,]\d+)?/);
+    if (!match) return null;
+    const height = Number(match[0].replace(',', '.'));
+    return Number.isFinite(height) && height > 0 ? height : null;
+  }
+
+  function formatDimensionValue(value) {
+    if (!Number.isFinite(Number(value))) return '';
+    return Number.isInteger(Number(value)) ? String(Number(value)) : String(Number(value)).replace('.', ',');
+  }
+
+  function resolveScalePropertyId(data) {
+    const products = Array.isArray(data?.inventory?.products) ? data.inventory.products : [];
+    for (const product of products) {
+      const propertyValues = Array.isArray(product?.property_values) ? product.property_values : [];
+      const scaleProperty = propertyValues.find((entry) => (
+        String(entry?.property_name || '').trim().toLowerCase() === ETSY_SCALE_PROPERTY_NAME.toLowerCase()
+      ));
+      const propertyId = Number(scaleProperty?.property_id || 0) || 0;
+      if (propertyId) return propertyId;
+    }
+    return ETSY_SCALE_PROPERTY_ID;
+  }
+
+  function getPublicationReadinessStateId(data) {
+    const listingReadinessStateId = Number(data?.readiness_state_id || 0) || 0;
+    if (listingReadinessStateId) return listingReadinessStateId;
+
+    const products = Array.isArray(data?.inventory?.products) ? data.inventory.products : [];
+    for (const product of products) {
+      const offerings = Array.isArray(product?.offerings) ? product.offerings : [];
+      for (const offering of offerings) {
+        const readinessStateId = Number(offering?.readiness_state_id || 0) || 0;
+        if (readinessStateId) return readinessStateId;
+      }
+    }
+    return 0;
+  }
+
+  function buildScalePublicationInventory(state, data) {
+    const prefix = String(state?.prefix || '').trim();
+    const pricingRows = global.PipelineUIPricing?.getPublicationRows?.(prefix) || [];
+    const propertyId = resolveScalePropertyId(data);
+    const readinessStateId = getPublicationReadinessStateId(data);
+    const errors = [];
+    const products = [];
+    const seenSkus = new Set();
+
+    if (!pricingRows.length) errors.push('aucune echelle selectionnee pour la variation Etsy');
+
+    pricingRows.forEach((row) => {
+      const scaleLabel = String(row?.label || '').trim();
+      const height = parseFirstDimension(row?.dimension);
+      const priceFr = Number(row?.priceFr);
+      const sku = buildScaleSku(prefix, scaleLabel);
+
+      if (!scaleLabel) errors.push('libelle d echelle manquant');
+      if (!height) errors.push(`hauteur manquante pour ${scaleLabel || 'une echelle'}`);
+      if (!Number.isFinite(priceFr) || priceFr <= 0) errors.push(`prix FR manquant pour ${scaleLabel || 'une echelle'}`);
+      if (seenSkus.has(sku)) errors.push(`SKU duplique : ${sku}`);
+      seenSkus.add(sku);
+
+      if (!scaleLabel || !height || !Number.isFinite(priceFr) || priceFr <= 0) return;
+
+      const offering = {
+        price: Math.round((priceFr + Number.EPSILON) * 100) / 100,
+        quantity: ETSY_VARIATION_QUANTITY,
+        is_enabled: true,
+      };
+      if (readinessStateId) offering.readiness_state_id = readinessStateId;
+
+      products.push({
+        sku,
+        property_values: [{
+          property_id: propertyId,
+          property_name: ETSY_SCALE_PROPERTY_NAME,
+          values: [`${scaleLabel} => ${formatDimensionValue(height)}mm`],
+        }],
+        offerings: [offering],
+      });
+    });
+
+    return {
+      inventory: products.length ? {
+        products,
+        price_on_property: [propertyId],
+        sku_on_property: [propertyId],
+        quantity_on_property: [],
+        readiness_state_on_property: [],
+      } : null,
+      errors: [...new Set(errors)],
+      minimumPrice: products.length
+        ? Math.min(...products.map((product) => Number(product.offerings[0].price)))
+        : null,
+    };
+  }
+
   function getListingPropertyResults(state) {
     const results = state?.listingPropertiesPayload?.payload?.data?.results;
     return Array.isArray(results) ? results.filter((entry) => entry && typeof entry === 'object') : [];
@@ -377,9 +514,6 @@
       const requestedValue = requestedDimensions[dimensionKey];
       if (!requestedValue) return;
 
-      const valueIds = Array.isArray(entry.value_ids)
-        ? entry.value_ids.map((value) => Number(value || 0)).filter((value) => value > 0)
-        : [];
       const propertyId = Number(entry.property_id || 0) || 0;
       const scaleId = Number(entry.scale_id || 0) || 0;
       if (!propertyId) return;
@@ -388,7 +522,8 @@
         property_id: propertyId,
         property_name: String(entry.property_name || entry.name || '').trim(),
         scale_id: scaleId || null,
-        value_ids: valueIds,
+        // Une mesure continue doit laisser Etsy creer son nouvel identifiant de valeur.
+        value_ids: [],
         values: [requestedValue],
       });
     });
@@ -421,12 +556,13 @@
     const hasVideos = Array.isArray(data.videos) && data.videos.length > 0;
     const originDimensionFallback = getOriginScaleDimensionFallback(state);
 
+    const scaleInventoryResult = buildScalePublicationInventory(state, data);
     const createPayload = {
       ...extractCreatableListingPayload(data),
-      quantity: getPublicationBaseQuantity(data),
+      quantity: ETSY_VARIATION_QUANTITY,
       title: String(data.title || '').trim(),
       description: String(data.description || ''),
-      price: getPublicationBasePrice(data),
+      price: scaleInventoryResult.minimumPrice || getPublicationBasePrice(data),
       who_made: String(data.who_made || '').trim() || DEFAULT_WHO_MADE,
       when_made: String(data.when_made || '').trim() || DEFAULT_WHEN_MADE,
       taxonomy_id: Number(data.taxonomy_id || 0) || 0,
@@ -436,19 +572,22 @@
       type: String(data.type || 'physical').trim() || 'physical',
     };
 
-    const heightValue = attributesDraft?.dimensions?.height !== undefined && attributesDraft?.dimensions?.height !== null && String(attributesDraft.dimensions.height).trim() !== ''
-      ? Number(attributesDraft.dimensions.height)
-      : (data.item_height ?? originDimensionFallback?.height ?? null);
-    const widthValue = attributesDraft?.dimensions?.width !== undefined && attributesDraft?.dimensions?.width !== null && String(attributesDraft.dimensions.width).trim() !== ''
-      ? Number(attributesDraft.dimensions.width)
-      : (data.item_width ?? originDimensionFallback?.width ?? null);
-    const depthValue = attributesDraft?.dimensions?.depth !== undefined && attributesDraft?.dimensions?.depth !== null && String(attributesDraft.dimensions.depth).trim() !== ''
-      ? Number(attributesDraft.dimensions.depth)
-      : (data.item_length ?? originDimensionFallback?.depth ?? null);
+    const heightValue = originDimensionFallback?.height
+      ?? (attributesDraft?.dimensions?.height !== undefined && attributesDraft?.dimensions?.height !== null && String(attributesDraft.dimensions.height).trim() !== ''
+        ? Number(attributesDraft.dimensions.height)
+        : (data.item_height ?? null));
+    const widthValue = originDimensionFallback?.width
+      ?? (attributesDraft?.dimensions?.width !== undefined && attributesDraft?.dimensions?.width !== null && String(attributesDraft.dimensions.width).trim() !== ''
+        ? Number(attributesDraft.dimensions.width)
+        : (data.item_width ?? null));
+    const depthValue = originDimensionFallback?.depth
+      ?? (attributesDraft?.dimensions?.depth !== undefined && attributesDraft?.dimensions?.depth !== null && String(attributesDraft.dimensions.depth).trim() !== ''
+        ? Number(attributesDraft.dimensions.depth)
+        : (data.item_length ?? null));
     const dimensionUnitValue = String(
-      attributesDraft?.dimensions?.unit
+      originDimensionFallback?.unit
+      || attributesDraft?.dimensions?.unit
       || data.item_dimensions_unit
-      || originDimensionFallback?.unit
       || ''
     ).trim() || null;
 
@@ -469,11 +608,21 @@
     if (updatePayload.item_length) createPayload.item_length = updatePayload.item_length;
     if (updatePayload.item_dimensions_unit) createPayload.item_dimensions_unit = updatePayload.item_dimensions_unit;
 
-    const inventory = buildPublicationInventoryPayload(data);
+    const inventory = scaleInventoryResult.inventory;
     const imagePlan = buildPublicationImagesPlan(state);
     const images = imagePlan.images;
     const videos = imagePlan.videos;
-    const dimensionProperties = buildPublicationDimensionProperties(state, attributesDraft);
+    const publicationAttributesDraft = {
+      ...(attributesDraft || {}),
+      dimensions: {
+        ...(attributesDraft?.dimensions || {}),
+        height: heightValue,
+        width: widthValue,
+        depth: depthValue,
+        unit: dimensionUnitValue,
+      },
+    };
+    const dimensionProperties = buildPublicationDimensionProperties(state, publicationAttributesDraft);
     const validationErrors = [];
     const oversizedAltImageIndexes = images
       .map((image, index) => (String(image?.alt_text || '').length > 500 ? index + 1 : 0))
@@ -494,6 +643,7 @@
     if (inventory && !inventory.products.length) {
       validationErrors.push('inventory.products vide');
     }
+    validationErrors.push(...scaleInventoryResult.errors);
     if (oversizedAltImageIndexes.length) {
       validationErrors.push(`ALT Etsy superieure a 500 caracteres sur image(s) ${oversizedAltImageIndexes.join(' ')}`);
     }

@@ -191,6 +191,30 @@
     }
   }
 
+  function refreshPublicationSnapshot(prefix = '') {
+    const normalizedPrefix = String(prefix || '').trim();
+    const runtime = global.PipelineUIEtsyRuntime || {};
+    const state = runtime.getWorkspaceState?.(normalizedPrefix);
+    if (!state || state.publicationSubmitting) return;
+
+    if (String(state.publicationError || '').startsWith('Publication impossible:')) {
+      const snapshot = buildPublicationPayloadSnapshot(state);
+      state.publicationError = snapshot.validationErrors.length
+        ? `Publication impossible: ${snapshot.validationErrors.join(', ')}`
+        : '';
+    }
+
+    runtime.workspaceRenderPublicationStep?.(normalizedPrefix);
+  }
+
+  document.addEventListener('pipeline:pricing-changed', (event) => {
+    refreshPublicationSnapshot(event.detail?.prefix);
+  });
+
+  document.addEventListener('pipeline:scales-changed', (event) => {
+    refreshPublicationSnapshot(event.detail?.prefix);
+  });
+
   global.PipelineUIEtsyRuntime = {
     ...EtsyRuntime,
     buildPublicationPayloadSnapshot,
@@ -198,6 +222,7 @@
     getPublicationTargetShopKey,
     setPublicationMode,
     publishDraftListing,
+    refreshPublicationSnapshot,
   };
   global.PipelineUI.integrations = global.PipelineUI.integrations || {};
   global.PipelineUI.integrations.runtime = global.PipelineUIEtsyRuntime;

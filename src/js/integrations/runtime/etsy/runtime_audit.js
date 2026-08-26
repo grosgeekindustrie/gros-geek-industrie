@@ -334,7 +334,15 @@
     getRuntime().renderAuditPanel?.(prefix);
   }
 
-  async function copyAuditJson(prefix) {
+  function buildAuditExportFilename(state) {
+    const shopName = String(state?.shopKey || '').trim() === 'doublex'
+      ? 'doublexindustrie'
+      : 'gros-geek-industrie';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `audit-etsy-${shopName}-${timestamp}.json`;
+  }
+
+  function copyAuditJson(prefix) {
     const state = getRuntime().getAuditState?.(prefix);
     if (!state) {
       global.showToast?.('Aucune donnee d audit a extraire', '#ff4757');
@@ -368,8 +376,18 @@
     };
 
     try {
-      await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2));
-      global.showToast?.('JSON audit copie');
+      const json = JSON.stringify(exportPayload, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = buildAuditExportFilename(state);
+      link.hidden = true;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      global.showToast?.('Fichier JSON audit téléchargé');
     } catch (error) {
       global.showToast?.(`Export JSON impossible : ${error?.message || 'erreur inconnue'}`, '#ff4757');
     }

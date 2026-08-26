@@ -311,7 +311,7 @@
 
         <div class="etsy-audit-pagination">
           <div class="etsy-audit-pagination-copy">
-            <button class="etsy-audit-export-btn" type="button" data-js="etsy-audit-copy-json"${state.loading ? ' disabled' : ''}>Extraire JSON</button>
+            <button class="etsy-audit-export-btn" type="button" data-js="etsy-audit-copy-json"${state.loading ? ' disabled' : ''}>Télécharger JSON</button>
             <span class="etsy-audit-pagination-copy-text">
               ${paged.totalItems ? `Affichage ${paged.startIndex + 1}-${Math.min(paged.startIndex + paged.pageSize, paged.totalItems)} sur ${paged.totalItems}` : 'Aucun resultat'}
             </span>

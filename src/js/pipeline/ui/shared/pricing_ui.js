@@ -135,6 +135,7 @@
             <span>Prix conseillé</span>
             <strong data-cost-total>0,00 €</strong>
             <p data-cost-formula>Base : coût résine × variable de support × multiplicateur final. Taxe appliquée sur le total, malus inclus.</p>
+            <button class="btn btn-accent" type="button" data-pricing-transfer-origin disabled>Transférer vers l’échelle d’origine</button>
             <dl class="pricing-breakdown">
               <div><dt>Résine × support</dt><dd data-cost-support>0,00 €</dd></div>
               <div><dt>Base avant taxe</dt><dd data-cost-base>0,00 €</dd></div>
@@ -273,6 +274,9 @@
   const persist = (prefix) => {
     captureRows(prefix);
     global.saveFormState?.();
+    document.dispatchEvent(new CustomEvent('pipeline:pricing-changed', {
+      detail: { prefix },
+    }));
   };
 
   const bindPricingRow = (row, prefix) => {
@@ -324,7 +328,7 @@
     empty.hidden = entries.length > 0;
     body.innerHTML = entries.map((entry) => {
       const rowState = state.rows[entry.key] || {
-        priceFr: Number(state.calculator.total) > 0 ? Number(state.calculator.total).toFixed(2) : '',
+        priceFr: '',
         compensation: '0',
       };
       return `
@@ -489,20 +493,21 @@
     }
   };
 
-  const applyCalculatedPriceToAllScales = (prefix, total) => {
+  const applyCalculatedPriceToOriginScale = (prefix, total) => {
     const state = getState(prefix);
     captureRows(prefix);
-    getSelectedScales(prefix).forEach((entry) => {
-      state.rows[entry.key] = {
-        ...(state.rows[entry.key] || {}),
-        priceFr: Number(total).toFixed(2),
-        compensation: state.rows[entry.key]?.compensation || '0',
-      };
-    });
+    const origin = getSelectedScales(prefix).find((entry) => entry.isOrigin);
+    if (!origin || !(Number(total) > 0)) return false;
+    state.rows[origin.key] = {
+      ...(state.rows[origin.key] || {}),
+      priceFr: Number(total).toFixed(2),
+      compensation: state.rows[origin.key]?.compensation || '0',
+    };
     renderScaleRows(prefix, { captureExisting: false });
+    return true;
   };
 
-  const calculateCost = (prefix, { focusInvalid = false, syncScalePrices = false } = {}) => {
+  const calculateCost = (prefix, { focusInvalid = false } = {}) => {
     const root = document.querySelector(`[data-pricing-prefix="${prefix}"]`);
     if (!root) return;
     const state = getState(prefix);
@@ -540,7 +545,6 @@
     const subtotal = base + penalty;
     const total = subtotal / taxDivider;
     state.calculator.total = total;
-    if (syncScalePrices) applyCalculatedPriceToAllScales(prefix, total);
     updateCostOutput(prefix, { cost, support, finalMultiplier, taxDivider, supportBase, base, extra, penalty, subtotal, total });
   };
 
@@ -568,6 +572,8 @@
       set('[data-cost-penalty]', euro(result.penalty));
       set('[data-cost-formula]', `(${euro(result.cost)} × ${result.support} × ${result.finalMultiplier} + ${result.extra} × 5 €) ÷ ${result.taxDivider} = ${euro(result.total)}`);
     }
+    const transferButton = root.querySelector('[data-pricing-transfer-origin]');
+    if (transferButton) transferButton.disabled = !result || !(result.total > 0);
     updateRecommendationUi(prefix);
     updateReferenceHighlight(prefix);
   };
@@ -579,7 +585,7 @@
     root.querySelectorAll('[data-calc-field]').forEach((field) => {
       field.value = calculator[field.dataset.calcField] ?? '';
     });
-    if (calculator.resinCost !== '') calculateCost(prefix, { syncScalePrices: false });
+    if (calculator.resinCost !== '') calculateCost(prefix);
     else updateCostOutput(prefix, null);
   };
 
@@ -590,18 +596,24 @@
     const form = root.querySelector('[data-pricing-calculator]');
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      calculateCost(prefix, { focusInvalid: true, syncScalePrices: true });
+      calculateCost(prefix, { focusInvalid: true });
       persist(prefix);
     });
     form.querySelectorAll('[data-calc-field]').forEach((field) => {
       field.addEventListener('input', () => {
-        calculateCost(prefix, { syncScalePrices: true });
+        calculateCost(prefix);
         persist(prefix);
       });
       field.addEventListener('change', () => {
-        calculateCost(prefix, { syncScalePrices: true });
+        calculateCost(prefix);
         persist(prefix);
       });
+    });
+    root.querySelector('[data-pricing-transfer-origin]').addEventListener('click', () => {
+      const total = Number(getState(prefix).calculator.total);
+      if (!applyCalculatedPriceToOriginScale(prefix, total)) return;
+      persist(prefix);
+      showCopied(`${euro(total)} transféré vers l’échelle d’origine`);
     });
     root.querySelector('[data-pricing-reset]').addEventListener('click', () => {
       getState(prefix).calculator = createDefaultCalculator();
@@ -644,6 +656,23 @@
     return JSON.parse(JSON.stringify(state));
   };
 
+  const getPublicationRows = (prefix) => {
+    captureRows(prefix);
+    const state = getState(prefix);
+
+    return getSelectedScales(prefix).map((entry) => {
+      const rowState = state.rows[entry.key] || {};
+      const priceFr = readNumber(rowState.priceFr);
+      const compensation = readNumber(rowState.compensation);
+
+      return {
+        ...entry,
+        priceFr: Number.isFinite(priceFr) && priceFr > 0 ? priceFr : null,
+        compensation: Number.isFinite(compensation) && compensation >= 0 ? compensation : 0,
+      };
+    });
+  };
+
   const restore = (prefix, savedState) => {
     initializePrefix(prefix);
     if (savedState && typeof savedState === 'object') {
@@ -665,6 +694,7 @@
     renderScaleRows,
     serialize,
     restore,
+    getPublicationRows,
     suggestedUsdFromEuro,
   };
   global.PipelineUI.pricing = global.PipelineUIPricing;

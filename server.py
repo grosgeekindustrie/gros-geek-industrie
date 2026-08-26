@@ -75,6 +75,7 @@ TIKTOK_UPLOAD_CHUNK_BYTES = 10_000_000
 TIKTOK_MAX_SINGLE_CHUNK_BYTES = 64_000_000
 TIKTOK_VIDEO_MAX_BYTES = 4 * 1024 * 1024 * 1024
 TIKTOK_TOKEN_LOCK = Lock()
+THREADS_TEXT_MAX_LENGTH = 500
 ETSY_OAUTH_TOKEN_LOCK = Lock()
 ETSY_MEDIA_CACHE_DIR = ROOT / '.etsy_media_cache'
 ETSY_TAXONOMY_CACHE_TTL_SECONDS = 1800
@@ -1113,6 +1114,12 @@ def extract_instagram_error(payload: dict, fallback: str) -> str:
     error = payload.get('error') if isinstance(payload, dict) else None
     if isinstance(error, dict):
         message = str(error.get('message') or '').strip()
+        code = error.get('code')
+        if code in {4, 17, 32, 613} or 'request limit reached' in message.lower():
+            return (
+                'Quota temporaire Meta atteint. N’enchaîne pas les tentatives : '
+                'attends que la limite redescende avant de republier.'
+            )
         if message:
             return message
     return fallback
@@ -1199,18 +1206,22 @@ def get_instagram_media_item(media_id: str) -> dict:
     )
 
 
-def wait_for_instagram_container(container_id: str, attempts: int = 6, delay_seconds: float = 2.0):
+def wait_for_instagram_container(container_id: str, attempts: int = 5, delay_seconds: float = 60.0):
+    """Suivre le rythme Meta recommandé : un contrôle/minute, cinq au maximum."""
+    last_status = ''
     for attempt in range(attempts):
         payload = perform_instagram_request(f'{container_id}?fields=status_code,status')
         status_code = str(payload.get('status_code') or '').strip().upper()
+        status = str(payload.get('status') or '').strip()
+        last_status = status or status_code
         if status_code == 'FINISHED':
             return
         if status_code in {'ERROR', 'EXPIRED'}:
-            status = str(payload.get('status') or status_code).strip()
-            raise ValueError(f'Conteneur Instagram non publiable : {status}')
+            raise ValueError(f'Conteneur Instagram non publiable : {last_status}')
         if attempt < attempts - 1:
             time.sleep(delay_seconds)
-    raise ValueError('Le traitement de l’image Instagram a dépassé le délai prévu')
+    suffix = f' (dernier statut : {last_status})' if last_status else ''
+    raise ValueError(f'Le traitement du média Instagram a dépassé cinq minutes{suffix}')
 
 
 def clear_instagram_media_cache():
@@ -1898,6 +1909,8 @@ def encode_etsy_form_items(form_data: dict) -> list[tuple[str, str]]:
         if isinstance(value, (list, tuple)):
             normalized_list = [str(item).strip() for item in value if str(item).strip()]
             if not normalized_list:
+                if key == 'value_ids':
+                    encoded_items.append((key, ''))
                 continue
             encoded_items.append((key, ','.join(normalized_list)))
             continue
@@ -2596,7 +2609,7 @@ def build_listing_property_payload(property_entry: dict) -> dict:
     ]
     scale_id = int(property_entry.get('scale_id') or 0) or 0
 
-    if value_ids:
+    if 'value_ids' in property_entry:
         payload['value_ids'] = value_ids
     if values:
         payload['values'] = values
@@ -4243,6 +4256,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     raise ValueError('Aucun média préparé pour Threads')
                 if len(media_ids) > 20:
                     raise ValueError('Threads accepte 20 médias maximum dans un carrousel')
+                if len(text) > THREADS_TEXT_MAX_LENGTH:
+                    raise ValueError(
+                        f'Le texte Threads contient {len(text)} caractères ; '
+                        f'{THREADS_TEXT_MAX_LENGTH} maximum sont autorisés'
+                    )
 
                 stage = 'vérification des médias locaux'
                 media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
@@ -4847,7 +4865,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                 if not container_id:
                     raise ValueError('Instagram n’a pas retourné d’identifiant de conteneur')
-                wait_for_instagram_container(container_id, attempts=90 if mode == 'reel' else 6)
+                wait_for_instagram_container(container_id)
                 publication = perform_instagram_request(
                     f'{profile["id"]}/media_publish',
                     method='POST',
@@ -5883,6 +5901,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 class InstagramMediaHandler(http.server.BaseHTTPRequestHandler):
+    @staticmethod
+    def parse_range_header(range_header: str, size: int) -> tuple[int, int] | None:
+        """Lire une plage HTTP simple, suffisante pour les fetchers vidéo Meta."""
+        value = str(range_header or '').strip()
+        if not value:
+            return None
+        match = re.fullmatch(r'bytes=(\d*)-(\d*)', value, flags=re.IGNORECASE)
+        if not match or not (match.group(1) or match.group(2)):
+            raise ValueError('Plage HTTP invalide')
+
+        start_text, end_text = match.groups()
+        if start_text:
+            start = int(start_text)
+            end = int(end_text) if end_text else size - 1
+        else:
+            suffix_length = int(end_text)
+            if suffix_length <= 0:
+                raise ValueError('Suffixe HTTP invalide')
+            start = max(0, size - suffix_length)
+            end = size - 1
+
+        if start >= size or start < 0 or end < start:
+            raise ValueError('Plage HTTP hors fichier')
+        return start, min(end, size - 1)
+
+    @staticmethod
+    def copy_range(source, destination, byte_count: int):
+        """Copier uniquement la plage annoncée, sans repartir jusqu’à la fin du fichier."""
+        remaining = byte_count
+        while remaining > 0:
+            chunk = source.read(min(1024 * 1024, remaining))
+            if not chunk:
+                break
+            destination.write(chunk)
+            remaining -= len(chunk)
+
     def send_media(self, include_body: bool):
         path = urllib.parse.unquote(self.path.split('?', 1)[0])
         if not path.startswith('/media/'):
@@ -5897,15 +5951,35 @@ class InstagramMediaHandler(http.server.BaseHTTPRequestHandler):
 
         size = media_path.stat().st_size
         content_type = {'.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.mov': 'video/quicktime'}[media_path.suffix]
-        self.send_response(200)
+        try:
+            byte_range = self.parse_range_header(self.headers.get('Range'), size)
+        except ValueError:
+            self.send_response(416)
+            self.send_header('Content-Range', f'bytes */{size}')
+            self.send_header('Accept-Ranges', 'bytes')
+            self.end_headers()
+            return
+
+        start, end = byte_range or (0, size - 1)
+        content_length = end - start + 1
+        self.send_response(206 if byte_range else 200)
         self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(size))
+        self.send_header('Content-Length', str(content_length))
+        self.send_header('Accept-Ranges', 'bytes')
+        if byte_range:
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         if include_body:
-            with media_path.open('rb') as source:
-                shutil.copyfileobj(source, self.wfile)
+            try:
+                with media_path.open('rb') as source:
+                    source.seek(start)
+                    self.copy_range(source, self.wfile, content_length)
+            except (BrokenPipeError, ConnectionResetError):
+                # Les fetchers vidéo ouvrent parfois plusieurs plages puis
+                # abandonnent celles devenues inutiles. Ce n’est pas une panne serveur.
+                return
 
     def do_GET(self):
         self.send_media(include_body=True)

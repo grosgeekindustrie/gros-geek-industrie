@@ -77,6 +77,7 @@
   const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
   const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
   const COST_CALCULATOR_HEADER_CONTEXT = 'Outils - Calculateur de cout figurine';
+  const DESIGN_SYSTEM_HEADER_CONTEXT = 'Design System - Laboratoire de composants';
   const APP_ROUTE_HASHES = Object.freeze({
     home: '#home',
     tabletop: '#tabletop',
@@ -84,6 +85,7 @@
     pinterest: '#pinterest',
     instagram: '#instagram',
     'cost-calculator': '#cost-calculator',
+    'design-system': '#design-system',
   });
   const APP_PAGE_TITLES = Object.freeze({
     home: 'Gros Geek Industrie · Pipeline',
@@ -92,6 +94,7 @@
     pinterest: 'Gros Geek Industrie · Pinterest',
     instagram: 'Gros Geek Industrie · Instagram',
     'cost-calculator': 'Gros Geek Industrie · Calculateur de coûts',
+    'design-system': 'Gros Geek Industrie · Design System',
   });
   const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
   const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
@@ -294,6 +297,9 @@
     'open-pinterest': () => openAppRoute('pinterest'),
     'open-instagram-test': () => openAppRoute('instagram'),
     'open-cost-calculator': () => openAppRoute('cost-calculator'),
+    'open-design-system': () => openAppRoute('design-system'),
+    'open-design-dialog': () => document.getElementById('designSystemDialog')?.showModal?.(),
+    'preview-design-toast': () => showToast('Composant prêt à être validé', getActiveShopKey() === 'doublex' ? '#f2a3c7' : '#e8c547'),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
@@ -548,6 +554,9 @@
     } else if (normalizedRoute === 'cost-calculator') {
       showView('cost-calculator');
       global.scrollTo({ top: 0, behavior: 'instant' });
+    } else if (normalizedRoute === 'design-system') {
+      showView('design-system');
+      global.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     document.title = APP_PAGE_TITLES[normalizedRoute] || APP_PAGE_TITLES.home;
@@ -586,6 +595,9 @@
     } else if (viewName === 'cost-calculator') {
       ctx.textContent = COST_CALCULATOR_HEADER_CONTEXT;
       ctx.classList.add('mode-calculator');
+    } else if (viewName === 'design-system') {
+      ctx.textContent = DESIGN_SYSTEM_HEADER_CONTEXT;
+      ctx.classList.add('mode-design-system');
     }
   }
 

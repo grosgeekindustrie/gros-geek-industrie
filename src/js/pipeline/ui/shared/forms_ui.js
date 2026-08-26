@@ -667,18 +667,18 @@
     getElementById(`${prefix}-fBuzzNote`)?.classList.toggle('visible', checked);
   }
 
-  function toggleLicense() {
+  function toggleLicense({ shouldSave = true } = {}) {
     const checked = isElementChecked('col-fLicense');
     const label = getElementById('col-licenseLabel');
     if (label) {
       label.textContent = checked ? LICENSE_LABELS.checked : LICENSE_LABELS.unchecked;
     }
-    saveFormState();
+    if (shouldSave) saveFormState();
   }
 
-  function toggleBuzzCollection() {
+  function toggleBuzzCollection({ shouldSave = true } = {}) {
     getElementById('col-fBuzzCollectionNote')?.classList.toggle('visible', isElementChecked('col-fBuzzCollection'));
-    saveFormState();
+    if (shouldSave) saveFormState();
   }
 
   async function fetchPersonnage() {
@@ -902,7 +902,7 @@
           const licenseEl = getElementById('col-fLicense');
           if (licenseEl) {
             licenseEl.checked = data._license;
-            toggleLicense();
+            toggleLicense({ shouldSave: false });
           }
         }
 
@@ -949,7 +949,7 @@
           const buzzEl = getElementById('col-fBuzzCollection');
           if (buzzEl) {
             buzzEl.checked = data._buzz;
-            toggleBuzzCollection();
+            toggleBuzzCollection({ shouldSave: false });
           }
         }
 
