@@ -25,6 +25,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/data/form_fields_data.js',
     'pipeline/data/stepper_steps_data.js',
     'pipeline/data/echelles_data.js',
+    'pipeline/data/listing_relaunch_data.js',
     'pipeline/data/form_catalogs_data.js',
     'pipeline/data/description_templates_data.js',
     'pipeline/data/description_templates_new_languages_data.js',

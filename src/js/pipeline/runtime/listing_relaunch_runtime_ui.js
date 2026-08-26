@@ -2,6 +2,7 @@
 
 (function initPipelineUIListingRelaunchRuntime(global) {
   global.PipelineUI = global.PipelineUI || {};
+  const RelaunchData = global.PipelineUIListingRelaunchData || {};
 
   const PIPELINE_PREFIXES = Object.freeze(['tt', 'col']);
   const DEFAULT_STATUS = "En attente d'une fiche Etsy source et d'une selection media.";
@@ -91,6 +92,11 @@
       throw new Error("Aucune image exploitable dans le workspace Etsy.");
     }
 
+    const data = workspace.mediaPayload?.data || {};
+    const propertyDimensions = etsyData.inferDimensionOverridesFromProperties?.(
+      workspace.listingPropertiesPayload
+    ) || {};
+
     return {
       listingId: String(workspace.listingId || workspace.mediaPayload?.data?.listing_id || '').trim(),
       title: String(detailsDraft.title || workspace.mediaPayload?.data?.title || '').trim(),
@@ -104,6 +110,8 @@
       selectedImageCount: images.length,
       usedSelection: (runtime.getSelectedPipelineAltMediaKeys?.(prefix) || []).length > 0,
       overrides: getRelaunchOverrides(prefix),
+      inventory: data.inventory && typeof data.inventory === 'object' ? data.inventory : {},
+      originHeight: Number(propertyDimensions.item_height || data.item_height || 0) || null,
     };
   }
 
@@ -189,13 +197,6 @@
     return nextImages;
   }
 
-  function buildListingRelaunchNom(title = '') {
-    const normalized = String(title || '').trim();
-    if (!normalized) return 'Figurine';
-    const head = normalized.replace(/\s+/g, ' ').split(/[,:|/-]/)[0].trim();
-    return head.slice(0, 80) || normalized;
-  }
-
   function buildListingRelaunchContext(prefix, options = {}) {
     const state = getPrefixState(prefix);
     if (!state?.active || !state.source) return null;
@@ -204,7 +205,7 @@
     const sourceTags = Array.isArray(source.tags) ? source.tags : [];
     const sourceTagsCsv = sourceTags.join(', ');
     const overrides = source.overrides || {};
-    const fallbackNom = String(overrides.nom || '').trim() || buildListingRelaunchNom(source.title);
+    const fallbackNom = String(overrides.nom || '').trim() || RelaunchData.buildListingNameFromTitle?.(source.title) || 'Figurine';
     const fallbackNomCourt = fallbackNom.split(/\s+/)[0] || fallbackNom;
     const description = String(source.description || '');
     const mode = String(options.mode || global.getPipelineModeByPrefix?.(prefix) || '').trim();
@@ -281,31 +282,166 @@
     return lines.join('\n');
   }
 
+  function getPipelineScaleLabels(prefix) {
+    const scalesApi = global.PipelineUIEchelles || {};
+    if (prefix === 'col') return scalesApi.ECHELLES_COLLECTION || [];
+    const shopKey = global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek';
+    return shopKey === 'doublex'
+      ? (scalesApi.ECHELLES_TABLETOP_DOUBLEX || scalesApi.ECHELLES || [])
+      : (scalesApi.ECHELLES || []);
+  }
+
+  function clearRelaunchFormFields(prefix) {
+    const suffixes = [
+      'fNom',
+      'fNomCourt',
+      'fUnivers',
+      'fSculpteur',
+      'fPieces',
+      'fDescriptionFigurine',
+      'fNotes',
+      'fResumePersonnage',
+      'fPose',
+      'fArchetypes',
+      'fArchSeo',
+      'fParticularites',
+      'fConsignesExternes',
+      'fConnexesPrioritaires',
+      'fLienPerso',
+    ];
+    suffixes.forEach((suffix) => {
+      const field = document.getElementById(`${prefix}-${suffix}`);
+      if (field && !['SELECT', 'BUTTON'].includes(field.tagName)) field.value = '';
+    });
+
+    const checkboxSelectors = prefix === 'col'
+      ? ['#col-fMediumGroup input', '#col-fMediumSubcategoriesGroup input', '#col-fGenreGroup input']
+      : ['#tt-fGenreGroup input'];
+    checkboxSelectors.forEach((selector) => {
+      document.querySelectorAll(selector).forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    });
+
+    if (prefix === 'col') {
+      const license = document.getElementById('col-fLicense');
+      const buzz = document.getElementById('col-fBuzzCollection');
+      if (license) license.checked = false;
+      if (buzz) buzz.checked = false;
+      global.toggleLicense?.({ shouldSave: false });
+      global.toggleBuzzCollection?.({ shouldSave: false });
+      global.renderCollectionMediumMeta?.({ shouldSave: false });
+    } else {
+      const buzz = document.getElementById('tt-fBuzz');
+      if (buzz) buzz.checked = false;
+      global.toggleBuzz?.('tt');
+    }
+  }
+
+  function setFormValue(prefix, suffix, value = '') {
+    const field = document.getElementById(`${prefix}-${suffix}`);
+    if (field) field.value = String(value || '').trim();
+  }
+
+  function applyScalePrefill(prefix, prefill) {
+    const scalesApi = global.PipelineUIEchelles || {};
+    const labels = getPipelineScaleLabels(prefix);
+    scalesApi.setDynamicEchellesEnabled?.(false, { shouldSave: false });
+
+    labels.forEach((_, index) => {
+      const checkbox = document.getElementById(`${prefix}-ec${index}`);
+      const dimensionInput = document.getElementById(`${prefix}-ed${index}`);
+      if (checkbox) checkbox.checked = false;
+      if (dimensionInput) dimensionInput.value = '';
+      scalesApi.setRowDimensionSource?.(index, '');
+      scalesApi.toggleEch?.(index, { shouldSave: false, autoFill: false });
+    });
+
+    const selectedRows = [];
+    labels.forEach((label, index) => {
+      const scale = prefill.scales.get(RelaunchData.normalizeScaleLabel?.(label));
+      if (!scale) return;
+      const checkbox = document.getElementById(`${prefix}-ec${index}`);
+      const dimensionInput = document.getElementById(`${prefix}-ed${index}`);
+      if (!checkbox || !dimensionInput) return;
+
+      checkbox.checked = true;
+      dimensionInput.value = scale.dimensions;
+      scalesApi.toggleEch?.(index, { shouldSave: false, autoFill: false });
+      scalesApi.setRowDimensionSource?.(index, 'manual');
+      selectedRows.push({ index, dimensions: scale.dimensions });
+    });
+
+    scalesApi.setDynamicEchellesEnabled?.(true, { shouldSave: false });
+
+    if (prefill.originHeight) {
+      const origin = selectedRows.find((entry) => {
+        const height = Number.parseFloat(String(entry.dimensions || '').replace(',', '.'));
+        return Number.isFinite(height) && Math.abs(height - prefill.originHeight) <= 1;
+      });
+      if (origin) {
+        scalesApi.setEchelleOrigin?.(origin.index, { shouldSave: false, recalculate: false });
+      }
+    }
+
+    const pricingState = global.PipelineUIPricing?.serialize?.(prefix) || {};
+    global.PipelineUIPricing?.restore?.(prefix, {
+      calculator: pricingState.calculator || {},
+      rows: {},
+    });
+
+    return selectedRows.length;
+  }
+
+  function applyListingPrefillToForm(prefix, prefill) {
+    clearRelaunchFormFields(prefix);
+    setFormValue(prefix, 'fNom', prefill.fullName);
+    setFormValue(prefix, 'fNomCourt', prefill.shortName);
+    setFormValue(prefix, 'fUnivers', prefill.universe);
+    setFormValue(prefix, 'fSculpteur', prefill.sculptor);
+    setFormValue(prefix, 'fPieces', prefill.pieces);
+    setFormValue(prefix, 'fConsignesExternes', prefill.instructions);
+    const selectedScaleCount = applyScalePrefill(prefix, prefill);
+    global.saveFormState?.();
+    return selectedScaleCount;
+  }
+
   async function runEtsyListingRelaunch(prefix) {
     const normalizedPrefix = String(prefix || '').trim();
     const prefixState = getPrefixState(normalizedPrefix);
     if (!prefixState) return;
 
     try {
-      setStatus(normalizedPrefix, 'Preparation de la relance pipeline depuis Etsy...');
+      setStatus(normalizedPrefix, 'Preparation du formulaire depuis Etsy...');
       const source = readWorkspaceListingSource(normalizedPrefix);
-      await syncPipelineImagesFromWorkspace(normalizedPrefix, source);
+      if (!source.usedSelection || source.selectedImageCount !== 4) {
+        throw new Error('Selectionne exactement 4 images dans le workspace Etsy.');
+      }
 
-      prefixState.active = true;
-      prefixState.source = source;
+      const prefill = RelaunchData.buildFormPrefill?.(source);
+      if (!prefill) throw new Error('Extracteur de fiche Etsy indisponible.');
+      await syncPipelineImagesFromWorkspace(normalizedPrefix, source);
+      const route = normalizedPrefix === 'col' ? 'collection' : 'tabletop';
+      global.openAppRoute?.(route);
+      const selectedScaleCount = applyListingPrefillToForm(normalizedPrefix, prefill);
+
+      prefixState.active = false;
+      prefixState.source = null;
       setStatus(
         normalizedPrefix,
-        source.usedSelection
-          ? `Relance prete - ${source.selectedImageCount} image(s) selectionnee(s) envoyee(s) au pipeline.`
-          : `Relance prete - ${source.selectedImageCount} image(s) visible(s) envoyee(s) au pipeline.`
+        `Formulaire prepare - 4 images et ${selectedScaleCount} echelle(s) recuperees.`
       );
-
-      await global.runPipelineWithCacheAware?.(normalizedPrefix);
+      global.showToast?.(
+        `Formulaire pre-rempli depuis Etsy : verifie les champs avant de lancer le pipeline.`,
+        '#4caf7d',
+        5000
+      );
+      global.scrollTo?.({ top: 0, behavior: 'smooth' });
     } catch (error) {
       prefixState.active = false;
       prefixState.source = null;
-      setStatus(normalizedPrefix, `Relance impossible : ${error.message}`);
-      global.showToast?.(`Relance pipeline impossible : ${error.message}`, '#ff4757', 4000);
+      setStatus(normalizedPrefix, `Preparation impossible : ${error.message}`);
+      global.showToast?.(`Preparation du formulaire impossible : ${error.message}`, '#ff4757', 4000);
     }
   }
 
@@ -315,6 +451,8 @@
     clearListingRelaunchContext,
     buildListingRelaunchContext,
     buildListingRelaunchFormSnapshot,
+    buildFormPrefill: RelaunchData.buildFormPrefill,
+    applyListingPrefillToForm,
     runEtsyListingRelaunch,
   };
 
