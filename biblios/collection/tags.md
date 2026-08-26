@@ -1,0 +1,129 @@
+## VALIDÉS
++ figurine sarah kerrigan a peindre
+
+## BLACKLISTÉS
+- personnage
+- personnages
+- héros
+- gaming
+- fan gaming
+- personnage gaming
+- statue gaming
+- figurine gaming
+- sculpture gaming
+- résine gaming
+- figurine héros
+- statue héros
+- cadeau héros
+- cadeau gaming
+- cadeau fan gaming
+- cadeau collectionneur gaming
+- figurine personnage
+- statue personnage
+- sculpture personnage
+- figurine jeu vidéo
+- statue jeu vidéo
+- sculpture jeu vidéo
+- figurine personnage gaming
+- sculpture personnage gaming
+- figurine héros gaming
+- statue résine gaming
+- figurine résine gamingalors
+- figurine collection gaming
+- personnage résine
+- héros résine
+- résine personnage
+- résine héros
+- statue personnage résine
+- figurine personnage résine
+- sculpture personnage résine
+- figurine univers gaming
+- statue univers gaming
+- figurine fan gaming
+- statue fan gaming
+- sculpture fan gaming
+- figurine collectionneur gaming
+- statue collectionneur gaming
+- cadeau fan résine
+- cadeau figurine gaming
+- cadeau statue gaming
+- cadeau résine gaming
+- cadeau univers gaming
+- cadeau personnage gaming
+- figurine culture geek
+- statue culture geek
+- sculpture culture geek
+- figurine pop culture
+- statue pop culture
+- sculpture pop culture
+- figurine franchise gaming
+- statue franchise gaming
+- figurine licence gaming
+- statue licence gaming
+- figurine résine détaillée
+- statue résine détaillée
+- sculpture résine détaillée
+- figurine premium gaming
+- statue premium gaming
+- sculpture premium gaming
+- figurine collector gaming
+- statue collector gaming
+- cadeau collector gaming
+- figurine mythique gaming
+- statue mythique gaming
+- figurine iconique gaming
+- statue iconique gaming
+- personnage culte
+- héros culte
+- statue personnage culte
+- figurine personnage culte
+- sculpture personnage culte
+- statue survival horror
+- horror
+- statue capcom résine
+- cadeau modelisme figurine
+- figurine hobby résine
+- statue 1/7 résine
+- capcom
+- culte
+- 1/7
+- leon kennedy résine
+- garage kit survival
+- survival
+- policier
+- agent spécial
+- rpd
+- infection
+- re2
+- zaun
+- powder
+- powder résine
+- série animée
+- cadeau gamer arcane
+- piltover
+- riot
+- série netflix
+- netflix résine
+- netflix
+- cadeau gamer jinx
+- league of legends résine
+- figurine league
+- lol résine
+- figurine série jinx
+- figurine détaillée jinx
+- statue détaillée jinx
+- figurine détaillée arcane
+- statue détaillée arcane
+- statue league
+- jinx résine
+- figurine série arcane
+- sculptor
+- braids
+- série arcane figurine
+- figurine collection undercity
+- hextech arcane collection
+- undercity résine
+- undercity
+- hextech
+- à assembler
+- re4

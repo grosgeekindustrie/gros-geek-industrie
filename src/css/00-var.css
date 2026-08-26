@@ -1,0 +1,45 @@
+/* ═══ DESIGN TOKENS ═══ */
+/*
+  Variables globales chargées avant toutes les autres couches CSS.
+  Toute nouvelle variable transverse doit être déclarée ici en priorité.
+*/
+
+:root {
+  --bg: #0a0a0b;
+  --surface: #111114;
+  --surface2: #18181d;
+  --border: #222228;
+  --border2: #2e2e38;
+  --accent: #e8c547;
+  --accent2: #ff6b35;
+  --text: #ededf0;
+  --text2: #8888a0;
+  --muted: #55556a;
+  --success: #3ecf8e;
+  --error: #f5424a;
+  --radius: 0.625rem;
+  --radius-lg: 1rem;
+  --stepper-current: #ff9a57;
+}
+
+body.mode-collection {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #21262d;
+  --accent: #7eb8f7;
+  --accent2: #5a9fd4;
+}
+
+body.shop-doublex {
+  --bg: #120b12;
+  --surface: #1a111a;
+  --surface2: #241726;
+  --border: #352436;
+  --border2: #4b3250;
+  --accent: #f2a3c7;
+  --accent2: #d978a6;
+  --text: #f6edf3;
+  --text2: #c6a9bb;
+  --muted: #8d6f82;
+  --stepper-current: #f0b37e;
+}

@@ -1,0 +1,583 @@
+/* Pricing contextuel du pipeline : calculateur V7, lignes par echelle et reference US. */
+
+.pipeline-pricing {
+  width: 100%;
+}
+
+/* Le formulaire compte maintenant six etapes. */
+.collection-stepper-progress {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.pricing-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pricing-panel {
+  padding: 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--stepper-current) 10%, transparent), transparent 36%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012));
+  box-shadow: 0 1.25rem 3.5rem rgba(0, 0, 0, 0.16);
+}
+
+.pricing-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+
+.pricing-section-heading h2 {
+  margin: 0.22rem 0 0;
+  color: var(--text);
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+
+.pricing-section-heading p {
+  max-width: 48rem;
+  margin: 0.45rem 0 0;
+  color: var(--text2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.pricing-eyebrow,
+.pricing-version {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--stepper-current);
+}
+
+.pricing-version {
+  display: inline-flex;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--stepper-current) 35%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--stepper-current) 9%, transparent);
+}
+
+.pricing-cost-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.pricing-calculator-form,
+.pricing-cost-result,
+.pricing-rate-box {
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.pricing-calculator-form,
+.pricing-cost-result {
+  width: 100%;
+  padding: 1.2rem;
+}
+
+.pricing-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 0.9rem;
+}
+
+.pricing-form-grid label,
+.pricing-rate-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  color: var(--text2);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pricing-form-grid label small {
+  min-height: 1em;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.pricing-form-grid input,
+.pricing-form-grid select,
+.pricing-rate-box input,
+.pricing-scale-table input,
+.pricing-scale-table select {
+  width: 100%;
+  min-height: 2.55rem;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid var(--border2);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  color-scheme: dark;
+  font: inherit;
+}
+
+.pricing-form-grid input:focus,
+.pricing-form-grid select:focus,
+.pricing-rate-box input:focus,
+.pricing-scale-table input:focus,
+.pricing-scale-table select:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--stepper-current) 58%, transparent);
+  box-shadow: 0 0 0 0.16rem color-mix(in srgb, var(--stepper-current) 11%, transparent);
+}
+
+.pricing-actions {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.pricing-error {
+  min-height: 1rem;
+  margin: 0.65rem 0 0;
+  color: var(--error);
+  font-size: 0.74rem;
+}
+
+.pricing-cost-result {
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--success) 7%, transparent), transparent 48%),
+    rgba(0, 0, 0, 0.18);
+}
+
+.pricing-cost-result > span {
+  color: var(--text2);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.pricing-cost-result > strong {
+  margin-top: 0.35rem;
+  color: var(--success);
+  font-size: clamp(1.9rem, 4vw, 2.7rem);
+  line-height: 1;
+}
+
+.pricing-cost-result > p {
+  margin: 0.7rem 0 0;
+  color: var(--text2);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.pricing-breakdown {
+  display: grid;
+  gap: 0;
+  margin: 0.9rem 0;
+}
+
+.pricing-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.48rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pricing-breakdown dt,
+.pricing-breakdown dd {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.pricing-breakdown dt { color: var(--text2); }
+.pricing-breakdown dd { color: var(--text); font-weight: 700; }
+
+.pricing-us-heading {
+  align-items: stretch;
+}
+
+.pricing-rate-box {
+  flex: 0 0 min(23rem, 40%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.55rem 0.7rem;
+  padding: 0.85rem;
+}
+
+.pricing-rate-box > span {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.pricing-rate-box button,
+.pricing-rate-box small {
+  grid-column: 1 / -1;
+}
+
+.pricing-rate-box small {
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.4;
+}
+
+.pricing-rate-box small.is-ok { color: #a8f0c5; }
+.pricing-rate-box small.is-error { color: #ff9aaa; }
+
+.pricing-recommendation {
+  margin: 0 0 1.35rem;
+  padding: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--stepper-current) 30%, var(--border));
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--stepper-current) 12%, transparent), transparent 32%),
+    rgba(0, 0, 0, 0.17);
+}
+
+.pricing-recommendation-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pricing-recommendation-head h3 {
+  margin: 0.3rem 0 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.pricing-strategy-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.38rem 0.7rem;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pricing-strategy-badge:not([data-mode="none"]) {
+  border-color: color-mix(in srgb, var(--stepper-current) 38%, transparent);
+  color: var(--stepper-current);
+}
+
+.pricing-recommendation-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.pricing-recommendation-metrics > div,
+.pricing-recommendation-metrics > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.42rem;
+  min-height: 5.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.026);
+  color: var(--text);
+  text-align: left;
+}
+
+.pricing-recommendation-metrics > button:not(:disabled) {
+  cursor: copy;
+}
+
+.pricing-recommendation-metrics > button:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--success) 42%, transparent);
+  background: color-mix(in srgb, var(--success) 7%, transparent);
+}
+
+.pricing-recommendation-metrics span {
+  color: var(--text2);
+  font-size: 0.7rem;
+}
+
+.pricing-recommendation-metrics strong {
+  margin-top: auto;
+  color: var(--text);
+  font-size: 1.18rem;
+}
+
+.pricing-recommendation-metrics .is-highlight strong {
+  color: var(--stepper-current);
+}
+
+.pricing-recommendation-metrics > button strong {
+  color: var(--success);
+}
+
+.pricing-recommendation > p {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.pricing-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.pricing-scale-table,
+.pricing-reference-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.pricing-scale-table {
+  min-width: 68rem;
+}
+
+.pricing-scale-table th,
+.pricing-scale-table td,
+.pricing-reference-table th,
+.pricing-reference-table td {
+  padding: 0.78rem 0.72rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pricing-scale-table th,
+.pricing-reference-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--surface2) 92%, transparent);
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pricing-scale-table tbody tr,
+.pricing-reference-table tbody tr {
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pricing-scale-table tbody tr.is-copyable,
+.pricing-reference-table tbody tr {
+  cursor: copy;
+}
+
+.pricing-scale-table tbody tr.is-copyable:hover,
+.pricing-reference-table tbody tr:hover {
+  background: color-mix(in srgb, var(--stepper-current) 7%, transparent);
+}
+
+.pricing-scale-table tbody tr:focus-visible,
+.pricing-reference-table tbody tr:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--stepper-current) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.pricing-scale-table td {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.pricing-scale-cell strong {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.pricing-scale-cell span {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.pricing-money-input,
+.pricing-compensation-control label {
+  position: relative;
+  display: block;
+}
+
+.pricing-money-input input,
+.pricing-compensation-control label input {
+  padding-right: 1.8rem;
+}
+
+.pricing-money-input span,
+.pricing-compensation-control label span {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.pricing-compensation-control {
+  display: grid;
+  grid-template-columns: 2.3rem minmax(5.5rem, 1fr) 2.3rem;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.pricing-compensation-control button {
+  min-height: 2.35rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent);
+  font-size: 1.15rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.pricing-compensation-control button:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+}
+
+.pricing-compensation-control button:active {
+  transform: translateY(1px);
+}
+
+.pricing-etsy-cell {
+  color: var(--success) !important;
+  font-size: 0.92rem !important;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.pricing-empty {
+  margin: 0;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pricing-empty[hidden] {
+  display: none;
+}
+
+.pricing-reference-heading {
+  margin-bottom: 0.75rem;
+}
+
+.pricing-reference-table td:first-child {
+  color: var(--success);
+  font-weight: 800;
+}
+
+.pricing-reference-table td:first-child > span {
+  display: inline-block;
+}
+
+.pricing-reference-table [data-reference-marker] {
+  display: none;
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.48rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--stepper-current) 14%, transparent);
+  color: var(--stepper-current);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.pricing-reference-table tr.is-calculated-price {
+  background: color-mix(in srgb, var(--stepper-current) 11%, transparent);
+  box-shadow: inset 0.2rem 0 var(--stepper-current);
+}
+
+.pricing-reference-table tr.is-calculated-price [data-reference-marker] {
+  display: inline-flex;
+}
+
+.pricing-reference-table td:last-child {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pricing-copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  z-index: 10000;
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  background: #f5f7fb;
+  color: #111318;
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.35);
+  font-size: 0.78rem;
+  font-weight: 850;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 0.6rem);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.pricing-copy-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 1050px) {
+  .collection-stepper-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pricing-cost-layout,
+  .pricing-us-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pricing-us-heading {
+    display: grid;
+  }
+
+  .pricing-rate-box {
+    width: 100%;
+    max-width: none;
+  }
+
+  .pricing-recommendation-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .collection-stepper-progress { grid-template-columns: minmax(0, 1fr); }
+  .pricing-panel { padding: 1rem; }
+  .pricing-section-heading { flex-direction: column; }
+  .pricing-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .pricing-actions { flex-direction: column; }
+  .pricing-recommendation-head { flex-direction: column; }
+}

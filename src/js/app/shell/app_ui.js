@@ -1,0 +1,784 @@
+﻿(function initPipelineUIApp(global) {
+
+// Couche application transverse.
+// Navigation des vues, toasts, header context, settings panel et actions globales.
+// À garder orienté shell / UX, sans réembarquer le coeur pipeline.
+  global.PipelineUI = global.PipelineUI || {};
+  const sharedConstants = global.PipelineUISharedConstants || {};
+  const dom = global.PipelineUIDom || {};
+  const PIPELINE_MODES = sharedConstants.PIPELINE_MODES || {
+    TABLETOP: 'tabletop',
+    COLLECTION: 'collection',
+  };
+  const PIPELINE_TIMELINE_STATUS = sharedConstants.PIPELINE_TIMELINE_STATUS || {
+    WAIT: 'wait',
+  };
+  const APP_SETTINGS_STORAGE_KEY = 'pipeline.settings';
+  const SHOP_CONFIGS = Object.freeze({
+    grosgeek: Object.freeze({
+      key: 'grosgeek',
+      label: 'Gros Geek Industrie',
+      url: 'https://grosgeekindustrie.etsy.com',
+      description: 'Gros Geek Industrie actif · charte historique et pipeline principal.',
+    }),
+    doublex: Object.freeze({
+      key: 'doublex',
+      label: 'DoubleXindustrie',
+      url: 'https://www.etsy.com/shop/DoubleXindustrie',
+      description: 'DoubleXindustrie active · univers sexy NSFW et charte rose cuivre.',
+    }),
+  });
+
+  const getState = () => global.state;
+  const getCurrentMode = () => global.currentMode;
+  const getPfx = () => global.pfx();
+  const getAgents = () => global.getPipelineAgents();
+  const getModeUiConfig = (mode = getCurrentMode()) => global.getPipelineUiConfig(mode);
+  const getModes = () => global.getPipelineModes();
+
+  const callModeUiMethod = (mode, section, action, ...args) => {
+    const methodName = getModeUiConfig(mode)[section][`${action}Method`];
+    return global[methodName](...args);
+  };
+
+  const refreshModeStepper = (mode) => {
+    callModeUiMethod(mode, 'stepper', 'refresh');
+  };
+
+  const refreshModeTabs = (mode) => {
+    callModeUiMethod(mode, 'tabs', 'refresh');
+  };
+
+  const resetModeTabs = (mode) => {
+    callModeUiMethod(mode, 'tabs', 'reset');
+  };
+
+  let currentView = 'home';
+  let pipelineExecutionActive = false;
+  let pipelineActionDelegationBound = false;
+  let uiActionDelegationBound = false;
+
+  const PIPELINE_ACTION_SELECTOR = '[data-pipeline-action]';
+  const BACK_BUTTON_LABELS = {
+    cancel: 'Annuler',
+    back: 'Retour',
+  };
+  const BACK_BUTTON_TITLES = {
+    cancel: 'Annuler execution et revenir a l accueil',
+    back: 'Revenir a l accueil',
+  };
+  const TOAST_CLOSE_LABEL = 'x';
+  const STORAGE_CLEAR_CONFIRM = 'Vider le cache local ?\n(regles persistantes, formulaire)';
+  const STORAGE_CLEAR_SUCCESS = 'Cache vide - rechargement...';
+  const RAW_INPUT_MISSING_MESSAGE = "Pas encore genere - lance d abord cet agent";
+  const RAW_INPUT_COPIED_MESSAGE = 'Input copie';
+  const HOME_HEADER_CONTEXT = 'Etsy Pipeline - Generation de fiches produit IA';
+  const PIPELINE_RUNNING_CONTEXT = 'Pipeline en cours...';
+  const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
+  const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
+  const COST_CALCULATOR_HEADER_CONTEXT = 'Outils - Calculateur de cout figurine';
+  const DESIGN_SYSTEM_HEADER_CONTEXT = 'Design System - Laboratoire de composants';
+  const APP_ROUTE_HASHES = Object.freeze({
+    home: '#home',
+    tabletop: '#tabletop',
+    collection: '#collection',
+    pinterest: '#pinterest',
+    instagram: '#instagram',
+    'cost-calculator': '#cost-calculator',
+    'design-system': '#design-system',
+  });
+  const APP_PAGE_TITLES = Object.freeze({
+    home: 'Gros Geek Industrie · Pipeline',
+    tabletop: 'Gros Geek Industrie · Tabletop',
+    collection: 'Gros Geek Industrie · Collection',
+    pinterest: 'Gros Geek Industrie · Pinterest',
+    instagram: 'Gros Geek Industrie · Instagram',
+    'cost-calculator': 'Gros Geek Industrie · Calculateur de coûts',
+    'design-system': 'Gros Geek Industrie · Design System',
+  });
+  const FLOW_CANCELLED_MESSAGE = 'Execution annulee';
+  const PIPELINE_STOPPED_MESSAGE = 'Pipeline stoppe';
+  const PIPELINE_META_SEPARATOR = '&bull;';
+  const PIPELINE_STEP_SEPARATOR = '&rsaquo;';
+  const AGENT_TITLE_PREFIX_PATTERN = /^[^\u2014]+\u2014 /;
+  const AGENT_TITLE_PART_SEPARATOR = ' \u00B7 ';
+
+  const buildPipelineActionRequest = (trigger) => ({
+    action: String(trigger.dataset.pipelineAction || '').trim(),
+    prefix: String(trigger.dataset.pipelinePrefix || '').trim(),
+    stepId: String(trigger.dataset.pipelineStep || '').trim(),
+    agentId: String(trigger.dataset.pipelineAgent || '').trim(),
+  });
+
+  const handleDelegatedPipelineActionClick = (event) => {
+    const trigger = event.target.closest(PIPELINE_ACTION_SELECTOR);
+    if (!trigger || trigger.disabled) return;
+
+    event.preventDefault();
+    global.handlePipelineActionRequest(buildPipelineActionRequest(trigger));
+  };
+
+  const bindPipelineActionDelegation = () => {
+    if (pipelineActionDelegationBound) return;
+
+    document.addEventListener('click', handleDelegatedPipelineActionClick);
+    pipelineActionDelegationBound = true;
+  };
+
+  const readActionArgs = (trigger) => ([
+    trigger.dataset.actionArg,
+    trigger.dataset.actionArg2,
+    trigger.dataset.actionArg3,
+  ].filter((value) => typeof value !== 'undefined'));
+
+  const readAppSettings = () => {
+    try {
+      return JSON.parse(localStorage.getItem(APP_SETTINGS_STORAGE_KEY) || '{}');
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const writeAppSettings = (nextSettings = {}) => {
+    localStorage.setItem(APP_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+  };
+
+  const getShopConfig = (shopKey = '') => (
+    SHOP_CONFIGS[String(shopKey || '').trim()] || SHOP_CONFIGS.grosgeek
+  );
+
+  const getActiveShopKey = () => getShopConfig(readAppSettings().activeShop).key;
+
+  function syncActiveShopUi() {
+    const settings = readAppSettings();
+    const activeShop = getShopConfig(settings.activeShop);
+    document.body.classList.toggle('shop-doublex', activeShop.key === 'doublex');
+
+    const shopUrlInput = document.getElementById('shopUrl');
+    const shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object' ? settings.shopUrls : {};
+    const activeShopUrl = String(shopUrls[activeShop.key] || settings.shopUrl || activeShop.url).trim() || activeShop.url;
+    if (shopUrlInput && shopUrlInput.value !== activeShopUrl) {
+      shopUrlInput.value = activeShopUrl;
+    }
+
+    const activeShopDescription = dom.getByData?.('js', 'active-shop-description') || document.querySelector('[data-js="active-shop-description"]');
+    if (activeShopDescription) activeShopDescription.textContent = activeShop.description;
+
+    (dom.getAllByData?.('js', 'shop-toggle-button') || document.querySelectorAll('[data-js="shop-toggle-button"]')).forEach((button) => {
+      const isActive = String(button.dataset.shopKey || '') === activeShop.key;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    const primaryPanel = document.getElementById('etsyAuthHomePanel');
+    const doublexPanel = document.getElementById('etsyAuthHomePanelDoublex');
+    if (primaryPanel) primaryPanel.classList.toggle('is-shop-active', activeShop.key === 'grosgeek');
+    if (doublexPanel) doublexPanel.classList.toggle('is-shop-active', activeShop.key === 'doublex');
+    global.syncDoublexPromptToggleUi?.();
+  }
+
+  function setActiveShop(shopKey = '') {
+    const activeShop = getShopConfig(shopKey);
+    const settings = readAppSettings();
+    settings.activeShop = activeShop.key;
+    settings.shopUrls = settings.shopUrls && typeof settings.shopUrls === 'object'
+      ? settings.shopUrls
+      : {};
+    settings.shopUrls[activeShop.key] = String(settings.shopUrls[activeShop.key] || activeShop.url).trim() || activeShop.url;
+    settings.shopUrl = settings.shopUrls[activeShop.key];
+    writeAppSettings(settings);
+    syncActiveShopUi();
+    global.buildPipeline?.();
+    getModes().forEach((knownMode) => {
+      refreshModeStepper(knownMode);
+      refreshModeTabs(knownMode);
+    });
+    global.loadAllFiles?.(true);
+    showToast(`Boutique active : ${activeShop.label}`, activeShop.key === 'doublex' ? '#f2a3c7' : '#e8c547');
+  }
+
+  const getUiActionHandlers = () => ({
+    'cancel-to-home': () => cancelToHome(),
+    'copy-token-report': () => global.copyTokenReport?.(),
+    'copy-cache-debug-report': () => global.copyCacheDebugReport?.(),
+    'open-settings': () => openSettings(),
+    'close-settings': () => closeSettings(),
+    'start-etsy-auth': () => global.startEtsyAuth?.(),
+    'start-etsy-auth-doublex': () => global.startEtsyAuthDoublex?.(),
+    'refresh-etsy-auth-status': () => global.refreshEtsyAuthStatus?.(),
+    'run-etsy-ping': () => global.runEtsyPingProbe?.(),
+    'run-etsy-ping-doublex': () => global.runEtsyPingProbeDoublex?.(),
+    'run-etsy-identity': () => global.runEtsyIdentityProbe?.(),
+    'run-etsy-identity-doublex': () => global.runEtsyIdentityProbeDoublex?.(),
+    'run-etsy-shop': () => global.runEtsyShopProbe?.(),
+    'run-etsy-shop-doublex': () => global.runEtsyShopProbeDoublex?.(),
+    'run-etsy-listings': () => global.runEtsyListingsProbe?.(),
+    'run-etsy-listings-doublex': () => global.runEtsyListingsProbeDoublex?.(),
+    'run-etsy-sections': () => global.runEtsySectionsProbe?.(),
+    'run-etsy-sections-doublex': () => global.runEtsySectionsProbeDoublex?.(),
+    'run-etsy-listing': () => global.runEtsyListingProbe?.(),
+    'run-etsy-listing-doublex': () => global.runEtsyListingProbeDoublex?.(),
+    'run-etsy-listing-properties': () => global.runEtsyListingPropertiesProbe?.(),
+    'run-etsy-listing-properties-doublex': () => global.runEtsyListingPropertiesProbeDoublex?.(),
+    'run-etsy-listing-variation-images': () => global.runEtsyListingVariationImagesProbe?.(),
+    'run-etsy-listing-variation-images-doublex': () => global.runEtsyListingVariationImagesProbeDoublex?.(),
+    'copy-etsy-output': () => global.copyEtsyOutput?.(),
+    'copy-etsy-output-doublex': () => global.copyEtsyOutputDoublex?.(),
+    'load-etsy-workspace-media': (prefix) => global.loadEtsyWorkspaceMedia?.(prefix),
+    'run-etsy-listing-relaunch': (prefix) => global.runEtsyListingRelaunch?.(prefix),
+    'copy-etsy-workspace-payload': (prefix) => global.copyEtsyWorkspacePayload?.(prefix),
+    'run-translation-en-check': (prefix) => global.runTranslationEnCheck?.(prefix),
+    'copy-translation-en-output': (prefix) => global.copyTranslationEnOutput?.(prefix),
+    'show-translation-en-input': (prefix) => global.showTranslationEnInput?.(prefix),
+    'load-translation-en-source': (prefix) => global.loadTranslationEnSource?.(prefix),
+    'run-translation-all': (prefix) => global.runAllTranslations?.(prefix),
+    'run-translation-update': (prefix) => global.runUpdateTranslations?.(prefix),
+    'stop-translation-all': (prefix) => global.stopAllTranslations?.(prefix),
+    'publish-translation-all': (prefix) => global.publishAllTranslations?.(prefix),
+    'publish-translation-update': (prefix) => global.publishUpdateTranslations?.(prefix),
+    'publish-translation-en': (prefix) => global.publishTranslationEn?.(prefix),
+    'run-translation-en-listing': (prefix) => global.runTranslationEnListing?.(prefix),
+    'copy-translation-en-listing-output': (prefix) => global.copyTranslationEnListingOutput?.(prefix),
+    'copy-translation-en-field': (prefix, fieldKey) => global.copyTranslationEnField?.(prefix, fieldKey),
+    'show-translation-en-listing-input': (prefix) => global.showTranslationEnListingInput?.(prefix),
+    'run-translation-de-check': (prefix) => global.runTranslationDeCheck?.(prefix),
+    'copy-translation-de-output': (prefix) => global.copyTranslationDeOutput?.(prefix),
+    'show-translation-de-input': (prefix) => global.showTranslationDeInput?.(prefix),
+    'run-translation-de-listing': (prefix) => global.runTranslationDeListing?.(prefix),
+    'copy-translation-de-listing-output': (prefix) => global.copyTranslationDeListingOutput?.(prefix),
+    'publish-translation-de': (prefix) => global.publishTranslationDe?.(prefix),
+    'copy-translation-de-field': (prefix, fieldKey) => global.copyTranslationDeField?.(prefix, fieldKey),
+    'show-translation-de-listing-input': (prefix) => global.showTranslationDeListingInput?.(prefix),
+    'run-translation-es-check': (prefix) => global.runTranslationEsCheck?.(prefix),
+    'copy-translation-es-output': (prefix) => global.copyTranslationEsOutput?.(prefix),
+    'show-translation-es-input': (prefix) => global.showTranslationEsInput?.(prefix),
+    'run-translation-es-listing': (prefix) => global.runTranslationEsListing?.(prefix),
+    'copy-translation-es-listing-output': (prefix) => global.copyTranslationEsListingOutput?.(prefix),
+    'publish-translation-es': (prefix) => global.publishTranslationEs?.(prefix),
+    'copy-translation-es-field': (prefix, fieldKey) => global.copyTranslationEsField?.(prefix, fieldKey),
+    'show-translation-es-listing-input': (prefix) => global.showTranslationEsListingInput?.(prefix),
+    'run-translation-it-check': (prefix) => global.runTranslationItCheck?.(prefix),
+    'copy-translation-it-output': (prefix) => global.copyTranslationItOutput?.(prefix),
+    'show-translation-it-input': (prefix) => global.showTranslationItInput?.(prefix),
+    'run-translation-it-listing': (prefix) => global.runTranslationItListing?.(prefix),
+    'copy-translation-it-listing-output': (prefix) => global.copyTranslationItListingOutput?.(prefix),
+    'publish-translation-it': (prefix) => global.publishTranslationIt?.(prefix),
+    'copy-translation-it-field': (prefix, fieldKey) => global.copyTranslationItField?.(prefix, fieldKey),
+    'show-translation-it-listing-input': (prefix) => global.showTranslationItListingInput?.(prefix),
+    'run-translation-nl-check': (prefix) => global.runTranslationNlCheck?.(prefix),
+    'copy-translation-nl-output': (prefix) => global.copyTranslationNlOutput?.(prefix),
+    'show-translation-nl-input': (prefix) => global.showTranslationNlInput?.(prefix),
+    'run-translation-nl-listing': (prefix) => global.runTranslationNlListing?.(prefix),
+    'copy-translation-nl-listing-output': (prefix) => global.copyTranslationNlListingOutput?.(prefix),
+    'publish-translation-nl': (prefix) => global.publishTranslationNl?.(prefix),
+    'copy-translation-nl-field': (prefix, fieldKey) => global.copyTranslationNlField?.(prefix, fieldKey),
+    'show-translation-nl-listing-input': (prefix) => global.showTranslationNlListingInput?.(prefix),
+    'run-translation-pt-check': (prefix) => global.runTranslationPtCheck?.(prefix),
+    'copy-translation-pt-output': (prefix) => global.copyTranslationPtOutput?.(prefix),
+    'show-translation-pt-input': (prefix) => global.showTranslationPtInput?.(prefix),
+    'run-translation-pt-listing': (prefix) => global.runTranslationPtListing?.(prefix),
+    'copy-translation-pt-listing-output': (prefix) => global.copyTranslationPtListingOutput?.(prefix),
+    'publish-translation-pt': (prefix) => global.publishTranslationPt?.(prefix),
+    'copy-translation-pt-field': (prefix, fieldKey) => global.copyTranslationPtField?.(prefix, fieldKey),
+    'show-translation-pt-listing-input': (prefix) => global.showTranslationPtListingInput?.(prefix),
+    'open-biblio-from-settings': () => {
+      global.openBiblioLightbox?.();
+      closeSettings();
+    },
+    'copy-token-report-from-settings': () => {
+      global.copyTokenReport?.();
+      closeSettings();
+    },
+    'clear-storage': () => clearAllStorage(),
+    'toggle-external-instruction-dictation': (fieldId) => global.toggleExternalInstructionDictation?.(fieldId),
+    'paste-external-instruction-clipboard': (fieldId) => global.pasteClipboardToField?.(fieldId),
+    'set-active-shop': (shopKey) => setActiveShop(shopKey),
+    'select-mode': (mode) => openAppRoute(mode),
+    'open-pinterest': () => openAppRoute('pinterest'),
+    'open-instagram-test': () => openAppRoute('instagram'),
+    'open-cost-calculator': () => openAppRoute('cost-calculator'),
+    'open-design-system': () => openAppRoute('design-system'),
+    'open-design-dialog': () => document.getElementById('designSystemDialog')?.showModal?.(),
+    'preview-design-toast': () => showToast('Composant prêt à être validé', getActiveShopKey() === 'doublex' ? '#f2a3c7' : '#e8c547'),
+    'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
+    'copy-section': (key) => global.copySection?.(key),
+    'copy-all-outputs': () => global.copyAllOutputs?.(),
+    'export-final-outputs': (prefix) => global.exportFinalOutputs?.(prefix),
+    'copy-all-final': () => global.copyAll?.(),
+    'toggle-reseaux-only': (prefix) => global.toggleReseauxOnly?.(prefix),
+    'run-leo-agent': (prefix) => global.runLeoAgent?.(prefix),
+    'run-camille-agent': (prefix) => global.runCamilleAgent?.(prefix),
+    'run-reseaux-only': (type, prefix) => global.runReseauxOnly?.(type, prefix),
+    'copy-social': () => global.copySocial?.(),
+    'copy-social-section': (sectionId) => global.copySocialSection?.(sectionId),
+    'open-biblio-lightbox': () => global.openBiblioLightbox?.(),
+    'close-biblio-lightbox': () => global.closeBiblioLightbox?.(),
+    'switch-biblio-tab': (tabId) => global.switchBiblioTab?.(tabId),
+    'save-biblio': () => global.saveBiblio?.(),
+    'reset-biblio': () => global.resetBiblio?.(),
+    'close-prompt-lightbox': () => global.closePromptLightbox?.(),
+    'save-prompt-lightbox': () => global.saveLbPrompt?.(),
+    'reset-prompt-lightbox': () => global.resetLbPrompt?.(),
+    'close-raw-input': () => closeRawInput(),
+    'copy-raw-input': () => copyRawInput(),
+    'scroll-to-top': () => scrollToTop(),
+    'close-explorer': () => global.closeExplorer?.(),
+    'run-iris': (prefix) => (
+      prefix === 'col'
+        ? global.runCollectionIrisSemanticSearch?.()
+        : global.runTabletopIrisSemanticSearch?.()
+    ),
+    'fetch-personnage': () => global.fetchPersonnage?.(),
+  });
+
+  const getUiChangeHandlers = () => ({
+    'toggle-dynamic-echelles': (prefix) => global.toggleDynamicEchelles?.(prefix),
+    'toggle-buzz': (prefix) => global.toggleBuzz?.(prefix),
+    'toggle-buzz-collection': () => global.toggleBuzzCollection?.(),
+    'toggle-license': () => global.toggleLicense?.(),
+  });
+
+  const handleDelegatedUiActionClick = (event) => {
+    const overlay = dom.getClosestByData?.(event.target, 'overlayClose');
+    if (overlay && event.target === overlay) {
+      const closeAction = overlay.dataset.overlayClose;
+      getUiActionHandlers()[closeAction]?.();
+      return;
+    }
+
+    const trigger = dom.getClosestByData?.(event.target, 'uiAction');
+    if (!trigger || trigger.disabled) return;
+
+    const preservesNativeLinkBehavior = trigger.matches('a[href]') && (
+      event.ctrlKey
+      || event.metaKey
+      || event.shiftKey
+      || event.altKey
+      || trigger.target === '_blank'
+    );
+    if (preservesNativeLinkBehavior) return;
+
+    event.preventDefault();
+    const action = String(trigger.dataset.uiAction || '').trim();
+    const handler = getUiActionHandlers()[action];
+    if (!handler) return;
+    handler(...readActionArgs(trigger));
+  };
+
+  const handleDelegatedUiActionChange = (event) => {
+    const trigger = dom.getClosestByData?.(event.target, 'uiChange');
+    if (!trigger || trigger !== event.target) return;
+
+    const action = String(trigger.dataset.uiChange || '').trim();
+    const handler = getUiChangeHandlers()[action];
+    if (!handler) return;
+    handler(...readActionArgs(trigger));
+  };
+
+  const bindUiActionDelegation = () => {
+    if (uiActionDelegationBound) return;
+
+    document.addEventListener('click', handleDelegatedUiActionClick);
+    document.addEventListener('change', handleDelegatedUiActionChange);
+    uiActionDelegationBound = true;
+  };
+
+  function hasActiveAgentControllers() {
+    return Object.values(global.abortControllers || {}).some((controller) => !!controller);
+  }
+
+  function isPipelineExecutionActive() {
+    return !!(
+      pipelineExecutionActive ||
+      hasActiveAgentControllers()
+    );
+  }
+
+  function refreshPipelineLaunchPanels() {
+    if (typeof global.refreshPipelineLaunchPanels === 'function') {
+      global.refreshPipelineLaunchPanels();
+    }
+  }
+
+  function setPipelineExecutionActive(isActive) {
+    pipelineExecutionActive = !!isActive;
+    syncHeaderBackAction();
+    getModes().forEach((mode) => refreshModeTabs(mode));
+    refreshPipelineLaunchPanels();
+  }
+  function syncHeaderBackAction() {
+    const backBtn = dom.getByData?.('js', 'app-back-btn') || document.getElementById('appBackBtn');
+    if (!backBtn) return;
+
+    const stopBtn = document.getElementById('btnStopGlobal');
+    if (stopBtn) stopBtn.classList.remove('visible');
+
+    const isHome = currentView === 'home';
+    backBtn.style.display = isHome ? 'none' : '';
+    backBtn.classList.toggle('is-hidden', isHome);
+    if (isHome) {
+      backBtn.classList.remove('is-cancel');
+      return;
+    }
+
+    const isExecuting = isPipelineExecutionActive();
+    backBtn.classList.toggle('is-cancel', isExecuting);
+    global.PipelineUIIcons?.setIconLabel?.(backBtn, 'back', isExecuting ? BACK_BUTTON_LABELS.cancel : BACK_BUTTON_LABELS.back);
+    backBtn.title = isExecuting
+      ? BACK_BUTTON_TITLES.cancel
+      : BACK_BUTTON_TITLES.back;
+  }
+
+  function showToast(msg, color = '#4caf7d', duration = 2500) {
+    const existing = dom.getAllByData?.('js', 'toast-item') || document.querySelectorAll('.toast-item');
+    const offset = 20 + existing.length * 56;
+    const toast = document.createElement('div');
+    toast.className = 'toast-item';
+    toast.dataset.js = 'toast-item';
+    toast.style.cssText = `position:fixed;bottom:${offset}px;right:20px;background:${color};color:#0f0f0f;padding:10px 14px 10px 16px;border-radius:8px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;z-index:9999;display:flex;align-items:center;gap:10px;max-width:420px;transition:bottom .2s;`;
+
+    const text = document.createElement('span');
+    text.textContent = msg;
+
+    const close = document.createElement('button');
+    close.textContent = TOAST_CLOSE_LABEL;
+    close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:14px;font-weight:700;padding:0;opacity:.7;flex-shrink:0;';
+
+    toast.appendChild(text);
+    toast.appendChild(close);
+    document.body.appendChild(toast);
+
+    const remove = () => {
+      clearTimeout(timer);
+      toast.remove();
+      (dom.getAllByData?.('js', 'toast-item') || document.querySelectorAll('.toast-item')).forEach((el, i) => {
+        el.style.bottom = `${20 + i * 56}px`;
+      });
+    };
+
+    const timer = setTimeout(remove, duration);
+    close.onclick = remove;
+  }
+
+  function clearAllStorage() {
+    if (!confirm(STORAGE_CLEAR_CONFIRM)) return;
+    localStorage.clear();
+    getState().persistentRules = {};
+    getAgents().forEach((agent) => global.refreshRules(agent.id));
+    showToast(STORAGE_CLEAR_SUCCESS);
+    setTimeout(() => location.reload(), 800);
+  }
+
+  function showRawInput(agentId) {
+    const raw = getState().inputs[agentId];
+    if (!raw) {
+      showToast(RAW_INPUT_MISSING_MESSAGE, '#e8c547');
+      return;
+    }
+
+    const agent = getAgents().find((entry) => entry.id === agentId);
+    const label = agent ? agent.title : agentId;
+    (dom.getByData?.('js', 'raw-input-title') || document.getElementById('rawInputTitle')).textContent = `</> INPUT - ${label}`;
+    (dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value = raw;
+    (dom.getByData?.('js', 'raw-input-count') || document.getElementById('rawInputCount')).textContent = `${raw.length.toLocaleString()} car.`;
+    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.add('visible');
+  }
+
+  function closeRawInput() {
+    (dom.getByData?.('js', 'raw-input-lightbox') || document.getElementById('rawInputLightbox')).classList.remove('visible');
+  }
+
+  function copyRawInput() {
+    navigator.clipboard.writeText((dom.getByData?.('js', 'raw-input-textarea') || document.getElementById('rawInputTextarea')).value);
+    showToast(RAW_INPUT_COPIED_MESSAGE);
+  }
+
+  function scrollToTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  function syncScrollTopButton() {
+    const button = dom.getByData?.('js', 'scroll-top-btn') || document.getElementById('scrollTopBtn');
+    if (!button) return;
+    button.classList.toggle('is-visible', window.scrollY > 420);
+  }
+
+  function showView(name) {
+    currentView = name;
+    (dom.getAllByData?.('js', 'view') || document.querySelectorAll('.view')).forEach((view) => view.classList.remove('active'));
+
+    const view = dom.getByData?.('view', name) || document.getElementById(`view-${name}`);
+    if (view) view.classList.add('active');
+
+    updateHeaderContext(name);
+    syncHeaderBackAction();
+
+    if (name !== 'pipeline') {
+      try {
+        const settings = JSON.parse(localStorage.getItem('pipeline.settings') || '{}');
+        settings.view = name;
+        localStorage.setItem('pipeline.settings', JSON.stringify(settings));
+      } catch (error) {}
+    }
+  }
+
+  function normalizeAppRoute(hash = global.location.hash) {
+    const route = String(hash || '').replace(/^#/, '').trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(APP_ROUTE_HASHES, route) ? route : '';
+  }
+
+  function writeAppRoute(route, { replace = false } = {}) {
+    const hash = APP_ROUTE_HASHES[route];
+    if (!hash || global.location.hash === hash) return;
+    global.history[replace ? 'replaceState' : 'pushState'](null, '', hash);
+  }
+
+  function openAppRoute(route, { updateHash = true } = {}) {
+    const normalizedRoute = normalizeAppRoute(APP_ROUTE_HASHES[route] || route);
+    if (!normalizedRoute) return false;
+    if (updateHash) writeAppRoute(normalizedRoute);
+
+    if (normalizedRoute === 'home') {
+      showView('home');
+    } else if (normalizedRoute === 'tabletop') {
+      selectMode(PIPELINE_MODES.TABLETOP);
+    } else if (normalizedRoute === 'collection') {
+      selectMode(PIPELINE_MODES.COLLECTION);
+    } else if (normalizedRoute === 'pinterest') {
+      global.PipelineUIPinterest?.open?.();
+    } else if (normalizedRoute === 'instagram') {
+      global.PipelineUIInstagram?.open?.();
+    } else if (normalizedRoute === 'cost-calculator') {
+      showView('cost-calculator');
+      global.scrollTo({ top: 0, behavior: 'instant' });
+    } else if (normalizedRoute === 'design-system') {
+      showView('design-system');
+      global.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    document.title = APP_PAGE_TITLES[normalizedRoute] || APP_PAGE_TITLES.home;
+    return true;
+  }
+
+  function restoreAppRouteFromHash() {
+    const route = normalizeAppRoute();
+    if (!route) {
+      document.title = APP_PAGE_TITLES.home;
+      return false;
+    }
+    return openAppRoute(route, { updateHash: false });
+  }
+
+  function updateHeaderContext(viewName) {
+    const ctx = dom.getByData?.('js', 'header-context') || document.getElementById('headerContext');
+    if (!ctx) return;
+
+    ctx.className = 'app-context';
+    if (viewName === 'home') {
+      ctx.textContent = HOME_HEADER_CONTEXT;
+    } else if (viewName === 'form') {
+      const label = (dom.getByData?.('js', 'form-mode-label') || document.getElementById('formModeLabel'))?.textContent || '';
+      ctx.textContent = label;
+      ctx.classList.add(getCurrentMode() === PIPELINE_MODES.TABLETOP ? 'mode-tt' : 'mode-col');
+    } else if (viewName === 'pipeline') {
+      ctx.textContent = PIPELINE_RUNNING_CONTEXT;
+      ctx.classList.add('mode-pipeline');
+    } else if (viewName === 'pinterest') {
+      ctx.textContent = PINTEREST_HEADER_CONTEXT;
+      ctx.classList.add('mode-pinterest');
+    } else if (viewName === 'instagram-test') {
+      ctx.textContent = INSTAGRAM_HEADER_CONTEXT;
+      ctx.classList.add('mode-instagram');
+    } else if (viewName === 'cost-calculator') {
+      ctx.textContent = COST_CALCULATOR_HEADER_CONTEXT;
+      ctx.classList.add('mode-calculator');
+    } else if (viewName === 'design-system') {
+      ctx.textContent = DESIGN_SYSTEM_HEADER_CONTEXT;
+      ctx.classList.add('mode-design-system');
+    }
+  }
+
+  // Entrée depuis la home vers un flow unitaire.
+  // Objectif stepper : afficher uniquement le formulaire tant que le pipeline
+  // n'a pas été lancé, même si certains panneaux ont gardé un état visible.
+  function resetSingleFlowPanels(mode) {
+    const modeUiConfig = getModeUiConfig(mode);
+    const panelIds = modeUiConfig.panelIds;
+
+    panelIds.forEach((panelId) => {
+      const element = document.getElementById(panelId);
+      if (element) element.style.display = 'none';
+    });
+
+    setPipelineExecutionActive(false);
+    syncHeaderBackAction();
+    resetModeTabs(mode);
+    refreshModeTabs(mode);
+    refreshPipelineLaunchPanels();
+  }
+
+  function selectMode(mode) {
+    if (mode !== getCurrentMode()) global.switchMode(mode);
+
+    const modeUiConfig = getModeUiConfig(mode);
+    const tabletopUiConfig = getModeUiConfig(PIPELINE_MODES.TABLETOP);
+    const collectionUiConfig = getModeUiConfig(PIPELINE_MODES.COLLECTION);
+    const label = dom.getByData?.('js', 'form-mode-label') || document.getElementById('formModeLabel');
+    const tabletopRoot = document.getElementById(tabletopUiConfig.uiRootId);
+    const collectionRoot = document.getElementById(collectionUiConfig.uiRootId);
+
+    if (tabletopRoot) tabletopRoot.style.display = mode === PIPELINE_MODES.TABLETOP ? '' : 'none';
+    if (collectionRoot) collectionRoot.style.display = mode === PIPELINE_MODES.COLLECTION ? '' : 'none';
+    if (label) label.textContent = modeUiConfig.formLabel;
+
+    resetSingleFlowPanels(mode);
+    showView('form');
+    getModes().forEach((knownMode) => {
+      refreshModeStepper(knownMode);
+      refreshModeTabs(knownMode);
+    });
+    refreshPipelineLaunchPanels();
+  }
+
+
+  function cancelToHome() {
+    const executionRunning = isPipelineExecutionActive();
+    if (executionRunning) {
+      stopAllAgents({ silent: true });
+      showToast(FLOW_CANCELLED_MESSAGE, '#ff4757');
+      return;
+    }
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
+    if (timeline) timeline.style.display = '';
+
+    writeAppRoute('home');
+    showView('home');
+    document.title = APP_PAGE_TITLES.home;
+  }
+
+  function stopAllAgents(options = {}) {
+    const { silent = false } = options;
+
+    const agents = getAgents();
+    const controllers = global.abortControllers || {};
+    agents.forEach((agent) => {
+      const controller = controllers[agent.id];
+      if (controller) controller.abort();
+      delete controllers[agent.id];
+    });
+    Object.keys(controllers).forEach((agentId) => {
+      controllers[agentId]?.abort?.();
+      delete controllers[agentId];
+    });
+    if (!silent) showToast(PIPELINE_STOPPED_MESSAGE, '#ff4757');
+    setPipelineExecutionActive(false);
+    syncHeaderBackAction();
+  }
+
+  function buildPipelineTimeline(metaLabel = '') {
+    if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
+
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
+    if (!timeline) return;
+
+    const agents = getAgents();
+    const meta = metaLabel
+      ? `<span class="pipeline-step active"><span class="pipeline-step-label">${metaLabel}</span></span><span class="pipeline-step-sep">${PIPELINE_META_SEPARATOR}</span>`
+      : '';
+
+    timeline.innerHTML = meta + agents.map((agent, i) =>
+      (i > 0 ? `<span class="pipeline-step-sep">${PIPELINE_STEP_SEPARATOR}</span>` : '') +
+      `<span class="pipeline-step" id="tl-step-${agent.id}" data-timeline-step="${agent.id}">` +
+      `<span class="pipeline-step-dot" id="tl-dot-${agent.id}" data-timeline-dot="${agent.id}"></span>` +
+      `<span class="pipeline-step-label">${agent.title.replace(AGENT_TITLE_PREFIX_PATTERN, '').split(AGENT_TITLE_PART_SEPARATOR)[0].trim()}</span>` +
+      '</span>'
+    ).join('');
+  }
+
+  function updatePipelineTimeline(agentId, status) {
+    if (getCurrentMode() === PIPELINE_MODES.COLLECTION && currentView !== 'pipeline') return;
+
+    const timeline = dom.getByData?.('js', 'pipeline-timeline') || document.getElementById('pipelineTimeline');
+    const dot = dom.getByData?.('timelineDot', agentId, timeline) || document.getElementById(`tl-dot-${agentId}`);
+    const step = dom.getByData?.('timelineStep', agentId, timeline) || document.getElementById(`tl-step-${agentId}`);
+    if (!dot || !step) return;
+
+    dot.className = `pipeline-step-dot${status !== PIPELINE_TIMELINE_STATUS.WAIT ? ` ${status}` : ''}`;
+    step.className = `pipeline-step${status !== PIPELINE_TIMELINE_STATUS.WAIT ? ` ${status}` : ''}`;
+  }
+
+  function openSettings() {
+    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.add('visible');
+    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.add('visible');
+  }
+
+  function closeSettings() {
+    (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
+    (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
+  }
+
+
+  bindPipelineActionDelegation();
+  bindUiActionDelegation();
+  window.addEventListener('scroll', syncScrollTopButton, { passive: true });
+  window.addEventListener('hashchange', () => restoreAppRouteFromHash());
+  syncScrollTopButton();
+  syncActiveShopUi();
+
+  global.PipelineUIApp = {
+    showToast,
+    clearAllStorage,
+    showRawInput,
+    closeRawInput,
+    copyRawInput,
+    scrollToTop,
+    showView,
+    updateHeaderContext,
+    selectMode,
+    cancelToHome,
+    stopAllAgents,
+    setPipelineExecutionActive,
+    isPipelineExecutionActive,
+    syncHeaderBackAction,
+    buildPipelineTimeline,
+    updatePipelineTimeline,
+    openSettings,
+    closeSettings,
+    getActiveShopKey,
+    setActiveShop,
+    syncActiveShopUi,
+    bindPipelineActionDelegation,
+    bindUiActionDelegation,
+    openAppRoute,
+    restoreAppRouteFromHash,
+    getCurrentView: () => currentView,
+  };
+
+  global.PipelineUI.app = global.PipelineUI.app || {};
+  Object.assign(global.PipelineUI.app, global.PipelineUIApp);
+  Object.assign(global, {
+    showToast,
+    clearAllStorage,
+    showRawInput,
+    closeRawInput,
+    copyRawInput,
+    scrollToTop,
+    showView,
+    selectMode,
+    cancelToHome,
+    stopAllAgents,
+    setPipelineExecutionActive,
+    isPipelineExecutionActive,
+    buildPipelineTimeline,
+    updatePipelineTimeline,
+    openSettings,
+    closeSettings,
+    getActiveShopKey,
+    setActiveShop,
+    syncActiveShopUi,
+    openAppRoute,
+  });
+})(window);

@@ -1,0 +1,55 @@
+# Generated runtime outputs
+batch/
+export/
+
+# Local caches
+.cache/
+.tools/
+.instagram_media_cache/
+.anthropic_files_cache.json
+__pycache__/
+*.pyc
+
+# Out-of-process / transfer workspaces
+patch/
+prompt de transfert/
+
+# Local noise
+.env
+.env.local
+.env.*
+.envrc
+!.env.example
+.DS_Store
+FETCH_HEAD
+logs/
+tmp/
+local-certs/
+*.tmp
+*.patch
+*.bak_*
+src/**/*.bak*
+
+# Local Etsy OAuth credentials and temporary authorization state
+.etsy_oauth_pending*.json
+.etsy_oauth_tokens*.json
+.etsy_media_cache/
+
+# Local Pinterest OAuth credentials and temporary authorization state
+.pinterest_oauth_pending*.json
+.pinterest_oauth_tokens*.json
+.pinterest_queue.sqlite3*
+.pinterest_spool/
+.server-stdout.log
+.server-stderr.log
+
+# Local TikTok OAuth credentials and temporary authorization state
+.tiktok_oauth_pending*.json
+.tiktok_oauth_tokens*.json
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.ps1

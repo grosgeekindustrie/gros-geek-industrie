@@ -1,0 +1,415 @@
+'use strict';
+
+(function initPipelineUIOutputRuntime(global) {
+  global.PipelineUI = global.PipelineUI || {};
+
+  const COPY_ALL_OUTPUTS_DIVIDER = '='.repeat(50);
+  const COPY_ALL_OUTPUTS_EMPTY_MESSAGE = 'Aucun output a copier';
+  const COPY_ALL_OUTPUTS_SUCCESS = (count) => `Review globale copiee - ${count} blocs`;
+  const PIPELINE_RUNTIME_STORAGE_PREFIX = 'pipeline.runtime.';
+  const SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX = Object.freeze({
+    tt: 'tabletop',
+    col: 'collection',
+  });
+  const SOLO_EXPORT_FALLBACK_AUTHOR = 'unknown_sculptor';
+  const getFinalDescriptionOutput = () => global.state.outputs.description_final || global.state.outputs.description_assembled || '';
+
+  function getOutputText(prefix, agentId) {
+    const outputNode = document.getElementById(`${prefix}-out-${agentId}`);
+    return outputNode?.textContent || global.state.outputs[agentId] || '';
+  }
+
+  function getCopyAllOutputAgents(prefix) {
+    return prefix === 'col'
+      ? [
+          { id: 'tags', label: '01 - TAGS' },
+          { id: 'titre', label: '02 - TITRES' },
+          { id: 'description', label: '03 - DESCRIPTION' },
+          { id: 'alt', label: '04 - BALISE ALT' },
+        ]
+      : [
+          { id: 'marche', label: '01 - ANALYSE MARCHE' },
+          { id: 'tags', label: '02 - TAGS' },
+          { id: 'titre', label: '03 - TITRES' },
+          { id: 'description', label: '04 - DESCRIPTION' },
+          { id: 'alt', label: '05 - BALISE ALT' },
+        ];
+  }
+
+  function setFinalSectionContent(sectionId, contentId, content, key = '') {
+    if (!content) return;
+
+    const sectionNode = document.getElementById(sectionId);
+    if (sectionNode) sectionNode.style.display = 'block';
+
+    const contentNode = document.getElementById(contentId);
+    if (!contentNode) return;
+
+    contentNode.textContent = global.PipelineUIRender.formatFinalOutputText(key, content);
+    if (key === 'alt') {
+      const prefix = String(contentId || '').split('-').pop() || global.pfx?.() || '';
+      global.PipelineUIRender?.updateAltLengthMeta?.(prefix, content);
+    }
+  }
+
+  function refreshFinalOutputTabs(prefix) {
+    if (prefix === 'tt') {
+      global.refreshDndSoloTabs();
+      if (!global.isPipelineExecutionActive()) global.activateDndSoloTab('result', { force: true });
+    }
+
+    if (prefix === 'col') {
+      global.refreshCollectionSoloTabs();
+      if (!global.isPipelineExecutionActive()) global.activateCollectionSoloTab('result', { force: true });
+    }
+  }
+
+  function revealFinalOutput(prefix) {
+    const finalOutput = document.getElementById(`finalOutput-${prefix}`);
+    if (finalOutput) {
+      finalOutput.style.display = 'flex';
+      finalOutput.style.flexDirection = 'column';
+    }
+  }
+
+  function resetFinalOutputPanels(prefix) {
+    const finalOutput = document.getElementById(`finalOutput-${prefix}`);
+    if (finalOutput) finalOutput.style.display = 'none';
+
+    [`fs-titre-${prefix}`, `fs-tags-${prefix}`, `fs-description-${prefix}`, `fs-alt-${prefix}`].forEach((id) => {
+      const element = document.getElementById(id);
+      if (element) element.style.display = 'none';
+    });
+
+    global.PipelineUIRender?.updateAltLengthMeta?.(prefix, '');
+  }
+
+  function moveFinalOutputPanelToPipelineBody(prefix, pipelineBody) {
+    if (!pipelineBody) return;
+    const finalOutput = document.getElementById(`finalOutput-${prefix}`);
+    if (finalOutput) pipelineBody.appendChild(finalOutput);
+  }
+
+  function getPipelineRuntimeStorageKey(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    return `${PIPELINE_RUNTIME_STORAGE_PREFIX}${prefix}`;
+  }
+
+  function buildPipelineRuntimePersistencePayload(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    const outputs = global.state?.outputs && typeof global.state.outputs === 'object'
+      ? { ...global.state.outputs }
+      : {};
+    const pipelineRun = global.state?.pipelineRun?.[prefix] && typeof global.state.pipelineRun[prefix] === 'object'
+      ? JSON.parse(JSON.stringify(global.state.pipelineRun[prefix]))
+      : null;
+    return { outputs, pipelineRun };
+  }
+
+  function persistPipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      localStorage.setItem(
+        getPipelineRuntimeStorageKey(prefix),
+        JSON.stringify(buildPipelineRuntimePersistencePayload(prefix)),
+      );
+    } catch (error) {}
+  }
+
+  function clearPipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      localStorage.removeItem(getPipelineRuntimeStorageKey(prefix));
+    } catch (error) {}
+  }
+
+  function restorePipelineRuntimeState(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    try {
+      const raw = localStorage.getItem(getPipelineRuntimeStorageKey(prefix));
+      if (!raw) return false;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return false;
+
+      const outputs = parsed.outputs && typeof parsed.outputs === 'object' ? parsed.outputs : {};
+      global.state.outputs = {
+        ...(global.state.outputs || {}),
+        ...outputs,
+      };
+
+      if (parsed.pipelineRun && typeof parsed.pipelineRun === 'object') {
+        global.state.pipelineRun = global.state.pipelineRun || {};
+        global.state.pipelineRun[prefix] = parsed.pipelineRun;
+      }
+
+      const agents = global.getPipelineRuntimeAgentsForPrefix?.(prefix) || [];
+      agents.forEach((agent) => {
+        const text = String(global.state.outputs?.[agent.id] || '').trim();
+        if (!text || agent.id === 'tags') return;
+
+        const outputNode = document.getElementById(`${prefix}-out-${agent.id}`);
+        if (outputNode) {
+          outputNode.className = 'output-box';
+          outputNode.textContent = text;
+        }
+
+        const card = document.getElementById(`${prefix}-card-${agent.id}`);
+        if (card) card.className = 'agent-card done';
+
+        const stat = document.getElementById(`${prefix}-stat-${agent.id}`);
+        if (stat) {
+          stat.className = 'agent-status s-done';
+          stat.textContent = 'done';
+        }
+
+        const rerunBtn = document.getElementById(`${prefix}-br-${agent.id}`);
+        const saveBtn = document.getElementById(`${prefix}-bs-${agent.id}`);
+        const promptBtn = document.getElementById(`${prefix}-bp-${agent.id}`);
+        if (rerunBtn) rerunBtn.disabled = false;
+        if (saveBtn) saveBtn.disabled = false;
+        if (promptBtn) promptBtn.disabled = false;
+      });
+
+      global.assembleFinal?.();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function assembleFinal() {
+    const prefix = global.pfx();
+    const titre = global.PipelineUIRender?.sanitizeFinalOutputText?.('titre_valide', global.state.outputs.titre_valide || '') || '';
+    const tags = global.state.outputs.tags || '';
+    const dynamicDescription = global.state.outputs.description_assembled || '';
+    const assembledDescription = global.buildFinalPipelineDescription?.(prefix, dynamicDescription) || dynamicDescription;
+    const desc = global.PipelineUIRender?.sanitizeFinalOutputText?.('description_final', assembledDescription) || '';
+    const rawAlt = global.PipelineUIRender?.sanitizeFinalOutputText?.('alt', global.state.outputs.alt || '') || '';
+    const alt = rawAlt.length > 500
+      ? rawAlt.slice(0, 501).replace(/\s+\S*$/, '').trimEnd().slice(0, 500)
+      : rawAlt;
+
+    if (!titre && !tags && !desc && !alt) return;
+
+    global.state.outputs.titre_valide = titre;
+    global.state.outputs.description_final = desc;
+    global.state.outputs.alt = alt;
+
+    setFinalSectionContent(`fs-titre-${prefix}`, `fc-titre-${prefix}`, titre, 'titre_valide');
+    setFinalSectionContent(`fs-tags-${prefix}`, `fc-tags-${prefix}`, tags, 'tags');
+    setFinalSectionContent(`fs-description-${prefix}`, `fc-description-${prefix}`, desc, 'description_final');
+    setFinalSectionContent(`fs-alt-${prefix}`, `fc-alt-${prefix}`, alt, 'alt');
+
+    revealFinalOutput(prefix);
+    global.persistPipelineSeedSnapshot?.(prefix);
+    persistPipelineRuntimeState(prefix);
+    if (alt) global.showSocialEntryPanel(prefix);
+    refreshFinalOutputTabs(prefix);
+  }
+
+  function copyOut(agentId) {
+    const prefix = global.pfx();
+    navigator.clipboard.writeText(getOutputText(prefix, agentId));
+    global.showToast('Copie OK');
+  }
+
+  function copyAllOutputs() {
+    const prefix = global.pfx();
+    const parts = getCopyAllOutputAgents(prefix)
+      .map((agent) => {
+        const output = global.state.outputs[agent.id] || '';
+        return output
+          ? `${COPY_ALL_OUTPUTS_DIVIDER}\n${agent.label}\n${COPY_ALL_OUTPUTS_DIVIDER}\n${output}`
+          : null;
+      })
+      .filter(Boolean);
+
+    if (!parts.length) {
+      global.showToast(COPY_ALL_OUTPUTS_EMPTY_MESSAGE, '#ff4757');
+      return;
+    }
+
+    navigator.clipboard.writeText(parts.join('\n\n'));
+    global.showToast(COPY_ALL_OUTPUTS_SUCCESS(parts.length));
+  }
+
+  function copySection(key) {
+    navigator.clipboard.writeText(global.state.outputs[key] || '');
+    global.showToast('Copié');
+  }
+
+  function buildFinalOutputExport(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    const titre = global.state.outputs.titre_valide || '';
+    const tags = global.state.outputs.tags || '';
+    const desc = getFinalDescriptionOutput();
+    const alt = global.state.outputs.alt || '';
+    const parts = [];
+
+    if (titre) parts.push(`── TITRE ──\n${titre}`);
+    if (tags) parts.push(`── TAGS ──\n${tags}`);
+    if (desc) parts.push(`── DESCRIPTION ──\n${desc}`);
+    if (alt) parts.push(`── BALISE ALT ──\n${alt}`);
+
+    return {
+      prefix,
+      content: parts.join('\n\n'),
+    };
+  }
+
+  function getSoloExportMeta(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+    const nomCourt = document.getElementById(`${prefix}-fNomCourt`)?.value?.trim() || '';
+    const nomComplet = document.getElementById(`${prefix}-fNom`)?.value?.trim() || '';
+    const sculpteur = document.getElementById(`${prefix}-fSculpteur`)?.value?.trim() || '';
+    const fallbackNom = SOLO_EXPORT_FALLBACK_NAME_BY_PREFIX[prefix] || 'pipeline';
+    const rawNom = nomCourt || nomComplet || global.state.outputs.titre_valide || fallbackNom;
+    const rawSculpteur = sculpteur || SOLO_EXPORT_FALLBACK_AUTHOR;
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, '0');
+    const dateFR = `${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}`;
+    const heureFR = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const sanitizeSegment = (value, fallback) => {
+      const sanitized = String(value || fallback).replace(/[^\w-]/g, '_');
+      return sanitized || fallback;
+    };
+    const nom = sanitizeSegment(rawNom, fallbackNom);
+    const auteur = sanitizeSegment(rawSculpteur, SOLO_EXPORT_FALLBACK_AUTHOR);
+    const folder = prefix === 'tt' ? 'export/solo/dnd/' : 'export/solo/collection/';
+
+    return {
+      prefix,
+      folder,
+      base: `${nom}_${auteur}_${dateFR}_${heureFR}`,
+    };
+  }
+
+  function getSoloFinalOutputAgentLabels(prefixOverride) {
+    const prefix = prefixOverride || global.pfx();
+
+    if (prefix === 'tt') {
+      return {
+        titre: '01 Maya — Titres',
+        titre_valide: '01b Titre validé',
+        tags: '02 Karim — Tags',
+        marche: '03 Sophie — Analyse marché',
+        description: '04 Claire — Description brute',
+        description_assembled: '04b Description assemblée',
+        alt: '05 Nadia — Balise ALT finale',
+      };
+    }
+
+    return {
+      titre: '01 Nova — Titres',
+      titre_valide: '01b Titre validé',
+      tags: '02 Axel — Tags',
+      description: '03 Eden — Description brute',
+      description_assembled: '03b Description assemblée',
+      alt: '04 Jules — Balise ALT finale',
+      iris: 'Hors pipeline — Iris sémantique',
+    };
+  }
+
+  function buildSoloFinalOutputFiles(prefixOverride) {
+    const exportMeta = getSoloExportMeta(prefixOverride);
+    const completeParts = [
+      '# Output final',
+      '',
+      '## Titre',
+      global.state.outputs.titre_valide || '',
+      '',
+      '## Tags',
+      global.state.outputs.tags || '',
+      '',
+      '## Description',
+      getFinalDescriptionOutput(),
+      '',
+      '## Balise ALT',
+      global.state.outputs.alt || '',
+    ];
+    const rawParts = ['# Output final — RAW', ''];
+
+    Object.entries(getSoloFinalOutputAgentLabels(exportMeta.prefix)).forEach(([key, label]) => {
+      const value = global.state.outputs[key];
+      if (!value) return;
+      rawParts.push(`## ${label}\n${value}\n`);
+    });
+
+    return {
+      ...exportMeta,
+      files: [
+        {
+          filename: `${exportMeta.folder}${exportMeta.base}_complete.md`,
+          content: completeParts.join('\n'),
+        },
+        {
+          filename: `${exportMeta.folder}${exportMeta.base}_raw.md`,
+          content: rawParts.join('\n'),
+        },
+      ],
+    };
+  }
+
+  async function exportFinalOutputs(prefixOverride) {
+    const { folder, files } = buildSoloFinalOutputFiles(prefixOverride);
+    const hasContent = files.some((file) => file.content.replace(/[#\s]/g, '').trim());
+
+    if (!hasContent) {
+      global.showToast('Aucun output final à exporter', '#ff4757');
+      return;
+    }
+
+    try {
+      const response = await fetch('/solo/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      global.showToast(`Exporté dans ${folder} — ${data.count} fichier(s)`, '#4caf7d', 5000);
+    } catch (error) {
+      global.showToast(`Erreur export: ${error.message}`, '#ff4757', 5000);
+    }
+  }
+
+  function copyAll() {
+    const { content } = buildFinalOutputExport();
+    if (!content) {
+      global.showToast('Aucun output final à copier', '#ff4757');
+      return;
+    }
+
+    navigator.clipboard.writeText(content);
+    global.showToast('Tout copié');
+  }
+
+  global.PipelineUIOutputRuntime = {
+    getOutputText,
+    getCopyAllOutputAgents,
+    setFinalSectionContent,
+    refreshFinalOutputTabs,
+    revealFinalOutput,
+    resetFinalOutputPanels,
+    moveFinalOutputPanelToPipelineBody,
+    assembleFinal,
+    copyOut,
+    copyAllOutputs,
+    copySection,
+    exportFinalOutputs,
+    copyAll,
+    getPipelineRuntimeStorageKey,
+    persistPipelineRuntimeState,
+    restorePipelineRuntimeState,
+    clearPipelineRuntimeState,
+  };
+
+  global.PipelineUI.runtimeOutput = global.PipelineUI.runtimeOutput || {};
+  Object.assign(global.PipelineUI.runtimeOutput, global.PipelineUIOutputRuntime);
+  Object.assign(global, global.PipelineUIOutputRuntime);
+})(window);

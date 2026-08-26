@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "common":{
+      "validated" : {},
+   "invalidated" : {}
+  },
+  "jinx": {
+    "validated" : {},
+   "invalidated" : {},
+   "lore_valide": {},
+   "lore_invalid": {},
+   "forced" : {
+    "terms" : "impression3d"
+   }
+  },
+   "leon kennedy": {
+    "catégorie1" : [],
+   "catégorie2" : [],
+   "catégorie3": [],   
+   "lore_invalid": [],
+   "forced" : []
+  },
+  {
+    ['arcane','jinx', cayltin, victor]:{}
+  }
+}
