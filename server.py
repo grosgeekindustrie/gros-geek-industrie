@@ -125,6 +125,11 @@ def get_anthropic_api_key(request_payload: dict | None = None) -> str:
     return ''
 
 
+def get_openai_api_key() -> str:
+    """Lire la clé OpenAI uniquement depuis l'environnement local du serveur."""
+    return str(os.getenv('OPENAI_API_KEY') or '').strip()
+
+
 def get_env_value(name: str) -> str:
     return str(os.getenv(name) or '').strip()
 
@@ -1569,6 +1574,32 @@ def forward_anthropic_json_request(url: str, payload: dict, *, use_files_beta: b
         headers=headers,
     )
 
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.getcode(), decode_json_bytes(response.read())
+
+
+def forward_openai_json_request(url: str, payload: dict, *, timeout: int = 180) -> tuple[int, dict]:
+    api_key = get_openai_api_key()
+    if not api_key:
+        raise ValueError('Clé API OpenAI manquante (OPENAI_API_KEY dans .env)')
+
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+    organization_id = get_env_value('OPENAI_ORGANIZATION_ID')
+    project_id = get_env_value('OPENAI_PROJECT_ID')
+    if organization_id:
+        headers['OpenAI-Organization'] = organization_id
+    if project_id:
+        headers['OpenAI-Project'] = project_id
+
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+        method='POST',
+        headers=headers,
+    )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.getcode(), decode_json_bytes(response.read())
 
@@ -4936,6 +4967,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(502, {'error': f'Lecture media Etsy impossible: {e.reason}'})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
+            return
+
+        if path == '/openai/responses':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body)
+                if not isinstance(data, dict):
+                    raise ValueError('Payload OpenAI invalide')
+                status, payload = forward_openai_json_request(
+                    'https://api.openai.com/v1/responses',
+                    data,
+                )
+                self.send_json(status, payload)
+            except (ValueError, json.JSONDecodeError) as e:
+                self.send_json(400, {'error': {'message': str(e)}})
+            except urllib.error.HTTPError as e:
+                try:
+                    payload = decode_json_bytes(e.read())
+                except Exception:
+                    payload = {'error': {'message': str(e)}}
+                self.send_json(e.code, payload or {'error': {'message': str(e)}})
+            except urllib.error.URLError as e:
+                self.send_json(502, {'error': {'message': f'OpenAI indisponible: {e.reason}'}})
+            except Exception as e:
+                self.send_json(500, {'error': {'message': str(e)}})
             return
 
         if path == '/anthropic/files/upload':

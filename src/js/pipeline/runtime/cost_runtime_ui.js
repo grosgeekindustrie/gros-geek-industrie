@@ -4,9 +4,20 @@
   global.PipelineUI = global.PipelineUI || {};
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
 
-  function getCostRatesForAgent(agentId = '', modelOverride = '') {
+  function getCostRatesForAgent(agentId = '', modelOverride = '', providerOverride = '') {
     const model = String(modelOverride || global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
-    const normalizedModel = String(global.normalizeClaudeModelId?.(model) || model).trim().toLowerCase();
+    const provider = String(providerOverride || '').trim().toLowerCase();
+    const normalizedModel = String(provider === 'openai' ? model : (global.normalizeClaudeModelId?.(model) || model)).trim().toLowerCase();
+
+    if (provider === 'openai' || normalizedModel.startsWith('gpt-')) {
+      if (normalizedModel.includes('luna')) {
+        return { input: 0.20 / 1_000_000, cacheWrite: 0.25 / 1_000_000, cacheRead: 0.02 / 1_000_000, output: 1.20 / 1_000_000 };
+      }
+      if (normalizedModel.includes('terra')) {
+        return { input: 2.00 / 1_000_000, cacheWrite: 2.50 / 1_000_000, cacheRead: 0.20 / 1_000_000, output: 12.00 / 1_000_000 };
+      }
+      return { input: 4.00 / 1_000_000, cacheWrite: 5.00 / 1_000_000, cacheRead: 0.40 / 1_000_000, output: 20.00 / 1_000_000 };
+    }
 
     if (normalizedModel.includes('haiku')) {
       return {
@@ -62,6 +73,7 @@
         outputTok: 0,
         cacheRead: 0,
         cacheWrite: 0,
+        reasoningTok: 0,
         costCents: 0,
       },
     };
@@ -142,7 +154,7 @@
 
   function getCostModelName(agentId = '', execution = null) {
     const rawModel = String(execution?.model || global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
-    return String(global.normalizeClaudeModelId?.(rawModel) || rawModel);
+    return execution?.provider === 'openai' ? rawModel : String(global.normalizeClaudeModelId?.(rawModel) || rawModel);
   }
 
   function getCostEntryType(entry = {}) {
@@ -204,11 +216,12 @@
   }
 
   function buildUsageCostSnapshot(agentId, usage = {}, execution = null) {
-    const rates = getCostRatesForAgent(agentId, execution?.model);
+    const rates = getCostRatesForAgent(agentId, execution?.model, execution?.provider);
     const inputTok = toSafeTokenCount(usage.input_tokens);
     const outputTok = toSafeTokenCount(usage.output_tokens);
     const cacheRead = toSafeTokenCount(usage.cache_read_input_tokens);
     const cacheWrite = toSafeTokenCount(usage.cache_creation_input_tokens);
+    const reasoningTok = toSafeTokenCount(usage.reasoning_tokens);
     const inputCostCents = inputTok * rates.input * 100;
     const cacheWriteCostCents = cacheWrite * rates.cacheWrite * 100;
     const cacheReadCostCents = cacheRead * rates.cacheRead * 100;
@@ -220,6 +233,7 @@
       outputTok,
       cacheRead,
       cacheWrite,
+      reasoningTok,
       inputCostCents,
       cacheWriteCostCents,
       cacheReadCostCents,
@@ -240,6 +254,7 @@
       outputTok: 0,
       cacheRead: 0,
       cacheWrite: 0,
+      reasoningTok: 0,
       costCents: 0,
     };
 
@@ -248,6 +263,7 @@
       totals.outputTok += entry.outputTok;
       totals.cacheRead += entry.cacheRead;
       totals.cacheWrite += entry.cacheWrite;
+      totals.reasoningTok += entry.reasoningTok || 0;
       totals.costCents += entry.costCents;
 
       const aggregateKey = getAgentCostAggregateKey(entry.prefix, entry.agentId);
@@ -264,6 +280,7 @@
           outputTok: 0,
           cacheRead: 0,
           cacheWrite: 0,
+          reasoningTok: 0,
           costCents: 0,
           firstOrder: entry.order,
           lastOrder: entry.order,
@@ -277,6 +294,7 @@
       aggregate.outputTok += entry.outputTok;
       aggregate.cacheRead += entry.cacheRead;
       aggregate.cacheWrite += entry.cacheWrite;
+      aggregate.reasoningTok += entry.reasoningTok || 0;
       aggregate.costCents += entry.costCents;
       aggregate.lastOrder = entry.order;
       aggregate.lastEntry = entry;
@@ -342,6 +360,7 @@
 
     if (lastEntry.cacheWrite > 0) parts.push(`✍️ ${lastEntry.cacheWrite.toLocaleString()} tok`);
     if (lastEntry.cacheRead > 0) parts.push(`⚡ ${lastEntry.cacheRead.toLocaleString()} tok`);
+    if (lastEntry.reasoningTok > 0) parts.push(`🧠 ${lastEntry.reasoningTok.toLocaleString()} tok`);
 
     badge.innerHTML = parts.join('<span class="cost-badge-separator">|</span>');
     badge.title = [
@@ -441,6 +460,7 @@
       `Cache write: ${totals.cacheWrite.toLocaleString()} tok`,
       `Cache read: ${totals.cacheRead.toLocaleString()} tok`,
       `Output: ${totals.outputTok.toLocaleString()} tok`,
+      `Raisonnement (inclus dans output): ${totals.reasoningTok.toLocaleString()} tok`,
       '',
       '── Totaux par périmètre ──',
       `${CACHE_AWARE_PRELAUNCH_LABEL}: ${categoryTotals.cache_aware_prelaunch.costCents.toFixed(3)}¢ (${categoryTotals.cache_aware_prelaunch.count} événement(s))`,
@@ -483,6 +503,7 @@
           + ` | ${aggregate.costCents.toFixed(3)}¢`
           + ` | in ${aggregate.inputTok.toLocaleString()}`
           + ` | out ${aggregate.outputTok.toLocaleString()}`
+          + (aggregate.reasoningTok > 0 ? ` | raisonnement ${aggregate.reasoningTok.toLocaleString()}` : '')
           + cacheLabel
           + ` | dernier type ${getCostEntryTypeLabel(lastEntry)}`,
         );
@@ -503,7 +524,7 @@
         + ` (in ${entry.inputCostCents.toFixed(3)}¢ | write ${entry.cacheWriteCostCents.toFixed(3)}¢ | read ${entry.cacheReadCostCents.toFixed(3)}¢ | out ${entry.outputCostCents.toFixed(3)}¢)`,
       );
       lines.push(
-        `   tok : input ${entry.inputTok.toLocaleString()} | cache write ${entry.cacheWrite.toLocaleString()} | cache read ${entry.cacheRead.toLocaleString()} | output ${entry.outputTok.toLocaleString()} | total ${entry.totalTokens.toLocaleString()}`,
+        `   tok : input ${entry.inputTok.toLocaleString()} | cache write ${entry.cacheWrite.toLocaleString()} | cache read ${entry.cacheRead.toLocaleString()} | output ${entry.outputTok.toLocaleString()} | raisonnement ${entry.reasoningTok.toLocaleString()} (inclus dans output) | total ${entry.totalTokens.toLocaleString()}`,
       );
       lines.push(
         `   cache: ${entry.cacheStatus || '—'} | warmup: ${entry.isWarmupEvent ? 'oui' : 'non'} | contexte: ${entry.mode} / ${entry.prefix}`,

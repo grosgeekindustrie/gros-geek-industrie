@@ -9,6 +9,14 @@
     validation: 'non_valide',
     origin: 'auto',
   });
+  const OPENAI_CACHE_TTL_MS = 30 * 60 * 1000;
+  const OPENAI_CACHE_ZONE_GRISE_MS = 5 * 60 * 1000;
+
+  function getCacheTiming(entry = null) {
+    const ttlMs = Number(entry?.ttlMs) || global.PROMPT_CACHE_TTL_MS || (5 * 60 * 1000);
+    const grayZoneMs = Number(entry?.grayZoneMs) || global.PROMPT_CACHE_ZONE_GRISE_MS || (2 * 60 * 1000);
+    return { ttlMs, grayZoneMs };
+  }
 
   function getPipelineLaunchState(prefix) {
     global.state.pipelineLaunch = global.state.pipelineLaunch || {};
@@ -86,12 +94,13 @@
       };
     }
 
-    const expiresAtMs = entry.expiresAtMs || (entry.lastConfirmedAtMs + global.PROMPT_CACHE_TTL_MS);
+    const { ttlMs, grayZoneMs } = getCacheTiming(entry);
+    const expiresAtMs = entry.expiresAtMs || (entry.lastConfirmedAtMs + ttlMs);
     const remainingMs = expiresAtMs - nowMs;
     let state = 'stale';
     let label = 'probablement expire';
 
-    if (remainingMs > global.PROMPT_CACHE_ZONE_GRISE_MS) {
+    if (remainingMs > grayZoneMs) {
       state = 'hot';
       label = 'chaud probable';
     } else if (remainingMs > 0) {
@@ -111,14 +120,17 @@
     };
   }
 
-  function updatePromptCacheCheckpoint(prefix = '', status = '-') {
+  function updatePromptCacheCheckpoint(prefix = '', status = '-', timing = {}) {
     const resolvedPrefix = getPromptCachePrefix(prefix);
     const entry = getPromptCacheEntry(resolvedPrefix, true);
     const now = new Date();
     entry.status = status;
     entry.lastConfirmedAtMs = now.getTime();
     entry.lastConfirmedAt = now.toISOString();
-    entry.expiresAtMs = entry.lastConfirmedAtMs + global.PROMPT_CACHE_TTL_MS;
+    entry.ttlMs = Number(timing.ttlMs) || global.PROMPT_CACHE_TTL_MS || (5 * 60 * 1000);
+    entry.grayZoneMs = Number(timing.grayZoneMs) || global.PROMPT_CACHE_ZONE_GRISE_MS || (2 * 60 * 1000);
+    entry.provider = String(timing.provider || entry.provider || 'anthropic');
+    entry.expiresAtMs = entry.lastConfirmedAtMs + entry.ttlMs;
     entry.expiresAt = new Date(entry.expiresAtMs).toISOString();
   }
 
@@ -167,7 +179,7 @@
     runtimeDebug.lastCacheStatus = status;
 
     if (status.startsWith('hit') || status.startsWith('write')) {
-      updatePromptCacheCheckpoint(resolvedPrefix, status);
+      updatePromptCacheCheckpoint(resolvedPrefix, status, options);
       runtimeDebug.lastCacheStatus = getLastCacheStatus(resolvedPrefix);
     }
 
@@ -364,6 +376,9 @@
   }
 
   async function buildEventTokenSections(event = {}) {
+    if (String(event.provider || '').toLowerCase() === 'openai') {
+      throw new Error('count_tokens détaillé non disponible pour OpenAI');
+    }
     const sectionTexts = getEventSectionTexts(event);
     const model = event.model || global.getActiveAgentModel?.(event.agentId) || global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
     const sectionEntries = Object.entries(sectionTexts);
@@ -418,6 +433,7 @@
       cacheWriteTokens: usage.cache_creation_input_tokens || 0,
       inputTokens: usage.input_tokens || 0,
       outputTokens: usage.output_tokens || 0,
+      reasoningTokens: usage.reasoning_tokens || 0,
       provider: String(usage.ai_execution?.provider || 'anthropic'),
       model: String(usage.ai_execution?.model || global.getActiveAgentModel?.(agentId) || 'claude-sonnet-4-5'),
       task: String(usage.ai_execution?.task || ''),
@@ -490,6 +506,10 @@
       lines.push(`- ecrit API reel: ${event.cacheWriteTokens.toLocaleString()} tok`);
       lines.push(`- input API reel: ${event.inputTokens.toLocaleString()} tok`);
       lines.push(`- output API reel: ${event.outputTokens.toLocaleString()} tok`);
+      if (event.reasoningTokens > 0) {
+        lines.push(`- raisonnement API reel: ${event.reasoningTokens.toLocaleString()} tok (inclus dans output)`);
+      }
+      lines.push(`- fournisseur / modele: ${event.provider || 'anthropic'} / ${event.model || '-'}`);
       lines.push(`- prompt variable: ${event.promptChars.toLocaleString()} chars`);
       lines.push(`- bloc fixe total: ${event.fixedChars.toLocaleString()} chars`);
       lines.push(`- bloc fixe active: ${event.cacheAppliedChars.toLocaleString()} chars`);
@@ -577,8 +597,12 @@
         ? `write · ${cacheWrite.toLocaleString()} tok`
         : 'miss';
     const prefix = getPromptCachePrefix();
+    const provider = String(usage.ai_execution?.provider || 'anthropic').toLowerCase();
+    const timing = provider === 'openai'
+      ? { provider, ttlMs: OPENAI_CACHE_TTL_MS, grayZoneMs: OPENAI_CACHE_ZONE_GRISE_MS }
+      : { provider, ttlMs: global.PROMPT_CACHE_TTL_MS, grayZoneMs: global.PROMPT_CACHE_ZONE_GRISE_MS };
 
-    setLastCacheStatus(cacheStatus, { prefix });
+    setLastCacheStatus(cacheStatus, { prefix, ...timing });
     const activeRun = getActiveCacheDebugRun(prefix);
     if (activeRun) activeRun.lastHeaderStatus = getLastCacheStatus(prefix);
     global.refreshPipelineLaunchPanels?.();

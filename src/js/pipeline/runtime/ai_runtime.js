@@ -3,6 +3,7 @@
 
   const executionSnapshots = new Map();
   const PIPELINE_TASKS = new Set(['title', 'tags', 'description', 'alt']);
+  const PIPELINE_AGENT_IDS = new Set(['titre', 'tags', 'marche', 'description', 'alt', 'cache_aware']);
 
   const profiles = () => global.PipelineUIAIProfiles;
 
@@ -32,7 +33,7 @@
     const explicitTask = String(promptData?.aiTask || '').trim();
     const task = explicitTask || profiles().getTaskForAgent(agentId);
     const canUsePipelineSnapshot = PIPELINE_TASKS.has(task)
-      || (String(agentId) === 'cache_aware' && !explicitTask);
+      || (PIPELINE_AGENT_IDS.has(String(agentId)) && !explicitTask);
     if (!canUsePipelineSnapshot) return profiles().getActiveProfile();
 
     return getAIExecutionSnapshot(getWorkspacePrefix(promptData)) || profiles().getActiveProfile();
@@ -53,10 +54,6 @@
       task: normalizedPromptData?.aiTask,
     });
 
-    if (execution.provider !== 'anthropic') {
-      throw new Error(`Fournisseur IA non pris en charge: ${execution.provider}`);
-    }
-
     const requestPromptData = normalizedPromptData && typeof normalizedPromptData === 'object'
       ? {
           ...normalizedPromptData,
@@ -68,7 +65,11 @@
           overrideModel: execution.model,
           aiExecution: execution,
         };
-    const response = await global.callClaude(agentId, requestPromptData, useImages, retries);
+    const adapter = execution.provider === 'openai' ? global.callOpenAI : global.callClaude;
+    if (typeof adapter !== 'function') {
+      throw new Error(`Fournisseur IA non pris en charge: ${execution.provider}`);
+    }
+    const response = await adapter(agentId, requestPromptData, useImages, retries);
     const normalizedResponse = response && typeof response === 'object' ? response : { text: String(response || '') };
 
     return {

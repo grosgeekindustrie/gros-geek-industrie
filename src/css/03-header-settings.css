@@ -117,6 +117,11 @@
 .ai-profile-dialog-header h2 { margin:0 0 4px; font-size:18px; }
 .ai-profile-dialog-header p { margin:0; color:var(--muted); font-size:11px; }
 .ai-profile-dialog-body { display:grid; gap:18px; padding:20px; }
+.ai-profile-provider-group { display:grid; gap:8px; }
+.ai-profile-provider-heading { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:11px; }
+.ai-provider-dot { width:7px; height:7px; border-radius:50%; }
+.ai-provider-dot-anthropic { background:#4f8cff; box-shadow:0 0 0 3px color-mix(in srgb, #4f8cff 18%, transparent); }
+.ai-provider-dot-openai { background:#10a37f; box-shadow:0 0 0 3px color-mix(in srgb, #10a37f 18%, transparent); }
 
 .ai-profile-presets {
   display:grid;
@@ -138,6 +143,7 @@
 
 .ai-profile-preset:hover,
 .ai-profile-preset.is-active { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 9%, transparent); }
+.ai-profile-overlay[data-ai-provider="openai"] .ai-profile-preset.is-active { border-color:#10a37f; background:color-mix(in srgb, #10a37f 10%, transparent); }
 .ai-profile-preset strong { font-size:12px; }
 .ai-profile-preset small { color:var(--muted); line-height:1.45; }
 
@@ -154,14 +160,20 @@
 .ai-profile-section h3 { margin:0; font-size:12px; }
 .ai-profile-section p { margin:0; color:var(--muted); font-size:10px; line-height:1.5; }
 .ai-profile-select { width:100%; min-height:38px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); }
+.ai-profile-uniform-controls { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+.ai-profile-uniform-controls label { display:grid; gap:6px; color:var(--muted); font-size:10px; }
+.ai-profile-uniform-controls label[hidden] { display:none; }
 .ai-profile-routes { display:grid; gap:8px; }
 .ai-profile-route { display:grid; grid-template-columns:minmax(150px, .8fr) minmax(220px, 1.2fr); gap:12px; align-items:center; }
+.ai-profile-route.has-reasoning { grid-template-columns:minmax(145px, .75fr) minmax(190px, 1.15fr) minmax(135px, .7fr); }
 .ai-profile-route label { color:var(--text); font-size:11px; font-weight:650; }
 
 @media (max-width:760px) {
   .app-ai-profile-btn { max-width:150px; }
   .ai-profile-presets { grid-template-columns:1fr; }
+  .ai-profile-uniform-controls { grid-template-columns:1fr; }
   .ai-profile-route { grid-template-columns:1fr; gap:5px; }
+  .ai-profile-route.has-reasoning { grid-template-columns:1fr; }
 }
 
 .app-logo {

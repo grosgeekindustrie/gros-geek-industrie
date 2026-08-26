@@ -28,6 +28,17 @@
 
   const getTargetWidthForQuality = (quality) => (quality === 'high' ? 1024 : 512);
 
+  const getActiveAIProvider = () => String(
+    global.PipelineUIAIProfiles?.getActiveProfile?.()?.provider || 'anthropic',
+  ).toLowerCase();
+
+  const getAnalysisQualityMenuLabel = (quality) => {
+    const isOpenAI = getActiveAIProvider() === 'openai';
+    if (quality === 'high') return isOpenAI ? 'Haute · 1024 px · détail élevé' : 'Haute · 1024 px';
+    if (quality === 'economy') return isOpenAI ? 'Économique · 512 px · détail faible' : 'Économique · 512 px';
+    return 'Automatique';
+  };
+
   const getTargetWidthForNextImage = (prefix) => {
     const state = getState();
     const currentCount = state?.images?.[prefix]?.length || 0;
@@ -307,9 +318,9 @@
     optionsMenu.hidden = true;
     optionsMenu.innerHTML = `
       <strong>Qualité d’analyse IA</strong>
-      <button type="button" data-image-ai-quality="auto">Automatique</button>
-      <button type="button" data-image-ai-quality="economy">Économique · 512 px</button>
-      <button type="button" data-image-ai-quality="high">Haute · 1024 px</button>`;
+      <button type="button" data-image-ai-quality="auto">${getAnalysisQualityMenuLabel('auto')}</button>
+      <button type="button" data-image-ai-quality="economy">${getAnalysisQualityMenuLabel('economy')}</button>
+      <button type="button" data-image-ai-quality="high">${getAnalysisQualityMenuLabel('high')}</button>`;
     optionsButton.addEventListener('click', (event) => {
       stopEvent(event);
       optionsMenu.hidden = !optionsMenu.hidden;
@@ -348,7 +359,10 @@
     const qualityLabel = configuredQuality === 'auto'
       ? `Auto → ${effectiveQuality === 'high' ? 'haute' : 'éco'}`
       : effectiveQuality === 'high' ? 'Haute' : 'Éco';
-    meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${qualityLabel}`;
+    const detailLabel = getActiveAIProvider() === 'openai'
+      ? ` · détail ${effectiveQuality === 'high' ? 'élevé' : 'faible'}`
+      : '';
+    meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${qualityLabel}${detailLabel}`;
 
     const actions = document.createElement('div');
     actions.className = 'image-thumb-actions';
