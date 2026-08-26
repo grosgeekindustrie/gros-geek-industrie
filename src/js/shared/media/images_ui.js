@@ -19,10 +19,19 @@
     event.stopPropagation();
   };
 
+  const getAutomaticQualityForIndex = (imageIndex) => (imageIndex === 0 ? 'high' : 'economy');
+
+  const getEffectiveAnalysisQuality = (imageRecord, imageIndex) => {
+    const configured = String(imageRecord?.aiAnalysisQuality || 'auto');
+    return configured === 'auto' ? getAutomaticQualityForIndex(imageIndex) : configured;
+  };
+
+  const getTargetWidthForQuality = (quality) => (quality === 'high' ? 1024 : 512);
+
   const getTargetWidthForNextImage = (prefix) => {
     const state = getState();
     const currentCount = state?.images?.[prefix]?.length || 0;
-    return currentCount === 0 ? 1024 : 512;
+    return getTargetWidthForQuality(getAutomaticQualityForIndex(currentCount));
   };
 
   const persistImages = async (prefix) => {
@@ -107,6 +116,7 @@
       originalWidth: original.originalWidth,
       originalHeight: original.originalHeight,
       cropRect: null,
+      aiAnalysisQuality: 'auto',
       contentHash: '',
       anthropicFileId: '',
       anthropicContentHash: '',
@@ -170,11 +180,20 @@
     if (!currentImage.originalWidth) currentImage.originalWidth = currentImage.width;
     if (!currentImage.originalHeight) currentImage.originalHeight = currentImage.height;
 
-    currentImage.base64 = cropVariant.base64;
-    currentImage.mediaType = cropVariant.mediaType;
-    currentImage.width = cropVariant.width;
-    currentImage.height = cropVariant.height;
     currentImage.cropRect = cropVariant.crop;
+    const rebuiltVariant = await imageTools().exportVariantFromSource({
+      sourceBase64: currentImage.originalBase64,
+      sourceMediaType: currentImage.originalMediaType,
+      sourceWidth: currentImage.originalWidth,
+      sourceHeight: currentImage.originalHeight,
+      crop: currentImage.cropRect,
+      targetWidth: getTargetWidthForQuality(getEffectiveAnalysisQuality(currentImage, imageIndex)),
+      outputMediaType: imageTools().getDefaultExportMediaType(),
+    });
+    currentImage.base64 = rebuiltVariant.base64;
+    currentImage.mediaType = rebuiltVariant.mediaType;
+    currentImage.width = rebuiltVariant.width;
+    currentImage.height = rebuiltVariant.height;
     clearAnthropicImageFileState(currentImage);
 
     renderThumbs(prefix);
@@ -224,6 +243,47 @@
     await persistImages(prefix);
   };
 
+  const updateImageAnalysisQuality = async (prefix, imageIndex, quality) => {
+    const state = getState();
+    const imageRecord = state?.images?.[prefix]?.[imageIndex];
+    if (!imageRecord || !['auto', 'economy', 'high'].includes(quality)) return;
+
+    imageRecord.aiAnalysisQuality = quality;
+    const variant = await imageTools().exportVariantFromSource({
+      sourceBase64: imageRecord.originalBase64 || imageRecord.base64,
+      sourceMediaType: imageRecord.originalMediaType || imageRecord.mediaType,
+      sourceWidth: imageRecord.originalWidth || imageRecord.width,
+      sourceHeight: imageRecord.originalHeight || imageRecord.height,
+      crop: imageRecord.cropRect,
+      targetWidth: getTargetWidthForQuality(getEffectiveAnalysisQuality(imageRecord, imageIndex)),
+      outputMediaType: imageTools().getDefaultExportMediaType(),
+    });
+    imageRecord.base64 = variant.base64;
+    imageRecord.mediaType = variant.mediaType;
+    imageRecord.width = variant.width;
+    imageRecord.height = variant.height;
+    clearAnthropicImageFileState(imageRecord);
+    renderThumbs(prefix);
+    await persistImages(prefix);
+  };
+
+  const resetAIAnalysisDefaults = async ({ notify = false } = {}) => {
+    const prefixes = ['tt', 'col'];
+    let resetCount = 0;
+
+    for (const prefix of prefixes) {
+      const images = getState()?.images?.[prefix];
+      if (!Array.isArray(images) || !images.length) continue;
+      for (let index = 0; index < images.length; index += 1) {
+        if (images[index].aiAnalysisQuality !== 'auto') resetCount += 1;
+        await updateImageAnalysisQuality(prefix, index, 'auto');
+      }
+    }
+
+    if (notify && resetCount > 0) global.showToast?.(`${resetCount} réglage(s) image réinitialisé(s)`);
+    return resetCount;
+  };
+
   const renderThumbCard = (imageRecord, imageIndex, prefix) => {
     const card = document.createElement('article');
     card.className = 'image-thumb-card';
@@ -233,6 +293,38 @@
     const previewWrap = document.createElement('div');
     previewWrap.className = 'image-thumb-preview-wrap';
 
+    const optionsWrap = document.createElement('div');
+    optionsWrap.className = 'image-thumb-ai-options';
+    const optionsButton = document.createElement('button');
+    optionsButton.type = 'button';
+    optionsButton.className = 'image-thumb-options-btn';
+    optionsButton.textContent = '•••';
+    optionsButton.title = 'Options d’analyse IA';
+    optionsButton.setAttribute('aria-label', 'Options d’analyse IA');
+    optionsButton.setAttribute('aria-expanded', 'false');
+    const optionsMenu = document.createElement('div');
+    optionsMenu.className = 'image-thumb-options-menu';
+    optionsMenu.hidden = true;
+    optionsMenu.innerHTML = `
+      <strong>Qualité d’analyse IA</strong>
+      <button type="button" data-image-ai-quality="auto">Automatique</button>
+      <button type="button" data-image-ai-quality="economy">Économique · 512 px</button>
+      <button type="button" data-image-ai-quality="high">Haute · 1024 px</button>`;
+    optionsButton.addEventListener('click', (event) => {
+      stopEvent(event);
+      optionsMenu.hidden = !optionsMenu.hidden;
+      optionsButton.setAttribute('aria-expanded', String(!optionsMenu.hidden));
+    });
+    optionsMenu.addEventListener('click', async (event) => {
+      stopEvent(event);
+      const qualityButton = event.target.closest('[data-image-ai-quality]');
+      if (!qualityButton) return;
+      optionsMenu.hidden = true;
+      await updateImageAnalysisQuality(prefix, imageIndex, qualityButton.dataset.imageAiQuality);
+    });
+    optionsWrap.appendChild(optionsButton);
+    optionsWrap.appendChild(optionsMenu);
+
     const preview = document.createElement('img');
     preview.className = 'image-thumb-preview';
     preview.src = imageTools().getImageDataUrl?.(imageRecord.base64, imageRecord.mediaType);
@@ -240,6 +332,7 @@
     preview.title = imageRecord.name || '';
 
     previewWrap.appendChild(preview);
+    previewWrap.appendChild(optionsWrap);
 
     const body = document.createElement('div');
     body.className = 'image-thumb-body';
@@ -250,7 +343,12 @@
 
     const meta = document.createElement('div');
     meta.className = 'image-thumb-meta';
-    meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${imageRecord.mediaType || 'image/png'}`;
+    const configuredQuality = String(imageRecord.aiAnalysisQuality || 'auto');
+    const effectiveQuality = getEffectiveAnalysisQuality(imageRecord, imageIndex);
+    const qualityLabel = configuredQuality === 'auto'
+      ? `Auto → ${effectiveQuality === 'high' ? 'haute' : 'éco'}`
+      : effectiveQuality === 'high' ? 'Haute' : 'Éco';
+    meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${qualityLabel}`;
 
     const actions = document.createElement('div');
     actions.className = 'image-thumb-actions';
@@ -331,7 +429,16 @@
     if (nextImages.length !== images.length) return false;
 
     state.images[prefix] = nextImages;
-    await persistImages(prefix);
+    const autoIndexes = nextImages
+      .map((imageRecord, index) => (String(imageRecord.aiAnalysisQuality || 'auto') === 'auto' ? index : -1))
+      .filter((index) => index >= 0);
+    if (autoIndexes.length) {
+      for (const index of autoIndexes) {
+        await updateImageAnalysisQuality(prefix, index, 'auto');
+      }
+    } else {
+      await persistImages(prefix);
+    }
     return true;
   };
 
@@ -447,8 +554,15 @@
     setupImageHandlers,
     processImages,
     renderThumbs,
+    resetAIAnalysisDefaults,
+    updateImageAnalysisQuality,
   };
 
   global.PipelineUI.images = global.PipelineUI.images || {};
   Object.assign(global.PipelineUI.images, global.PipelineUIImages);
+  global.addEventListener('pipeline:ai-profile-change', () => {
+    resetAIAnalysisDefaults({ notify: true }).catch((error) => {
+      logger?.warn?.('Reset AI image settings failed', error);
+    });
+  });
 })(window);

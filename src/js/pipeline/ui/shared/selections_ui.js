@@ -848,7 +848,7 @@
 
     try {
       const { text: result, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
-        const response = await global.callClaude('tags', {
+        const response = await global.callAI('tags', {
           filled: prompt.filled,
           fixedContent: prompt.fixedContent,
         }, false, AUXILIARY_RETRY_COUNT);
@@ -1130,7 +1130,7 @@
 
     try {
       const { text: result, usage, cached } = await runCachedAuxiliaryPrompt('aux-explorer', cacheKey, async () => {
-        const response = await global.callClaude('titre', {
+        const response = await global.callAI('titre', {
           filled: explorerPrompt,
           fixedContent: prompt.fixedContent,
         }, false, AUXILIARY_RETRY_COUNT);

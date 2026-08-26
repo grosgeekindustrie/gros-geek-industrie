@@ -4,8 +4,8 @@
   global.PipelineUI = global.PipelineUI || {};
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
 
-  function getCostRatesForAgent(agentId = '') {
-    const model = String(global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
+  function getCostRatesForAgent(agentId = '', modelOverride = '') {
+    const model = String(modelOverride || global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
     const normalizedModel = String(global.normalizeClaudeModelId?.(model) || model).trim().toLowerCase();
 
     if (normalizedModel.includes('haiku')) {
@@ -140,8 +140,8 @@
     return agentId;
   }
 
-  function getCostModelName(agentId = '') {
-    const rawModel = String(global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
+  function getCostModelName(agentId = '', execution = null) {
+    const rawModel = String(execution?.model || global.getActiveAgentModel?.(getCostModelAgentId(agentId)) || global.AGENT_MODELS[getCostModelAgentId(agentId)] || '—');
     return String(global.normalizeClaudeModelId?.(rawModel) || rawModel);
   }
 
@@ -203,8 +203,8 @@
     return totals;
   }
 
-  function buildUsageCostSnapshot(agentId, usage = {}) {
-    const rates = getCostRatesForAgent(agentId);
+  function buildUsageCostSnapshot(agentId, usage = {}, execution = null) {
+    const rates = getCostRatesForAgent(agentId, execution?.model);
     const inputTok = toSafeTokenCount(usage.input_tokens);
     const outputTok = toSafeTokenCount(usage.output_tokens);
     const cacheRead = toSafeTokenCount(usage.cache_read_input_tokens);
@@ -361,7 +361,8 @@
     if (!resolvedAgentId) return null;
 
     const tracking = getCostTrackingState();
-    const snapshot = buildUsageCostSnapshot(resolvedAgentId, usage);
+    const execution = options.execution || usage.ai_execution || null;
+    const snapshot = buildUsageCostSnapshot(resolvedAgentId, usage, execution);
     const activeCacheRun = global.getActiveCacheDebugRun(resolvedPrefix);
     const activeCacheEvents = Array.isArray(activeCacheRun?.events) ? activeCacheRun.events : [];
     const matchingCacheEvents = activeCacheEvents.filter((event) => {
@@ -382,7 +383,10 @@
       mode: global.getPipelineLaunchMode(resolvedPrefix),
       agentId: resolvedAgentId,
       label: getCostAgentLabel(resolvedPrefix, resolvedAgentId),
-      model: getCostModelName(resolvedAgentId),
+      provider: String(execution?.provider || 'anthropic'),
+      model: getCostModelName(resolvedAgentId, execution),
+      task: String(execution?.task || global.PipelineUIAIProfiles?.getTaskForAgent?.(resolvedAgentId) || ''),
+      profileId: String(execution?.profileId || ''),
       source: String(options.source || 'agent'),
       timestamp: new Date().toISOString(),
       totalTokens: getCostEntryTotalTokens(snapshot),
@@ -472,7 +476,7 @@
         if (aggregate.cacheWrite > 0) cacheParts.push(`write ${aggregate.cacheWrite.toLocaleString()}`);
         if (aggregate.cacheRead > 0) cacheParts.push(`read ${aggregate.cacheRead.toLocaleString()}`);
         const cacheLabel = cacheParts.length ? ` | ${cacheParts.join(' | ')}` : '';
-        const model = getCostModelName(aggregate.agentId);
+        const model = lastEntry.model || getCostModelName(aggregate.agentId);
 
         lines.push(
           `${getCostModeShortLabel(aggregate.prefix)} · ${aggregate.label} | ${model} | x${aggregate.executionCount}`

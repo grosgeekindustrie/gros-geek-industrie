@@ -1238,7 +1238,7 @@
       global.state.images.instagram = [referenceImage];
       setAgentState('Génération en cours…', 'running');
 
-      let response = await global.callClaude(AGENT_ID, {
+      let response = await global.callAI(AGENT_ID, {
         filled,
         fixedContent: '',
         runtimeAgentId: AGENT_ID,
@@ -1259,7 +1259,7 @@
           'PROPOSITION À CORRIGER',
           state.lastAgentRaw,
         ].join('\n\n');
-        response = await global.callClaude(AGENT_ID, {
+        response = await global.callAI(AGENT_ID, {
           filled: retryPrompt,
           fixedContent: '',
           runtimeAgentId: AGENT_ID,

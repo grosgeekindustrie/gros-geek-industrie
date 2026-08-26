@@ -40,7 +40,7 @@
 
       const cacheKey = buildTitreRegenCacheKey(regenPrompt, agentId, text, matchedTerm);
       const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
-        global.callClaude('titre', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+        global.callAI('titre', regenPrompt, false, AUXILIARY_RETRY_COUNT)
       ));
       const result = response.text;
       const newTitre = result

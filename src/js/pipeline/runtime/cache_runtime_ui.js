@@ -365,7 +365,7 @@
 
   async function buildEventTokenSections(event = {}) {
     const sectionTexts = getEventSectionTexts(event);
-    const model = global.getActiveAgentModel?.(event.agentId) || global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
+    const model = event.model || global.getActiveAgentModel?.(event.agentId) || global.AGENT_MODELS?.[event.agentId] || 'claude-sonnet-4-5';
     const sectionEntries = Object.entries(sectionTexts);
     const tokenSections = {};
 
@@ -418,6 +418,10 @@
       cacheWriteTokens: usage.cache_creation_input_tokens || 0,
       inputTokens: usage.input_tokens || 0,
       outputTokens: usage.output_tokens || 0,
+      provider: String(usage.ai_execution?.provider || 'anthropic'),
+      model: String(usage.ai_execution?.model || global.getActiveAgentModel?.(agentId) || 'claude-sonnet-4-5'),
+      task: String(usage.ai_execution?.task || ''),
+      profileId: String(usage.ai_execution?.profileId || ''),
       promptChars: Number(promptDebug?.promptChars) || global.getPromptTextCharCount(promptDebug?.promptText || ''),
       fixedChars: fixedBlocks.reduce((sum, block) => sum + (block.chars || 0), 0),
       sharedPrefixChars: sharedBlock?.chars || 0,

@@ -387,7 +387,7 @@
     try {
       const template = await loadPrompt(); const filled = buildAgentPrompt(template); state.lastRawInput = filled;
       global.state.inputs = global.state.inputs || {}; global.state.inputs[AGENT_ID] = filled;
-      const response = await global.callClaude(AGENT_ID, { filled, fixedContent: '', runtimeAgentId: AGENT_ID }, false);
+      const response = await global.callAI(AGENT_ID, { filled, fixedContent: '', runtimeAgentId: AGENT_ID }, false);
       state.content = parseAgentResult(response.text);
       state.clientBatchId = createClientBatchId();
       renderContent(); setAgentState('Génération terminée', 'success'); global.showToast?.('Contenu Pinterest généré'); saveDraft();

@@ -159,7 +159,7 @@
     global.state.inputs.social = prompt.filled;
 
     try {
-      const { text: result, usage } = await global.callClaude('social', prompt, false);
+      const { text: result, usage } = await global.callAI('social', prompt, false);
       finalizeSocialAgentSuccess(prefix, 'social', refs, result);
       global.showAgentCost('social', usage, { prefix, source: 'social' });
       global.syncCacheIndicator(usage);
@@ -190,7 +190,7 @@
     global.state.inputs.camille = prompt.filled;
 
     try {
-      const { text: result, usage } = await global.callClaude('camille', prompt, false);
+      const { text: result, usage } = await global.callAI('camille', prompt, false);
       finalizeSocialAgentSuccess(prefix, 'camille', refs, result);
       global.showAgentCost('camille', usage, { prefix, source: 'camille' });
       global.syncCacheIndicator(usage);

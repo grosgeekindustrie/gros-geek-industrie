@@ -163,6 +163,9 @@
       runtimeAgentId: String(promptData?.runtimeAgentId || '').trim() || agentId,
       overrideModel: String(promptData?.overrideModel || '').trim(),
       workspacePrefix: String(promptData?.workspacePrefix || '').trim(),
+      aiExecution: promptData?.aiExecution && typeof promptData.aiExecution === 'object'
+        ? { ...promptData.aiExecution }
+        : null,
     };
   }
 
@@ -637,6 +640,7 @@
       runtimeAgentId,
       overrideModel,
       workspacePrefix,
+      aiExecution,
     } = normalizedPromptData;
     const prefix = workspacePrefix || global.pfx();
 
@@ -690,7 +694,10 @@
         }
 
         const data = await response.json();
-        const usage = data.usage || {};
+        const usage = {
+          ...(data.usage || {}),
+          ...(aiExecution ? { ai_execution: { ...aiExecution } } : {}),
+        };
         global.recordCacheDebugEvent(prefix, runtimeAgentId, usage, runtimePromptDebug);
         if (filesApiDebug.enabled) {
           applyAgentFilesApiVisualState(prefix, runtimeAgentId, filesApiDebug);

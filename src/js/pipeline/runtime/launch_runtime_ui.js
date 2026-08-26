@@ -532,7 +532,7 @@
     });
 
     const promptData = buildCacheAwarePrelaunchPromptData(prefix, firstAgent);
-    const response = await global.callClaude('cache_aware', promptData, global.shouldUseImagesForAgent(firstAgent));
+    const response = await global.callAI('cache_aware', promptData, global.shouldUseImagesForAgent(firstAgent));
     global.showAgentCost('cache_aware', response.usage || null, {
       prefix,
       source: 'cache-aware-prelaunch',
@@ -544,6 +544,7 @@
   }
 
   async function runPipelineWithCacheAware(prefix) {
+    global.beginAIExecution?.(prefix);
     const resolvedStepId = getResolvedTargetStep(prefix);
     const pipelineAgents = global.getPipelineRuntimeAgentsForTarget(prefix, resolvedStepId);
 

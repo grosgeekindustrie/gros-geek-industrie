@@ -11,7 +11,6 @@
   const PREFIXES = ['tt', 'col'];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
-  const TRANSLATION_MODEL = 'claude-sonnet-4-6';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
   const DEFAULT_SOURCE_STATUS = 'En attente d’une fiche Etsy source.';
@@ -27,7 +26,7 @@
   const getEtsyRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getEtsyData = () => global.PipelineUIEtsyData || {};
   const getDescriptionAssembly = () => global.PipelineUIDescriptionAssembly || {};
-  const getModel = () => TRANSLATION_MODEL;
+  const getModel = () => global.PipelineUIAIRuntime?.resolveActiveAgentModel?.(TRANSLATION_MAPPING_AGENT_ID) || 'claude-sonnet-4-6';
   const readField = (prefix, suffix) => document.getElementById(`${prefix}-${suffix}`);
   const getTrimmedValue = (prefix, suffix) => readField(prefix, suffix)?.value?.trim?.() || '';
   const getStorageKey = (prefix) => `${STORAGE_KEY_PREFIX}${prefix}`;
@@ -529,8 +528,7 @@
       getState().inputs[`${prefix}:${TRANSLATION_MAPPING_AGENT_ID}`] = filled;
       setMappingStatus(prefix, `Verification EN en cours (${getModel(TRANSLATION_MAPPING_AGENT_ID)})...`);
 
-      const response = await global.callClaude(TRANSLATION_MAPPING_AGENT_ID, {
-        overrideModel: TRANSLATION_MODEL,
+      const response = await global.callAI(TRANSLATION_MAPPING_AGENT_ID, {
         filled,
         promptDebug: {
           agentId: TRANSLATION_MAPPING_AGENT_ID,
@@ -673,8 +671,7 @@
       getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;
       setTranslationStatus(prefix, `Traduction DE en cours (${getModel(TRANSLATION_LISTING_AGENT_ID)})...`);
 
-      const response = await global.callClaude(TRANSLATION_LISTING_AGENT_ID, {
-        overrideModel: TRANSLATION_MODEL,
+      const response = await global.callAI(TRANSLATION_LISTING_AGENT_ID, {
         filled: filledWithInjectionNote,
         fixedContentBlocks,
         promptDebug: {
@@ -937,4 +934,3 @@
 
   initAllTranslationDePanels();
 })(window);
-

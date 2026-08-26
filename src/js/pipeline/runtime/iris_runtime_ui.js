@@ -77,7 +77,7 @@
 
       global.state.inputs.iris = rawFixed + prompt.filled;
 
-      const response = await global.callClaude('iris', prompt, false);
+      const response = await global.callAI('iris', prompt, false);
       finalizeIrisSemanticSearch(prefix, refs, response);
       return response;
     } catch (error) {

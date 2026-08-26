@@ -24,6 +24,8 @@
   };
 
   function getActiveAgentModel(agentId = '') {
+    const routedModel = String(global.PipelineUIAIRuntime?.resolveActiveAgentModel?.(agentId) || '').trim();
+    if (routedModel) return routedModel;
     const selectedModel = String(global.getSelectedClaudeModel?.() || '').trim();
     if (selectedModel) return selectedModel;
     return String(AGENT_MODELS[agentId] || 'claude-sonnet-4-5').trim();
@@ -280,7 +282,7 @@
       const runtimePrompt = global.withPipelineCacheAwarePromptData(prefix, prompt, {
         source: isRetry ? 'rerun' : 'pipeline',
       });
-      const response = await global.callClaude(agent.id, runtimePrompt, global.shouldUseImagesForAgent(agent));
+      const response = await global.callAI(agent.id, runtimePrompt, global.shouldUseImagesForAgent(agent));
       const result = response.text;
       const usage = response.usage || null;
 

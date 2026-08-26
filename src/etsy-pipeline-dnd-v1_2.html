@@ -43,6 +43,10 @@
   </div>
   <!-- RIGHT -->
   <div class="app-header-right">
+    <button class="app-ai-profile-btn" id="aiProfileButton" type="button" title="Configurer le profil IA actif" aria-haspopup="dialog" aria-controls="aiProfileDialog">
+      <span class="app-ai-profile-dot" aria-hidden="true"></span>
+      <span id="aiProfileButtonLabel">IA · Claude actuel</span>
+    </button>
     <button class="btn btn-muted app-back-btn is-hidden" id="appBackBtn" data-js="app-back-btn" data-ui-action="cancel-to-home"><span data-svg-icon="back"></span><span class="ui-icon-label">Retour</span></button>
     <button class="app-settings-btn" data-ui-action="open-settings" title="Paramètres" data-svg-icon="settings"></button>
   </div>
@@ -1182,22 +1186,6 @@
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
-                <label class="launch-model-picker" for="tt-launch-model">
-                  <span class="launch-model-picker-label">Modèle Claude</span>
-                  <select id="tt-launch-model" class="launch-model-select">
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
-                    <option value="claude-opus-4-8">Claude Opus 4.8</option>
-                    <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                    <option value="claude-opus-4-6">Claude Opus 4.6</option>
-                    <option value="claude-opus-4-5">Claude Opus 4.5</option>
-                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
-                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
-                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
-                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
-                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
-                  </select>
-                </label>
                 <label class="launch-model-picker launch-toggle" for="tt-doublex-prompt-toggle" data-js="doublex-prompt-toggle-wrap" hidden>
                   <span class="launch-model-picker-label">Prompts NSFW DoubleXindustrie</span>
                   <input type="checkbox" id="tt-doublex-prompt-toggle" checked />
@@ -2187,22 +2175,6 @@ Cache : —</pre>
               <h2>Lancement</h2>
               <p>Lance le pipeline complet, puis suis l’état courant, le cache et le monitoring utile.</p>
               <div class="field-action-row">
-                <label class="launch-model-picker" for="col-launch-model">
-                  <span class="launch-model-picker-label">Modèle Claude</span>
-                  <select id="col-launch-model" class="launch-model-select">
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                    <option value="claude-sonnet-4-5" selected>Claude Sonnet 4.5</option>
-                    <option value="claude-opus-4-8">Claude Opus 4.8</option>
-                    <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                    <option value="claude-opus-4-6">Claude Opus 4.6</option>
-                    <option value="claude-opus-4-5">Claude Opus 4.5</option>
-                    <option value="claude-sonnet-4-0">Claude Sonnet 4.0</option>
-                    <option value="claude-opus-4-1">Claude Opus 4.1</option>
-                    <option value="claude-opus-4-0">Claude Opus 4.0</option>
-                    <option value="claude-3-7-sonnet-latest">Claude Sonnet 3.7</option>
-                    <option value="claude-3-5-sonnet-latest">Claude Sonnet 3.5</option>
-                  </select>
-                </label>
                 <label class="launch-model-picker launch-toggle" for="col-doublex-prompt-toggle" data-js="doublex-prompt-toggle-wrap" hidden>
                   <span class="launch-model-picker-label">Prompts NSFW DoubleXindustrie</span>
                   <input type="checkbox" id="col-doublex-prompt-toggle" checked />

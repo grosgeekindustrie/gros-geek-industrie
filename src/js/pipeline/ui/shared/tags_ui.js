@@ -114,7 +114,7 @@
         const regenPrompt = buildReplacementPrompt(prompt, tag, matchedTerm, rejectedTags);
         const cacheKey = buildTagRegenCacheKey(regenPrompt, siblingTags.concat(rejectedTags));
         const response = await runtimeCache.runWithSharedRequest?.('aux-regen', cacheKey, async () => (
-          global.callClaude('tags', regenPrompt, false, AUXILIARY_RETRY_COUNT)
+          global.callAI('tags', regenPrompt, false, AUXILIARY_RETRY_COUNT)
         ));
         const result = response.text;
         const candidateTag = extractGeneratedTag(result);

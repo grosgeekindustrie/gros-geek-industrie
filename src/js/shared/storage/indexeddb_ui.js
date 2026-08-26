@@ -61,6 +61,9 @@
     const anthropicFileId = String(safeRecord.anthropicFileId || '');
     const anthropicContentHash = String(safeRecord.anthropicContentHash || '');
     const anthropicUploadedAt = String(safeRecord.anthropicUploadedAt || '');
+    const aiAnalysisQuality = ['auto', 'economy', 'high'].includes(safeRecord.aiAnalysisQuality)
+      ? safeRecord.aiAnalysisQuality
+      : 'auto';
     const hasFreshAnthropicFile = Boolean(
       anthropicFileId
       && contentHash
@@ -79,6 +82,7 @@
       originalWidth,
       originalHeight,
       cropRect: cloneCropRect(safeRecord.cropRect),
+      aiAnalysisQuality,
       contentHash,
       anthropicFileId: hasFreshAnthropicFile ? anthropicFileId : '',
       anthropicContentHash: hasFreshAnthropicFile ? anthropicContentHash : '',
