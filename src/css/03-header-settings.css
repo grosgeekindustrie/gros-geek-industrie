@@ -69,8 +69,14 @@
   height:7px;
   flex:0 0 auto;
   border-radius:50%;
-  background:var(--accent);
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+  background:#4f8cff;
+  box-shadow:0 0 0 3px color-mix(in srgb, #4f8cff 18%, transparent);
+  transition:background .15s, box-shadow .15s;
+}
+
+.app-ai-profile-btn[data-ai-provider="openai"] .app-ai-profile-dot {
+  background:#10a37f;
+  box-shadow:0 0 0 3px color-mix(in srgb, #10a37f 18%, transparent);
 }
 
 .ai-profile-overlay {

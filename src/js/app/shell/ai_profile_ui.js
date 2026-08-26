@@ -99,7 +99,10 @@
     const profile = profiles.getActiveProfile();
     const profileLabel = profiles.getProfileLabel(profile);
     if (label) label.textContent = `IA · ${profileLabel}`;
-    if (button) button.title = `Profil IA actif : ${profileLabel}`;
+    if (button) {
+      button.title = `Profil IA actif : ${profileLabel}`;
+      button.dataset.aiProvider = profile.provider || 'anthropic';
+    }
   };
 
   const openDialog = () => {
