@@ -312,6 +312,197 @@
   cursor: pointer;
 }
 
+.localization-automation {
+  display: grid;
+  gap: 1rem;
+}
+
+.localization-automation[hidden] {
+  display: none;
+}
+
+.localization-automation-toolbar,
+.localization-automation-filters,
+.localization-automation-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.localization-automation-toolbar {
+  justify-content: space-between;
+}
+
+.localization-automation-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.localization-automation-entry {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.035);
+  overflow: hidden;
+}
+
+details.localization-automation-entry > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details.localization-automation-entry > summary::-webkit-details-marker {
+  display: none;
+}
+
+.localization-automation-entry.has-errors {
+  border-color: rgba(234, 77, 77, 0.42);
+  background: rgba(174, 40, 40, 0.09);
+}
+
+.localization-automation-entry-head {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.85rem;
+}
+
+.localization-automation-entry-head img,
+.localization-automation-image-placeholder {
+  width: 5rem;
+  aspect-ratio: 1;
+  border-radius: 0.65rem;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.localization-automation-entry-copy {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.localization-automation-entry-copy > strong {
+  overflow: hidden;
+  color: var(--text-main, #f7f4ef);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.localization-automation-entry-copy > span,
+.localization-automation-entry-links,
+.localization-automation-empty {
+  color: var(--text-muted, #98a5b8);
+  font-size: 0.84rem;
+}
+
+.localization-automation-entry-links {
+  padding: 0 0.85rem 0.75rem 6.75rem;
+}
+
+.localization-automation-languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.localization-automation-language,
+.localization-automation-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+}
+
+.localization-automation-language {
+  min-width: 2.15rem;
+  padding: 0.24rem 0.42rem;
+}
+
+.localization-automation-language.is-waiting {
+  color: #b5bfce;
+  background: rgba(152, 165, 184, 0.12);
+}
+
+.localization-automation-language.is-running {
+  color: #ffd98b;
+  background: rgba(235, 179, 66, 0.18);
+}
+
+.localization-automation-language.is-ready {
+  color: #a9cbff;
+  background: rgba(53, 111, 184, 0.18);
+}
+
+.localization-automation-language.is-published {
+  color: #a8e8ca;
+  background: rgba(33, 145, 98, 0.18);
+}
+
+.localization-automation-language.is-failed {
+  color: #ffabab;
+  background: rgba(174, 40, 40, 0.22);
+}
+
+.localization-automation-state {
+  max-width: 11rem;
+  padding: 0.38rem 0.65rem;
+  color: #dce5f3;
+  background: rgba(152, 165, 184, 0.12);
+  text-align: center;
+}
+
+.localization-automation-state.is-completed {
+  color: #a8e8ca;
+  background: rgba(33, 145, 98, 0.18);
+}
+
+.localization-automation-state.is-attention,
+.localization-automation-state.is-error {
+  color: #ffabab;
+  background: rgba(174, 40, 40, 0.22);
+}
+
+.localization-automation-errors {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.25rem 0.85rem 0.9rem;
+  border-top: 1px solid rgba(234, 77, 77, 0.2);
+}
+
+.localization-automation-error {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  border-radius: 0.65rem;
+  background: rgba(12, 18, 28, 0.48);
+}
+
+.localization-automation-error-title {
+  display: flex;
+  gap: 0.65rem;
+  align-items: baseline;
+}
+
+.localization-automation-error-title span {
+  color: #ffabab;
+}
+
+.localization-automation-error ul {
+  margin: 0;
+  color: #f1b982;
+}
+
+.localization-automation-output pre {
+  max-height: 24rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 @media (max-width: 980px) {
   .localization-backfill-config,
   .localization-backfill-language-picker {
@@ -320,6 +511,24 @@
 
   .localization-job-card {
     grid-template-columns: 1fr 5rem;
+  }
+
+  .localization-automation-entry-head {
+    grid-template-columns: 4rem minmax(0, 1fr);
+  }
+
+  .localization-automation-entry-head img,
+  .localization-automation-image-placeholder {
+    width: 4rem;
+  }
+
+  .localization-automation-state {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .localization-automation-entry-links {
+    padding-left: 5.75rem;
   }
 }
 

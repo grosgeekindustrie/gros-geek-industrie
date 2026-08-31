@@ -42,6 +42,12 @@ SUPPORTED_SHOPS = {
 }
 SUPPORTED_MODELS = ("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")
 SUPPORTED_REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
+AUTOMATION_MODEL = "gpt-5.6-luna"
+AUTOMATION_REASONING_EFFORT = "low"
+AUTOMATION_DEFAULT_POLL_SECONDS = 300
+AUTOMATION_DEFAULT_STABILITY_SECONDS = 1200
+AUTOMATION_WATCH_STATES = ("waiting_activation", "stabilizing", "verification")
+AUTOMATION_ACTIVE_STATES = (*AUTOMATION_WATCH_STATES, "generating", "publishing")
 STRUCTURAL_EMOJI_RE = re.compile(
     r"(?:[\u2600-\u27BF]|[\U0001F300-\U0001FAFF])(?:\uFE0F|\u200D(?:[\u2600-\u27BF]|[\U0001F300-\U0001FAFF])(?:\uFE0F)*)*"
 )
@@ -179,6 +185,13 @@ JOB_STATES = (
 
 def utc_iso(timestamp: float | None = None) -> str:
     return datetime.fromtimestamp(timestamp or time.time(), timezone.utc).isoformat()
+
+
+def parse_utc_iso(value: str | None) -> float:
+    try:
+        return datetime.fromisoformat(str(value or "")).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def stable_json(value) -> str:
@@ -599,10 +612,12 @@ class ClosingSQLiteConnection(sqlite3.Connection):
 
 
 class LocalizationBackfillService:
-    """File durable de localisations Collection, isolée par boutique.
+    """Files durables de localisations Collection, isolées par boutique.
 
-    Les jobs de génération s'arrêtent en ``preview_ready``. Une action humaine
-    explicite transforme ensuite les aperçus validés en ``publish_pending``.
+    Les lots de backfill s'arrêtent en ``preview_ready`` jusqu'à validation
+    humaine. Les lots liés à l'automatisation post-publication réutilisent le
+    même moteur puis passent en publication après un dernier contrôle de la
+    source française.
     """
 
     def __init__(
@@ -611,6 +626,10 @@ class LocalizationBackfillService:
         catalog_loader: Callable[[str], dict],
         openai_request: Callable[[dict], tuple[int, dict]],
         translation_publisher: Callable[[str, str, str, dict], dict],
+        listing_loader: Callable[[str, list[str]], dict] | None = None,
+        *,
+        automation_poll_seconds: int = AUTOMATION_DEFAULT_POLL_SECONDS,
+        automation_stability_seconds: int = AUTOMATION_DEFAULT_STABILITY_SECONDS,
     ):
         self.root = Path(root).resolve()
         self.db_path = self.root / ".localization_backfill.sqlite3"
@@ -619,10 +638,14 @@ class LocalizationBackfillService:
         self.catalog_loader = catalog_loader
         self.openai_request = openai_request
         self.translation_publisher = translation_publisher
+        self.listing_loader = listing_loader
+        self.automation_poll_seconds = max(30, int(automation_poll_seconds))
+        self.automation_stability_seconds = max(60, int(automation_stability_seconds))
         self._db_lock = Lock()
         self._wake = Event()
         self._stop = Event()
         self._worker: Thread | None = None
+        self._next_automation_poll_at = 0.0
         self.report_root.mkdir(parents=True, exist_ok=True)
         self._init_db()
         self._recover_interrupted_jobs()
@@ -694,6 +717,31 @@ class LocalizationBackfillService:
 
                 CREATE INDEX IF NOT EXISTS idx_localization_jobs_work
                 ON localization_jobs(state, created_at);
+
+                CREATE TABLE IF NOT EXISTS localization_automation_entries (
+                    automation_id TEXT PRIMARY KEY,
+                    listing_id TEXT NOT NULL,
+                    shop_key TEXT NOT NULL,
+                    mode TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    source_hash TEXT NOT NULL DEFAULT '',
+                    source_json TEXT NOT NULL DEFAULT '',
+                    existing_languages_json TEXT NOT NULL DEFAULT '[]',
+                    stable_since TEXT,
+                    last_checked_at TEXT,
+                    next_check_at TEXT,
+                    run_id TEXT,
+                    model TEXT NOT NULL,
+                    reasoning_effort TEXT NOT NULL,
+                    error TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    completed_at TEXT,
+                    UNIQUE(shop_key, listing_id)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_localization_automation_work
+                ON localization_automation_entries(state, next_check_at);
                 """
             )
             run_columns = {
@@ -723,6 +771,14 @@ class LocalizationBackfillService:
             connection.execute(
                 "UPDATE localization_jobs SET completed_at=updated_at WHERE state='published' AND completed_at IS NULL"
             )
+            run_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(localization_runs)").fetchall()
+            }
+            if "automation_id" not in run_columns:
+                connection.execute(
+                    "ALTER TABLE localization_runs ADD COLUMN automation_id TEXT NOT NULL DEFAULT ''"
+                )
 
     def _recover_interrupted_jobs(self):
         now = utc_iso()
@@ -737,6 +793,10 @@ class LocalizationBackfillService:
             )
             connection.execute(
                 "UPDATE localization_runs SET state='paused', updated_at=? WHERE state='running'",
+                (now,),
+            )
+            connection.execute(
+                "UPDATE localization_runs SET state='running', updated_at=? WHERE automation_id!='' AND state='paused'",
                 (now,),
             )
 
@@ -823,6 +883,297 @@ class LocalizationBackfillService:
                 "existingTranslationsAreSkipped": True,
             },
         }
+
+    def enqueue_automation(
+        self,
+        shop_key: str,
+        listing_id: str,
+        mode: str,
+        initial_source: dict | None = None,
+    ) -> dict:
+        """Inscrire un draft créé par le pipeline sans auditer le catalogue."""
+        shop_key = self._normalize_shop_key(shop_key)
+        listing_id = str(listing_id or "").strip()
+        mode = str(mode or "").strip().lower()
+        if not listing_id:
+            raise ValueError("listing_id manquant pour l'automatisation")
+        if mode != "collection":
+            return {
+                "ok": True,
+                "eligible": False,
+                "reason": "L'automatisation Tabletop reste désactivée jusqu'à validation de son backfill.",
+            }
+        now = utc_iso()
+        automation_id = uuid.uuid4().hex
+        source = initial_source if isinstance(initial_source, dict) else {}
+        with self._db_lock, self._connect() as connection:
+            existing = connection.execute(
+                "SELECT * FROM localization_automation_entries WHERE shop_key=? AND listing_id=?",
+                (shop_key, listing_id),
+            ).fetchone()
+            if existing:
+                return {
+                    "ok": True,
+                    "eligible": True,
+                    "reused": True,
+                    "automationId": existing["automation_id"],
+                    "state": existing["state"],
+                }
+            connection.execute(
+                """
+                INSERT INTO localization_automation_entries (
+                    automation_id, listing_id, shop_key, mode, state,
+                    source_json, next_check_at, model, reasoning_effort,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'waiting_activation', ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    automation_id, listing_id, shop_key, mode,
+                    stable_json(source), now, AUTOMATION_MODEL,
+                    AUTOMATION_REASONING_EFFORT, now, now,
+                ),
+            )
+        self._next_automation_poll_at = 0.0
+        self._wake.set()
+        return {
+            "ok": True,
+            "eligible": True,
+            "automationId": automation_id,
+            "state": "waiting_activation",
+        }
+
+    def automation_dashboard(self, shop_key: str = "grosgeek", limit: int = 200) -> dict:
+        shop_key = self._normalize_shop_key(shop_key)
+        with self._db_lock, self._connect() as connection:
+            entries = connection.execute(
+                """
+                SELECT * FROM localization_automation_entries
+                WHERE shop_key=?
+                ORDER BY
+                    CASE state
+                        WHEN 'attention' THEN 0
+                        WHEN 'error' THEN 0
+                        WHEN 'publishing' THEN 1
+                        WHEN 'generating' THEN 1
+                        WHEN 'stabilizing' THEN 2
+                        WHEN 'waiting_activation' THEN 2
+                        ELSE 3
+                    END,
+                    updated_at DESC
+                LIMIT ?
+                """,
+                (shop_key, max(1, min(int(limit), 500))),
+            ).fetchall()
+            entry_payloads = []
+            for entry in entries:
+                jobs = []
+                if entry["run_id"]:
+                    jobs = connection.execute(
+                        """
+                        SELECT * FROM localization_jobs
+                        WHERE run_id=? ORDER BY language
+                        """,
+                        (entry["run_id"],),
+                    ).fetchall()
+                entry_payloads.append(self._serialize_automation_entry(entry, jobs))
+        counts = Counter(item["state"] for item in entry_payloads)
+        return {
+            "ok": True,
+            "shopKey": shop_key,
+            "pollSeconds": self.automation_poll_seconds,
+            "stabilitySeconds": self.automation_stability_seconds,
+            "languages": [{"code": code, "label": label} for code, label in SUPPORTED_LANGUAGES],
+            "counts": dict(counts),
+            "entries": entry_payloads,
+        }
+
+    def _serialize_automation_entry(self, entry, jobs) -> dict:
+        source = json.loads(entry["source_json"] or "{}")
+        existing_languages = set(json.loads(entry["existing_languages_json"] or "[]"))
+        job_by_language = {str(job["language"]): job for job in jobs}
+        language_states = []
+        errors = []
+        total_usage = {
+            "inputTokens": 0,
+            "cachedTokens": 0,
+            "outputTokens": 0,
+            "reasoningTokens": 0,
+        }
+        processing_seconds = 0.0
+        for language, label in SUPPORTED_LANGUAGES:
+            job = job_by_language.get(language)
+            if job:
+                state = str(job["state"])
+                usage = json.loads(job["usage_json"] or "{}")
+                total_usage["inputTokens"] += int(usage.get("input_tokens") or 0)
+                total_usage["cachedTokens"] += int(
+                    (usage.get("input_tokens_details") or {}).get("cached_tokens") or 0
+                )
+                total_usage["outputTokens"] += int(usage.get("output_tokens") or 0)
+                total_usage["reasoningTokens"] += int(
+                    (usage.get("output_tokens_details") or {}).get("reasoning_tokens") or 0
+                )
+                if job["started_at"]:
+                    job_end = parse_utc_iso(job["completed_at"] or utc_iso())
+                    processing_seconds += max(0.0, job_end - parse_utc_iso(job["started_at"]))
+                output = json.loads(job["output_json"] or "{}")
+                warnings = json.loads(job["quality_warnings_json"] or "[]")
+                error = str(job["error"] or "")
+                if state == "failed" or error:
+                    errors.append({
+                        "language": language,
+                        "label": label,
+                        "state": state,
+                        "error": error,
+                        "qualityWarnings": warnings,
+                        "output": output,
+                        "attempts": int(job["attempts"] or 0),
+                    })
+            elif language in existing_languages:
+                state = "published"
+            else:
+                state = "waiting"
+            language_states.append({"code": language, "label": label, "state": state})
+        entry_error = str(entry["error"] or "")
+        if entry_error and not errors:
+            errors.append({
+                "language": "",
+                "label": "Automatisation",
+                "state": str(entry["state"]),
+                "error": entry_error,
+                "qualityWarnings": [],
+                "output": {},
+                "attempts": 0,
+            })
+        rates = MODEL_RATES_PER_TOKEN.get(str(entry["model"]), {"input": 0.0, "output": 0.0})
+        uncached_input = max(0, total_usage["inputTokens"] - total_usage["cachedTokens"])
+        estimated_cost_usd = (
+            uncached_input * rates["input"]
+            + total_usage["cachedTokens"] * rates["input"] * 0.1
+            + total_usage["outputTokens"] * rates["output"]
+        )
+        return {
+            "automationId": entry["automation_id"],
+            "listingId": entry["listing_id"],
+            "shopKey": entry["shop_key"],
+            "mode": entry["mode"],
+            "state": entry["state"],
+            "title": str(source.get("title") or ""),
+            "imageUrl": str(source.get("imageUrl") or ""),
+            "url": str(source.get("url") or ""),
+            "stableSince": entry["stable_since"] or "",
+            "lastCheckedAt": entry["last_checked_at"] or "",
+            "nextCheckAt": entry["next_check_at"] or "",
+            "runId": entry["run_id"] or "",
+            "model": entry["model"],
+            "reasoningEffort": entry["reasoning_effort"],
+            "createdAt": entry["created_at"],
+            "updatedAt": entry["updated_at"],
+            "completedAt": entry["completed_at"] or "",
+            "languages": language_states,
+            "errors": errors,
+            "hasErrors": bool(errors),
+            "usage": total_usage,
+            "processingSeconds": round(processing_seconds, 1),
+            "estimatedCostUsd": round(estimated_cost_usd, 4),
+        }
+
+    def automation_action(self, automation_id: str, action: str, language: str = "") -> dict:
+        automation_id = str(automation_id or "").strip()
+        action = str(action or "").strip().lower()
+        language = str(language or "").strip().lower()
+        now = utc_iso()
+        with self._db_lock, self._connect() as connection:
+            entry = connection.execute(
+                "SELECT * FROM localization_automation_entries WHERE automation_id=?",
+                (automation_id,),
+            ).fetchone()
+            if not entry:
+                raise ValueError("Automatisation introuvable")
+            if action == "check_now":
+                connection.execute(
+                    "UPDATE localization_automation_entries SET next_check_at=?, updated_at=?, error='' WHERE automation_id=?",
+                    (now, now, automation_id),
+                )
+                self._next_automation_poll_at = 0.0
+            elif action in {"retry_failed", "retry_language"}:
+                if not entry["run_id"]:
+                    raise ValueError("Aucun lot associé à relancer")
+                parameters: list[str] = [entry["run_id"]]
+                language_clause = ""
+                if action == "retry_language":
+                    if language not in SUPPORTED_LANGUAGE_CODES:
+                        raise ValueError("Langue de relance invalide")
+                    language_clause = " AND language=?"
+                    parameters.append(language)
+                failed_jobs = connection.execute(
+                    f"SELECT * FROM localization_jobs WHERE run_id=? AND state='failed'{language_clause}",
+                    tuple(parameters),
+                ).fetchall()
+                if not failed_jobs:
+                    raise ValueError("Aucune traduction en erreur à relancer")
+                requires_generation = False
+                for job in failed_jobs:
+                    warnings = json.loads(job["quality_warnings_json"] or "[]")
+                    reusable_output = (
+                        bool(str(job["output_json"] or "").strip())
+                        and not blocking_quality_warnings(warnings)
+                    )
+                    # Une erreur de publication peut réutiliser sa sortie validée.
+                    # Une sortie refusée par le validateur doit être régénérée,
+                    # sinon la relance reproduirait indéfiniment le même échec.
+                    next_state = "publish_pending" if reusable_output else "pending"
+                    requires_generation = requires_generation or next_state == "pending"
+                    connection.execute(
+                        """
+                        UPDATE localization_jobs
+                        SET state=?, error='', updated_at=?, started_at=NULL, completed_at=NULL
+                        WHERE job_id=?
+                        """,
+                        (next_state, now, job["job_id"]),
+                    )
+                connection.execute(
+                    "UPDATE localization_runs SET state='running', completed_at=NULL, updated_at=?, error='' WHERE run_id=?",
+                    (now, entry["run_id"]),
+                )
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state=?, error='', completed_at=NULL, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    ("generating" if requires_generation else "publishing", now, automation_id),
+                )
+            else:
+                raise ValueError(f"Action d'automatisation inconnue : {action}")
+        self._wake.set()
+        return self.automation_entry(automation_id)
+
+    def automation_entry(self, automation_id: str) -> dict:
+        with self._db_lock, self._connect() as connection:
+            entry = connection.execute(
+                "SELECT * FROM localization_automation_entries WHERE automation_id=?",
+                (str(automation_id or "").strip(),),
+            ).fetchone()
+            if not entry:
+                raise ValueError("Automatisation introuvable")
+            jobs = connection.execute(
+                "SELECT * FROM localization_jobs WHERE run_id=? ORDER BY language",
+                (entry["run_id"] or "",),
+            ).fetchall()
+        return {"ok": True, "entry": self._serialize_automation_entry(entry, jobs)}
+
+    def export_automation_entry(self, automation_id: str) -> dict:
+        payload = self.automation_entry(automation_id)["entry"]
+        report = {
+            "schemaVersion": 1,
+            "exportType": "localization_automation_entry",
+            "generatedAt": utc_iso(),
+            "automation": payload,
+        }
+        if payload["runId"]:
+            report["run"] = self.export_run(payload["runId"])
+        return report
 
     def refresh_catalog(self, shop_key: str = "grosgeek") -> dict:
         shop_key = self._normalize_shop_key(shop_key)
@@ -1394,11 +1745,366 @@ class LocalizationBackfillService:
         temporary.replace(target)
         return target
 
+    def _start_automation_run(self, entry, listing: dict) -> None:
+        existing_languages = {
+            str(code or "").strip().lower()
+            for code in (listing.get("translations") or [])
+        }
+        missing_languages = [
+            code for code in SUPPORTED_LANGUAGE_CODES if code not in existing_languages
+        ]
+        now = utc_iso()
+        if not missing_languages:
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='completed', existing_languages_json=?, error='',
+                        updated_at=?, completed_at=?, next_check_at=NULL
+                    WHERE automation_id=?
+                    """,
+                    (stable_json(sorted(existing_languages)), now, now, entry["automation_id"]),
+                )
+            return
+
+        run_id = uuid.uuid4().hex
+        prompt_version = self._prompt_version(entry["shop_key"])
+        fingerprint = source_fingerprint(listing)
+        selection_hash = hashlib.sha256(stable_json({
+            "automationId": entry["automation_id"],
+            "listingId": entry["listing_id"],
+            "sourceHash": fingerprint,
+            "languages": missing_languages,
+            "shopKey": entry["shop_key"],
+            "model": entry["model"],
+            "reasoningEffort": entry["reasoning_effort"],
+            "promptVersion": prompt_version,
+        }).encode("utf-8")).hexdigest()
+        source_json = stable_json(listing)
+        with self._db_lock, self._connect() as connection:
+            current = connection.execute(
+                "SELECT state, run_id FROM localization_automation_entries WHERE automation_id=?",
+                (entry["automation_id"],),
+            ).fetchone()
+            if not current or current["run_id"] or current["state"] not in AUTOMATION_WATCH_STATES:
+                return
+            connection.execute(
+                """
+                INSERT INTO localization_runs (
+                    run_id, shop_key, state, preview_only, test_mode,
+                    selection_hash, model, reasoning_effort, prompt_version,
+                    created_at, updated_at, started_at, automation_id
+                ) VALUES (?, ?, 'running', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run_id, entry["shop_key"], selection_hash, entry["model"],
+                    entry["reasoning_effort"], prompt_version, now, now, now,
+                    entry["automation_id"],
+                ),
+            )
+            for language in missing_languages:
+                connection.execute(
+                    """
+                    INSERT INTO localization_jobs (
+                        job_id, run_id, listing_id, language, state, source_hash,
+                        prompt_version, source_json, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        uuid.uuid4().hex, run_id, entry["listing_id"], language,
+                        fingerprint, prompt_version, source_json, now, now,
+                    ),
+                )
+            connection.execute(
+                """
+                UPDATE localization_automation_entries
+                SET state='generating', source_hash=?, source_json=?,
+                    existing_languages_json=?, run_id=?, error='', updated_at=?,
+                    next_check_at=NULL, completed_at=NULL
+                WHERE automation_id=?
+                """,
+                (
+                    fingerprint, source_json, stable_json(sorted(existing_languages)),
+                    run_id, now, entry["automation_id"],
+                ),
+            )
+        self._wake.set()
+
+    def _observe_automation_entry(self, entry, listing: dict | None) -> None:
+        now = utc_iso()
+        next_check = utc_iso(time.time() + self.automation_poll_seconds)
+        if not listing:
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET error='Fiche Etsy introuvable pendant la surveillance',
+                        last_checked_at=?, next_check_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (now, next_check, now, entry["automation_id"]),
+                )
+            return
+        source_json = stable_json(listing)
+        existing_languages = sorted({
+            str(code or "").strip().lower()
+            for code in (listing.get("translations") or [])
+            if str(code or "").strip().lower() in SUPPORTED_LANGUAGE_CODES
+        })
+        if str(listing.get("state") or "").strip().lower() != "active":
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='waiting_activation', source_json=?,
+                        existing_languages_json=?, stable_since=NULL, error='',
+                        last_checked_at=?, next_check_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (
+                        source_json, stable_json(existing_languages), now,
+                        next_check, now, entry["automation_id"],
+                    ),
+                )
+            return
+        if len(existing_languages) == len(SUPPORTED_LANGUAGE_CODES):
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='completed', source_hash=?, source_json=?,
+                        existing_languages_json=?, error='', last_checked_at=?,
+                        next_check_at=NULL, updated_at=?, completed_at=?
+                    WHERE automation_id=?
+                    """,
+                    (
+                        source_fingerprint(listing), source_json,
+                        stable_json(existing_languages), now, now, now,
+                        entry["automation_id"],
+                    ),
+                )
+            return
+        fingerprint = source_fingerprint(listing)
+        stable_since = str(entry["stable_since"] or "")
+        if fingerprint != str(entry["source_hash"] or "") or not stable_since:
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='stabilizing', source_hash=?, source_json=?,
+                        existing_languages_json=?, stable_since=?, error='',
+                        last_checked_at=?, next_check_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (
+                        fingerprint, source_json, stable_json(existing_languages),
+                        now, now, next_check, now, entry["automation_id"],
+                    ),
+                )
+            return
+        if time.time() - parse_utc_iso(stable_since) < self.automation_stability_seconds:
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET source_json=?, existing_languages_json=?, error='',
+                        last_checked_at=?, next_check_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (
+                        source_json, stable_json(existing_languages), now,
+                        next_check, now, entry["automation_id"],
+                    ),
+                )
+            return
+        self._start_automation_run(entry, listing)
+
+    def _verify_automation_entry(self, entry, listing: dict | None) -> None:
+        now = utc_iso()
+        next_check = utc_iso(time.time() + self.automation_poll_seconds)
+        if not listing:
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET error='Vérification Etsy impossible avant publication',
+                        next_check_at=?, last_checked_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (next_check, now, now, entry["automation_id"]),
+                )
+            return
+        current_hash = source_fingerprint(listing)
+        is_active = str(listing.get("state") or "").strip().lower() == "active"
+        if not is_active or current_hash != str(entry["source_hash"] or ""):
+            with self._db_lock, self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE localization_jobs
+                    SET state='cancelled', updated_at=?, completed_at=?
+                    WHERE run_id=? AND state IN ('preview_ready','failed')
+                    """,
+                    (now, now, entry["run_id"]),
+                )
+                connection.execute(
+                    "UPDATE localization_runs SET state='cancelled', completed_at=?, updated_at=? WHERE run_id=?",
+                    (now, now, entry["run_id"]),
+                )
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state=?, source_hash=?, source_json=?, stable_since=?,
+                        run_id=NULL, error='', last_checked_at=?, next_check_at=?,
+                        updated_at=?, completed_at=NULL
+                    WHERE automation_id=?
+                    """,
+                    (
+                        "stabilizing" if is_active else "waiting_activation",
+                        current_hash, stable_json(listing), now if is_active else None,
+                        now, next_check, now, entry["automation_id"],
+                    ),
+                )
+            return
+        with self._db_lock, self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE localization_jobs
+                SET state='publish_pending', updated_at=?
+                WHERE run_id=? AND state='preview_ready'
+                """,
+                (now, entry["run_id"]),
+            )
+            publish_count = connection.execute(
+                "SELECT COUNT(*) FROM localization_jobs WHERE run_id=? AND state='publish_pending'",
+                (entry["run_id"],),
+            ).fetchone()[0]
+            if publish_count:
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='publishing', error='', last_checked_at=?,
+                        next_check_at=NULL, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (now, now, entry["automation_id"]),
+                )
+            else:
+                connection.execute(
+                    "UPDATE localization_runs SET state='failed', completed_at=?, updated_at=? WHERE run_id=?",
+                    (now, now, entry["run_id"]),
+                )
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state='attention', error='Toutes les localisations ont échoué avant publication',
+                        completed_at=?, updated_at=? WHERE automation_id=?
+                    """,
+                    (now, now, entry["automation_id"]),
+                )
+        self._wake.set()
+
+    def _poll_automation_queue(self, *, force: bool = False) -> None:
+        if not self.listing_loader:
+            return
+        monotonic_now = time.monotonic()
+        if not force and monotonic_now < self._next_automation_poll_at:
+            return
+        self._next_automation_poll_at = monotonic_now + self.automation_poll_seconds
+        now = utc_iso()
+        with self._db_lock, self._connect() as connection:
+            watched = connection.execute(
+                """
+                SELECT * FROM localization_automation_entries
+                WHERE state IN ('waiting_activation','stabilizing')
+                  AND (next_check_at IS NULL OR next_check_at<=?)
+                """,
+                (now,),
+            ).fetchall()
+            ready_to_verify = connection.execute(
+                """
+                SELECT entries.*
+                FROM localization_automation_entries AS entries
+                WHERE entries.state='generating'
+                  AND (entries.next_check_at IS NULL OR entries.next_check_at<=?)
+                  AND entries.run_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM localization_jobs AS jobs
+                      WHERE jobs.run_id=entries.run_id AND jobs.state IN ('pending','generating')
+                  )
+                """,
+                (now,),
+            ).fetchall()
+        candidates = list(watched) + list(ready_to_verify)
+        grouped: dict[str, list] = {}
+        for entry in candidates:
+            grouped.setdefault(str(entry["shop_key"]), []).append(entry)
+        for shop_key, entries in grouped.items():
+            listing_ids = list(dict.fromkeys(str(entry["listing_id"]) for entry in entries))
+            try:
+                payload = self.listing_loader(shop_key, listing_ids)
+                listing_by_id = {
+                    str(listing.get("listingId") or ""): listing
+                    for listing in (payload.get("listings") or [])
+                    if isinstance(listing, dict)
+                }
+            except Exception as error:
+                retry_at = utc_iso(time.time() + self.automation_poll_seconds)
+                with self._db_lock, self._connect() as connection:
+                    for entry in entries:
+                        connection.execute(
+                            """
+                            UPDATE localization_automation_entries
+                            SET error=?, last_checked_at=?, next_check_at=?, updated_at=?
+                            WHERE automation_id=?
+                            """,
+                            (str(error), now, retry_at, now, entry["automation_id"]),
+                        )
+                continue
+            verification_ids = {entry["automation_id"] for entry in ready_to_verify}
+            for entry in entries:
+                listing = listing_by_id.get(str(entry["listing_id"]))
+                if entry["automation_id"] in verification_ids:
+                    self._verify_automation_entry(entry, listing)
+                else:
+                    self._observe_automation_entry(entry, listing)
+
+    def _sync_automation_entries(self) -> None:
+        now = utc_iso()
+        with self._db_lock, self._connect() as connection:
+            entries = connection.execute(
+                """
+                SELECT entries.automation_id, entries.run_id, runs.state AS run_state
+                FROM localization_automation_entries AS entries
+                JOIN localization_runs AS runs ON runs.run_id=entries.run_id
+                WHERE entries.state IN ('generating','publishing')
+                  AND runs.state IN ('completed','failed','cancelled')
+                """
+            ).fetchall()
+            for entry in entries:
+                if entry["run_state"] == "completed":
+                    state = "completed"
+                    error = ""
+                elif entry["run_state"] == "failed":
+                    state = "attention"
+                    error = "Une ou plusieurs langues nécessitent une intervention"
+                else:
+                    state = "attention"
+                    error = "Traitement automatique annulé"
+                connection.execute(
+                    """
+                    UPDATE localization_automation_entries
+                    SET state=?, error=?, completed_at=?, updated_at=?
+                    WHERE automation_id=?
+                    """,
+                    (state, error, now, now, entry["automation_id"]),
+                )
+
     def _next_job(self):
         with self._db_lock, self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT jobs.*, runs.shop_key, runs.model, runs.reasoning_effort
+                SELECT jobs.*, runs.shop_key, runs.model, runs.reasoning_effort,
+                       runs.automation_id
                 FROM localization_jobs AS jobs
                 JOIN localization_runs AS runs ON runs.run_id = jobs.run_id
                 WHERE runs.state='running' AND jobs.state IN ('pending','publish_pending')
@@ -1419,8 +2125,19 @@ class LocalizationBackfillService:
         now = utc_iso()
         completed_run_ids = []
         with self._db_lock, self._connect() as connection:
-            running = connection.execute("SELECT run_id FROM localization_runs WHERE state='running'").fetchall()
+            running = connection.execute(
+                "SELECT run_id, automation_id FROM localization_runs WHERE state='running'"
+            ).fetchall()
             for row in running:
+                if row["automation_id"]:
+                    automation = connection.execute(
+                        "SELECT state FROM localization_automation_entries WHERE automation_id=?",
+                        (row["automation_id"],),
+                    ).fetchone()
+                    if automation and automation["state"] == "generating":
+                        # Les aperçus automatiques doivent être revérifiés contre
+                        # la source Etsy avant de devenir publiables.
+                        continue
                 pending = connection.execute(
                     "SELECT COUNT(*) FROM localization_jobs WHERE run_id=? AND state IN ('pending','generating','publish_pending','publishing')",
                     (row["run_id"],),
@@ -1551,9 +2268,17 @@ class LocalizationBackfillService:
 
     def _worker_loop(self):
         while not self._stop.is_set():
+            try:
+                self._poll_automation_queue()
+            except Exception:
+                # Une défaillance de surveillance ne doit jamais tuer le worker
+                # de backfill ; les erreurs externes ciblées sont stockées sur
+                # chaque entrée par ``_poll_automation_queue``.
+                pass
             job = self._next_job()
             if not job:
                 self._complete_runs()
+                self._sync_automation_entries()
                 self._wake.wait(timeout=2)
                 self._wake.clear()
                 continue
@@ -1565,4 +2290,11 @@ class LocalizationBackfillService:
             except Exception as error:
                 self._fail_job(job, error)
             finally:
+                if job.get("automation_id") and job["work_state"] == "generating":
+                    self._next_automation_poll_at = 0.0
+                    try:
+                        self._poll_automation_queue(force=True)
+                    except Exception:
+                        pass
                 self._complete_runs()
+                self._sync_automation_entries()

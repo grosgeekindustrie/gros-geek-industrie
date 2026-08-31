@@ -254,3 +254,36 @@ qu'il ne duplique aucun autre tag. L'audit effectif du dernier lot confirme 66
 publications sur 66, aucun tag trop long, aucun doublon et aucune divergence de
 la politique `mature`. Le journal de clôture est conservé dans
 `data/localization_backfill/repairs/doublex-final-collection-overlong-tags.json`.
+
+## Automatisation après création d'un brouillon Collection
+
+La publication d'un nouveau brouillon Collection, sur Gros Geek ou Double X,
+enregistre désormais sa fiche dans une file persistante. Tabletop reste
+explicitement exclu tant que son corpus éditorial n'est pas validé.
+
+Le surveillant ne relit jamais tout le catalogue : il interroge uniquement les
+identifiants présents dans la file, regroupés dans une requête Etsy toutes les
+cinq minutes. Lorsqu'une fiche devient active, son titre, sa description et ses
+tags français doivent rester inchangés pendant vingt minutes avant génération.
+Toute modification Etsy remet ce délai à zéro.
+
+Le traitement réutilise exactement les prompts, glossaires, validateurs et
+blocs fixes du backfill Collection de la boutique concernée. Juste avant la
+publication des dix langues, la source Etsy est relue une dernière fois. Si son
+empreinte a changé, les sorties devenues obsolètes ne sont pas publiées et la
+fiche repart dans la phase de stabilité.
+
+La base SQLite conserve les états et permet la reprise après redémarrage :
+
+```text
+attente d'activation → stabilité → génération → publication → terminé
+                                         ↘ intervention requise
+```
+
+Le troisième écran **Automatisation** de l'onglet Traduction affiche les dix
+langues séparément. Une ligne saine reste compacte ; une ligne ne devient
+dépliable que lorsqu'une intervention est nécessaire. Les erreurs conservent
+le détail du validateur ou le corps de la réponse Etsy, la sortie générée et
+les usages. Les actions permettent de relancer une langue, toutes les langues
+échouées, de préparer la fiche dans le traducteur individuel et de télécharger
+un rapport JSON ciblé.

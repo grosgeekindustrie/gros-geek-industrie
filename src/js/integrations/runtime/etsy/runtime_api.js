@@ -176,8 +176,9 @@
           attributes: publicationRequest.attributes || {},
           shopKey: String(publicationRequest.shopKey || getActiveShopKey()).trim() || 'grosgeek',
           sourceShopKey: String(publicationRequest.sourceShopKey || '').trim(),
+          pipelineMode: String(publicationRequest.pipelineMode || '').trim().toLowerCase(),
         }
-      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey(), sourceShopKey: '' };
+      : { mode: 'create_draft', targetListingId: '', payload: {}, updatePayload: {}, inventory: {}, images: [], videos: [], mediaPlan: {}, attributes: {}, shopKey: getActiveShopKey(), sourceShopKey: '', pipelineMode: '' };
 
     const response = await fetch(withActiveShopQuery(route, normalizedRequest.shopKey), {
       method: 'POST',

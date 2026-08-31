@@ -2508,6 +2508,7 @@ Cache : —</pre>
         <div class="localization-view-switch" role="tablist" aria-label="Mode de localisation">
           <button class="localization-view-switch-button is-active" type="button" role="tab" aria-selected="true" data-js="localization-view-switch" data-localization-view="single">Fiche unique</button>
           <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-view="catalog">Catalogue / Backfill</button>
+          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-view="automation">Automatisation</button>
         </div>
         <div data-js="localization-single-workflow">
         <div class="form-section translation-en-panel" id="translationEnPanel-col">
@@ -2981,6 +2982,35 @@ Cache : —</pre>
             </div>
             <div class="localization-backfill-run-progress" data-js="localization-run-progress"></div>
             <div class="localization-backfill-job-list" data-js="localization-job-list"></div>
+          </div>
+        </div>
+
+        <div class="form-section localization-automation" data-js="localization-automation" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker" data-js="localization-automation-kicker">Automatisation · Collection Gros Geek Industrie</span>
+            <h2 class="collection-stepper-title">Localisations après publication Etsy</h2>
+            <p class="collection-stepper-subtitle">Seules les fiches Collection créées par le pipeline sont surveillées. Après activation et vingt minutes sans modification, les langues manquantes sont générées, contrôlées puis publiées automatiquement.</p>
+          </div>
+
+          <div class="localization-backfill-safety">
+            <strong>Surveillance ciblée</strong>
+            <span>Une requête groupée contrôle uniquement les nouvelles fiches inscrites dans la file. Tabletop reste volontairement manuel.</span>
+          </div>
+
+          <div class="localization-automation-toolbar">
+            <div class="localization-automation-filters" role="group" aria-label="Filtrer les automatisations">
+              <button class="btn btn-accent is-active" type="button" data-js="localization-automation-filter" data-filter="open">À suivre</button>
+              <button class="btn btn-muted" type="button" data-js="localization-automation-filter" data-filter="attention">À contrôler</button>
+              <button class="btn btn-muted" type="button" data-js="localization-automation-filter" data-filter="completed">Terminées</button>
+              <button class="btn btn-muted" type="button" data-js="localization-automation-filter" data-filter="all">Toutes</button>
+            </div>
+            <button class="btn btn-muted" type="button" data-js="localization-automation-refresh">Actualiser</button>
+          </div>
+
+          <p class="fetch-status" data-js="localization-automation-status">Chargement de la file automatique…</p>
+          <div class="localization-backfill-metrics" data-js="localization-automation-metrics"></div>
+          <div class="localization-automation-list" data-js="localization-automation-list">
+            <p>Aucune fiche automatique enregistrée.</p>
           </div>
         </div>
       </section>

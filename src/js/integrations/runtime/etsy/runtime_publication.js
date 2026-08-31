@@ -147,6 +147,7 @@
           mode: 'update_listing',
           shopKey: targetShopKey,
           sourceShopKey: String(state.sourceShopKey || '').trim() || '',
+          pipelineMode: String(prefix || '').trim() === 'col' ? 'collection' : 'tabletop',
         })
         : publicationMode === 'update_expired_listing'
           ? await deps.updateExpiredListing?.({
@@ -155,12 +156,14 @@
           mode: 'update_expired_listing',
           shopKey: targetShopKey,
           sourceShopKey: String(state.sourceShopKey || '').trim() || '',
+          pipelineMode: String(prefix || '').trim() === 'col' ? 'collection' : 'tabletop',
         })
           : await deps.createDraftListing?.({
             ...(snapshot.payload || {}),
             mode: 'create_draft',
             shopKey: targetShopKey,
             sourceShopKey: String(state.sourceShopKey || '').trim() || '',
+            pipelineMode: String(prefix || '').trim() === 'col' ? 'collection' : 'tabletop',
           });
       state.publicationResult = response || null;
       state.publicationError = '';

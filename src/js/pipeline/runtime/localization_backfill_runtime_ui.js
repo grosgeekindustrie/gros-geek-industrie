@@ -615,16 +615,21 @@
   };
 
   const switchView = (view) => {
-    const isCatalog = view === 'catalog';
+    const normalizedView = ['single', 'catalog', 'automation'].includes(view) ? view : 'single';
     const single = query('localization-single-workflow');
     const catalog = query('localization-backfill');
-    if (single) single.hidden = isCatalog;
-    if (catalog) catalog.hidden = !isCatalog;
+    const automation = query('localization-automation');
+    if (single) single.hidden = normalizedView !== 'single';
+    if (catalog) catalog.hidden = normalizedView !== 'catalog';
+    if (automation) automation.hidden = normalizedView !== 'automation';
     queryAll('localization-view-switch').forEach((button) => {
-      const active = button.dataset.localizationView === view;
+      const active = button.dataset.localizationView === normalizedView;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-selected', String(active));
     });
+    global.dispatchEvent(new CustomEvent('pipeline:localization-view-changed', {
+      detail: { view: normalizedView, shopKey: state.shopKey },
+    }));
   };
 
   const handleClick = (event) => {

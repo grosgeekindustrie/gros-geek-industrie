@@ -3080,6 +3080,93 @@ def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
     return resolved
 
 
+def normalize_etsy_localization_listing(listing: dict, section_names: dict | None = None) -> dict:
+    section_names = section_names if isinstance(section_names, dict) else {}
+    listing_id = str(listing.get('listing_id') or '').strip()
+    section_id = str(listing.get('shop_section_id') or '').strip()
+    translations_value = listing.get('translations') or listing.get('Translations') or {}
+    if isinstance(translations_value, dict) and not any(
+        isinstance(translations_value.get(key), list) for key in ('results', 'data', 'items')
+    ):
+        translation_entries = [
+            (str(locale or ''), translation)
+            for locale, translation in translations_value.items()
+            if isinstance(translation, dict)
+        ]
+    else:
+        translation_entries = [
+            ('', translation)
+            for translation in normalize_etsy_association_collection(translations_value)
+        ]
+    translation_languages = sorted({
+        str(translation.get('language') or translation.get('language_code') or locale)
+        .strip().lower().split('-', 1)[0]
+        for locale, translation in translation_entries
+        if str(translation.get('language') or translation.get('language_code') or locale).strip()
+    })
+    images = normalize_etsy_association_collection(listing.get('images') or listing.get('Images'))
+    image_url = ''
+    if images:
+        image = images[0]
+        image_url = str(
+            image.get('url_170x135')
+            or image.get('url_570xN')
+            or image.get('url_fullxfull')
+            or ''
+        ).strip()
+    tags = listing.get('tags') or []
+    if isinstance(tags, str):
+        tags = [part.strip() for part in tags.split(',') if part.strip()]
+    return {
+        'listingId': listing_id,
+        'title': str(listing.get('title') or '').strip(),
+        'description': str(listing.get('description') or ''),
+        'tags': [str(tag or '').strip() for tag in tags if str(tag or '').strip()],
+        'sectionId': section_id,
+        'sectionName': section_names.get(section_id, ''),
+        'imageUrl': image_url,
+        'url': str(listing.get('url') or '').strip(),
+        'translations': translation_languages,
+        'state': str(listing.get('state') or '').strip().lower(),
+        'lastModifiedTimestamp': int(
+            listing.get('last_modified_timestamp')
+            or listing.get('updated_timestamp')
+            or 0
+        ),
+    }
+
+
+def load_etsy_localization_listings(shop_key: str, listing_ids: list[str]) -> dict:
+    """Lire uniquement les fiches suivies par l'automatisation, en une requête groupée."""
+    normalized_shop_key = normalize_etsy_shop_key(shop_key)
+    normalized_ids = list(dict.fromkeys(
+        str(listing_id or '').strip()
+        for listing_id in (listing_ids or [])
+        if str(listing_id or '').strip()
+    ))
+    if not normalized_ids:
+        return {'shopKey': normalized_shop_key, 'listings': []}
+    require_etsy_scope('listings_r', normalized_shop_key)
+    listings = []
+    for listing_ids_chunk in chunk_list(normalized_ids, 100):
+        batch_query = urllib.parse.urlencode({
+            'listing_ids': ','.join(listing_ids_chunk),
+            'includes': 'Translations,Images',
+            'legacy': 'true',
+        })
+        payload = perform_etsy_get_request(
+            f'listings/batch?{batch_query}',
+            include_oauth=True,
+            shop_key=normalized_shop_key,
+        )
+        listings.extend(
+            normalize_etsy_localization_listing(item)
+            for item in extract_etsy_results_collection(payload)
+            if isinstance(item, dict) and str(item.get('listing_id') or '').strip()
+        )
+    return {'shopKey': normalized_shop_key, 'listings': listings}
+
+
 def load_etsy_localization_catalog(shop_key: str = 'grosgeek') -> dict:
     """Lire le catalogue actif avec sections, images et traductions existantes.
 
@@ -3141,54 +3228,10 @@ def load_etsy_localization_catalog(shop_key: str = 'grosgeek') -> dict:
             if listing_id in listing_by_id:
                 listing_by_id[listing_id].update(detail)
 
-    normalized_listings = []
-    for listing_id, listing in listing_by_id.items():
-        section_id = str(listing.get('shop_section_id') or '').strip()
-        translations_value = listing.get('translations') or listing.get('Translations') or {}
-        if isinstance(translations_value, dict) and not any(
-            isinstance(translations_value.get(key), list) for key in ('results', 'data', 'items')
-        ):
-            translation_entries = [
-                (str(locale or ''), translation)
-                for locale, translation in translations_value.items()
-                if isinstance(translation, dict)
-            ]
-        else:
-            translation_entries = [
-                ('', translation)
-                for translation in normalize_etsy_association_collection(translations_value)
-            ]
-        translation_languages = sorted({
-            str(translation.get('language') or translation.get('language_code') or locale)
-            .strip().lower().split('-', 1)[0]
-            for locale, translation in translation_entries
-            if str(translation.get('language') or translation.get('language_code') or locale).strip()
-        })
-        images = normalize_etsy_association_collection(listing.get('images') or listing.get('Images'))
-        image_url = ''
-        if images:
-            image = images[0]
-            image_url = str(
-                image.get('url_170x135')
-                or image.get('url_570xN')
-                or image.get('url_fullxfull')
-                or ''
-            ).strip()
-        tags = listing.get('tags') or []
-        if isinstance(tags, str):
-            tags = [part.strip() for part in tags.split(',') if part.strip()]
-        normalized_listings.append({
-            'listingId': listing_id,
-            'title': str(listing.get('title') or '').strip(),
-            'description': str(listing.get('description') or ''),
-            'tags': [str(tag or '').strip() for tag in tags if str(tag or '').strip()],
-            'sectionId': section_id,
-            'sectionName': section_names.get(section_id, ''),
-            'imageUrl': image_url,
-            'url': str(listing.get('url') or '').strip(),
-            'translations': translation_languages,
-            'state': str(listing.get('state') or 'active'),
-        })
+    normalized_listings = [
+        normalize_etsy_localization_listing(listing, section_names)
+        for listing in listing_by_id.values()
+    ]
 
     return {
         'shopKey': normalized_shop_key,
@@ -3403,6 +3446,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(200, get_localization_backfill_service().export_run(run_id))
             except ValueError as error:
                 self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-automation/dashboard':
+            try:
+                self.send_json(
+                    200,
+                    get_localization_backfill_service().automation_dashboard(requested_shop_key),
+                )
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-automation/entry/export':
+            try:
+                automation_id = str(query_params.get('id', [''])[0] or '').strip()
+                self.send_json(
+                    200,
+                    get_localization_backfill_service().export_automation_entry(automation_id),
+                )
+            except ValueError as error:
+                self.send_json(404, {'error': str(error)})
             except Exception as error:
                 self.send_json(500, {'error': str(error)})
             return
@@ -5288,6 +5354,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(error)})
             return
 
+        if path == '/localization-automation/action':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                automation_id = str(data.get('automationId') or '').strip()
+                action = str(data.get('action') or '').strip()
+                if not automation_id or not action:
+                    raise ValueError('automationId et action sont requis')
+                self.send_json(
+                    200,
+                    get_localization_backfill_service().automation_action(
+                        automation_id,
+                        action,
+                        str(data.get('language') or '').strip(),
+                    ),
+                )
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path == '/openai/responses':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
@@ -5460,6 +5549,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return
 
                 publication_mode = str(data.get('mode') or 'create_draft').strip().lower() or 'create_draft'
+                pipeline_mode = str(data.get('pipelineMode') or data.get('pipeline_mode') or '').strip().lower()
                 source_shop_key_raw = str(
                     data.get('sourceShopKey') or data.get('source_shop_key') or ''
                 ).strip()
@@ -6117,6 +6207,41 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'reason': f'Property/value introuvable pour occasion={occasion_value} taxonomy_id={taxonomy_id}',
                         })
 
+                try:
+                    automation_registration = get_localization_backfill_service().enqueue_automation(
+                        requested_shop_key,
+                        created_listing_id,
+                        pipeline_mode,
+                        {
+                            'listingId': created_listing_id,
+                            'title': str(create_payload.get('title') or '').strip(),
+                            'description': str(create_payload.get('description') or ''),
+                            'tags': [
+                                str(tag or '').strip()
+                                for tag in (
+                                    normalized_update_payload.get('tags')
+                                    or create_payload.get('tags')
+                                    or []
+                                )
+                                if str(tag or '').strip()
+                            ],
+                            'state': 'draft',
+                            'translations': [],
+                        },
+                    )
+                    operations.append({
+                        'step': 'register_localization_automation',
+                        **automation_registration,
+                    })
+                except Exception as automation_error:
+                    # Le draft Etsy est déjà créé : une panne du suivi local ne
+                    # doit jamais transformer sa publication en faux échec.
+                    operations.append({
+                        'step': 'register_localization_automation',
+                        'status': 'failed',
+                        'error': str(automation_error),
+                    })
+
                 self.send_json(200, {
                     'ok': True,
                     'endpoint': f'shops/{shop_id}/listings',
@@ -6390,6 +6515,9 @@ def main():
         load_etsy_localization_catalog,
         request_openai_localization,
         publish_etsy_localization,
+        load_etsy_localization_listings,
+        automation_poll_seconds=int(os.getenv('LOCALIZATION_AUTOMATION_POLL_SECONDS') or 300),
+        automation_stability_seconds=int(os.getenv('LOCALIZATION_AUTOMATION_STABILITY_SECONDS') or 1200),
     )
     LOCALIZATION_BACKFILL_SERVICE.start()
     try:
