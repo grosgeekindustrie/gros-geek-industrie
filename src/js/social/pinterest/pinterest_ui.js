@@ -354,10 +354,16 @@
   };
 
   const getCustomPromptState = () => { global.state.customPrompts = global.state.customPrompts || {}; return global.state.customPrompts; };
+  const getResolvedPromptSpec = () => global.PipelineUIPromptProfiles.resolveCustomPromptSpec({
+    id: PROMPT_SPEC_ID,
+    path: PROMPT_PATH,
+    stateKey: PROMPT_STATE_KEY,
+  });
   const loadPrompt = async () => {
-    const prompts = getCustomPromptState(); if (prompts[PROMPT_STATE_KEY]) return prompts[PROMPT_STATE_KEY];
-    const response = await fetch(`/files/${PROMPT_PATH}`); if (!response.ok) throw new Error('Prompt Pinterest introuvable.');
-    prompts[PROMPT_STATE_KEY] = await response.text(); return prompts[PROMPT_STATE_KEY];
+    const prompts = getCustomPromptState(); const promptSpec = getResolvedPromptSpec();
+    if (prompts[promptSpec.stateKey]) return prompts[promptSpec.stateKey];
+    const response = await fetch(`/files/${promptSpec.path}`); if (!response.ok) throw new Error('Prompt Pinterest introuvable.');
+    prompts[promptSpec.stateKey] = await response.text(); return prompts[promptSpec.stateKey];
   };
   const replacePromptValue = (prompt, placeholder, value) => prompt.split(`[[${placeholder}]]`).join(String(value ?? ''));
   const buildAgentPrompt = (template) => {

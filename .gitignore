@@ -40,6 +40,10 @@ src/**/*.bak*
 .pinterest_oauth_tokens*.json
 .pinterest_queue.sqlite3*
 .pinterest_spool/
+.localization_backfill.sqlite3*
+data/localization_backfill/reports/
+data/localization_backfill/repairs/
+data/localization_backfill/audits/
 .server-stdout.log
 .server-stderr.log
 

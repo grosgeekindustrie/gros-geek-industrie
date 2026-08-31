@@ -15,6 +15,7 @@
     tags: 'claude-sonnet-4-5',
     titre: 'claude-sonnet-4-5',
     description: 'claude-sonnet-4-5',
+    description_research: 'gpt-5.6-luna',
     social: 'claude-sonnet-4-5',
     pinterest: 'claude-sonnet-4-5',
     instagram: 'claude-sonnet-4-5',
@@ -41,10 +42,12 @@
   });
 
   function stopAgent(agentId) {
-    if (abortControllers[agentId]) {
-      abortControllers[agentId].abort();
-      delete abortControllers[agentId];
-    }
+    const ids = agentId === 'description' ? ['description', 'description_research'] : [agentId];
+    ids.forEach((id) => {
+      if (!abortControllers[id]) return;
+      abortControllers[id].abort();
+      delete abortControllers[id];
+    });
   }
 
   function getResumePipelineAgents(prefix) {
@@ -214,7 +217,9 @@
     let lastStatus = PIPELINE_STATUS_DONE;
 
     try {
-      const ok = await runAgent(agent, correction);
+      const aiProfileSnapshot = global.PipelineUIAIProfiles.snapshotActiveProfile();
+      await global.loadAllFiles?.(true, { profile: aiProfileSnapshot });
+      const ok = await runAgent(agent, correction, { isRetry: true, aiProfileSnapshot });
       lastStatus = resolveAgentRunStatus(ok, agent);
     } catch (error) {
       lastStatus = PIPELINE_STATUS_ERROR;
@@ -249,6 +254,9 @@
     setResumePipelineExecutionActive(true);
 
     try {
+      const aiProfileSnapshot = global.beginAIExecution?.(prefix)
+        || global.PipelineUIAIProfiles.snapshotActiveProfile();
+      await global.loadAllFiles?.(true, { profile: aiProfileSnapshot });
       if (reuseCurrentAgent) {
         global.showToast(`Suite reprise apres ${agentId} sans relance`, '#7eb8f7', 1800);
       }
@@ -269,19 +277,42 @@
     }
   }
 
-  async function runAgent(agent, correction = '', isRetry = false) {
+  function normalizeAgentRunOptions(options = {}) {
+    if (typeof options === 'boolean') return { isRetry: options, aiProfileSnapshot: null };
+    return {
+      isRetry: options?.isRetry === true,
+      aiProfileSnapshot: options?.aiProfileSnapshot || null,
+    };
+  }
+
+  async function runAgent(agent, correction = '', options = {}) {
+    const { isRetry, aiProfileSnapshot: explicitProfileSnapshot } = normalizeAgentRunOptions(options);
     const prefix = global.pfx();
     const refs = global.beginAgentExecution(prefix, agent, { isRetry });
 
     try {
+      const aiProfileSnapshot = explicitProfileSnapshot
+        || global.getAIExecutionSnapshot?.(prefix)
+        || global.PipelineUIAIProfiles.snapshotActiveProfile();
       const ctx = global.buildCtx(agent.id, correction);
-      const prompt = global.buildPrompt(agent.id, ctx);
+      let prompt = global.buildPrompt(agent.id, ctx, { aiProfileSnapshot });
+      if (agent.id === 'description') {
+        const prepared = await global.PipelineUIDescriptionResearchRuntime.prepareDescriptionPrompt({
+          prefix,
+          prompt,
+          aiProfileSnapshot,
+        });
+        prompt = prepared.prompt;
+      } else if (agent.id === 'alt') {
+        prompt = { ...prompt, imageLimit: global.PipelineUIDescriptionResearchRuntime.DESCRIPTION_IMAGE_LIMIT };
+      }
       const rawFixed = prompt.fixedContent ? `── CACHE FIXE ──\n${prompt.fixedContent}\n\n── VARIABLE ──\n` : '';
       global.state.inputs[agent.id] = rawFixed + prompt.filled;
 
       const runtimePrompt = global.withPipelineCacheAwarePromptData(prefix, prompt, {
         source: isRetry ? 'rerun' : 'pipeline',
       });
+      runtimePrompt.aiProfileSnapshot = aiProfileSnapshot;
       const response = await global.callAI(agent.id, runtimePrompt, global.shouldUseImagesForAgent(agent));
       const result = response.text;
       const usage = response.usage || null;
@@ -341,6 +372,7 @@
     handlePipelineActionRequest,
     rerunAgent,
     rerunSuite,
+    normalizeAgentRunOptions,
     runAgent,
   };
 

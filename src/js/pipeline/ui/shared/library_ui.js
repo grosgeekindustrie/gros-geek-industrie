@@ -41,6 +41,14 @@
     getConfig().resolvePromptFolder?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || `prompts/${mode}`
   );
+  const getActivePromptProfile = () => global.PipelineUIAIProfiles?.snapshotActiveProfile?.()
+    || global.PipelineUIAIProfiles?.getActiveProfile?.()
+    || { provider: 'anthropic' };
+  const getPromptBucket = (mode, profile) => global.PipelineUIPromptProfiles.ensurePipelinePromptBucket(getState(), {
+    provider: profile?.provider,
+    shopKey: getActiveShopKey(),
+    mode,
+  });
 
   let currentBiblioTab = 'tags';
   let currentLbAgentId = null;
@@ -108,12 +116,13 @@
     const mode = getCurrentMode();
     const customPromptSpec = getCustomPromptSpec(id);
     if (customPromptSpec) {
-      currentLbPromptSpec = {
+      const promptProfile = getActivePromptProfile();
+      currentLbPromptSpec = global.PipelineUIPromptProfiles.resolveCustomPromptSpec({
         id,
         label: String(customPromptSpec.label || id).trim() || id,
         path: String(customPromptSpec.path || '').trim(),
         stateKey: String(customPromptSpec.stateKey || id).trim() || id,
-      };
+      }, promptProfile);
 
       if (!currentLbPromptSpec.path) {
         showToast('Erreur: chemin prompt custom manquant', '#ff4757');
@@ -133,7 +142,7 @@
       }
 
       const customTitleEl = document.getElementById('lbTitle');
-      global.PipelineUIIcons?.setIconLabel?.(customTitleEl, 'settings', `Prompt — ${currentLbPromptSpec.label}`);
+      global.PipelineUIIcons?.setIconLabel?.(customTitleEl, 'settings', `Prompt ${currentLbPromptSpec.familyLabel} — ${currentLbPromptSpec.label}`);
       document.getElementById('lbTextarea').value = customPrompts[currentLbPromptSpec.stateKey] || '';
       document.getElementById('promptLightbox').classList.add('visible');
       return;
@@ -146,19 +155,30 @@
     };
     const agents = getConfig().getPipelineAgents();
     const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
-    const state = getState();
-    let promptValue = state.promptsByMode?.[mode]?.[id] || '';
+    const promptProfile = getActivePromptProfile();
+    const promptBucket = getPromptBucket(mode, promptProfile);
+    let promptValue = promptBucket[id] || '';
+    const map = getPromptFileMapForCurrentContext(mode);
+    const canonicalPromptFolder = getPromptFolderForCurrentContext(mode);
+    const promptFolder = global.PipelineUIPromptProfiles.resolvePromptFolder(canonicalPromptFolder, promptProfile);
+    const fileName = (map && map[id]) || id;
+    currentLbPromptSpec = {
+      id,
+      label,
+      path: `${promptFolder}/${fileName}.md`,
+      stateKey: id,
+      provider: promptProfile.provider,
+      familyLabel: global.PipelineUIPromptProfiles.getPromptFamilyLabel(promptProfile),
+      promptBucket,
+      isPipelinePrompt: true,
+    };
 
     if (!promptValue) {
-      const map = getPromptFileMapForCurrentContext(mode);
-      const promptFolder = getPromptFolderForCurrentContext(mode);
-      const fileName = (map && map[id]) || id;
-
       try {
-        const res = await fetch(`/files/${promptFolder}/${fileName}.md`);
+        const res = await fetch(`/files/${currentLbPromptSpec.path}`);
         if (!res.ok) throw new Error((await res.json()).error);
         promptValue = await res.text();
-        state.promptsByMode[mode][id] = promptValue;
+        promptBucket[id] = promptValue;
       } catch (e) {
         showToast(`Erreur: ${e.message}`, '#ff4757');
         return;
@@ -166,7 +186,7 @@
     }
 
     const titleEl = document.getElementById('lbTitle');
-    global.PipelineUIIcons?.setIconLabel?.(titleEl, 'settings', `Prompt — ${label}`);
+    global.PipelineUIIcons?.setIconLabel?.(titleEl, 'settings', `Prompt ${currentLbPromptSpec.familyLabel} — ${label}`);
     document.getElementById('lbTextarea').value = promptValue;
     document.getElementById('promptLightbox').classList.add('visible');
   }
@@ -187,7 +207,11 @@
       try {
         const res = await fetch(`/files/${currentLbPromptSpec.path}`, { method: 'PUT', body: customValue });
         if (!res.ok) throw new Error((await res.json()).error);
-        ensureCustomPromptState()[currentLbPromptSpec.stateKey] = customValue;
+        if (currentLbPromptSpec.isPipelinePrompt) {
+          currentLbPromptSpec.promptBucket[currentLbAgentId] = customValue;
+        } else {
+          ensureCustomPromptState()[currentLbPromptSpec.stateKey] = customValue;
+        }
         closePromptLightbox();
         showToast('Prompt sauvegardé');
       } catch (e) {
@@ -196,23 +220,7 @@
       return;
     }
 
-    const config = getConfig();
-    const mode = getCurrentMode();
-    const map = getPromptFileMapForCurrentContext(mode);
-    const promptFolder = getPromptFolderForCurrentContext(mode);
-    const fname = (map && map[currentLbAgentId]) || currentLbAgentId;
-    if (!confirm(`Écraser ${promptFolder}/${fname}.md sur le disque ?`)) return;
-
-    const val = document.getElementById('lbTextarea').value;
-    try {
-      const res = await fetch(`/files/${promptFolder}/${fname}.md`, { method: 'PUT', body: val });
-      if (!res.ok) throw new Error((await res.json()).error);
-      getState().promptsByMode[mode][currentLbAgentId] = val;
-      closePromptLightbox();
-      showToast('Prompt sauvegardé');
-    } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
-    }
+    showToast('Erreur: contexte prompt manquant', '#ff4757');
   }
 
   async function resetLbPrompt() {
@@ -225,7 +233,11 @@
         const res = await fetch(`/files/${currentLbPromptSpec.path}`);
         if (!res.ok) throw new Error((await res.json()).error);
         const txt = await res.text();
-        ensureCustomPromptState()[currentLbPromptSpec.stateKey] = txt;
+        if (currentLbPromptSpec.isPipelinePrompt) {
+          currentLbPromptSpec.promptBucket[currentLbAgentId] = txt;
+        } else {
+          ensureCustomPromptState()[currentLbPromptSpec.stateKey] = txt;
+        }
         document.getElementById('lbTextarea').value = txt;
         showToast('Rechargé depuis le fichier');
       } catch (e) {
@@ -234,23 +246,7 @@
       return;
     }
 
-    const config = getConfig();
-    const mode = getCurrentMode();
-    const map = getPromptFileMapForCurrentContext(mode);
-    const promptFolder = getPromptFolderForCurrentContext(mode);
-    const fname = (map && map[currentLbAgentId]) || currentLbAgentId;
-    if (!confirm(`Recharger ${promptFolder}/${fname}.md depuis le disque ?`)) return;
-
-    try {
-      const res = await fetch(`/files/${promptFolder}/${fname}.md`);
-      if (!res.ok) throw new Error((await res.json()).error);
-      const txt = await res.text();
-      getState().promptsByMode[mode][currentLbAgentId] = txt;
-      document.getElementById('lbTextarea').value = txt;
-      showToast('Rechargé depuis le fichier');
-    } catch (e) {
-      showToast(`Erreur: ${e.message}`, '#ff4757');
-    }
+    showToast('Erreur: contexte prompt manquant', '#ff4757');
   }
 
   global.PipelineUILibrary = {

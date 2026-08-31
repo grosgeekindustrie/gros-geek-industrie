@@ -12,6 +12,7 @@ const sharedBootstrapManifest = Object.freeze({
     'shared/utils/runtime_formats.js',
     'shared/utils/runtime_cache.js',
     'shared/ai/ai_profiles.js',
+    'shared/ai/prompt_profiles.js',
   ]),
   scripts: Object.freeze([
     'shared/media/image_tools_ui.js',

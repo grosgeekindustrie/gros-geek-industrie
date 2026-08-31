@@ -23,6 +23,7 @@
     state.customPrompts = state.customPrompts || {};
     return state.customPrompts;
   };
+  const getPromptCacheKey = (agentId) => global.PipelineUIPromptProfiles.getCustomPromptStateKey(agentId);
   const getEtsyRuntime = () => global.PipelineUIEtsyRuntime || {};
   const getEtsyData = () => global.PipelineUIEtsyData || {};
   const getDescriptionAssembly = () => global.PipelineUIDescriptionAssembly || {};
@@ -127,12 +128,14 @@
 
   const ensurePromptLoaded = async (agentId, promptPath) => {
     const prompts = getPromptCache();
-    if (prompts[agentId]) return prompts[agentId];
+    const cacheKey = getPromptCacheKey(agentId);
+    if (prompts[cacheKey]) return prompts[cacheKey];
 
-    const res = await fetch(`/files/${promptPath}`);
+    const resolvedPath = global.PipelineUIPromptProfiles.resolvePromptPath(promptPath);
+    const res = await fetch(`/files/${resolvedPath}`);
     if (!res.ok) throw new Error((await res.json()).error);
-    prompts[agentId] = await res.text();
-    return prompts[agentId];
+    prompts[cacheKey] = await res.text();
+    return prompts[cacheKey];
   };
 
   const normalizeJsonBlock = (rawText = '') => {
@@ -214,7 +217,8 @@
 
   const normalizeSourceDescriptionForTranslation = (prefix, rawDescription) => {
     const family = resolveTranslationFamily(prefix);
-    const stripped = getDescriptionAssembly().stripDecorativeFixedBlocks?.(rawDescription, family, 'fr')
+    const stripped = getDescriptionAssembly().stripTranslationSourceCommonBlocks?.(rawDescription, family, 'fr')
+      || getDescriptionAssembly().stripDecorativeFixedBlocks?.(rawDescription, family, 'fr')
       || getDescriptionAssembly().stripTrailingFixedBlocks?.(rawDescription, family, 'fr');
     return {
       family,
@@ -225,7 +229,8 @@
 
   const buildInjectedTranslationDescription = (prefix, language, dynamicDescription) => {
     const family = resolveTranslationFamily(prefix);
-    return getDescriptionAssembly().buildTranslatedDescriptionWithFixedBlocks?.(dynamicDescription, family, language)
+    const sourceDescription = ensurePrefixState(prefix).listingDraft.sourceDescription;
+    return getDescriptionAssembly().buildTranslatedDescriptionWithFixedBlocks?.(dynamicDescription, family, language, sourceDescription)
       || String(dynamicDescription || '').replace(/\r\n?/g, '\n');
   };
 
@@ -523,7 +528,7 @@
 
     try {
       await ensurePromptLoaded(TRANSLATION_MAPPING_AGENT_ID, TRANSLATION_MAPPING_PROMPT_PATH);
-      const template = String(getPromptCache()[TRANSLATION_MAPPING_AGENT_ID] || '').trim();
+      const template = String(getPromptCache()[getPromptCacheKey(TRANSLATION_MAPPING_AGENT_ID)] || '').trim();
       const filled = template
         .replace(/\[\[CHARACTER_FR\]\]/g, entry.characterFr)
         .replace(/\[\[UNIVERSE_FR\]\]/g, entry.universeFr)
@@ -597,7 +602,7 @@
       const normalizedTags = getEtsyData().normalizeAttributeTags?.(sourceTags) || sourceTags;
 
       listingDraft.sourceTitle = String(data.title || '').trim();
-      listingDraft.sourceDescription = String(data.description || '');
+      listingDraft.sourceDescription = normalizeSourceDescriptionForTranslation(prefix, data.description).description;
       listingDraft.sourceTags = normalizedTags;
       listingDraft.pendingSourceTagsInput = '';
       entry.characterFr = '';
@@ -661,7 +666,7 @@
     global.PipelineUITranslationEnRuntime?.setTranslationLanguageStatus?.(prefix, 'it', 'running');
     try {
       await ensurePromptLoaded(TRANSLATION_LISTING_AGENT_ID, TRANSLATION_LISTING_PROMPT_PATH);
-      const template = String(getPromptCache()[TRANSLATION_LISTING_AGENT_ID] || '').trim();
+      const template = String(getPromptCache()[getPromptCacheKey(TRANSLATION_LISTING_AGENT_ID)] || '').trim();
       const fixedContentBlocks = buildTranslationCacheBlocks(prefix, listingDraft);
       const filled = template
         .replace(/\[\[CHARACTER_FR\]\]/g, entry.characterFr)
@@ -673,7 +678,7 @@
         .replace(/\[\[SOURCE_TITLE\]\]/g, '[voir TITLE dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_TAGS\]\]/g, '[voir TAGS dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, '[voir bloc SOURCE_FR_LISTING mis en cache]');
-      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Les blocs fixes traduits sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes dans description_it.`;
+      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Le bloc source « 🎭 Fan Art et artiste : » est dynamique : traduis-le integralement et conserve-le obligatoirement dans description_it avec un titre commencant par « 🎭 Fan Art » et termine par deux-points.\n- Preserve exactement les paragraphes et le nombre de lignes vides de la description source.\n- Les blocs fixes traduits sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes dans description_it.`;
 
       listingDraft.translationInput = filledWithInjectionNote;
       getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;
@@ -790,6 +795,11 @@
 
   function copyTranslationItField(prefix = global.pfx(), fieldKey = '') {
     const listingDraft = ensurePrefixState(prefix).listingDraft;
+    const translatedAll = [
+      `TITRE :\n${listingDraft.translatedTitle || ''}`,
+      `TAGS :\n${(listingDraft.translatedTags || []).join(', ')}`,
+      `DESCRIPTION :\n${listingDraft.translatedDescription || ''}`,
+    ].join('\n\n');
     const valueMap = {
       'source-title': listingDraft.sourceTitle,
       'source-tags': (listingDraft.sourceTags || []).join(', '),
@@ -797,6 +807,7 @@
       'translated-title': listingDraft.translatedTitle,
       'translated-tags': (listingDraft.translatedTags || []).join(', '),
       'translated-description': listingDraft.translatedDescription,
+      'translated-all': translatedAll,
     };
     const value = String(valueMap[String(fieldKey || '').trim()] || '').trim();
     if (!value) {
@@ -942,4 +953,3 @@
 
   initAllTranslationItPanels();
 })(window);
-

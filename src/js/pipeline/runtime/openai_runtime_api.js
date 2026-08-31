@@ -14,11 +14,7 @@
   const getMaxOutputTokens = (agentId = '') => Number(MAX_OUTPUT_TOKENS[String(agentId).trim()]) || 8000;
   const getRetryDelayMs = (attempt) => Math.min(30000, 2000 * (2 ** Math.max(attempt - 1, 0))) + Math.floor(Math.random() * 800);
   const isRetryableStatus = (status) => [408, 409, 429, 500, 502, 503, 504].includes(Number(status));
-  const getImageDetail = (image, index) => {
-    const quality = String(image?.aiAnalysisQuality || 'auto');
-    const effective = quality === 'auto' ? (index === 0 ? 'high' : 'economy') : quality;
-    return effective === 'high' ? 'high' : 'low';
-  };
+  const getImageDetail = () => 'high';
   const getImageDataUrl = (image) => {
     const base64 = String(image?.base64 || '').trim();
     return base64 ? `data:${String(image?.mediaType || 'image/png')};base64,${base64}` : '';
@@ -31,6 +27,10 @@
     runtimeAgentId: String(promptData?.runtimeAgentId || '').trim() || agentId,
     workspacePrefix: String(promptData?.workspacePrefix || '').trim(),
     aiExecution: promptData?.aiExecution && typeof promptData.aiExecution === 'object' ? { ...promptData.aiExecution } : null,
+    imageLimit: Math.max(0, Number(promptData?.imageLimit) || 0),
+    responsesOptions: promptData?.responsesOptions && typeof promptData.responsesOptions === 'object'
+      ? { ...promptData.responsesOptions }
+      : null,
   });
 
   const normalizeFixedBlocks = (fixedContent, fixedContentBlocks) => {
@@ -72,7 +72,8 @@
     const normalized = normalizePromptDataForOpenAI(agentId, promptData);
     const prefix = normalized.workspacePrefix || global.pfx();
     const execution = normalized.aiExecution || {};
-    const images = useImages && Array.isArray(global.state?.images?.[prefix]) ? global.state.images[prefix] : [];
+    const availableImages = useImages && Array.isArray(global.state?.images?.[prefix]) ? global.state.images[prefix] : [];
+    const images = normalized.imageLimit > 0 ? availableImages.slice(0, normalized.imageLimit) : availableImages;
     const fixedBlocks = normalizeFixedBlocks(normalized.fixedContent, normalized.fixedContentBlocks);
     const { content, breakpointCount } = buildInputContent({ promptText: normalized.promptText, fixedBlocks, images });
     const payload = {
@@ -83,6 +84,12 @@
       max_output_tokens: getMaxOutputTokens(agentId),
       store: false,
     };
+    const options = normalized.responsesOptions || {};
+    if (Array.isArray(options.tools) && options.tools.length) payload.tools = options.tools;
+    if (Number(options.maxToolCalls) > 0) payload.max_tool_calls = Math.max(1, Math.round(Number(options.maxToolCalls)));
+    if (Array.isArray(options.include) && options.include.length) payload.include = options.include;
+    if (Number(options.maxOutputTokens) > 0) payload.max_output_tokens = Math.max(256, Math.round(Number(options.maxOutputTokens)));
+    if (options.verbosity) payload.text = { ...payload.text, verbosity: String(options.verbosity) };
     if (breakpointCount > 0) {
       payload.prompt_cache_key = buildPromptCacheKey(prefix, execution);
       payload.prompt_cache_options = { mode: 'explicit', ttl: '30m' };
@@ -91,7 +98,21 @@
     const promptDebug = global.PipelineUIAnthropicRuntime?.buildClaudeRuntimePromptDebug?.(
       normalized.promptDebug, fixedBlocks, filesApiDebug, normalized.promptText,
     ) || normalized.promptDebug;
-    return { payload, prefix, runtimeAgentId: normalized.runtimeAgentId, execution, promptDebug, imageCount: images.length };
+    return {
+      payload,
+      prefix,
+      runtimeAgentId: normalized.runtimeAgentId,
+      execution,
+      promptDebug,
+      promptText: normalized.promptText,
+      imageCount: images.length,
+      inputContentSummary: content.map((item, index) => ({
+        index: index + 1,
+        type: String(item?.type || ''),
+        detail: item?.type === 'input_image' ? String(item?.detail || '') : '',
+        textChars: item?.type === 'input_text' ? String(item?.text || '').length : 0,
+      })),
+    };
   };
 
   const extractResponseText = (data = {}) => {
@@ -123,6 +144,46 @@
     };
   };
 
+  const extractWebSearchMetadata = (data = {}) => {
+    const rawCalls = (Array.isArray(data.output) ? data.output : []).filter((item) => item?.type === 'web_search_call');
+    const sources = [];
+    rawCalls.forEach((call) => {
+      const actionSources = Array.isArray(call?.action?.sources) ? call.action.sources : [];
+      actionSources.forEach((source) => {
+        const url = String(source?.url || '').trim();
+        if (!url || sources.some((entry) => entry.url === url)) return;
+        sources.push({ title: String(source?.title || url), url });
+      });
+    });
+    const firstIndexById = new Map();
+    const callDetails = rawCalls.map((call, index) => {
+      const action = call?.action && typeof call.action === 'object' ? call.action : {};
+      const id = String(call?.id || '').trim();
+      const duplicateOf = id && firstIndexById.has(id) ? firstIndexById.get(id) : 0;
+      if (id && !duplicateOf) firstIndexById.set(id, index + 1);
+      return {
+        index: index + 1,
+        id,
+        counted: !duplicateOf,
+        duplicateOf,
+        status: String(call?.status || ''),
+        actionType: String(action.type || ''),
+        query: String(action.query || ''),
+        queries: Array.isArray(action.queries) ? action.queries.map((query) => String(query || '')) : [],
+        url: String(action.url || ''),
+        pattern: String(action.pattern || ''),
+        raw: JSON.parse(JSON.stringify(call)),
+      };
+    });
+    const uniqueCalls = callDetails.filter((call) => call.counted);
+    return {
+      webSearchCalls: uniqueCalls.length,
+      rawWebSearchObjects: rawCalls.length,
+      calls: callDetails,
+      sources,
+    };
+  };
+
   const getErrorMessage = (data, status) => data?.error?.message || data?.message || `OpenAI HTTP ${status}`;
   const updateRetryMessage = (prefix, agentId, attempt, retries, delayMs) => {
     const out = document.getElementById(`${prefix}-out-${agentId}`) || document.getElementById(`out-${agentId}`);
@@ -150,9 +211,50 @@
           if (data.status === 'incomplete') throw new Error(`Réponse GPT incomplète (${data.incomplete_details?.reason || 'raison inconnue'})`);
           const text = extractResponseText(data);
           if (!text.trim()) throw new Error('OpenAI a retourné une réponse sans texte exploitable');
-          const usage = normalizeOpenAIUsage(data.usage, request.execution);
+          const web = extractWebSearchMetadata(data);
+          const usage = {
+            ...normalizeOpenAIUsage(data.usage, request.execution),
+            web_search_calls: web.webSearchCalls,
+          };
+          const maxToolCallsSent = Number(request.payload.max_tool_calls) || 0;
+          const toolCallLimitExceeded = maxToolCallsSent > 0 && web.webSearchCalls > maxToolCallsSent;
+          if (toolCallLimitExceeded) {
+            console.warn('[OpenAI] max_tool_calls dépassé dans la réponse brute', {
+              maxToolCallsSent,
+              returnedWebSearchCalls: web.webSearchCalls,
+              rawWebSearchObjects: web.rawWebSearchObjects,
+              responseId: data.id,
+              calls: web.calls,
+            });
+          }
           global.recordCacheDebugEvent?.(request.prefix, request.runtimeAgentId, usage, request.promptDebug);
-          return { text, usage, responseId: String(data.id || '') };
+          return {
+            text,
+            usage,
+            responseId: String(data.id || ''),
+            sources: web.sources,
+            webSearchCallDetails: web.calls,
+            requestDebug: {
+              modelSent: String(request.payload.model || ''),
+              maxToolCallsSent,
+              toolsSent: Array.isArray(request.payload.tools)
+                ? JSON.parse(JSON.stringify(request.payload.tools))
+                : [],
+              promptTextSent: String(request.promptText || ''),
+              imageCountSent: request.imageCount,
+              inputContentSummary: Array.isArray(request.inputContentSummary)
+                ? JSON.parse(JSON.stringify(request.inputContentSummary))
+                : [],
+            },
+            responseDebug: {
+              maxToolCallsEchoed: Number(data.max_tool_calls) || 0,
+              rawWebSearchObjects: web.rawWebSearchObjects,
+              uniqueWebSearchCalls: web.webSearchCalls,
+              status: String(data.status || ''),
+              incompleteDetails: data.incomplete_details || null,
+              toolCallLimitExceeded,
+            },
+          };
         } catch (error) {
           if (error.name === 'AbortError') throw new Error('Génération stoppée');
           const canRetry = attempt < retries && (isRetryableStatus(error.status) || /timeout|network|fetch/i.test(error.message));
@@ -173,7 +275,7 @@
     OPENAI_PROMPT_CACHE_TTL_MS, OPENAI_PROMPT_CACHE_ZONE_GRISE_MS,
     getMaxOutputTokens, getImageDetail, normalizePromptDataForOpenAI,
     normalizeFixedBlocks, buildInputContent, buildPromptCacheKey,
-    buildResponsesPayload, extractResponseText, normalizeOpenAIUsage, callOpenAI,
+    buildResponsesPayload, extractResponseText, extractWebSearchMetadata, normalizeOpenAIUsage, callOpenAI,
   });
   global.PipelineUI.runtimeOpenAI = global.PipelineUIOpenAIRuntime;
   global.callOpenAI = callOpenAI;

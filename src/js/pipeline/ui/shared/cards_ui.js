@@ -52,6 +52,7 @@
           <button class="btn agent-stop-btn" id="${p}-bstop-${agent.id}" type="button" data-pipeline-action="stop-agent" data-pipeline-prefix="${p}" data-pipeline-agent="${agent.id}" data-agent-stop="${agent.id}">${renderIcon('stop')}</button>
           <button class="btn btn-muted" type="button" data-output-action="copy" data-agent-id="${agent.id}">${renderIcon('copy')}</button>
           <button class="btn btn-muted" type="button" data-output-action="raw-input" data-agent-id="${agent.id}">&lt;/&gt;</button>
+          ${agent.id === 'description' ? `<button class="btn btn-muted" type="button" data-output-action="research-debug" data-agent-id="${agent.id}" data-prefix="${p}" title="Afficher le brief brut de la recherche Web">${renderIcon('search')}<span class="ui-icon-label">Debug recherche</span></button>` : ''}
           ${agent.id === 'tags' ? `<button class="btn btn-orange" id="${p}-bexplore-tags" type="button" data-selection-action="run-tag-explorer" data-selection-explore="tags" data-agent-id="${agent.id}" data-prefix="${p}" disabled>${renderIcon('search')}<span class="ui-icon-label">Explorer</span></button>` : ''}
           ${agent.id === 'titre' ? `<button class="btn btn-orange" id="${p}-bexplore-titre" type="button" data-selection-action="run-titre-explorer" data-selection-explore="titre" data-agent-id="${agent.id}" data-prefix="${p}" disabled>${renderIcon('search')}<span class="ui-icon-label">Explorer</span></button>` : ''}
         </div>
@@ -148,6 +149,8 @@
     const agentId = outputAction.dataset.agentId;
     if (outputAction.dataset.outputAction === 'copy') global.copyOut?.(agentId);
     if (outputAction.dataset.outputAction === 'raw-input') global.showRawInput?.(agentId);
+    if (outputAction.dataset.outputAction === 'research-debug') {
+      global.PipelineUIDescriptionResearchRuntime?.showDescriptionResearchDebug?.(outputAction.dataset.prefix || global.pfx());
+    }
   });
 })(window);
-

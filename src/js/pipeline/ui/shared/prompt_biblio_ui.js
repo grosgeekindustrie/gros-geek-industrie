@@ -7,6 +7,15 @@
 
   const getState = () => global.state;
   const getCurrentMode = () => global.currentMode;
+  const getActiveShopKey = () => {
+    try {
+      return String(JSON.parse(localStorage.getItem('pipeline.settings') || '{}').activeShop || '').trim() === 'doublex'
+        ? 'doublex'
+        : 'grosgeek';
+    } catch (error) {
+      return 'grosgeek';
+    }
+  };
 
   function getBiblio(key) {
     return getState().bibliosByMode[getCurrentMode()][key] || '';
@@ -221,10 +230,19 @@
     return parts.join('\n\n');
   }
 
-  function buildPrompt(agentId, ctx) {
+  function buildPrompt(agentId, ctx, options = {}) {
     const state = getState();
     const currentMode = getCurrentMode();
-    const template = state.promptsByMode[currentMode][agentId] || '';
+    const promptProfile = options.aiProfileSnapshot
+      || global.getAIExecutionSnapshot?.(global.pfx?.())
+      || global.PipelineUIAIProfiles?.getActiveProfile?.()
+      || { provider: 'anthropic' };
+    const promptBucket = global.PipelineUIPromptProfiles.ensurePipelinePromptBucket(state, {
+      provider: promptProfile.provider,
+      shopKey: getActiveShopKey(),
+      mode: currentMode,
+    });
+    const template = promptBucket[agentId] || '';
 
     const filled = template
       .replace(/\[\[NOM_COURT\]\]/g, ctx.nomCourt || ctx.nom)

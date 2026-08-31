@@ -32,7 +32,36 @@
             <label><span>Modèle</span><select class="ai-profile-select" data-ai-profile-base-model></select></label>
             <label data-ai-profile-base-reasoning-wrap hidden><span>Niveau de réflexion</span><select class="ai-profile-select" data-ai-profile-base-reasoning></select></label>
           </div></section>
-          <section class="ai-profile-section" data-ai-profile-custom hidden><h3>Routage personnalisé</h3><p>Les prochains lancements utilisent ces choix. Un travail déjà démarré conserve son profil initial.</p><div class="ai-profile-routes" data-ai-profile-routes></div></section>
+          <section class="ai-profile-section" data-ai-profile-custom hidden><h3>Routage personnalisé</h3><p>Un pipeline lancé conserve ce profil. Une relance individuelle utilise le profil actif et sa famille de prompts.</p><div class="ai-profile-routes" data-ai-profile-routes></div></section>
+          <section class="ai-profile-section" data-ai-description-research hidden>
+            <h3>Recherche web avant Description</h3>
+            <p>Le modèle de recherche analyse les quatre images et vérifie le personnage, le lore et une éventuelle scène reconnaissable. Une recherche identique est réutilisée lorsque tu compares les modèles de rédaction.</p>
+            <div class="ai-profile-routes">
+              <div class="ai-profile-route has-reasoning">
+                <label for="ai-description-research-enabled">Activation</label>
+                <select class="ai-profile-select" id="ai-description-research-enabled" data-ai-description-research-enabled>
+                  <option value="true">Activée</option><option value="false">Désactivée</option>
+                </select>
+                <select class="ai-profile-select" aria-label="Réutilisation de la recherche" data-ai-description-research-reuse>
+                  <option value="true">Réutiliser si identique</option><option value="false">Toujours relancer</option>
+                </select>
+              </div>
+              <div class="ai-profile-route has-reasoning">
+                <label for="ai-description-research-model">Modèle de recherche</label>
+                <select class="ai-profile-select" id="ai-description-research-model" data-ai-description-research-model></select>
+                <select class="ai-profile-select" aria-label="Réflexion de la recherche" data-ai-description-research-reasoning></select>
+              </div>
+              <div class="ai-profile-route has-reasoning">
+                <label for="ai-description-research-calls">Budget web maximal</label>
+                <select class="ai-profile-select" id="ai-description-research-calls" data-ai-description-research-calls>
+                  <option value="1">1 appel outil max.</option><option value="2">2 appels outil max.</option><option value="3">3 appels outil max.</option>
+                </select>
+                <select class="ai-profile-select" aria-label="Contexte de recherche" data-ai-description-research-context>
+                  <option value="low">Contexte faible</option><option value="medium">Contexte moyen</option><option value="high">Contexte élevé</option>
+                </select>
+              </div>
+            </div>
+          </section>
         </div>
         <footer class="ai-profile-dialog-footer"><button class="btn btn-muted" type="button" data-ai-profile-close>Annuler</button><button class="btn btn-accent" type="button" data-ai-profile-apply>Appliquer le profil</button></footer>
       </section>`;
@@ -60,6 +89,14 @@
     overlay.querySelector('[data-ai-profile-base-reasoning-wrap]').hidden = !isOpenAI;
     overlay.querySelector('[data-ai-profile-base-reasoning]').innerHTML = buildReasoningOptions(draftProfile.baseReasoningEffort);
     overlay.querySelector('[data-ai-profile-routes]').innerHTML = profiles.TASK_IDS.map((task) => renderRoute(task, draftProfile.provider)).join('');
+    const research = profiles.normalizeDescriptionResearch(draftProfile.descriptionResearch, draftProfile.provider);
+    overlay.querySelector('[data-ai-description-research]').hidden = !isOpenAI;
+    overlay.querySelector('[data-ai-description-research-enabled]').value = String(research.enabled);
+    overlay.querySelector('[data-ai-description-research-reuse]').value = String(research.reuseIdentical);
+    overlay.querySelector('[data-ai-description-research-model]').innerHTML = buildModelOptions('openai', research.model);
+    overlay.querySelector('[data-ai-description-research-reasoning]').innerHTML = buildReasoningOptions(research.reasoningEffort);
+    overlay.querySelector('[data-ai-description-research-calls]').value = String(research.maxToolCalls);
+    overlay.querySelector('[data-ai-description-research-context]').value = research.searchContextSize;
   };
   const updateHeader = () => {
     const label = document.getElementById('aiProfileButtonLabel');
@@ -80,9 +117,17 @@
   const closeDialog = () => { document.getElementById('aiProfileOverlay')?.classList.remove('is-open'); lastFocusedElement?.focus?.(); };
   const applyProfile = () => {
     const overlay = ensureDialog();
-    const next = { ...draftProfile, baseModel: overlay.querySelector('[data-ai-profile-base-model]')?.value || draftProfile.baseModel, baseReasoningEffort: overlay.querySelector('[data-ai-profile-base-reasoning]')?.value || draftProfile.baseReasoningEffort, routes: { ...draftProfile.routes }, reasoningEfforts: { ...draftProfile.reasoningEfforts } };
+    const next = { ...draftProfile, baseModel: overlay.querySelector('[data-ai-profile-base-model]')?.value || draftProfile.baseModel, baseReasoningEffort: overlay.querySelector('[data-ai-profile-base-reasoning]')?.value || draftProfile.baseReasoningEffort, routes: { ...draftProfile.routes }, reasoningEfforts: { ...draftProfile.reasoningEfforts }, descriptionResearch: { ...(draftProfile.descriptionResearch || {}) } };
     overlay.querySelectorAll('[data-ai-profile-route]').forEach((select) => { next.routes[select.dataset.aiProfileRoute] = select.value; });
     overlay.querySelectorAll('[data-ai-profile-reasoning]').forEach((select) => { next.reasoningEfforts[select.dataset.aiProfileReasoning] = select.value; });
+    next.descriptionResearch = {
+      enabled: overlay.querySelector('[data-ai-description-research-enabled]')?.value !== 'false',
+      reuseIdentical: overlay.querySelector('[data-ai-description-research-reuse]')?.value !== 'false',
+      model: overlay.querySelector('[data-ai-description-research-model]')?.value,
+      reasoningEffort: overlay.querySelector('[data-ai-description-research-reasoning]')?.value,
+      maxToolCalls: Number(overlay.querySelector('[data-ai-description-research-calls]')?.value) || 2,
+      searchContextSize: overlay.querySelector('[data-ai-description-research-context]')?.value || 'low',
+    };
     profiles.saveActiveProfile(next);
     closeDialog();
     global.showToast?.(`Profil IA actif : ${profiles.getProfileLabel(profiles.getActiveProfile())}`);

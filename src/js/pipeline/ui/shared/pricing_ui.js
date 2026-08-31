@@ -53,6 +53,11 @@
   }).format(Number(value) || 0);
 
   const plainEuro = (value) => Number(value || 0).toFixed(2).replace('.', ',');
+  const normalizeManualFrPrice = (value) => {
+    const price = readNumber(value);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(price)) return String(value ?? '');
+    return (price - 0.01).toFixed(2);
+  };
   const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -291,6 +296,11 @@
     };
 
     priceInput.addEventListener('input', () => {
+      updatePricingRow(row);
+      persist(prefix);
+    });
+    priceInput.addEventListener('change', () => {
+      priceInput.value = normalizeManualFrPrice(priceInput.value);
       updatePricingRow(row);
       persist(prefix);
     });

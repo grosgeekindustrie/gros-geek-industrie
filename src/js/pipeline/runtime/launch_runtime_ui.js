@@ -544,7 +544,9 @@
   }
 
   async function runPipelineWithCacheAware(prefix) {
-    global.beginAIExecution?.(prefix);
+    const aiProfileSnapshot = global.beginAIExecution?.(prefix)
+      || global.PipelineUIAIProfiles?.snapshotActiveProfile?.();
+    await global.loadAllFiles?.(true, { profile: aiProfileSnapshot });
     const resolvedStepId = getResolvedTargetStep(prefix);
     const pipelineAgents = global.getPipelineRuntimeAgentsForTarget(prefix, resolvedStepId);
 

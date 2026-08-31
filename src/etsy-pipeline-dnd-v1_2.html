@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="css/12-cost-calculator.css">
 <link rel="stylesheet" href="css/13-pipeline-pricing.css">
 <link rel="stylesheet" href="css/14-design-system.css">
+<link rel="stylesheet" href="css/15-localization-backfill.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -1550,6 +1551,7 @@ Cache : —</pre>
                   <label for="tt-translation-en-source-title">Titre source FR</label>
                   <div class="translation-en-label-actions">
                     <span class="translation-en-metric" id="tt-translation-en-source-title-meta">0 / 140</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="source-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                     <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="source-title"><span data-svg-icon="copy"></span></button>
                   </div>
                 </div>
@@ -1639,6 +1641,7 @@ Cache : —</pre>
                     <label for="tt-translation-en-translated-title">Titre EN</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="tt-translation-en-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -1739,6 +1742,7 @@ Cache : —</pre>
                     <label for="tt-translation-de-translated-title">Titre DE</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="tt-translation-de-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="tt" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -1839,6 +1843,7 @@ Cache : —</pre>
                     <label for="tt-translation-es-translated-title">Titre ES</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="tt-translation-es-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="tt" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="tt" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -2500,6 +2505,11 @@ Cache : —</pre>
       </section>
 
       <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="translation" hidden>
+        <div class="localization-view-switch" role="tablist" aria-label="Mode de localisation">
+          <button class="localization-view-switch-button is-active" type="button" role="tab" aria-selected="true" data-js="localization-view-switch" data-localization-view="single">Fiche unique</button>
+          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-view="catalog">Catalogue / Backfill</button>
+        </div>
+        <div data-js="localization-single-workflow">
         <div class="form-section translation-en-panel" id="translationEnPanel-col">
           <div class="collection-stepper-heading">
             <span class="collection-stepper-kicker">Traduction · Workflow multi-langue</span>
@@ -2539,6 +2549,7 @@ Cache : —</pre>
                   <label for="col-translation-en-source-title">Titre source FR</label>
                   <div class="translation-en-label-actions">
                     <span class="translation-en-metric" id="col-translation-en-source-title-meta">0 / 140</span>
+                    <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="source-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                     <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="source-title"><span data-svg-icon="copy"></span></button>
                   </div>
                 </div>
@@ -2628,6 +2639,7 @@ Cache : —</pre>
                     <label for="col-translation-en-translated-title">Titre EN</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="col-translation-en-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-en-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -2728,6 +2740,7 @@ Cache : —</pre>
                     <label for="col-translation-de-translated-title">Titre DE</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="col-translation-de-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="col" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-de-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -2828,6 +2841,7 @@ Cache : —</pre>
                     <label for="col-translation-es-translated-title">Titre ES</label>
                     <div class="translation-en-label-actions">
                       <span class="translation-en-metric" id="col-translation-es-translated-title-meta">0 / 140</span>
+                      <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="col" data-action-arg2="translated-all"><span data-svg-icon="copy"></span><span class="ui-icon-label">Tout copier</span></button>
                       <button class="btn btn-muted" type="button" data-ui-action="copy-translation-es-field" data-action-arg="col" data-action-arg2="translated-title"><span data-svg-icon="copy"></span></button>
                     </div>
                   </div>
@@ -2866,6 +2880,107 @@ Cache : —</pre>
             </div>
             <p class="translation-en-note">Le prompt de traduction de fiche vit dans <code>prompts/traduction/traduction_listing_es.md</code>.</p>
           </div>
+          </div>
+        </div>
+        </div>
+
+        <div class="form-section localization-backfill" data-js="localization-backfill" hidden>
+          <div class="collection-stepper-heading">
+            <span class="collection-stepper-kicker" data-js="localization-backfill-kicker">Localisation · Catalogue Gros Geek Industrie</span>
+            <h2 class="collection-stepper-title">Backfill persistant des fiches actives</h2>
+            <p class="collection-stepper-subtitle">Audite les langues existantes, prépare uniquement les localisations manquantes et conserve la file après fermeture de l’onglet ou redémarrage du PC.</p>
+          </div>
+
+          <div class="localization-backfill-safety" data-js="localization-backfill-safety">
+            <strong>Aperçu sécurisé</strong>
+            <span>La génération s’arrête avant Etsy. La publication exige une validation séparée du lot.</span>
+          </div>
+
+          <div class="localization-backfill-actions">
+            <button class="btn btn-accent" type="button" data-js="localization-catalog-refresh">Auditer le catalogue</button>
+            <button class="btn btn-accent" type="button" data-js="localization-create-run" disabled>Préparer le lot</button>
+            <button class="btn btn-success" type="button" data-js="localization-run-start" disabled>Lancer les traductions</button>
+            <button class="btn btn-muted" type="button" data-js="localization-run-pause" disabled>Pause</button>
+            <button class="btn btn-muted" type="button" data-js="localization-run-retry" disabled>Relancer les erreurs</button>
+            <button class="btn btn-success" type="button" data-js="localization-run-export" disabled>Télécharger le rapport du lot</button>
+            <button class="btn btn-error" type="button" data-js="localization-run-publish" disabled>Publier les traductions prêtes</button>
+          </div>
+          <p class="fetch-status" data-js="localization-backfill-status">Aucun audit catalogue chargé.</p>
+
+          <div class="localization-backfill-config">
+            <div class="fg">
+              <label for="localization-backfill-search">Rechercher</label>
+              <input id="localization-backfill-search" type="search" placeholder="Titre ou identifiant" data-js="localization-filter-search" autocomplete="off">
+            </div>
+            <div class="fg">
+              <label for="localization-backfill-section">Section Etsy</label>
+              <select id="localization-backfill-section" data-js="localization-filter-section">
+                <option value="">Toutes les sections autorisées</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label for="localization-backfill-missing">Langue manquante</label>
+              <select id="localization-backfill-missing" data-js="localization-filter-language">
+                <option value="">Au moins une langue</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label for="localization-backfill-page-size">Fiches par page</label>
+              <select id="localization-backfill-page-size" data-js="localization-page-size">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="localization-backfill-language-picker" data-js="localization-language-picker" aria-label="Langues du lot"></div>
+
+          <div class="localization-backfill-metrics" data-js="localization-catalog-metrics">
+            <span>0 fiche auditée</span>
+            <span>0 sélectionnée</span>
+            <span>0 job prévu</span>
+            <span>Estimation : —</span>
+          </div>
+
+          <div class="localization-backfill-selection-actions">
+            <button class="btn btn-muted" type="button" data-js="localization-select-page" disabled>Cocher la page</button>
+            <button class="btn btn-muted" type="button" data-js="localization-select-filtered" disabled>Cocher tout le filtre</button>
+            <button class="btn btn-muted" type="button" data-js="localization-clear-selection" disabled>Vider la sélection</button>
+            <span data-js="localization-selection-summary">Aucune fiche sélectionnée.</span>
+          </div>
+
+          <div class="localization-backfill-table-wrap">
+            <table class="localization-backfill-table">
+              <thead>
+                <tr>
+                  <th scope="col">Choix</th>
+                  <th scope="col">Fiche</th>
+                  <th scope="col">Section</th>
+                  <th scope="col">Présentes</th>
+                  <th scope="col">Manquantes</th>
+                </tr>
+              </thead>
+              <tbody data-js="localization-catalog-rows">
+                <tr><td colspan="5">Lance l’audit pour charger le catalogue.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="localization-backfill-pagination">
+            <button class="btn btn-muted" type="button" data-js="localization-page-previous" disabled>Précédent</button>
+            <span data-js="localization-page-label">Page 1 / 1</span>
+            <button class="btn btn-muted" type="button" data-js="localization-page-next" disabled>Suivant</button>
+          </div>
+
+          <div class="localization-backfill-run" data-js="localization-run" hidden>
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Lot actif</span>
+              <h3 class="collection-stepper-title" data-js="localization-run-title">Aucun lot</h3>
+              <p class="collection-stepper-subtitle" data-js="localization-run-summary"></p>
+              <p class="collection-stepper-subtitle" data-js="localization-run-timing"></p>
+            </div>
+            <div class="localization-backfill-run-progress" data-js="localization-run-progress"></div>
+            <div class="localization-backfill-job-list" data-js="localization-job-list"></div>
           </div>
         </div>
       </section>

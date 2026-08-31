@@ -11,3 +11,5 @@ Kuru Figure | @kurufigure |
 Neko figurines | @neko_figurines |
 
 Nomnom figures | @nomnomfigures |
+
+Nerikson | @neriksonminiatures |

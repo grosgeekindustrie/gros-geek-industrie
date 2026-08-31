@@ -26,6 +26,7 @@ from pathlib import Path
 from threading import Lock, Thread, Timer, local
 
 from pinterest_service import PinterestAPIError, PinterestService
+from localization_backfill_service import LocalizationBackfillService
 
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
@@ -91,12 +92,19 @@ ETSY_TAXONOMY_CACHE = {
 ETSY_SHOP_KEYS = ('grosgeek', 'doublex')
 REQUEST_CONTEXT = local()
 PINTEREST_SERVICE = None
+LOCALIZATION_BACKFILL_SERVICE = None
 
 
 def get_pinterest_service() -> PinterestService:
     if PINTEREST_SERVICE is None:
         raise RuntimeError('Le service Pinterest n’est pas encore démarré')
     return PINTEREST_SERVICE
+
+
+def get_localization_backfill_service() -> LocalizationBackfillService:
+    if LOCALIZATION_BACKFILL_SERVICE is None:
+        raise RuntimeError('Le service de backfill localisation n’est pas encore démarré')
+    return LOCALIZATION_BACKFILL_SERVICE
 
 
 def load_dotenv_file(path: Path = ENV_FILE):
@@ -2865,7 +2873,8 @@ def safe_path(raw: str) -> Path | None:
         if parts and parts[0] not in ALLOWED_DIRS:
             return None
         # Autoriser les sous-dossiers tabletop/collection
-        if len(parts) >= 2 and parts[1] not in ALLOWED_SUBDIRS:
+        is_provider_prompt_tree = len(parts) >= 2 and parts[0] == 'prompts' and parts[1] == 'gpt'
+        if len(parts) >= 2 and parts[1] not in ALLOWED_SUBDIRS and not is_provider_prompt_tree:
             return None
         return p
     except (ValueError, Exception):
@@ -3071,6 +3080,179 @@ def resolve_uploaded_images(api_key: str, images: list[dict]) -> list[dict]:
     return resolved
 
 
+def load_etsy_localization_catalog(shop_key: str = 'grosgeek') -> dict:
+    """Lire le catalogue actif avec sections, images et traductions existantes.
+
+    Cette lecture est réservée à l'audit explicite du backfill. Elle n'emprunte
+    pas la route historique ``/etsy/test/listings`` afin d'éviter ses appels de
+    prix acheteur inutiles pour une localisation.
+    """
+    normalized_shop_key = normalize_etsy_shop_key(shop_key)
+    require_etsy_scope('listings_r', normalized_shop_key)
+    shop_context = get_etsy_shop_context(normalized_shop_key)
+    shop_id = shop_context['shop_id']
+
+    sections_payload = perform_etsy_get_request(
+        f'shops/{shop_id}/sections',
+        include_oauth=True,
+        shop_key=normalized_shop_key,
+    )
+    sections = extract_etsy_results_collection(sections_payload)
+    section_names = {
+        str(section.get('shop_section_id') or section.get('section_id') or '').strip():
+        str(section.get('title') or section.get('name') or '').strip()
+        for section in sections
+        if isinstance(section, dict)
+    }
+
+    base_listings = []
+    offset = 0
+    while True:
+        page_payload = perform_etsy_get_request(
+            f'shops/{shop_id}/listings?state=active&limit=100&offset={offset}',
+            include_oauth=True,
+            shop_key=normalized_shop_key,
+        )
+        page = extract_etsy_results_collection(page_payload)
+        base_listings.extend(page)
+        if len(page) < 100:
+            break
+        offset += 100
+
+    listing_by_id = {
+        str(item.get('listing_id') or '').strip(): dict(item)
+        for item in base_listings
+        if isinstance(item, dict) and str(item.get('listing_id') or '').strip()
+    }
+    listing_ids = list(listing_by_id)
+    for listing_ids_chunk in chunk_list(listing_ids, 100):
+        batch_query = urllib.parse.urlencode({
+            'listing_ids': ','.join(listing_ids_chunk),
+            'includes': 'Translations,Images',
+            'legacy': 'true',
+        })
+        batch_payload = perform_etsy_get_request(
+            f'listings/batch?{batch_query}',
+            include_oauth=True,
+            shop_key=normalized_shop_key,
+        )
+        for detail in extract_etsy_results_collection(batch_payload):
+            listing_id = str(detail.get('listing_id') or '').strip()
+            if listing_id in listing_by_id:
+                listing_by_id[listing_id].update(detail)
+
+    normalized_listings = []
+    for listing_id, listing in listing_by_id.items():
+        section_id = str(listing.get('shop_section_id') or '').strip()
+        translations_value = listing.get('translations') or listing.get('Translations') or {}
+        if isinstance(translations_value, dict) and not any(
+            isinstance(translations_value.get(key), list) for key in ('results', 'data', 'items')
+        ):
+            translation_entries = [
+                (str(locale or ''), translation)
+                for locale, translation in translations_value.items()
+                if isinstance(translation, dict)
+            ]
+        else:
+            translation_entries = [
+                ('', translation)
+                for translation in normalize_etsy_association_collection(translations_value)
+            ]
+        translation_languages = sorted({
+            str(translation.get('language') or translation.get('language_code') or locale)
+            .strip().lower().split('-', 1)[0]
+            for locale, translation in translation_entries
+            if str(translation.get('language') or translation.get('language_code') or locale).strip()
+        })
+        images = normalize_etsy_association_collection(listing.get('images') or listing.get('Images'))
+        image_url = ''
+        if images:
+            image = images[0]
+            image_url = str(
+                image.get('url_170x135')
+                or image.get('url_570xN')
+                or image.get('url_fullxfull')
+                or ''
+            ).strip()
+        tags = listing.get('tags') or []
+        if isinstance(tags, str):
+            tags = [part.strip() for part in tags.split(',') if part.strip()]
+        normalized_listings.append({
+            'listingId': listing_id,
+            'title': str(listing.get('title') or '').strip(),
+            'description': str(listing.get('description') or ''),
+            'tags': [str(tag or '').strip() for tag in tags if str(tag or '').strip()],
+            'sectionId': section_id,
+            'sectionName': section_names.get(section_id, ''),
+            'imageUrl': image_url,
+            'url': str(listing.get('url') or '').strip(),
+            'translations': translation_languages,
+            'state': str(listing.get('state') or 'active'),
+        })
+
+    return {
+        'shopKey': normalized_shop_key,
+        'shopId': str(shop_id),
+        'sections': [{'id': key, 'name': value} for key, value in section_names.items()],
+        'listings': normalized_listings,
+    }
+
+
+def request_openai_localization(payload: dict) -> tuple[int, dict]:
+    return forward_openai_json_request('https://api.openai.com/v1/responses', payload, timeout=240)
+
+
+def publish_etsy_localization(shop_key: str, listing_id: str, language: str, translation: dict) -> dict:
+    normalized_shop_key = normalize_etsy_shop_key(shop_key)
+    require_etsy_scope('listings_w', normalized_shop_key)
+    shop_context = get_etsy_shop_context(normalized_shop_key)
+    translation_path = f"shops/{shop_context['shop_id']}/listings/{listing_id}/translations/{language}"
+    payload = {
+        'title': str(translation.get('title') or '').strip(),
+        'description': str(translation.get('description') or ''),
+        'tags': [str(tag or '').strip() for tag in (translation.get('tags') or []) if str(tag or '').strip()],
+    }
+    if not payload['title'] or not payload['description'].strip() or not payload['tags']:
+        raise ValueError('Aperçu de localisation incomplet, publication refusée')
+    exists = False
+    try:
+        perform_etsy_get_request(translation_path, include_oauth=True, shop_key=normalized_shop_key)
+        exists = True
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+    pause_etsy_publication_requests()
+    try:
+        if exists:
+            response = perform_etsy_put_form_request(
+                translation_path,
+                payload,
+                include_oauth=True,
+                shop_key=normalized_shop_key,
+            )
+            operation = 'update_listing_translation'
+        else:
+            response = perform_etsy_post_form_request(
+                translation_path,
+                payload,
+                include_oauth=True,
+                shop_key=normalized_shop_key,
+            )
+            operation = 'create_listing_translation'
+    except urllib.error.HTTPError as error:
+        raw_body = error.read()
+        try:
+            error_payload = decode_json_bytes(raw_body)
+            detail = json.dumps(error_payload, ensure_ascii=False, separators=(',', ':'))
+        except Exception:
+            detail = raw_body.decode('utf-8', errors='replace').strip()
+        raise ValueError(
+            f"Publication Etsy {language.upper()} refusée (HTTP {error.code})"
+            f"{f' : {detail}' if detail else ''}"
+        ) from error
+    return {'operation': operation, 'payload': response}
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
@@ -3170,6 +3352,60 @@ class Handler(http.server.BaseHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(raw_qs)
         requested_shop_key = resolve_requested_shop_key(query_params=query_params, headers=self.headers)
         set_current_request_shop_key(requested_shop_key)
+
+        if path == '/localization-backfill/config':
+            try:
+                self.send_json(200, get_localization_backfill_service().config(requested_shop_key))
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/catalog':
+            try:
+                refresh = str(query_params.get('refresh', ['0'])[0]).lower() in {'1', 'true', 'yes'}
+                service = get_localization_backfill_service()
+                payload = service.refresh_catalog(requested_shop_key) if refresh else service.catalog(requested_shop_key)
+                self.send_json(200, payload)
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except urllib.error.HTTPError as error:
+                try:
+                    payload = decode_json_bytes(error.read())
+                except Exception:
+                    payload = {'error': str(error)}
+                self.send_json(error.code, payload or {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/runs':
+            try:
+                self.send_json(200, get_localization_backfill_service().list_runs(shop_key=requested_shop_key))
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/run':
+            try:
+                run_id = str(query_params.get('id', [''])[0] or '').strip()
+                self.send_json(200, get_localization_backfill_service().get_run(run_id))
+            except ValueError as error:
+                self.send_json(404, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/run/export':
+            try:
+                run_id = str(query_params.get('id', [''])[0] or '').strip()
+                self.send_json(200, get_localization_backfill_service().export_run(run_id))
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
 
         if path == '/pinterest/status':
             try:
@@ -4969,6 +5205,89 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json(500, {'error': str(e)})
             return
 
+        if path == '/localization-backfill/estimate':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                listing_ids = data.get('listingIds') or []
+                languages = data.get('languages') or []
+                if not isinstance(listing_ids, list) or not isinstance(languages, list):
+                    raise ValueError('Sélection backfill invalide')
+                payload = get_localization_backfill_service().estimate(
+                    listing_ids,
+                    languages,
+                    str(data.get('model') or 'gpt-5.6-terra').strip(),
+                    shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    force_existing=bool(data.get('testMode')),
+                )
+                self.send_json(200, payload)
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/runs':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                listing_ids = data.get('listingIds') or []
+                languages = data.get('languages') or []
+                if not isinstance(listing_ids, list) or not isinstance(languages, list):
+                    raise ValueError('Sélection backfill invalide')
+                payload = get_localization_backfill_service().create_run(
+                    listing_ids,
+                    languages,
+                    shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    model=str(data.get('model') or 'gpt-5.6-terra').strip(),
+                    reasoning_effort=str(data.get('reasoningEffort') or 'low').strip(),
+                )
+                self.send_json(201, payload)
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/test':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                listing_ids = data.get('listingIds') or []
+                if not isinstance(listing_ids, list):
+                    raise ValueError('Sélection de test invalide')
+                payload = get_localization_backfill_service().create_test_run(
+                    listing_ids,
+                    shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    model=str(data.get('model') or 'gpt-5.6-terra').strip(),
+                    reasoning_effort=str(data.get('reasoningEffort') or 'low').strip(),
+                )
+                self.send_json(201, payload)
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/localization-backfill/run/action':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length).decode('utf-8')
+            try:
+                data = json.loads(body or '{}')
+                run_id = str(data.get('runId') or '').strip()
+                action = str(data.get('action') or '').strip()
+                if not run_id or not action:
+                    raise ValueError('runId et action sont requis')
+                self.send_json(200, get_localization_backfill_service().action(run_id, action))
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path == '/openai/responses':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
@@ -5840,7 +6159,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if not listing_id:
                     self.send_json(400, {'error': 'listing_id traduction Etsy manquant'})
                     return
-                if language not in {'en', 'de', 'es', 'fr', 'it', 'nl', 'pt'}:
+                if language not in {'en', 'de', 'es', 'fr', 'it', 'nl', 'pt', 'ja', 'pl', 'ru', 'sv'}:
                     self.send_json(400, {'error': f'Langue traduction Etsy non supportee: {language or "vide"}'})
                     return
                 if not title:
@@ -6060,11 +6379,19 @@ def start_instagram_media_server() -> ThreadingLocalServer:
 
 
 def main():
-    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG, PINTEREST_SERVICE
+    global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
+    global PINTEREST_SERVICE, LOCALIZATION_BACKFILL_SERVICE
 
     load_dotenv_file()
     PINTEREST_SERVICE = PinterestService(ROOT)
     PINTEREST_SERVICE.start()
+    LOCALIZATION_BACKFILL_SERVICE = LocalizationBackfillService(
+        ROOT,
+        load_etsy_localization_catalog,
+        request_openai_localization,
+        publish_etsy_localization,
+    )
+    LOCALIZATION_BACKFILL_SERVICE.start()
     try:
         sys.stdout.reconfigure(errors='replace')
     except Exception:
@@ -6131,6 +6458,8 @@ def main():
     finally:
         if PINTEREST_SERVICE is not None:
             PINTEREST_SERVICE.stop()
+        if LOCALIZATION_BACKFILL_SERVICE is not None:
+            LOCALIZATION_BACKFILL_SERVICE.stop()
         server.server_close()
         instagram_media_server.shutdown()
         instagram_media_server.server_close()

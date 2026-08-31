@@ -103,7 +103,10 @@
     const pipelineRun = global.state?.pipelineRun?.[prefix] && typeof global.state.pipelineRun[prefix] === 'object'
       ? JSON.parse(JSON.stringify(global.state.pipelineRun[prefix]))
       : null;
-    return { outputs, pipelineRun };
+    const descriptionResearch = global.state?.descriptionResearchCache?.[prefix]
+      ? JSON.parse(JSON.stringify(global.state.descriptionResearchCache[prefix]))
+      : null;
+    return { outputs, pipelineRun, descriptionResearch };
   }
 
   function persistPipelineRuntimeState(prefixOverride) {
@@ -141,6 +144,11 @@
       if (parsed.pipelineRun && typeof parsed.pipelineRun === 'object') {
         global.state.pipelineRun = global.state.pipelineRun || {};
         global.state.pipelineRun[prefix] = parsed.pipelineRun;
+      }
+
+      if (parsed.descriptionResearch && typeof parsed.descriptionResearch === 'object') {
+        global.state.descriptionResearchCache = global.state.descriptionResearchCache || {};
+        global.state.descriptionResearchCache[prefix] = parsed.descriptionResearch;
       }
 
       const agents = global.getPipelineRuntimeAgentsForPrefix?.(prefix) || [];

@@ -56,6 +56,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/runtime/anthropic_runtime_api.js',
     'pipeline/runtime/openai_runtime_api.js',
     'pipeline/runtime/ai_runtime.js',
+    'pipeline/runtime/description_research_runtime_ui.js',
     'pipeline/runtime/agent_runtime_ui.js',
     'pipeline/runtime/cache_runtime_ui.js',
     'pipeline/runtime/cost_runtime_ui.js',
@@ -70,6 +71,7 @@ const pipelineBootstrapManifest = Object.freeze({
     'pipeline/runtime/translation_it_runtime_ui.js',
     'pipeline/runtime/translation_nl_runtime_ui.js',
     'pipeline/runtime/translation_pt_runtime_ui.js',
+    'pipeline/runtime/localization_backfill_runtime_ui.js',
   ]),
   devRuntime: Object.freeze([
     'pipeline/dev/pipeline_dev_runtime_ui.js',

@@ -89,7 +89,7 @@ var state = {
   outputs: {},
   inputs: {},
   persistentRules: {},
-  promptsByMode: { tabletop: {}, collection: {} },
+  promptsByContext: {},
   customPrompts: {},
   bibliosByMode: { tabletop: {}, collection: {} },
   translationEnByPrefix: { tt: {}, col: {} },

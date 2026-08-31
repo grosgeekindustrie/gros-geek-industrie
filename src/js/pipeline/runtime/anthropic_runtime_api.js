@@ -13,7 +13,7 @@
   const CACHEABLE_BLOCK_MIN_CHARS = 4096;
   const ANTHROPIC_PROMPT_CACHING_BETA = 'prompt-caching-2024-07-31';
   const ANTHROPIC_FILES_API_BETA = 'files-api-2025-04-14';
-  const IMAGE_AWARE_AGENT_IDS = new Set(['marche', 'description', 'alt']);
+  const IMAGE_AWARE_AGENT_IDS = new Set(['description', 'alt']);
   const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000;
   const PROMPT_CACHE_ZONE_GRISE_MS = 2 * 60 * 1000;
   const PROMPT_CACHE_UI_REFRESH_MS = 5 * 1000;
@@ -166,6 +166,7 @@
       aiExecution: promptData?.aiExecution && typeof promptData.aiExecution === 'object'
         ? { ...promptData.aiExecution }
         : null,
+      imageLimit: Math.max(0, Number(promptData?.imageLimit) || 0),
     };
   }
 
@@ -412,9 +413,10 @@
     if (card) card.classList.add(statusClass);
   }
 
-  async function ensureAnthropicImageFiles(prefix) {
+  async function ensureAnthropicImageFiles(prefix, imageLimit = 0) {
     const images = Array.isArray(global.state?.images?.[prefix]) ? global.state.images[prefix] : [];
-    const requestedImages = images.filter((image) => image?.base64);
+    const availableImages = images.filter((image) => image?.base64);
+    const requestedImages = imageLimit > 0 ? availableImages.slice(0, imageLimit) : availableImages;
     if (!requestedImages.length) return buildFilesApiResult();
 
     const readyImagesBefore = getFreshAnthropicImageFiles(requestedImages);
@@ -557,7 +559,8 @@
       workspacePersistError = persistedState.workspacePersistError;
     }
 
-    const readyImagesAfter = getFreshAnthropicImageFiles(runtimeImages.filter((image) => image?.base64));
+    const readyImagesAfter = getFreshAnthropicImageFiles(runtimeImages.filter((image) => image?.base64))
+      .slice(0, requestedImages.length);
     const filesReusedCount = readyImagesBefore.length + serverCacheHitsCount;
     const unresolvedCount = requestedImages.length - readyImagesAfter.length;
 
@@ -610,8 +613,8 @@
     });
   }
 
-  async function buildRequestImageBlocks(prefix) {
-    const result = await ensureAnthropicImageFiles(prefix);
+  async function buildRequestImageBlocks(prefix, imageLimit = 0) {
+    const result = await ensureAnthropicImageFiles(prefix, imageLimit);
     const images = Array.isArray(result?.images) ? result.images : [];
     const debug = createFilesApiDebug(result?.debug);
 
@@ -641,20 +644,24 @@
       overrideModel,
       workspacePrefix,
       aiExecution,
+      imageLimit,
     } = normalizedPromptData;
     const prefix = workspacePrefix || global.pfx();
 
     global.abortControllers[agentId] = controller;
 
-    const hasRequestedImages = Boolean(useImages && global.state.images[prefix].length > 0);
+    const requestedImageCount = useImages
+      ? Math.min(global.state.images[prefix].length, imageLimit > 0 ? imageLimit : global.state.images[prefix].length)
+      : 0;
+    const hasRequestedImages = requestedImageCount > 0;
     let imageContentBlocks = [];
     let filesApiDebug = createFilesApiDebug({
       enabled: hasRequestedImages,
-      requestedImagesCount: hasRequestedImages ? global.state.images[prefix].length : 0,
+      requestedImagesCount: requestedImageCount,
     });
 
     if (hasRequestedImages) {
-      const imageRequest = await buildRequestImageBlocks(prefix);
+      const imageRequest = await buildRequestImageBlocks(prefix, imageLimit);
       imageContentBlocks = imageRequest.blocks;
       filesApiDebug = imageRequest.debug || filesApiDebug;
     }

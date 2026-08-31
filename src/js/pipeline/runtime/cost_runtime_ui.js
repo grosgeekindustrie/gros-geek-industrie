@@ -99,6 +99,7 @@
         tags: '02 Karim',
         marche: '03 Sophie',
         description: '04 Claire',
+        description_research: '03b Recherche Web',
         alt: '05 Nadia',
         traduction_en: 'EN Mapping',
         traduction_listing_en: 'EN Listing',
@@ -123,6 +124,7 @@
         titre_explorer: '01b Nova Explorer',
         tags: '02 Axel',
         description: '03 Eden',
+        description_research: '02b Recherche Web',
         alt: '04 Jules ALT',
         traduction_en: 'EN Mapping',
         traduction_listing_en: 'EN Listing',
@@ -149,6 +151,7 @@
 
   function getCostModelAgentId(agentId = '') {
     if (agentId === 'titre_explorer') return 'titre';
+    if (agentId === 'description_research') return 'description_research';
     return agentId;
   }
 
@@ -164,6 +167,7 @@
     if (entry.source === 'translation' || ['traduction_en', 'traduction_listing_en', 'traduction_de', 'traduction_listing_de', 'traduction_es', 'traduction_listing_es', 'traduction_it', 'traduction_listing_it', 'traduction_nl', 'traduction_listing_nl', 'traduction_pt', 'traduction_listing_pt'].includes(entry.agentId)) return 'translation';
     if (entry.source === 'social' || entry.source === 'camille') return 'social';
     if (entry.source === 'titre-explorer' || entry.agentId === 'titre_explorer') return 'explorer';
+    if (entry.source === 'description-web-research' || entry.agentId === 'description_research') return 'research';
     if (entry.source === 'rerun') return 'rerun';
     if (entry.source === 'pipeline') return 'pipeline';
     return 'other';
@@ -177,6 +181,7 @@
       translation: 'translation',
       social: 'social',
       explorer: 'explorer',
+      research: 'recherche web Description',
       cache_aware_prelaunch: CACHE_AWARE_PRELAUNCH_LABEL,
       warmup: 'warmup',
       other: 'autre',
@@ -202,6 +207,7 @@
       warmup: { count: 0, costCents: 0 },
       social: { count: 0, costCents: 0 },
       explorer: { count: 0, costCents: 0 },
+      research: { count: 0, costCents: 0 },
       other: { count: 0, costCents: 0 },
     };
 
@@ -222,11 +228,13 @@
     const cacheRead = toSafeTokenCount(usage.cache_read_input_tokens);
     const cacheWrite = toSafeTokenCount(usage.cache_creation_input_tokens);
     const reasoningTok = toSafeTokenCount(usage.reasoning_tokens);
+    const webSearchCalls = toSafeTokenCount(usage.web_search_calls);
+    const webSearchCostCents = webSearchCalls * 1;
     const inputCostCents = inputTok * rates.input * 100;
     const cacheWriteCostCents = cacheWrite * rates.cacheWrite * 100;
     const cacheReadCostCents = cacheRead * rates.cacheRead * 100;
     const outputCostCents = outputTok * rates.output * 100;
-    const costCents = inputCostCents + cacheWriteCostCents + cacheReadCostCents + outputCostCents;
+    const costCents = inputCostCents + cacheWriteCostCents + cacheReadCostCents + outputCostCents + webSearchCostCents;
 
     return {
       inputTok,
@@ -234,6 +242,8 @@
       cacheRead,
       cacheWrite,
       reasoningTok,
+      webSearchCalls,
+      webSearchCostCents,
       inputCostCents,
       cacheWriteCostCents,
       cacheReadCostCents,
@@ -361,6 +371,7 @@
     if (lastEntry.cacheWrite > 0) parts.push(`✍️ ${lastEntry.cacheWrite.toLocaleString()} tok`);
     if (lastEntry.cacheRead > 0) parts.push(`⚡ ${lastEntry.cacheRead.toLocaleString()} tok`);
     if (lastEntry.reasoningTok > 0) parts.push(`🧠 ${lastEntry.reasoningTok.toLocaleString()} tok`);
+    if (lastEntry.webSearchCalls > 0) parts.push(`🌐 ${lastEntry.webSearchCalls} appel(s)`);
 
     badge.innerHTML = parts.join('<span class="cost-badge-separator">|</span>');
     badge.title = [
@@ -470,6 +481,7 @@
       `Iris: ${categoryTotals.iris.costCents.toFixed(3)}¢ (${categoryTotals.iris.count} événement(s))`,
       `Social: ${categoryTotals.social.costCents.toFixed(3)}¢ (${categoryTotals.social.count} événement(s))`,
       `Explorer: ${categoryTotals.explorer.costCents.toFixed(3)}¢ (${categoryTotals.explorer.count} événement(s))`,
+      `Recherche web Description: ${categoryTotals.research.costCents.toFixed(3)}¢ (${categoryTotals.research.count} événement(s))`,
       `Autre: ${categoryTotals.other.costCents.toFixed(3)}¢ (${categoryTotals.other.count} événement(s))`,
       `Warmup cache détecté: ${warmupSummaries}`,
       '',
@@ -521,10 +533,10 @@
       );
       lines.push(
         `   coût: ${entry.costCents.toFixed(3)}¢`
-        + ` (in ${entry.inputCostCents.toFixed(3)}¢ | write ${entry.cacheWriteCostCents.toFixed(3)}¢ | read ${entry.cacheReadCostCents.toFixed(3)}¢ | out ${entry.outputCostCents.toFixed(3)}¢)`,
+        + ` (in ${entry.inputCostCents.toFixed(3)}¢ | write ${entry.cacheWriteCostCents.toFixed(3)}¢ | read ${entry.cacheReadCostCents.toFixed(3)}¢ | out ${entry.outputCostCents.toFixed(3)}¢ | web ${entry.webSearchCostCents.toFixed(3)}¢)`,
       );
       lines.push(
-        `   tok : input ${entry.inputTok.toLocaleString()} | cache write ${entry.cacheWrite.toLocaleString()} | cache read ${entry.cacheRead.toLocaleString()} | output ${entry.outputTok.toLocaleString()} | raisonnement ${entry.reasoningTok.toLocaleString()} (inclus dans output) | total ${entry.totalTokens.toLocaleString()}`,
+        `   tok : input ${entry.inputTok.toLocaleString()} | cache write ${entry.cacheWrite.toLocaleString()} | cache read ${entry.cacheRead.toLocaleString()} | output ${entry.outputTok.toLocaleString()} | raisonnement ${entry.reasoningTok.toLocaleString()} (inclus dans output) | web ${entry.webSearchCalls} appel(s) | total ${entry.totalTokens.toLocaleString()}`,
       );
       lines.push(
         `   cache: ${entry.cacheStatus || '—'} | warmup: ${entry.isWarmupEvent ? 'oui' : 'non'} | contexte: ${entry.mode} / ${entry.prefix}`,

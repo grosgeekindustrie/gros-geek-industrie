@@ -35,7 +35,7 @@
   const getAnalysisQualityMenuLabel = (quality) => {
     const isOpenAI = getActiveAIProvider() === 'openai';
     if (quality === 'high') return isOpenAI ? 'Haute · 1024 px · détail élevé' : 'Haute · 1024 px';
-    if (quality === 'economy') return isOpenAI ? 'Économique · 512 px · détail faible' : 'Économique · 512 px';
+    if (quality === 'economy') return isOpenAI ? 'Économique · 512 px · détail élevé' : 'Économique · 512 px';
     return 'Automatique';
   };
 
@@ -360,7 +360,7 @@
       ? `Auto → ${effectiveQuality === 'high' ? 'haute' : 'éco'}`
       : effectiveQuality === 'high' ? 'Haute' : 'Éco';
     const detailLabel = getActiveAIProvider() === 'openai'
-      ? ` · détail ${effectiveQuality === 'high' ? 'élevé' : 'faible'}`
+      ? ' · détail élevé'
       : '';
     meta.textContent = `${imageRecord.width || '?'} × ${imageRecord.height || '?'} · ${qualityLabel}${detailLabel}`;
 
@@ -416,6 +416,7 @@
     state.images[prefix] = [];
     renderThumbs(prefix);
     await imageDb().clearWorkspaceImages?.(prefix);
+    global.PipelineUIForms?.clearFormExceptPricing?.(prefix);
   };
 
   const reorderImagesFromGrid = async (prefix, grid) => {
@@ -574,7 +575,12 @@
 
   global.PipelineUI.images = global.PipelineUI.images || {};
   Object.assign(global.PipelineUI.images, global.PipelineUIImages);
-  global.addEventListener('pipeline:ai-profile-change', () => {
+  global.addEventListener('pipeline:ai-profile-change', (event) => {
+    if (!event.detail?.providerChanged) {
+      ['tt', 'col'].forEach(renderThumbs);
+      return;
+    }
+
     resetAIAnalysisDefaults({ notify: true }).catch((error) => {
       logger?.warn?.('Reset AI image settings failed', error);
     });

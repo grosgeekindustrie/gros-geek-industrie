@@ -199,8 +199,51 @@
     };
   }
 
-  function buildTranslatedDescriptionWithFixedBlocks(dynamicDescription, family = '', language = '') {
-    const dynamicOnly = stripDecorativeFixedBlocks(dynamicDescription, family, language).description;
+  function stripTranslationSourceCommonBlocks(rawValue, family = '', language = 'fr') {
+    const normalized = normalizeTopLevelBlockText(rawValue);
+    const editorialMarker = /^(?:🎭\s*)?Fan Art et artiste\s*:/im;
+    const markerMatch = editorialMarker.exec(normalized);
+    const editorialTail = markerMatch ? normalized.slice(markerMatch.index) : '';
+    const nextBlockOffset = editorialTail.search(/\n{3,}/);
+    const withoutCommonTail = markerMatch && nextBlockOffset >= 0
+      ? stripOuterBlankLines(normalized.slice(0, markerMatch.index + nextBlockOffset))
+      : normalized;
+    const stripped = stripDecorativeFixedBlocks(withoutCommonTail, family, language);
+
+    return {
+      ...stripped,
+      stripped: Boolean((markerMatch && nextBlockOffset >= 0) || stripped.stripped),
+    };
+  }
+
+  function restoreTranslationSourceSpacing(rawTranslation, rawSource) {
+    const translation = normalizeTopLevelBlockText(rawTranslation);
+    const source = normalizeTopLevelBlockText(rawSource);
+    if (!translation || !source) return translation;
+
+    const sourceSeparators = [...source.matchAll(/\n{2,}/g)].map((match) => match[0]);
+    const translationParts = translation.split(/\n{2,}/);
+    if (sourceSeparators.length !== translationParts.length - 1) return translation;
+
+    return translationParts
+      .map((part, index) => `${part}${sourceSeparators[index] || ''}`)
+      .join('');
+  }
+
+  function assertDynamicFanArtBlockPreserved(rawSource, rawTranslation) {
+    const sourceHasDynamicFanArt = /^(?:🎭\s*)?Fan Art et artiste\s*:/im.test(String(rawSource || ''));
+    if (!sourceHasDynamicFanArt) return;
+
+    const translationHasDynamicFanArt = /^(?:🎭\s*)?Fan[ -]?Art\b[^\n]*:/im.test(String(rawTranslation || ''));
+    if (!translationHasDynamicFanArt) {
+      throw new Error('La traduction a supprimé le bloc dynamique Fan Art et artiste. Relance cette langue.');
+    }
+  }
+
+  function buildTranslatedDescriptionWithFixedBlocks(dynamicDescription, family = '', language = '', sourceDescription = '') {
+    assertDynamicFanArtBlockPreserved(sourceDescription, dynamicDescription);
+    const spacedDescription = restoreTranslationSourceSpacing(dynamicDescription, sourceDescription);
+    const dynamicOnly = stripDecorativeFixedBlocks(spacedDescription, family, language).description;
     const introBlocks = getIntroBlocksForFamilyAndLanguage(family, language);
     const fixedBlocks = getFixedBlocksForFamilyAndLanguage(family, language);
     if (!introBlocks.length && !fixedBlocks.length) return dynamicOnly;
@@ -266,6 +309,9 @@
     stripLeadingFixedBlocks,
     stripTrailingFixedBlocks,
     stripDecorativeFixedBlocks,
+    stripTranslationSourceCommonBlocks,
+    restoreTranslationSourceSpacing,
+    assertDynamicFanArtBlockPreserved,
     buildTranslatedDescriptionWithFixedBlocks,
     buildDescriptionAssemblyContext,
     stripLeadingDescriptionHeading,

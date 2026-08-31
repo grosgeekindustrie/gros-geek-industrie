@@ -194,6 +194,9 @@
       refreshModeTabs(knownMode);
     });
     global.loadAllFiles?.(true);
+    global.dispatchEvent(new CustomEvent('pipeline:shop-changed', {
+      detail: { shopKey: activeShop.key },
+    }));
     showToast(`Boutique active : ${activeShop.label}`, activeShop.key === 'doublex' ? '#f2a3c7' : '#e8c547');
   }
 

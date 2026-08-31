@@ -363,6 +363,14 @@
     getConfig().resolvePromptFolder?.(mode, getActiveShopKey(), { useDoublexShopPrompts: shouldUseDoublexShopPrompts() })
       || `prompts/${mode}`
   );
+  const getPromptProfile = (profile = null) => profile || global.PipelineUIAIProfiles?.getActiveProfile?.() || { provider: 'anthropic' };
+  const getPromptBucketForCurrentContext = (mode = getCurrentMode(), profile = null) => (
+    global.PipelineUIPromptProfiles.ensurePipelinePromptBucket(getState(), {
+      provider: getPromptProfile(profile).provider,
+      shopKey: getActiveShopKey(),
+      mode,
+    })
+  );
 
   const renderSelectOptions = (selectId, options = [], selectedValue = null) => {
     const select = getElementById(selectId);
@@ -991,6 +999,53 @@
     } catch (error) {}
   }
 
+  function clearFormExceptPricing(prefixOverride = getPfx()) {
+    const prefix = prefixOverride === 'col' ? 'col' : 'tt';
+    const isCollection = prefix === 'col';
+    const stepperSelector = isCollection
+      ? '[data-js="collection-stepper"]'
+      : '[data-js="dnd-stepper"]';
+    const stepper = document.querySelector(stepperSelector);
+    if (!stepper) return false;
+
+    const pricingState = global.PipelineUIPricing?.serialize?.(prefix) || null;
+    stepper.querySelectorAll(
+      '[data-step-index="1"] input, [data-step-index="1"] select, [data-step-index="1"] textarea,'
+      + ' [data-step-index="2"] input, [data-step-index="2"] select, [data-step-index="2"] textarea,'
+      + ' [data-step-index="3"] input, [data-step-index="3"] select, [data-step-index="3"] textarea',
+    ).forEach((control) => {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        control.checked = false;
+      } else if (control.tagName === 'SELECT') {
+        control.selectedIndex = 0;
+      } else if (control.type !== 'file' && control.type !== 'hidden') {
+        control.value = '';
+      }
+    });
+
+    const dynamicScaleToggle = getElementById(`${prefix}-fDynamicEchelles`);
+    if (dynamicScaleToggle) dynamicScaleToggle.checked = isCollection;
+
+    if (prefix === getPfx()) {
+      getEchellesApi().buildEchellesUI?.();
+    }
+
+    if (isCollection) {
+      toggleLicense({ shouldSave: false });
+      toggleBuzzCollection({ shouldSave: false });
+      renderCollectionMediumMeta({ shouldSave: false });
+      global.refreshCollectionStepper?.();
+    } else {
+      toggleBuzz('tt');
+      global.refreshDndStepper?.();
+    }
+
+    if (pricingState) global.PipelineUIPricing?.restore?.(prefix, pricingState);
+    saveFormState();
+    global.showToast?.('Images et formulaire vidés · pricing conservé');
+    return true;
+  }
+
   function attachFormPersistence() {
     TABLETOP_FORM_FIELDS.forEach(attachSaveListener);
     COLLECTION_FORM_FIELDS.forEach(attachSaveListener);
@@ -1151,13 +1206,15 @@
     } catch (error) {}
   }
 
-  async function loadAllFiles(silent = false) {
+  async function loadAllFiles(silent = false, options = {}) {
     const state = getState();
     const currentMode = getCurrentMode();
     const prefix = getPfx();
-    const config = getConfig();
+    const promptProfile = getPromptProfile(options.profile);
     const promptFileMap = getPromptFileMapForCurrentContext(currentMode);
-    const promptFolder = getPromptFolderForCurrentContext(currentMode);
+    const canonicalPromptFolder = getPromptFolderForCurrentContext(currentMode);
+    const promptFolder = global.PipelineUIPromptProfiles.resolvePromptFolder(canonicalPromptFolder, promptProfile);
+    const promptBucket = getPromptBucketForCurrentContext(currentMode, promptProfile);
     const promptFiles = Object.entries(promptFileMap);
     const missing = [];
     const mode = currentMode;
@@ -1170,7 +1227,7 @@
             missing.push(`${promptFolder}/${fileName}.md`);
             return;
           }
-          state.promptsByMode[mode][agentId] = await res.text();
+          promptBucket[agentId] = await res.text();
         } catch (error) {
           missing.push(`${promptFolder}/${fileName}.md`);
         }
@@ -1232,9 +1289,11 @@
     buildCtx,
     saveFormState,
     loadFormState,
+    clearFormExceptPricing,
     attachFormPersistence,
     loadPersistedData,
     loadAllFiles,
+    getPromptBucketForCurrentContext,
     getActiveShopKey,
     syncDoublexPromptToggleUi,
     toggleExternalInstructionDictation,

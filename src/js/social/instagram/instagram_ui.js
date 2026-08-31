@@ -9,6 +9,13 @@
   const PROMPT_STATE_KEY = 'instagramPublisher';
   const PROMPT_PATH = 'prompts/instagram/instagram.md';
   const THREADS_TEXT_MAX_LENGTH = 500;
+  const REEL_VIDEO_LIMITS = Object.freeze({
+    minDurationSeconds: 3,
+    maxDurationSeconds: 15 * 60,
+    maxFileBytes: 1024 * 1024 * 1024,
+    maxWidthPixels: 1920,
+    maxAverageBitrateMbps: 25,
+  });
   const SHOP_URLS = Object.freeze({
     grosgeek: 'https://grosgeekindustrie.etsy.com',
     doublex: 'https://doublexindustrie.etsy.com',
@@ -664,6 +671,62 @@
     return minutes + ':' + remainder.toFixed(3).padStart(6, '0');
   };
 
+  const getReelVideoValidation = () => {
+    if (!state.video) {
+      return { ready: false, status: 'error', message: 'Ajoute la vidéo du Reel.' };
+    }
+    if (state.video.metadataStatus === 'loading') {
+      return { ready: false, status: 'working', message: 'Analyse des caractéristiques de la vidéo…' };
+    }
+    if (state.video.metadataStatus === 'error') {
+      return { ready: false, status: 'error', message: 'Impossible de lire les caractéristiques de cette vidéo. Réencode-la en MP4 H.264/AAC puis ajoute-la de nouveau.' };
+    }
+
+    const duration = Number(state.video.duration);
+    const width = Number(state.video.width);
+    const averageBitrateMbps = Number(state.video.averageBitrateMbps);
+    if (state.video.size > REEL_VIDEO_LIMITS.maxFileBytes) {
+      return { ready: false, status: 'error', message: 'La vidéo dépasse la limite Instagram de 1 Go.' };
+    }
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return { ready: false, status: 'error', message: 'La durée de la vidéo est illisible. Réencode-la en MP4 H.264/AAC.' };
+    }
+    if (duration < REEL_VIDEO_LIMITS.minDurationSeconds) {
+      return { ready: false, status: 'error', message: 'La vidéo dure moins de 3 secondes, minimum accepté par Instagram.' };
+    }
+    if (duration > REEL_VIDEO_LIMITS.maxDurationSeconds) {
+      return { ready: false, status: 'error', message: 'La vidéo dépasse 15 minutes, maximum accepté par Instagram.' };
+    }
+    if (Number.isFinite(width) && width > REEL_VIDEO_LIMITS.maxWidthPixels) {
+      return { ready: false, status: 'error', message: 'La vidéo fait ' + width + ' px de large. Instagram accepte 1 920 px maximum.' };
+    }
+    if (!Number.isFinite(averageBitrateMbps) || averageBitrateMbps <= 0) {
+      return { ready: false, status: 'error', message: 'Le débit moyen de la vidéo n’a pas pu être calculé.' };
+    }
+    if (averageBitrateMbps > REEL_VIDEO_LIMITS.maxAverageBitrateMbps) {
+      return {
+        ready: false,
+        status: 'error',
+        message: 'Débit moyen estimé à ' + averageBitrateMbps.toFixed(2) + ' Mb/s : Instagram impose 25 Mb/s maximum. Réencode la vidéo avant de générer le post.',
+      };
+    }
+    return {
+      ready: true,
+      status: 'success',
+      message: 'Vidéo compatible avec les contrôles automatiques · débit moyen estimé ' + averageBitrateMbps.toFixed(2) + ' Mb/s sur 25 Mb/s maximum.',
+    };
+  };
+
+  const reportReelVideoValidation = ({ navigate = true } = {}) => {
+    if (state.mode !== 'reel') return true;
+    const validation = getReelVideoValidation();
+    if (validation.ready) return true;
+    setResult(validation.message, validation.status === 'working' ? 'warning' : 'error');
+    global.showToast?.(validation.message, validation.status === 'working' ? '#f0b35d' : '#ff4757');
+    if (navigate && state.activeStep !== 'media') showStep('media');
+    return false;
+  };
+
   const drawReelCover = (video) => {
     if (state.reelCoverMode !== 'frame') return;
     const canvas = getElement('instagramReelCoverCanvas');
@@ -761,9 +824,11 @@
     if (state.mode !== 'reel') return;
 
     if (!state.video) {
-      stage.innerHTML = '<div class="instagram-empty-media"><strong>Dépose une vidéo</strong><span>MP4 ou MOV · 1 Go maximum · le ratio natif est conservé.</span></div>';
+      stage.innerHTML = '<div class="instagram-empty-media"><strong>Dépose une vidéo</strong><span>MP4 ou MOV · 3 s à 15 min · 25 Mb/s · 1 Go maximum.</span></div>';
       return;
     }
+
+    const videoValidation = getReelVideoValidation();
 
     const customCoverSelected = state.reelCoverMode === 'image' && state.reelCustomCover;
     const coverPreview = customCoverSelected
@@ -798,7 +863,12 @@
         </div>
         <div class="instagram-video-details">
           <strong>${escapeHtml(state.video.name)}</strong>
-          <span>${state.video.width || '?'} × ${state.video.height || '?'} px · ${(state.video.size / (1024 * 1024)).toFixed(1)} Mo</span>
+          <span>${state.video.width || '?'} × ${state.video.height || '?'} px · ${formatVideoTime(state.video.duration)} · ${(state.video.size / (1024 * 1024)).toFixed(1)} Mo</span>
+          <div class="instagram-video-validation is-${videoValidation.status}">
+            <strong>${videoValidation.ready ? 'Contrôle Instagram validé' : (videoValidation.status === 'working' ? 'Contrôle en cours' : 'Vidéo à corriger')}</strong>
+            <span>${escapeHtml(videoValidation.message)}</span>
+          </div>
+          <small class="instagram-video-validation-note">Contrôles automatiques : format, durée, poids, largeur et débit moyen estimé. Meta vérifiera aussi les codecs, l’audio et les FPS lors de l’envoi.</small>
           <button class="btn btn-muted" type="button" data-instagram-remove-video>Retirer</button>
         </div>
       </article>
@@ -832,7 +902,7 @@
       : (state.video ? '1 vidéo' : '0 vidéo');
     rule.textContent = carousel
       ? 'Carrousel : 2 à 10 images. Glisse pour changer l’ordre.'
-      : 'Reel : une vidéo, ratio natif conservé, 1 Go maximum.';
+      : 'Reel : 3 s à 15 min · 25 Mb/s · largeur 1 920 px · 1 Go maximum.';
 
     if (carousel) {
       const frameRatio = getFrameRatio();
@@ -895,7 +965,7 @@
   const getReadiness = () => {
     const mediaReady = state.mode === 'carousel'
       ? state.images.length >= 2 && state.images.length <= 10
-      : Boolean(state.video && state.video.size <= 1024 * 1024 * 1024);
+      : getReelVideoValidation().ready;
     const caption = String(getElement('instagramCaption')?.value || '').trim();
     const generationReady = Boolean(caption) && countTextCharacters(caption) <= 2100;
     return {
@@ -908,6 +978,17 @@
 
   const showStep = (step = 'source') => {
     const target = ['source', 'media', 'generation', 'review'].includes(step) ? step : 'source';
+    if (state.mode === 'reel' && ['generation', 'review'].includes(target) && !reportReelVideoValidation({ navigate: false })) {
+      state.activeStep = 'media';
+      document.querySelectorAll('[data-instagram-screen]').forEach((screen) => {
+        const active = screen.dataset.instagramScreen === 'media';
+        screen.hidden = !active;
+        screen.classList.toggle('is-active', active);
+      });
+      renderMedia();
+      syncProgress();
+      return;
+    }
     state.activeStep = target;
     document.querySelectorAll('[data-instagram-screen]').forEach((screen) => {
       const active = screen.dataset.instagramScreen === target;
@@ -973,15 +1054,21 @@
     global.state.customPrompts = global.state.customPrompts || {};
     return global.state.customPrompts;
   };
+  const getResolvedPromptSpec = () => global.PipelineUIPromptProfiles.resolveCustomPromptSpec({
+    id: PROMPT_SPEC_ID,
+    path: PROMPT_PATH,
+    stateKey: PROMPT_STATE_KEY,
+  });
 
   const loadAgentPrompt = async () => {
-    const response = await fetch('/files/' + PROMPT_PATH + '?v=' + Date.now(), { cache: 'no-store' });
+    const promptSpec = getResolvedPromptSpec();
+    const response = await fetch('/files/' + promptSpec.path + '?v=' + Date.now(), { cache: 'no-store' });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       throw new Error(payload.error || 'Prompt Instagram introuvable.');
     }
     const prompt = await response.text();
-    getCustomPromptState()[PROMPT_STATE_KEY] = prompt;
+    getCustomPromptState()[promptSpec.stateKey] = prompt;
     return prompt;
   };
 
@@ -1150,7 +1237,8 @@
     const runButton = getElement('instagramAgentRunBtn');
     const stopButton = getElement('instagramAgentStopBtn');
     const promptButton = getElement('instagramAgentPromptBtn');
-    if (runButton) runButton.disabled = state.contentMode !== 'agent' || state.agentRunning || !state.listing;
+    const reelVideoBlocked = state.mode === 'reel' && !getReelVideoValidation().ready;
+    if (runButton) runButton.disabled = state.contentMode !== 'agent' || state.agentRunning || !state.listing || reelVideoBlocked;
     if (promptButton) promptButton.disabled = state.contentMode !== 'agent' || state.agentRunning;
     if (stopButton) stopButton.hidden = !state.agentRunning;
   };
@@ -1215,6 +1303,7 @@
       showStep('source');
       return;
     }
+    if (!reportReelVideoValidation()) return;
     if (!state.referenceId) {
       setResult('Choisis une image de référence dans l’écran Médias.', 'error');
       showStep('media');
@@ -1342,12 +1431,12 @@
     const dot = getElement('instagramReviewDot');
     if (!title || !detail || !dot) return;
 
+    const reelVideoValidation = state.mode === 'reel' ? getReelVideoValidation() : null;
     let message = '';
     if (state.contentMode !== 'manual' && !state.listing) message = 'Charge une fiche Etsy pour commencer.';
     else if (state.mode === 'carousel' && state.images.length < 2) message = 'Un carrousel exige au moins 2 images.';
     else if (state.mode === 'carousel' && state.images.length > 10) message = 'Retire ' + (state.images.length - 10) + ' image(s) pour respecter la limite de 10.';
-    else if (state.mode === 'reel' && !state.video) message = 'Ajoute la vidéo du Reel.';
-    else if (state.video?.size > 1024 * 1024 * 1024) message = 'La vidéo dépasse la limite de 1 Go.';
+    else if (reelVideoValidation && !reelVideoValidation.ready) message = reelVideoValidation.message;
     else if (!String(getElement('instagramCaption')?.value || '').trim()) message = 'La légende est encore vide.';
     else if (countTextCharacters(getElement('instagramCaption')?.value || '') > 2100) message = 'Raccourcis la légende à 2 100 caractères maximum.';
     else if (validateThreadsPublicationText()) message = validateThreadsPublicationText();
@@ -1366,14 +1455,20 @@
     const threadsButton = getElement('threadsPublishBtn');
     const tiktokButton = getElement('tiktokPublishBtn');
     const tiktokConnectButton = getElement('tiktokConnectBtn');
-    if (testButton) testButton.disabled = state.publishing;
-    if (publishButton) publishButton.disabled = state.publishing;
-    if (publishAllButton) publishAllButton.disabled = state.publishing;
-    if (facebookButton) facebookButton.disabled = state.publishing;
+    const generationButton = document.querySelector('[data-instagram-next="generation"]');
+    const reelVideoBlocked = Boolean(reelVideoValidation && !reelVideoValidation.ready);
+    if (testButton) testButton.disabled = state.publishing || reelVideoBlocked;
+    if (publishButton) publishButton.disabled = state.publishing || reelVideoBlocked;
+    if (publishAllButton) publishAllButton.disabled = state.publishing || reelVideoBlocked;
+    if (facebookButton) facebookButton.disabled = state.publishing || reelVideoBlocked;
     if (recentFacebookButton) recentFacebookButton.disabled = state.publishing;
-    if (threadsButton) threadsButton.disabled = state.publishing;
-    if (tiktokButton) tiktokButton.disabled = state.publishing;
+    if (threadsButton) threadsButton.disabled = state.publishing || reelVideoBlocked;
+    if (tiktokButton) tiktokButton.disabled = state.publishing || reelVideoBlocked;
     if (tiktokConnectButton) tiktokConnectButton.disabled = state.publishing;
+    if (generationButton) {
+      generationButton.disabled = reelVideoBlocked;
+      generationButton.title = reelVideoBlocked ? reelVideoValidation.message : '';
+    }
     syncProgress();
     if (state.activeStep === 'review') renderReviewPreview();
     syncAgentControls();
@@ -1551,20 +1646,43 @@
       state.reelCoverMode = 'frame';
     }
     state.reelCoverDataUrl = '';
-    state.video = { file, name: file.name, size: file.size, type: file.type, lastModified: file.lastModified, url, width: null, height: null, duration: null };
+    state.video = {
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+      url,
+      width: null,
+      height: null,
+      duration: null,
+      averageBitrateMbps: null,
+      metadataStatus: 'loading',
+    };
     state.draftVideoIdentity = { name: file.name, size: file.size, lastModified: file.lastModified };
 
     video.onloadedmetadata = () => {
       state.video.width = video.videoWidth;
       state.video.height = video.videoHeight;
       state.video.duration = video.duration;
+      state.video.averageBitrateMbps = (file.size * 8) / video.duration / 1_000_000;
+      state.video.metadataStatus = 'ready';
       state.reelCoverTime = Math.min(state.reelCoverTime, Math.max(0, video.duration - 0.001));
       renderMedia();
       saveDraft();
+      const validation = getReelVideoValidation();
+      setResult(validation.message, validation.ready ? 'success' : 'error');
+    };
+    video.onerror = () => {
+      if (!state.video || state.video.url !== url) return;
+      state.video.metadataStatus = 'error';
+      renderMedia();
+      syncPreflight();
+      setResult(getReelVideoValidation().message, 'error');
     };
     video.src = url;
     renderMedia();
-    setResult('Vidéo locale ajoutée. Elle reste uniquement dans ce navigateur.', 'success');
+    setResult('Vidéo locale ajoutée. Analyse des contraintes Instagram en cours…', 'working');
   };
 
   const removeMedia = (id) => {
@@ -1803,6 +1921,8 @@
     const signature = getPublicationSignature();
     if (state.preparedPublication?.signature === signature) return state.preparedPublication;
     if (state.mode === 'reel') {
+      const validation = getReelVideoValidation();
+      if (!validation.ready) throw new Error(validation.message);
       if (!state.video?.file) {
         throw new Error('Ajoute de nouveau la vidéo à publier.');
       }
@@ -1839,6 +1959,7 @@
       setResult('Rechargement automatique de la fiche mémorisée…');
       await loadListing();
     }
+    if (!reportReelVideoValidation()) return;
 
     if (!dryRun && !global.confirm('Publier maintenant ' + (state.mode === 'reel' ? 'ce Reel' : 'ce carrousel') + ' sur Instagram ? Cette action crée une vraie publication.')) return;
 
@@ -1890,6 +2011,7 @@
 
   const publishThreads = async () => {
     if (state.publishing) return;
+    if (!reportReelVideoValidation()) return;
 
     const validationError = validateThreadsPublicationText();
     if (validationError) {
@@ -1931,6 +2053,7 @@
 
   const publishFacebook = async () => {
     if (state.publishing) return;
+    if (!reportReelVideoValidation()) return;
 
     if (!global.confirm('Publier maintenant ' + (state.mode === 'reel' ? 'ce Reel' : 'ce carrousel') + ' sur Facebook ? Cette action crée une vraie publication sur la Page ' + SHOP_LABELS[state.shopKey] + '.')) return;
 
@@ -1972,6 +2095,7 @@
       setResult('Rechargement automatique de la fiche mémorisée…');
       await loadListing();
     }
+    if (!reportReelVideoValidation()) return;
 
     const threadsValidationError = validateThreadsPublicationText();
     if (threadsValidationError) {
@@ -2314,6 +2438,7 @@
       setResult('TikTok review : sélectionne le mode Reel et ajoute une vidéo MP4 ou MOV.', 'error');
       return;
     }
+    if (!reportReelVideoValidation()) return;
     // TikTok requires fresh creator information immediately before posting.
     // This also refreshes the available privacy levels after the account is
     // switched between public and private in the TikTok mobile application.
@@ -2492,7 +2617,7 @@
       renderAgentInput();
     });
     getElement('instagramAgentPromptBtn')?.addEventListener('click', () => {
-      delete getCustomPromptState()[PROMPT_STATE_KEY];
+      delete getCustomPromptState()[getResolvedPromptSpec().stateKey];
       global.openPromptLightbox?.(PROMPT_SPEC_ID);
     });
     getElement('instagramContentModePicker')?.addEventListener('click', (event) => {

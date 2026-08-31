@@ -2,11 +2,19 @@
   'use strict';
 
   const SETTINGS_KEY = 'pipeline.settings';
-  const PROFILE_VERSION = 2;
+  const PROFILE_VERSION = 3;
   const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
   const TRANSLATION_CLAUDE_MODEL = 'claude-sonnet-4-6';
   const DEFAULT_OPENAI_MODEL = 'gpt-5.6-sol';
   const DEFAULT_OPENAI_REASONING_EFFORT = 'medium';
+  const DEFAULT_DESCRIPTION_RESEARCH = Object.freeze({
+    enabled: true,
+    model: 'gpt-5.6-luna',
+    reasoningEffort: 'low',
+    maxToolCalls: 2,
+    searchContextSize: 'low',
+    reuseIdentical: true,
+  });
   const PROFILE_IDS = Object.freeze({
     LEGACY: 'claude-legacy', CUSTOM: 'claude-custom',
     CLAUDE_LEGACY: 'claude-legacy', CLAUDE_CUSTOM: 'claude-custom',
@@ -39,6 +47,7 @@
   const CLAUDE_MODEL_IDS = new Set(SUPPORTED_CLAUDE_MODELS.map(({ value }) => value));
   const OPENAI_MODEL_IDS = new Set(SUPPORTED_OPENAI_MODELS.map(({ value }) => value));
   const OPENAI_EFFORT_IDS = new Set(SUPPORTED_OPENAI_REASONING_EFFORTS.map(({ value }) => value));
+  const SEARCH_CONTEXT_SIZES = new Set(['low', 'medium', 'high']);
   const KNOWN_PROFILE_IDS = new Set(Object.values(PROFILE_IDS));
   const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -76,6 +85,21 @@
       routes: id === PROFILE_IDS.CLAUDE_LEGACY ? buildLegacyRoutes(baseModel) : buildUniformRoutes(baseModel),
       reasoningEfforts: buildUniformEfforts(baseReasoningEffort),
       imageDefaults: { first: 'high', rest: 'economy' },
+      descriptionResearch: clone(DEFAULT_DESCRIPTION_RESEARCH),
+    };
+  };
+
+  const normalizeDescriptionResearch = (value, provider) => {
+    const source = value && typeof value === 'object' ? value : {};
+    return {
+      enabled: provider === 'openai' && source.enabled !== false,
+      model: normalizeOpenAIModel(source.model, DEFAULT_DESCRIPTION_RESEARCH.model),
+      reasoningEffort: normalizeOpenAIReasoningEffort(source.reasoningEffort, DEFAULT_DESCRIPTION_RESEARCH.reasoningEffort),
+      maxToolCalls: Math.min(3, Math.max(1, Math.round(Number(source.maxToolCalls) || DEFAULT_DESCRIPTION_RESEARCH.maxToolCalls))),
+      searchContextSize: SEARCH_CONTEXT_SIZES.has(String(source.searchContextSize || ''))
+        ? String(source.searchContextSize)
+        : DEFAULT_DESCRIPTION_RESEARCH.searchContextSize,
+      reuseIdentical: source.reuseIdentical !== false,
     };
   };
   const buildDefaultConfig = (settings = readSettings()) => buildDefaultConfigForId(PROFILE_IDS.CLAUDE_LEGACY, settings);
@@ -117,12 +141,14 @@
       : normalizeEfforts(source.reasoningEfforts, source.routes, baseReasoningEffort, provider);
     const defaults = buildDefaultConfigForId(id, settings);
     const imageDefaults = source.imageDefaults && typeof source.imageDefaults === 'object' ? source.imageDefaults : defaults.imageDefaults;
+    const descriptionResearch = normalizeDescriptionResearch(source.descriptionResearch, provider);
     return {
       version: PROFILE_VERSION, id, provider, baseModel, baseReasoningEffort, routes, reasoningEfforts,
       imageDefaults: {
         first: imageDefaults.first === 'economy' ? 'economy' : 'high',
         rest: imageDefaults.rest === 'high' ? 'high' : 'economy',
       },
+      descriptionResearch,
     };
   };
 
@@ -190,9 +216,9 @@
   global.PipelineUIAIProfiles = Object.freeze({
     PROFILE_IDS, TASK_IDS, SUPPORTED_CLAUDE_MODELS, SUPPORTED_OPENAI_MODELS,
     SUPPORTED_OPENAI_REASONING_EFFORTS, DEFAULT_CLAUDE_MODEL, TRANSLATION_CLAUDE_MODEL,
-    DEFAULT_OPENAI_MODEL, DEFAULT_OPENAI_REASONING_EFFORT, normalizeClaudeModel,
+    DEFAULT_OPENAI_MODEL, DEFAULT_OPENAI_REASONING_EFFORT, DEFAULT_DESCRIPTION_RESEARCH, normalizeClaudeModel,
     normalizeOpenAIModel, normalizeOpenAIReasoningEffort, getProviderForProfileId,
-    buildDefaultConfig, buildDefaultConfigForId, normalizeConfig, getActiveProfile,
+    normalizeDescriptionResearch, buildDefaultConfig, buildDefaultConfigForId, normalizeConfig, getActiveProfile,
     getProfileForId, saveActiveProfile, getTaskForAgent, getModelsForProvider,
     getModelLabel, getReasoningEffortLabel, getProfileLabel, snapshotActiveProfile, resolveExecution,
   });

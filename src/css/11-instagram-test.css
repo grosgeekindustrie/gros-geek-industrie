@@ -854,6 +854,40 @@
   font: 600 10px/1.5 'JetBrains Mono', monospace;
 }
 
+.instagram-video-validation {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  background: rgba(255, 255, 255, .035);
+}
+
+.instagram-video-validation.is-success {
+  border-color: rgba(44, 204, 133, .38);
+  background: rgba(44, 204, 133, .09);
+}
+
+.instagram-video-validation.is-working {
+  border-color: rgba(240, 179, 93, .42);
+  background: rgba(240, 179, 93, .09);
+}
+
+.instagram-video-validation.is-error {
+  border-color: rgba(255, 71, 87, .5);
+  background: rgba(255, 71, 87, .1);
+}
+
+.instagram-video-validation.is-success strong { color: #6de2aa; }
+.instagram-video-validation.is-working strong { color: #f0b35d; }
+.instagram-video-validation.is-error strong { color: #ff7d88; }
+
+.instagram-video-validation span,
+.instagram-video-validation-note {
+  color: var(--text2);
+  line-height: 1.55;
+}
+
 .instagram-video-card .btn {
   justify-self: start;
 }
