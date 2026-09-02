@@ -30,6 +30,9 @@
     attention: 'Intervention requise',
     error: 'Erreur technique',
   }[value] || value || 'En attente');
+  const strategyLabel = (value) => (
+    value === 'rework_all' ? 'Rework complet' : 'Nouvelle fiche'
+  );
   const languageStateLabel = (value) => ({
     waiting: 'pas encore commencée',
     pending: 'en attente',
@@ -112,7 +115,7 @@
         : '<div class="localization-automation-image-placeholder" aria-hidden="true"></div>'}
       <div class="localization-automation-entry-copy">
         <strong>${escapeHtml(entry.title || `Fiche Etsy ${entry.listingId}`)}</strong>
-        <span>${escapeHtml(statusLabel(entry.state))}${escapeHtml(stableTimeLabel(entry))}${escapeHtml(activityLabel(entry))}</span>
+        <span>${escapeHtml(strategyLabel(entry.translationStrategy))} · ${escapeHtml(statusLabel(entry.state))}${escapeHtml(stableTimeLabel(entry))}${escapeHtml(activityLabel(entry))}</span>
         <div class="localization-automation-languages" aria-label="État des langues">
           ${renderLanguageChips(entry)}
         </div>

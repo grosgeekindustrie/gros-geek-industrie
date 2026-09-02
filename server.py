@@ -3296,6 +3296,36 @@ def publish_etsy_localization(shop_key: str, listing_id: str, language: str, tra
     return {'operation': operation, 'payload': response}
 
 
+def append_localization_automation_registration(
+    operations: list,
+    *,
+    shop_key: str,
+    listing_id: str,
+    pipeline_mode: str,
+    initial_source: dict,
+    translation_strategy: str,
+) -> None:
+    """Tracer l'inscription automatique sans invalider une publication Etsy réussie."""
+    try:
+        registration = get_localization_backfill_service().enqueue_automation(
+            shop_key,
+            listing_id,
+            pipeline_mode,
+            initial_source,
+            translation_strategy=translation_strategy,
+        )
+        operations.append({
+            'step': 'register_localization_automation',
+            **registration,
+        })
+    except Exception as automation_error:
+        operations.append({
+            'step': 'register_localization_automation',
+            'status': 'failed',
+            'error': str(automation_error),
+        })
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):
@@ -5846,6 +5876,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'videos': uploaded_videos,
                         })
 
+                    append_localization_automation_registration(
+                        operations,
+                        shop_key=requested_shop_key,
+                        listing_id=target_listing_id,
+                        pipeline_mode=pipeline_mode,
+                        translation_strategy='rework_all',
+                        initial_source={
+                            'listingId': target_listing_id,
+                            'title': str(
+                                normalized_update_listing_payload.get('title')
+                                or current_listing_data.get('title')
+                                or ''
+                            ).strip(),
+                            'description': str(
+                                normalized_update_listing_payload.get('description')
+                                or current_listing_data.get('description')
+                                or ''
+                            ),
+                            'tags': [
+                                str(tag or '').strip()
+                                for tag in (
+                                    normalized_update_listing_payload.get('tags')
+                                    or current_listing_data.get('tags')
+                                    or []
+                                )
+                                if str(tag or '').strip()
+                            ],
+                            'state': current_listing_state,
+                            'translations': [],
+                        },
+                    )
+
                     self.send_json(200, {
                         'ok': True,
                         'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
@@ -6207,40 +6269,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'reason': f'Property/value introuvable pour occasion={occasion_value} taxonomy_id={taxonomy_id}',
                         })
 
-                try:
-                    automation_registration = get_localization_backfill_service().enqueue_automation(
-                        requested_shop_key,
-                        created_listing_id,
-                        pipeline_mode,
-                        {
-                            'listingId': created_listing_id,
-                            'title': str(create_payload.get('title') or '').strip(),
-                            'description': str(create_payload.get('description') or ''),
-                            'tags': [
-                                str(tag or '').strip()
-                                for tag in (
-                                    normalized_update_payload.get('tags')
-                                    or create_payload.get('tags')
-                                    or []
-                                )
-                                if str(tag or '').strip()
-                            ],
-                            'state': 'draft',
-                            'translations': [],
-                        },
-                    )
-                    operations.append({
-                        'step': 'register_localization_automation',
-                        **automation_registration,
-                    })
-                except Exception as automation_error:
-                    # Le draft Etsy est déjà créé : une panne du suivi local ne
-                    # doit jamais transformer sa publication en faux échec.
-                    operations.append({
-                        'step': 'register_localization_automation',
-                        'status': 'failed',
-                        'error': str(automation_error),
-                    })
+                append_localization_automation_registration(
+                    operations,
+                    shop_key=requested_shop_key,
+                    listing_id=created_listing_id,
+                    pipeline_mode=pipeline_mode,
+                    translation_strategy='missing_only',
+                    initial_source={
+                        'listingId': created_listing_id,
+                        'title': str(create_payload.get('title') or '').strip(),
+                        'description': str(create_payload.get('description') or ''),
+                        'tags': [
+                            str(tag or '').strip()
+                            for tag in (
+                                normalized_update_payload.get('tags')
+                                or create_payload.get('tags')
+                                or []
+                            )
+                            if str(tag or '').strip()
+                        ],
+                        'state': 'draft',
+                        'translations': [],
+                    },
+                )
 
                 self.send_json(200, {
                     'ok': True,

@@ -46,6 +46,7 @@ AUTOMATION_MODEL = "gpt-5.6-luna"
 AUTOMATION_REASONING_EFFORT = "low"
 AUTOMATION_DEFAULT_POLL_SECONDS = 300
 AUTOMATION_DEFAULT_STABILITY_SECONDS = 1200
+AUTOMATION_TRANSLATION_STRATEGIES = ("missing_only", "rework_all")
 AUTOMATION_WATCH_STATES = ("waiting_activation", "stabilizing", "verification")
 AUTOMATION_ACTIVE_STATES = (*AUTOMATION_WATCH_STATES, "generating", "publishing")
 STRUCTURAL_EMOJI_RE = re.compile(
@@ -733,6 +734,7 @@ class LocalizationBackfillService:
                     run_id TEXT,
                     model TEXT NOT NULL,
                     reasoning_effort TEXT NOT NULL,
+                    translation_strategy TEXT NOT NULL DEFAULT 'missing_only',
                     error TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -778,6 +780,17 @@ class LocalizationBackfillService:
             if "automation_id" not in run_columns:
                 connection.execute(
                     "ALTER TABLE localization_runs ADD COLUMN automation_id TEXT NOT NULL DEFAULT ''"
+                )
+            automation_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(localization_automation_entries)"
+                ).fetchall()
+            }
+            if "translation_strategy" not in automation_columns:
+                connection.execute(
+                    "ALTER TABLE localization_automation_entries "
+                    "ADD COLUMN translation_strategy TEXT NOT NULL DEFAULT 'missing_only'"
                 )
 
     def _recover_interrupted_jobs(self):
@@ -890,11 +903,14 @@ class LocalizationBackfillService:
         listing_id: str,
         mode: str,
         initial_source: dict | None = None,
+        *,
+        translation_strategy: str = "missing_only",
     ) -> dict:
-        """Inscrire un draft créé par le pipeline sans auditer le catalogue."""
+        """Inscrire une publication Collection sans auditer le catalogue."""
         shop_key = self._normalize_shop_key(shop_key)
         listing_id = str(listing_id or "").strip()
         mode = str(mode or "").strip().lower()
+        translation_strategy = str(translation_strategy or "missing_only").strip().lower()
         if not listing_id:
             raise ValueError("listing_id manquant pour l'automatisation")
         if mode != "collection":
@@ -903,6 +919,10 @@ class LocalizationBackfillService:
                 "eligible": False,
                 "reason": "L'automatisation Tabletop reste désactivée jusqu'à validation de son backfill.",
             }
+        if translation_strategy not in AUTOMATION_TRANSLATION_STRATEGIES:
+            raise ValueError(
+                f"Stratégie de traduction automatique invalide : {translation_strategy}"
+            )
         now = utc_iso()
         automation_id = uuid.uuid4().hex
         source = initial_source if isinstance(initial_source, dict) else {}
@@ -912,25 +932,71 @@ class LocalizationBackfillService:
                 (shop_key, listing_id),
             ).fetchone()
             if existing:
+                if translation_strategy == "rework_all":
+                    previous_run_id = str(existing["run_id"] or "")
+                    if previous_run_id:
+                        connection.execute(
+                            """
+                            UPDATE localization_jobs
+                            SET state='cancelled', updated_at=?, completed_at=?
+                            WHERE run_id=? AND state IN (
+                                'pending','generating','preview_ready',
+                                'publish_pending','publishing'
+                            )
+                            """,
+                            (now, now, previous_run_id),
+                        )
+                        connection.execute(
+                            """
+                            UPDATE localization_runs
+                            SET state='cancelled', updated_at=?, completed_at=?
+                            WHERE run_id=? AND state IN ('draft','running','paused')
+                            """,
+                            (now, now, previous_run_id),
+                        )
+                    connection.execute(
+                        """
+                        UPDATE localization_automation_entries
+                        SET state='waiting_activation', source_hash='', source_json=?,
+                            existing_languages_json='[]', stable_since=NULL,
+                            last_checked_at=NULL, next_check_at=?, run_id=NULL,
+                            translation_strategy='rework_all', error='', updated_at=?,
+                            completed_at=NULL
+                        WHERE automation_id=?
+                        """,
+                        (stable_json(source), now, now, existing["automation_id"]),
+                    )
+                    self._next_automation_poll_at = 0.0
+                    self._wake.set()
+                    return {
+                        "ok": True,
+                        "eligible": True,
+                        "reused": True,
+                        "restarted": True,
+                        "automationId": existing["automation_id"],
+                        "state": "waiting_activation",
+                        "translationStrategy": translation_strategy,
+                    }
                 return {
                     "ok": True,
                     "eligible": True,
                     "reused": True,
                     "automationId": existing["automation_id"],
                     "state": existing["state"],
+                    "translationStrategy": existing["translation_strategy"],
                 }
             connection.execute(
                 """
                 INSERT INTO localization_automation_entries (
                     automation_id, listing_id, shop_key, mode, state,
                     source_json, next_check_at, model, reasoning_effort,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, 'waiting_activation', ?, ?, ?, ?, ?, ?)
+                    translation_strategy, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'waiting_activation', ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     automation_id, listing_id, shop_key, mode,
                     stable_json(source), now, AUTOMATION_MODEL,
-                    AUTOMATION_REASONING_EFFORT, now, now,
+                    AUTOMATION_REASONING_EFFORT, translation_strategy, now, now,
                 ),
             )
         self._next_automation_poll_at = 0.0
@@ -940,6 +1006,7 @@ class LocalizationBackfillService:
             "eligible": True,
             "automationId": automation_id,
             "state": "waiting_activation",
+            "translationStrategy": translation_strategy,
         }
 
     def automation_dashboard(self, shop_key: str = "grosgeek", limit: int = 200) -> dict:
@@ -1029,7 +1096,10 @@ class LocalizationBackfillService:
                         "output": output,
                         "attempts": int(job["attempts"] or 0),
                     })
-            elif language in existing_languages:
+            elif (
+                language in existing_languages
+                and entry["translation_strategy"] != "rework_all"
+            ):
                 state = "published"
             else:
                 state = "waiting"
@@ -1067,6 +1137,7 @@ class LocalizationBackfillService:
             "runId": entry["run_id"] or "",
             "model": entry["model"],
             "reasoningEffort": entry["reasoning_effort"],
+            "translationStrategy": entry["translation_strategy"],
             "createdAt": entry["created_at"],
             "updatedAt": entry["updated_at"],
             "completedAt": entry["completed_at"] or "",
@@ -1750,9 +1821,11 @@ class LocalizationBackfillService:
             str(code or "").strip().lower()
             for code in (listing.get("translations") or [])
         }
-        missing_languages = [
-            code for code in SUPPORTED_LANGUAGE_CODES if code not in existing_languages
-        ]
+        missing_languages = (
+            list(SUPPORTED_LANGUAGE_CODES)
+            if entry["translation_strategy"] == "rework_all"
+            else [code for code in SUPPORTED_LANGUAGE_CODES if code not in existing_languages]
+        )
         now = utc_iso()
         if not missing_languages:
             with self._db_lock, self._connect() as connection:
@@ -1867,7 +1940,10 @@ class LocalizationBackfillService:
                     ),
                 )
             return
-        if len(existing_languages) == len(SUPPORTED_LANGUAGE_CODES):
+        if (
+            entry["translation_strategy"] != "rework_all"
+            and len(existing_languages) == len(SUPPORTED_LANGUAGE_CODES)
+        ):
             with self._db_lock, self._connect() as connection:
                 connection.execute(
                     """

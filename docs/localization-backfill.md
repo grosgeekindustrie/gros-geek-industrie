@@ -273,6 +273,17 @@ publication des dix langues, la source Etsy est relue une dernière fois. Si son
 empreinte a changé, les sorties devenues obsolètes ne sont pas publiées et la
 fiche repart dans la phase de stabilité.
 
+Deux stratégies sont conservées explicitement :
+
+- une nouvelle fiche ne génère que les langues absentes ;
+- **Mettre à jour la fiche** et **Mettre à jour la fiche expirée** déclarent un
+  rework complet : les dix langues sont toujours régénérées, puis mises à jour
+  ou créées sur Etsy selon leur présence réelle.
+
+Un nouveau rework d'une fiche déjà suivie réarme son entrée existante et
+annule son ancien traitement encore actif. L'historique des lots reste dans la
+base, tandis que le tableau de bord suit le rework le plus récent.
+
 La base SQLite conserve les états et permet la reprise après redémarrage :
 
 ```text
