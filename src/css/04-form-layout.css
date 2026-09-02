@@ -762,8 +762,21 @@ textarea:not([data-no-autoresize="true"]) {
   margin-bottom: 0.875rem;
 }
 
+.echelles-report-action {
+  margin-left: auto;
+  align-items: flex-end;
+}
+
 .echelles-report-action .btn {
   min-height: 2.25rem;
+}
+
+@media (max-width: 720px) {
+  .echelles-report-action {
+    width: 100%;
+    margin-left: 0;
+    align-items: flex-start;
+  }
 }
 
 .ech-item.is-origin {
