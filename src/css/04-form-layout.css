@@ -762,6 +762,10 @@ textarea:not([data-no-autoresize="true"]) {
   margin-bottom: 0.875rem;
 }
 
+.echelles-report-action .btn {
+  min-height: 2.25rem;
+}
+
 .ech-item.is-origin {
   border-color: rgba(126, 184, 247, 0.4);
   background: rgba(126, 184, 247, 0.08);

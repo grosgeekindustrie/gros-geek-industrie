@@ -571,7 +571,7 @@
     const lines = list.map((label, index) => {
       const checkbox = document.getElementById(`${prefix}-ec${index}`);
       const dimInput = document.getElementById(`${prefix}-ed${index}`);
-      return (checkbox?.checked && dimInput?.value) ? `${label} â‡’ ${dimInput.value}` : null;
+      return (checkbox?.checked && dimInput?.value) ? `${label} => ${dimInput.value}` : null;
     }).filter(Boolean);
 
     if (mode === COLLECTION_MODE) {
@@ -579,12 +579,38 @@
         const index = list.length + customOffset;
         const { checkbox, customLabel, dimInput } = getRowEls(index);
         if (checkbox?.checked && customLabel?.value && dimInput?.value) {
-          lines.push(`${customLabel.value.trim()} â‡’ ${dimInput.value}`);
+          lines.push(`${customLabel.value.trim()} => ${dimInput.value}`);
         }
       }
     }
 
     return lines.join('\n');
+  }
+
+  async function copyScaleReport(prefix = getPfx()) {
+    const entries = getSelectedScaleEntries(prefix);
+    if (!entries.length) {
+      global.showToast?.('Coche au moins une échelle', '#e8c547');
+      return;
+    }
+
+    const incompleteEntries = entries.filter((entry) => !entry.dimension);
+    if (incompleteEntries.length) {
+      const labels = incompleteEntries.map((entry) => entry.label).join(', ');
+      global.showToast?.(`Dimensions manquantes : ${labels}`, '#e8c547', 4000);
+      return;
+    }
+
+    const report = entries
+      .map((entry) => `${entry.label} => ${entry.dimension}`)
+      .join('\n');
+
+    try {
+      await navigator.clipboard.writeText(report);
+      global.showToast?.(`Rapport copié · ${entries.length} échelle${entries.length > 1 ? 's' : ''}`);
+    } catch (error) {
+      global.showToast?.(`Copie impossible : ${error.message}`, '#ff4757', 4000);
+    }
   }
 
   Object.assign(global.PipelineUIEchelles, {
@@ -602,6 +628,7 @@
     getEchellesSelected,
     getSelectedScaleEntries,
     getDimsFromEchelles,
+    copyScaleReport,
     getOriginScaleDimensions,
     refreshCollectionAutoDimensions: recalculateCollectionDimensions,
   });
@@ -610,4 +637,5 @@
   global.toggleEch = toggleEch;
   global.toggleDynamicEchelles = toggleDynamicEchelles;
   global.setEchelleOrigin = setEchelleOrigin;
+  global.copyScaleReport = copyScaleReport;
 })(window);

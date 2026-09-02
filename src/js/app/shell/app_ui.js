@@ -295,6 +295,7 @@
     'clear-storage': () => clearAllStorage(),
     'toggle-external-instruction-dictation': (fieldId) => global.toggleExternalInstructionDictation?.(fieldId),
     'paste-external-instruction-clipboard': (fieldId) => global.pasteClipboardToField?.(fieldId),
+    'copy-scale-report': (prefix) => global.copyScaleReport?.(prefix),
     'set-active-shop': (shopKey) => setActiveShop(shopKey),
     'select-mode': (mode) => openAppRoute(mode),
     'open-pinterest': () => openAppRoute('pinterest'),
