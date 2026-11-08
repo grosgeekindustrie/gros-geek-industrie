@@ -176,6 +176,9 @@
       originalWidth: loadedImage?.naturalWidth || loadedImage?.width || 0,
       originalHeight: loadedImage?.naturalHeight || loadedImage?.height || 0,
       cropRect: null,
+      // Keep the exact same automatic analysis policy as a locally added image:
+      // first image at 1024 px, following images at 512 px.
+      aiAnalysisQuality: 'auto',
       contentHash: '',
       anthropicFileId: '',
       anthropicContentHash: '',
@@ -190,10 +193,80 @@
     }
 
     global.state.images[prefix] = nextImages;
-    global.PipelineUIImages?.renderThumbs?.(prefix);
     try {
-      await global.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, nextImages);
+      const normalizedImages = await global.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, nextImages);
+      if (Array.isArray(normalizedImages) && normalizedImages.length === nextImages.length) {
+        global.state.images[prefix] = normalizedImages;
+      }
     } catch (error) {}
+    global.PipelineUIImages?.renderThumbs?.(prefix);
+    return global.state.images[prefix];
+  }
+
+  async function syncPipelineImagesFromUrls(prefix, images = []) {
+    const preparedItems = [];
+    for (let index = 0; index < images.length; index += 1) {
+      const item = images[index] || {};
+      const sourceUrl = String(item.url || '').trim();
+      let cachedUrl = sourceUrl;
+      if (!sourceUrl.startsWith('/etsy/media-cache/')) {
+        const response = await fetch('/etsy/media-cache/prepare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: sourceUrl }),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || `Image ${index + 1} inaccessible`);
+        cachedUrl = payload.cachedUrl;
+      }
+      preparedItems.push({
+        kind: 'image',
+        key: `renewal-${item.id || index}`,
+        value: { name: item.name || `Etsy image ${index + 1}` },
+        isLocal: true,
+        renewalCachedUrl: cachedUrl,
+      });
+    }
+
+    const nextImages = [];
+    for (let index = 0; index < preparedItems.length; index += 1) {
+      const item = preparedItems[index];
+      item.value = { ...item.value, src: item.renewalCachedUrl };
+      const response = await fetch(item.renewalCachedUrl);
+      if (!response.ok) throw new Error(`Lecture image ${index + 1} impossible`);
+      const dataUrl = await dataUrlFromBlob(await response.blob());
+      const imageTools = global.PipelineUIImageTools || {};
+      const indexedDb = global.PipelineUIIndexedDb || {};
+      const split = imageTools.splitDataUrl?.(dataUrl);
+      const loadedImage = await imageTools.loadImageFromDataUrl?.(dataUrl);
+      const targetWidth = index === 0 ? 1024 : 512;
+      const variant = await imageTools.exportVariantFromSource?.({
+        sourceBase64: split.base64,
+        sourceMediaType: split.mediaType,
+        sourceWidth: loadedImage?.naturalWidth || loadedImage?.width || 0,
+        sourceHeight: loadedImage?.naturalHeight || loadedImage?.height || 0,
+        targetWidth,
+        outputMediaType: imageTools.getDefaultExportMediaType?.() || 'image/png',
+      });
+      nextImages.push({
+        id: indexedDb.createImageId?.() || `${Date.now()}-${index}`,
+        name: item.value.name,
+        base64: variant.base64,
+        mediaType: variant.mediaType,
+        width: variant.width,
+        height: variant.height,
+        originalBase64: split.base64,
+        originalMediaType: split.mediaType,
+        originalWidth: loadedImage?.naturalWidth || loadedImage?.width || 0,
+        originalHeight: loadedImage?.naturalHeight || loadedImage?.height || 0,
+        cropRect: null,
+        aiAnalysisQuality: 'auto',
+        contentHash: '', anthropicFileId: '', anthropicContentHash: '', anthropicUploadedAt: '',
+      });
+    }
+    global.state.images[prefix] = nextImages;
+    try { await global.PipelineUIIndexedDb?.saveWorkspaceImages?.(prefix, nextImages); } catch (error) {}
+    global.PipelineUIImages?.renderThumbs?.(prefix);
     return nextImages;
   }
 
@@ -453,6 +526,7 @@
     buildListingRelaunchFormSnapshot,
     buildFormPrefill: RelaunchData.buildFormPrefill,
     applyListingPrefillToForm,
+    syncPipelineImagesFromUrls,
     runEtsyListingRelaunch,
   };
 

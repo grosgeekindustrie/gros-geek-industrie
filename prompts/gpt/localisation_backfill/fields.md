@@ -5,7 +5,8 @@
 - Maximum 140 caractères.
 - Naturel et utile pour la recherche locale.
 - Conserver personnage, univers, sculpteur et informations produit présents dans la source.
-- Utiliser uniquement lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores.
+- Préserver les virgules du titre français comme séparateurs naturels entre les groupes d'informations, en adaptant leur emplacement si nécessaire dans la langue cible. Ne pas transformer le titre en suite de mots-clés sans ponctuation.
+- Utiliser lettres, chiffres, espaces, virgules, tirets simples, apostrophes simples et underscores.
 
 ## Tags
 

@@ -4,6 +4,12 @@ STATUS: VALIDATED
 
 Version : `1.0-candidate` · locale cible : `it`.
 
+## Titre Etsy et terminologie interdite
+
+Le titre italien conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, collection, résine, état non peint, impression 3D, garage kit et public visé. Ne résume pas une figurine imprimée en 3D pour fans de vampire à une simple « figura di vampiro ». Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en supprimant d'abord les répétitions et mots accessoires ; vérifie tous les angles avant de répondre.
+
+L'expression anglaise « Fan Art » est interdite dans le titre, les tags et la description italienne. Préserve l'idée d'œuvre inspirée non officielle avec « creazione non ufficiale ispirata a » ou « opera non ufficiale ispirata a », selon le contexte.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché

@@ -20,11 +20,16 @@ Produis une fiche complète en italien naturel, commerciale sans exagération et
 
 ## Titre et tags
 
+Le titre italien doit conserver tous les éléments distincts du titre FR lorsqu'ils sont présents : personnage et œuvre, figurine de collection, résine, état non peint, impression 3D, garage kit et public visé. Ne transforme pas « figurine imprimée en 3D pour fans de vampire » en simple « figura di vampiro ». Ne raccourcis que si la traduction dépasse réellement 140 caractères ; retire d'abord les répétitions et les mots accessoires, sans perdre les caractéristiques du produit. Vérifie cette couverture avant le JSON final.
+
+N'utilise jamais l'expression anglaise « Fan Art » dans le titre, les tags ou la description italienne. Pour cette notion, emploie selon le contexte « creazione non ufficiale ispirata a » ou « opera non ufficiale ispirata a », sans suggérer une licence officielle.
+
 - Titre : 140 caractères maximum.
 - Chaque tag : 30 caractères maximum, espaces compris. Cette limite de 30 est contractuelle pour cet outil : ne la réduis jamais à 20.
 - Conserve le nombre, l'ordre et l'intention des tags source, avec 13 tags maximum.
 - N'invente, ne fusionne et ne supprime aucun angle SEO.
-- Dans le titre et les tags, utilise uniquement lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores.
+- Dans le titre, conserve les virgules qui séparent les idées de la source FR, avec une ponctuation naturelle en langue cible. Utilise lettres, chiffres, espaces, virgules, tirets simples, apostrophes simples et underscores.
+- Dans les tags, utilise uniquement lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ; pas de virgule à l'intérieur d'un tag.
 
 ## Terminologie italienne obligatoire
 
@@ -43,11 +48,11 @@ Quand le produit est vendu non peint, choisis selon le contexte :
 - échelle : "scala"
 - pièces : "pezzi"
 
-Dans un titre ou un tag produit, privilégie "non dipinta" pour lever toute ambiguïté sur l'état de livraison. Dans la description, "da dipingere" est naturel pour parler de l'activité de peinture. Évite "figurina" lorsqu'il pourrait évoquer une vignette ou un autocollant de collection. Garde les termes internationaux naturels comme "garage kit", "Fan Art" et les noms de licence.
+Dans un titre ou un tag produit, privilégie "non dipinta" pour lever toute ambiguïté sur l'état de livraison. Dans la description, "da dipingere" est naturel pour parler de l'activité de peinture. Évite "figurina" lorsqu'il pourrait évoquer une vignette ou un autocollant de collection. Garde les termes internationaux naturels comme "garage kit" et les noms de licence.
 
 ## Description
 
-Traduis intégralement la partie variable fournie. Les blocs fixes commerciaux, atelier et sécurité sont ajoutés ensuite par le code : ne les invente pas et ne les répète pas. Dans la partie variable, préserve strictement dimensions, échelles, matériaux, pièces, options, assemblage, état non peint, sculpteur, vendeur autorisé et Fan Art. N'ajoute aucune information absente.
+Traduis intégralement la partie variable fournie. Les blocs fixes commerciaux, atelier et sécurité sont ajoutés ensuite par le code : ne les invente pas et ne les répète pas. Dans la partie variable, préserve strictement dimensions, échelles, matériaux, pièces, options, assemblage, état non peint, sculpteur, vendeur autorisé et le caractère non officiel de l'œuvre inspirée. N'ajoute aucune information absente.
 
 ## Sortie obligatoire
 

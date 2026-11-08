@@ -632,6 +632,7 @@
     if (!preserveCacheStatus) global.setLastCacheStatus('—');
     global.resetSocialRuntimePanels(prefix);
     global.resetFinalOutputPanels(prefix);
+    global.PipelineUIDescriptionResearchRuntime.clearDescriptionResearchCache(prefix);
     global.clearPipelineRuntimeState?.(prefix);
 
     ['titre_valide', 'description_assembled', 'description_final', 'tags', 'tags_raw', 'alt'].forEach((key) => {

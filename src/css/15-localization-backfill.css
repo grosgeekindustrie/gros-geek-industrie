@@ -70,10 +70,27 @@
   gap: 0.65rem;
 }
 
+.localization-catalog-workspace {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.localization-catalog-workspace[hidden] {
+  display: none;
+}
+
 .localization-backfill-config {
   display: grid;
   grid-template-columns: minmax(14rem, 2fr) repeat(3, minmax(10rem, 1fr));
   gap: 1rem;
+}
+
+.localization-missing-only-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  grid-column: 1 / -1;
+  cursor: pointer;
 }
 
 .localization-backfill-language-picker {
@@ -230,6 +247,27 @@
   display: none;
 }
 
+.localization-run-completion {
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(63, 208, 143, 0.52);
+  border-radius: 0.8rem;
+  color: #d8fbed;
+  background: linear-gradient(135deg, rgba(25, 120, 81, 0.28), rgba(18, 87, 65, 0.18));
+  box-shadow: 0 0.65rem 1.8rem rgba(20, 112, 76, 0.12);
+  font-weight: 800;
+}
+
+.localization-run-completion[hidden] {
+  display: none;
+}
+
+.localization-run-completion.is-error {
+  border-color: rgba(234, 77, 77, 0.5);
+  color: #ffd8d8;
+  background: linear-gradient(135deg, rgba(174, 40, 40, 0.24), rgba(103, 24, 24, 0.16));
+  box-shadow: 0 0.65rem 1.8rem rgba(140, 31, 31, 0.12);
+}
+
 .localization-backfill-run-progress {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
@@ -245,10 +283,60 @@
 }
 
 .localization-job-card {
-  display: grid;
-  grid-template-columns: minmax(14rem, 2fr) 5rem 8rem minmax(12rem, 1fr);
-  gap: 0.75rem;
+  display: block;
+  min-width: 0;
+}
+
+.localization-job-card > summary {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.localization-job-card > summary::before {
+  content: '▸';
+  flex: 0 0 auto;
+}
+
+.localization-job-card[open] > summary::before {
+  content: '▾';
+}
+
+.localization-job-card > :not(summary) {
+  min-width: 0;
+  margin-top: 0.85rem;
+}
+
+.localization-job-output {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.localization-job-field {
+  min-width: 0;
+}
+
+.localization-job-field > strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.localization-job-field > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.localization-job-field > pre,
+.localization-job-raw > pre {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: 30rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .localization-job-card + .localization-job-card {
@@ -397,7 +485,25 @@ details.localization-automation-entry > summary::-webkit-details-marker {
   font-size: 0.84rem;
 }
 
+.localization-automation-entry-copy > .localization-automation-cost {
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.5rem;
+  color: #b5f0cf;
+  background: rgba(33, 145, 98, 0.17);
+  font-weight: 800;
+}
+
+.localization-automation-entry-copy > .localization-automation-cost.is-incomplete {
+  color: #ffd98b;
+  background: rgba(235, 179, 66, 0.18);
+}
+
 .localization-automation-entry-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
   padding: 0 0.85rem 0.75rem 6.75rem;
 }
 
@@ -492,6 +598,22 @@ details.localization-automation-entry > summary::-webkit-details-marker {
   color: #ffabab;
 }
 
+.localization-automation-error-output-title {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.localization-automation-error-output-title span {
+  color: #aebbd0;
+  font-size: 0.78rem;
+}
+
+.localization-automation-error-output-title strong {
+  overflow-wrap: anywhere;
+  color: #f7f4ef;
+}
+
 .localization-automation-error ul {
   margin: 0;
   color: #f1b982;
@@ -507,10 +629,6 @@ details.localization-automation-entry > summary::-webkit-details-marker {
   .localization-backfill-config,
   .localization-backfill-language-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .localization-job-card {
-    grid-template-columns: 1fr 5rem;
   }
 
   .localization-automation-entry-head {

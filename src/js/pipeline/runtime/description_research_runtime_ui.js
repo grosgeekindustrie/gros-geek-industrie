@@ -152,6 +152,10 @@
     return global.state.descriptionResearchCache;
   };
 
+  const clearDescriptionResearchCache = (prefix) => {
+    if (global.state.descriptionResearchCache) delete global.state.descriptionResearchCache[prefix];
+  };
+
   const buildResearchSignature = ({ prefix, promptText, promptSource = null, config, images }) => hashText(JSON.stringify({
     prefix,
     promptText,
@@ -187,6 +191,23 @@
       const sourcePath = String(promptSource.path || 'chemin inconnu');
       throw new Error(`Recherche Description impossible : marqueurs de phases absents, dupliqués ou désordonnés dans ${sourcePath}`);
     }
+    const cache = getResearchCache();
+    const cached = cache[prefix];
+    if (config.reuseIdentical && String(cached?.brief || '').trim()) {
+      const reusedResearch = {
+        ...cached,
+        lastUsedAt: new Date().toISOString(),
+        lastRunReused: true,
+      };
+      cache[prefix] = reusedResearch;
+      global.persistPipelineRuntimeState?.(prefix);
+      global.showToast?.('Recherche Description réutilisée : aucun nouvel appel web', '#7eb8f7', 3200);
+      return {
+        prompt: { ...basePrompt, filled: buildWritingPrompt(prompt.filled, cached.brief) },
+        research: { ...reusedResearch, reused: true },
+      };
+    }
+
     const researchPrompt = buildResearchPrompt(prompt.filled, images.length);
     const signature = buildResearchSignature({
       prefix,
@@ -195,21 +216,6 @@
       config,
       images,
     });
-    const cache = getResearchCache();
-    const cached = cache[prefix];
-    if (config.reuseIdentical && cached?.signature === signature && String(cached?.brief || '').trim()) {
-      const reusedResearch = {
-        ...cached,
-        lastUsedAt: new Date().toISOString(),
-        lastRunReused: true,
-      };
-      cache[prefix] = reusedResearch;
-      global.persistPipelineRuntimeState?.(prefix);
-      return {
-        prompt: { ...basePrompt, filled: buildWritingPrompt(prompt.filled, cached.brief) },
-        research: { ...reusedResearch, reused: true },
-      };
-    }
 
     const execution = {
       provider: 'openai',
@@ -268,6 +274,7 @@
       execution,
     });
     global.persistPipelineRuntimeState?.(prefix);
+    global.showToast?.('Nouvelle recherche Description terminée', '#7eb8f7', 3200);
     return {
       prompt: { ...basePrompt, filled: buildWritingPrompt(prompt.filled, brief) },
       research,
@@ -382,6 +389,7 @@
     buildResearchPrompt,
     buildWritingPrompt,
     buildResearchSignature,
+    clearDescriptionResearchCache,
     resolveDescriptionPromptSource,
     prepareDescriptionPrompt,
     showDescriptionResearchDebug,

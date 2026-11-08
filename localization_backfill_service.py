@@ -35,12 +35,25 @@ SUPPORTED_LANGUAGES = (
     ("sv", "Suédois"),
 )
 SUPPORTED_LANGUAGE_CODES = tuple(code for code, _label in SUPPORTED_LANGUAGES)
-DEFAULT_EXCLUDED_SECTIONS = ("nerikson", "energixon", "rescale miniature")
+TABLETOP_SECTION_MARKERS = (
+    "nerikson",
+    "energixon",
+    "rescale miniature",
+    "tabletop",
+    "ttrpg",
+    "d&d",
+    "dnd",
+    "wargame",
+)
+SUPPORTED_MODES = {
+    "collection": "collection.md",
+    "tabletop": "tabletop.md",
+}
 SUPPORTED_SHOPS = {
     "grosgeek": "grosgeek.md",
     "doublex": "doublex.md",
 }
-SUPPORTED_MODELS = ("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")
+SUPPORTED_MODELS = ("gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")
 SUPPORTED_REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
 AUTOMATION_MODEL = "gpt-5.6-luna"
 AUTOMATION_REASONING_EFFORT = "low"
@@ -70,12 +83,15 @@ BLOCKING_QUALITY_WARNING_CODES = frozenset({
     "multiple_missing_structural_emojis",
     "missing_scale_notation",
     "missing_title_technical_token",
+    "missing_title_commas",
+    "suspicious_title_length",
     "suspicious_description_length",
     "unexpected_writing_system",
     "doublex_invalid_tag_count",
     "doublex_missing_mature_tag",
     "doublex_unexpected_mature_tag",
     "doublex_forbidden_adult_term",
+    "italian_forbidden_fan_art",
 })
 LANGUAGE_TEXT_REPLACEMENTS = {
     "en": (
@@ -166,10 +182,55 @@ UNIVERSE_LABELS = {
     "sv": ("Universum",),
 }
 MODEL_RATES_PER_TOKEN = {
+    "gpt-6-astra": {
+        "input": 10.00 / 1_000_000,
+        "cached_input": 1.00 / 1_000_000,
+        "cache_write": 12.50 / 1_000_000,
+        "output": 50.00 / 1_000_000,
+    },
     "gpt-5.6-luna": {"input": 0.20 / 1_000_000, "output": 1.20 / 1_000_000},
     "gpt-5.6-terra": {"input": 2.00 / 1_000_000, "output": 12.00 / 1_000_000},
     "gpt-5.6-sol": {"input": 4.00 / 1_000_000, "output": 20.00 / 1_000_000},
 }
+
+
+def model_token_cost(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> float:
+    """Calculer le coût d'une requête, y compris les paliers long contexte connus."""
+    rates = MODEL_RATES_PER_TOKEN.get(str(model), {"input": 0.0, "output": 0.0})
+    raw_input = max(0, int(input_tokens or 0))
+    cached = max(0, int(cached_tokens or 0))
+    cache_write = max(0, int(cache_write_tokens or 0))
+    ordinary = max(0, raw_input - cached - cache_write)
+    long_context = model in {"gpt-6-astra", "gpt-5.6-luna"} and raw_input > 272_000
+    input_multiplier = 2.0 if long_context else 1.0
+    output_multiplier = 1.5 if long_context else 1.0
+    return (
+        ordinary * rates["input"] * input_multiplier
+        + cached * rates.get("cached_input", rates["input"] * 0.1) * input_multiplier
+        + cache_write * rates.get("cache_write", rates["input"] * 1.25) * input_multiplier
+        + max(0, int(output_tokens or 0)) * rates["output"] * output_multiplier
+    )
+
+
+def job_usage_attempts(job) -> list[dict]:
+    """Conserver le coût de chaque génération, y compris celles refusées au contrôle."""
+    history = json.loads(job["usage_history_json"] or "[]") if "usage_history_json" in job.keys() else []
+    if isinstance(history, list) and history:
+        return [usage for usage in history if isinstance(usage, dict)]
+    latest = json.loads(job["usage_json"] or "{}")
+    return [latest] if latest else []
+
+
+def usage_with_new_attempt(job, usage: dict) -> str:
+    previous = job_usage_attempts(job)
+    return stable_json([*previous, usage])
 RUN_STATES = ("draft", "running", "paused", "completed", "cancelled", "failed")
 JOB_STATES = (
     "pending",
@@ -271,6 +332,11 @@ def localization_quality_warnings(
         "\n".join(str(tag or "") for tag in (output.get("tags") or [])),
         str(output.get("description") or ""),
     )).casefold()
+    if language == "it" and re.search(r"fan[\s-]?art", searchable_output):
+        warnings.append({
+            "code": "italian_forbidden_fan_art",
+            "message": "L'expression anglaise Fan Art est interdite dans la localisation italienne",
+        })
     if str(shop_key or "").strip().lower() == "doublex":
         source_requires_mature = any(
             str(tag or "").strip().casefold() == "mature"
@@ -341,8 +407,37 @@ def localization_quality_warnings(
         })
     source_title = str(source.get("title") or "")
     output_title = str(output.get("title") or "")
+    target_commas = ",、，" if language == "ja" else ","
+    source_separators = source_title.count(",")
+    target_separators = sum(output_title.count(comma) for comma in target_commas)
+    required_separators = min(2, source_separators) if language == "ja" else min(1, source_separators)
+    if target_separators < required_separators:
+        warnings.append({
+            "code": "missing_title_commas",
+            "message": "Les groupes d'informations du titre ne sont plus assez séparés",
+            "values": {
+                "sourceTitle": source_title,
+                "localizedTitle": output_title,
+                "sourceSeparators": source_separators,
+                "localizedSeparators": target_separators,
+                "minimumLocalizedSeparators": required_separators,
+            },
+        })
+    if language in {"en", "de", "es", "it", "nl", "pt", "pl", "sv"} and len(source_title) >= 100:
+        title_ratio = len(output_title) / len(source_title)
+        if title_ratio < 0.65:
+            warnings.append({
+                "code": "suspicious_title_length",
+                "message": "Titre anormalement court par rapport à la source française",
+                "values": {
+                    "sourceChars": len(source_title),
+                    "outputChars": len(output_title),
+                    "ratio": round(title_ratio, 3),
+                    "minimumRatio": 0.65,
+                },
+            })
     technical_title_tokens = re.findall(
-        r"(?i)(?<!\w)(?:1/\d+|\d{2}K?\s*HD)(?!\w)",
+        r"(?i)(?<!\w)(?:1/\d+|\d{2}K?\s*HD|3D)(?!\w)",
         source_title,
     )
     def canonical_technical_text(value: str) -> str:
@@ -431,6 +526,21 @@ def sanitize_etsy_tag(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def shorten_dutch_paintable_tag(tag: str) -> str:
+    """Raccourcir les formulations NL récurrentes sans perdre l'intention peinture."""
+    if len(tag) <= 30:
+        return tag
+    if tag.casefold() == "verzamelfiguur om te schilderen":
+        return "beschilderbare verzamelfiguur"
+    match = re.fullmatch(r"(.+?) figuur om te schilderen", tag, flags=re.IGNORECASE)
+    if match:
+        subject = match.group(1)
+        for candidate in (f"{subject} beschilderbaar figuur", f"{subject} ongeverfd figuur"):
+            if len(candidate) <= 30:
+                return candidate
+    return tag
+
+
 def normalize_localized_listing(output: dict, language: str) -> dict:
     """Appliquer uniquement des corrections déterministes et sans ambiguïté."""
     replacements = LANGUAGE_TEXT_REPLACEMENTS.get(language, ())
@@ -471,6 +581,8 @@ def normalize_localized_listing(output: dict, language: str) -> dict:
     seen_tags = set()
     for raw_tag in output.get("tags") or []:
         tag = sanitize_etsy_tag(normalize_text(raw_tag))
+        if language == "nl":
+            tag = shorten_dutch_paintable_tag(tag)
         key = re.sub(r"\s+", " ", tag).casefold()
         if not tag or key in seen_tags:
             continue
@@ -604,6 +716,25 @@ def parse_localized_listing(raw_text: str, language: str, *, max_tags: int = 13)
     return normalized
 
 
+def localized_title_from_raw(raw_text: str, language: str) -> str:
+    """Afficher le titre même quand un autre champ rend la sortie invalide."""
+    try:
+        parsed = json.loads(str(raw_text or ""), strict=False)
+    except (TypeError, ValueError):
+        return ""
+    if not isinstance(parsed, dict):
+        return ""
+    return str(parsed.get("title") or parsed.get(f"title_{language}") or "").strip()
+
+
+def has_corrupt_iso_reference(description: str) -> bool:
+    return bool(re.search(
+        r"52900\s*me\s*ISO\s*/\s*ASTM\s*52900",
+        str(description or ""),
+        flags=re.IGNORECASE,
+    ))
+
+
 class ClosingSQLiteConnection(sqlite3.Connection):
     def __exit__(self, exc_type, exc_value, traceback):
         try:
@@ -613,7 +744,7 @@ class ClosingSQLiteConnection(sqlite3.Connection):
 
 
 class LocalizationBackfillService:
-    """Files durables de localisations Collection, isolées par boutique.
+    """Files durables de localisations, isolées par boutique et univers métier.
 
     Les lots de backfill s'arrêtent en ``preview_ready`` jusqu'à validation
     humaine. Les lots liés à l'automatisation post-publication réutilisent le
@@ -680,9 +811,11 @@ class LocalizationBackfillService:
                 CREATE TABLE IF NOT EXISTS localization_runs (
                     run_id TEXT PRIMARY KEY,
                     shop_key TEXT NOT NULL,
+                    mode TEXT NOT NULL DEFAULT 'collection',
                     state TEXT NOT NULL,
                     preview_only INTEGER NOT NULL DEFAULT 1,
                     test_mode INTEGER NOT NULL DEFAULT 0,
+                    force_existing INTEGER NOT NULL DEFAULT 0,
                     selection_hash TEXT NOT NULL DEFAULT '',
                     model TEXT NOT NULL,
                     reasoning_effort TEXT NOT NULL,
@@ -706,6 +839,7 @@ class LocalizationBackfillService:
                     output_json TEXT NOT NULL DEFAULT '',
                     raw_output TEXT NOT NULL DEFAULT '',
                     usage_json TEXT NOT NULL DEFAULT '',
+                    usage_history_json TEXT NOT NULL DEFAULT '[]',
                     quality_warnings_json TEXT NOT NULL DEFAULT '',
                     error TEXT NOT NULL DEFAULT '',
                     attempts INTEGER NOT NULL DEFAULT 0,
@@ -754,9 +888,17 @@ class LocalizationBackfillService:
                 connection.execute(
                     "ALTER TABLE localization_runs ADD COLUMN test_mode INTEGER NOT NULL DEFAULT 0"
                 )
+            if "force_existing" not in run_columns:
+                connection.execute(
+                    "ALTER TABLE localization_runs ADD COLUMN force_existing INTEGER NOT NULL DEFAULT 0"
+                )
             if "selection_hash" not in run_columns:
                 connection.execute(
                     "ALTER TABLE localization_runs ADD COLUMN selection_hash TEXT NOT NULL DEFAULT ''"
+                )
+            if "mode" not in run_columns:
+                connection.execute(
+                    "ALTER TABLE localization_runs ADD COLUMN mode TEXT NOT NULL DEFAULT 'collection'"
                 )
             job_columns = {
                 row["name"]
@@ -769,6 +911,10 @@ class LocalizationBackfillService:
             if "quality_warnings_json" not in job_columns:
                 connection.execute(
                     "ALTER TABLE localization_jobs ADD COLUMN quality_warnings_json TEXT NOT NULL DEFAULT ''"
+                )
+            if "usage_history_json" not in job_columns:
+                connection.execute(
+                    "ALTER TABLE localization_jobs ADD COLUMN usage_history_json TEXT NOT NULL DEFAULT '[]'"
                 )
             connection.execute(
                 "UPDATE localization_jobs SET completed_at=updated_at WHERE state='published' AND completed_at IS NULL"
@@ -850,16 +996,38 @@ class LocalizationBackfillService:
             raise ValueError(f"Boutique backfill non supportée : {normalized}")
         return normalized
 
-    def _shop_prompt_path(self, shop_key: str) -> Path:
+    def _shop_prompt_path(self, shop_key: str, mode: str = "collection") -> Path:
         normalized = self._normalize_shop_key(shop_key)
+        normalized_mode = self._normalize_mode(mode)
+        specialized = self.prompt_root / "shops" / normalized_mode / SUPPORTED_SHOPS[normalized]
+        if specialized.exists():
+            return specialized
         return self.prompt_root / "shops" / SUPPORTED_SHOPS[normalized]
 
-    def config(self, shop_key: str = "grosgeek") -> dict:
+    def _normalize_mode(self, mode: str = "collection") -> str:
+        normalized = str(mode or "collection").strip().lower()
+        if normalized not in SUPPORTED_MODES:
+            raise ValueError(f"Mode de backfill non supporté : {normalized}")
+        return normalized
+
+    def _mode_prompt_path(self, mode: str) -> Path:
+        normalized = self._normalize_mode(mode)
+        return self.prompt_root / "modes" / SUPPORTED_MODES[normalized]
+
+    def _listing_exclusion(self, section_name: str, mode: str) -> tuple[bool, str]:
+        normalized_section = str(section_name or "").casefold().strip()
+        is_tabletop = any(marker in normalized_section for marker in TABLETOP_SECTION_MARKERS)
+        if mode == "tabletop":
+            return (not is_tabletop, f"Section hors Tabletop : {section_name}" if not is_tabletop else "")
+        return (is_tabletop, f"Section Tabletop : {section_name}" if is_tabletop else "")
+
+    def config(self, shop_key: str = "grosgeek", mode: str = "collection") -> dict:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         prompt_files = {
             "common": self.prompt_root / "common.md",
-            "collection": self.prompt_root / "modes" / "collection.md",
-            "shop": self._shop_prompt_path(shop_key),
+            "mode": self._mode_prompt_path(mode),
+            "shop": self._shop_prompt_path(shop_key, mode),
             "fields": self.prompt_root / "fields.md",
             "glossaryShared": self.prompt_root / "glossaries" / "_shared.md",
             "frenchReference": self.prompt_root / "glossaries" / "fr.md",
@@ -882,9 +1050,13 @@ class LocalizationBackfillService:
             }
         return {
             "ok": True,
-            "scope": {"shop": shop_key, "mode": "collection", "activeOnly": True},
+            "scope": {"shop": shop_key, "mode": mode, "activeOnly": True},
+            "modes": [
+                {"code": "collection", "label": "Collection"},
+                {"code": "tabletop", "label": "Tabletop / JDR / wargame"},
+            ],
             "languages": [{"code": code, "label": label} for code, label in SUPPORTED_LANGUAGES],
-            "excludedSections": list(DEFAULT_EXCLUDED_SECTIONS),
+            "tabletopSectionMarkers": list(TABLETOP_SECTION_MARKERS),
             "promptFiles": {
                 key: str(path.relative_to(self.root)).replace("\\", "/")
                 for key, path in prompt_files.items()
@@ -1063,23 +1235,45 @@ class LocalizationBackfillService:
         total_usage = {
             "inputTokens": 0,
             "cachedTokens": 0,
+            "cacheWriteTokens": 0,
             "outputTokens": 0,
             "reasoningTokens": 0,
         }
+        estimated_cost_usd = 0.0
+        cost_incomplete = False
         processing_seconds = 0.0
         for language, label in SUPPORTED_LANGUAGES:
             job = job_by_language.get(language)
             if job:
                 state = str(job["state"])
-                usage = json.loads(job["usage_json"] or "{}")
-                total_usage["inputTokens"] += int(usage.get("input_tokens") or 0)
-                total_usage["cachedTokens"] += int(
-                    (usage.get("input_tokens_details") or {}).get("cached_tokens") or 0
-                )
-                total_usage["outputTokens"] += int(usage.get("output_tokens") or 0)
-                total_usage["reasoningTokens"] += int(
-                    (usage.get("output_tokens_details") or {}).get("reasoning_tokens") or 0
-                )
+                usages = job_usage_attempts(job)
+                # Les anciens jobs ne gardaient que la dernière génération.
+                # Les nouveaux conservent l'historique, même si la publication a été retentée.
+                has_usage_history = bool(json.loads(job["usage_history_json"] or "[]"))
+                if state == "published" and not has_usage_history and int(job["attempts"] or 0) > len(usages) + 1:
+                    cost_incomplete = True
+                language_cost = 0.0
+                for usage in usages:
+                    cached_tokens = int((usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
+                    cache_write_tokens = int(
+                        (usage.get("input_tokens_details") or {}).get("cache_write_tokens")
+                        or usage.get("cache_write_tokens") or 0
+                    )
+                    total_usage["inputTokens"] += int(usage.get("input_tokens") or 0)
+                    total_usage["cachedTokens"] += cached_tokens
+                    total_usage["cacheWriteTokens"] += cache_write_tokens
+                    total_usage["outputTokens"] += int(usage.get("output_tokens") or 0)
+                    total_usage["reasoningTokens"] += int(
+                        (usage.get("output_tokens_details") or {}).get("reasoning_tokens") or 0
+                    )
+                    language_cost += model_token_cost(
+                        str(entry["model"]),
+                        int(usage.get("input_tokens") or 0),
+                        int(usage.get("output_tokens") or 0),
+                        cached_tokens=cached_tokens,
+                        cache_write_tokens=cache_write_tokens,
+                    )
+                estimated_cost_usd += language_cost
                 if job["started_at"]:
                     job_end = parse_utc_iso(job["completed_at"] or utc_iso())
                     processing_seconds += max(0.0, job_end - parse_utc_iso(job["started_at"]))
@@ -1094,6 +1288,7 @@ class LocalizationBackfillService:
                         "error": error,
                         "qualityWarnings": warnings,
                         "output": output,
+                        "outputTitle": str(output.get("title") or localized_title_from_raw(job["raw_output"], language)),
                         "attempts": int(job["attempts"] or 0),
                     })
             elif (
@@ -1103,7 +1298,10 @@ class LocalizationBackfillService:
                 state = "published"
             else:
                 state = "waiting"
-            language_states.append({"code": language, "label": label, "state": state})
+            language_states.append({
+                "code": language, "label": label, "state": state,
+                "estimatedCostUsd": round(language_cost, 4) if job else 0.0,
+            })
         entry_error = str(entry["error"] or "")
         if entry_error and not errors:
             errors.append({
@@ -1115,13 +1313,6 @@ class LocalizationBackfillService:
                 "output": {},
                 "attempts": 0,
             })
-        rates = MODEL_RATES_PER_TOKEN.get(str(entry["model"]), {"input": 0.0, "output": 0.0})
-        uncached_input = max(0, total_usage["inputTokens"] - total_usage["cachedTokens"])
-        estimated_cost_usd = (
-            uncached_input * rates["input"]
-            + total_usage["cachedTokens"] * rates["input"] * 0.1
-            + total_usage["outputTokens"] * rates["output"]
-        )
         return {
             "automationId": entry["automation_id"],
             "listingId": entry["listing_id"],
@@ -1147,13 +1338,42 @@ class LocalizationBackfillService:
             "usage": total_usage,
             "processingSeconds": round(processing_seconds, 1),
             "estimatedCostUsd": round(estimated_cost_usd, 4),
+            "costIncomplete": cost_incomplete,
         }
 
     def automation_action(self, automation_id: str, action: str, language: str = "") -> dict:
         automation_id = str(automation_id or "").strip()
         action = str(action or "").strip().lower()
         language = str(language or "").strip().lower()
+        if action == "start_now":
+            if not self.listing_loader:
+                raise ValueError("Lecture Etsy indisponible pour lancer l'automatisation")
+            with self._db_lock, self._connect() as connection:
+                entry = connection.execute(
+                    "SELECT * FROM localization_automation_entries WHERE automation_id=?",
+                    (automation_id,),
+                ).fetchone()
+                if not entry:
+                    raise ValueError("Automatisation introuvable")
+                if entry["state"] not in {"waiting_activation", "stabilizing"} or entry["run_id"]:
+                    raise ValueError("Ce suivi ne peut plus être lancé manuellement")
+                entry = dict(entry)
+            payload = self.listing_loader(entry["shop_key"], [entry["listing_id"]])
+            listing = next(
+                (
+                    item for item in (payload.get("listings") or [])
+                    if str(item.get("listingId") or "") == str(entry["listing_id"])
+                ),
+                None,
+            )
+            if not listing or str(listing.get("state") or "").lower() != "active":
+                raise ValueError("La fiche doit être active sur Etsy avant le lancement immédiat")
+            if not str(listing.get("title") or "").strip() or not str(listing.get("description") or "").strip():
+                raise ValueError("Le contenu français de la fiche Etsy est incomplet")
+            self._start_automation_run(entry, listing)
+            return self.automation_entry(automation_id)
         now = utc_iso()
+        deleted = False
         with self._db_lock, self._connect() as connection:
             entry = connection.execute(
                 "SELECT * FROM localization_automation_entries WHERE automation_id=?",
@@ -1161,7 +1381,28 @@ class LocalizationBackfillService:
             ).fetchone()
             if not entry:
                 raise ValueError("Automatisation introuvable")
-            if action == "check_now":
+            if action == "delete":
+                if entry["state"] in {"generating", "verification", "publishing"}:
+                    raise ValueError("Une localisation est en cours : attends sa fin avant de supprimer l'automatisation")
+                if entry["run_id"]:
+                    active_jobs = connection.execute(
+                        """
+                        SELECT COUNT(*) FROM localization_jobs
+                        WHERE run_id=? AND state IN (
+                            'pending','generating','preview_ready','publish_pending','publishing'
+                        )
+                        """,
+                        (entry["run_id"],),
+                    ).fetchone()[0]
+                    if active_jobs:
+                        raise ValueError("Une localisation est en cours : attends sa fin avant de supprimer l'automatisation")
+                connection.execute(
+                    "DELETE FROM localization_automation_entries WHERE automation_id=?",
+                    (automation_id,),
+                )
+                self._next_automation_poll_at = 0.0
+                deleted = True
+            elif action == "check_now":
                 connection.execute(
                     "UPDATE localization_automation_entries SET next_check_at=?, updated_at=?, error='' WHERE automation_id=?",
                     (now, now, automation_id),
@@ -1218,6 +1459,8 @@ class LocalizationBackfillService:
             else:
                 raise ValueError(f"Action d'automatisation inconnue : {action}")
         self._wake.set()
+        if deleted:
+            return {"ok": True, "deleted": True, "automationId": automation_id}
         return self.automation_entry(automation_id)
 
     def automation_entry(self, automation_id: str) -> dict:
@@ -1246,8 +1489,9 @@ class LocalizationBackfillService:
             report["run"] = self.export_run(payload["runId"])
         return report
 
-    def refresh_catalog(self, shop_key: str = "grosgeek") -> dict:
+    def refresh_catalog(self, shop_key: str = "grosgeek", mode: str = "collection") -> dict:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         catalog = self.catalog_loader(shop_key)
         listings = catalog.get("listings") or []
         scanned_at = utc_iso()
@@ -1274,10 +1518,11 @@ class LocalizationBackfillService:
                         scanned_at,
                     ),
                 )
-        return self.catalog(shop_key)
+        return self.catalog(shop_key, mode)
 
-    def catalog(self, shop_key: str = "grosgeek") -> dict:
+    def catalog(self, shop_key: str = "grosgeek", mode: str = "collection") -> dict:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         with self._db_lock, self._connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM catalog_snapshots WHERE shop_key=? ORDER BY listing_id DESC",
@@ -1288,8 +1533,7 @@ class LocalizationBackfillService:
             payload = json.loads(row["payload_json"])
             translations = sorted({str(code).lower() for code in (payload.get("translations") or [])})
             section_name = str(row["section_name"] or "")
-            normalized_section = section_name.casefold().strip()
-            excluded = any(name in normalized_section for name in DEFAULT_EXCLUDED_SECTIONS)
+            excluded, exclusion_reason = self._listing_exclusion(section_name, mode)
             missing = [code for code in SUPPORTED_LANGUAGE_CODES if code not in translations]
             listings.append({
                 **payload,
@@ -1297,13 +1541,14 @@ class LocalizationBackfillService:
                 "translations": translations,
                 "missingLanguages": missing,
                 "excluded": excluded,
-                "exclusionReason": f"Section exclue : {section_name}" if excluded else "",
+                "exclusionReason": exclusion_reason,
             })
         sections = sorted({str(item.get("sectionName") or "") for item in listings if item.get("sectionName")})
         scanned_at = rows[0]["scanned_at"] if rows else ""
         return {
             "ok": True,
             "shopKey": shop_key,
+            "mode": mode,
             "scannedAt": scanned_at,
             "count": len(listings),
             "eligibleCount": sum(1 for listing in listings if not listing["excluded"]),
@@ -1311,12 +1556,13 @@ class LocalizationBackfillService:
             "listings": listings,
         }
 
-    def _prompt_version(self, shop_key: str = "grosgeek") -> str:
+    def _prompt_version(self, shop_key: str = "grosgeek", mode: str = "collection") -> str:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         paths = [
             self.prompt_root / "common.md",
-            self.prompt_root / "modes" / "collection.md",
-            self._shop_prompt_path(shop_key),
+            self._mode_prompt_path(mode),
+            self._shop_prompt_path(shop_key, mode),
             self.prompt_root / "fields.md",
             self.prompt_root / "glossaries" / "_shared.md",
             *(self.prompt_root / "glossaries" / f"{code}.md" for code in SUPPORTED_LANGUAGE_CODES),
@@ -1333,13 +1579,15 @@ class LocalizationBackfillService:
         language: str,
         listing: dict,
         shop_key: str = "grosgeek",
+        mode: str = "collection",
     ) -> str:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         language_label = dict(SUPPORTED_LANGUAGES)[language]
         paths = (
             self.prompt_root / "common.md",
-            self.prompt_root / "modes" / "collection.md",
-            self._shop_prompt_path(shop_key),
+            self._mode_prompt_path(mode),
+            self._shop_prompt_path(shop_key, mode),
             self.prompt_root / "fields.md",
             self.prompt_root / "glossaries" / "_shared.md",
             self.prompt_root / "glossaries" / f"{language}.md",
@@ -1368,13 +1616,16 @@ class LocalizationBackfillService:
         languages: list[str],
         *,
         shop_key: str = "grosgeek",
+        mode: str = "collection",
         model: str = "gpt-5.6-terra",
         reasoning_effort: str = "low",
         test_mode: bool = False,
+        force_existing: bool = False,
     ) -> dict:
         shop_key = self._normalize_shop_key(shop_key)
-        normalized_languages = list(SUPPORTED_LANGUAGE_CODES) if test_mode else []
-        if not test_mode:
+        mode = self._normalize_mode(mode)
+        normalized_languages = list(SUPPORTED_LANGUAGE_CODES) if test_mode or force_existing else []
+        if not test_mode and not force_existing:
             for language in languages:
                 code = str(language or "").strip().lower()
                 if code in SUPPORTED_LANGUAGE_CODES and code not in normalized_languages:
@@ -1390,6 +1641,8 @@ class LocalizationBackfillService:
             raise ValueError(f"Modèle backfill non supporté : {model}")
         if reasoning_effort not in SUPPORTED_REASONING_EFFORTS:
             raise ValueError(f"Niveau de réflexion non supporté : {reasoning_effort}")
+        if model == "gpt-6-astra" and reasoning_effort == "none":
+            raise ValueError("GPT-6 Astra ne prend pas en charge le niveau de réflexion « none »")
         draft_glossaries = []
         for language in normalized_languages:
             glossary_path = self.prompt_root / "glossaries" / f"{language}.md"
@@ -1418,7 +1671,7 @@ class LocalizationBackfillService:
 
         run_id = uuid.uuid4().hex
         now = utc_iso()
-        prompt_version = self._prompt_version(shop_key)
+        prompt_version = self._prompt_version(shop_key, mode)
         selection_hash = hashlib.sha256(stable_json({
             "listingIds": sorted(normalized_ids),
             "sourceHashes": {
@@ -1427,10 +1680,12 @@ class LocalizationBackfillService:
             },
             "languages": normalized_languages,
             "shopKey": shop_key,
+            "mode": mode,
             "model": model,
             "reasoningEffort": reasoning_effort,
             "promptVersion": prompt_version,
             "testMode": bool(test_mode),
+            "forceExisting": bool(force_existing),
         }).encode("utf-8")).hexdigest()
         if test_mode:
             with self._db_lock, self._connect() as connection:
@@ -1456,10 +1711,10 @@ class LocalizationBackfillService:
                 SELECT jobs.listing_id, jobs.language, jobs.source_hash, jobs.prompt_version
                 FROM localization_jobs AS jobs
                 JOIN localization_runs AS runs ON runs.run_id=jobs.run_id
-                WHERE runs.test_mode=0 AND runs.shop_key=?
+                WHERE runs.test_mode=0 AND runs.shop_key=? AND runs.mode=?
                   AND jobs.state IN ('pending','generating','preview_ready','publish_pending','publishing','published')
                 """,
-                (shop_key,),
+                (shop_key, mode),
             ).fetchall()
         reusable_keys = {
             (row["listing_id"], row["language"], row["source_hash"], row["prompt_version"])
@@ -1469,17 +1724,18 @@ class LocalizationBackfillService:
             row = found[listing_id]
             listing = json.loads(row["payload_json"])
             section_name = str(row["section_name"] or "")
-            if any(name in section_name.casefold() for name in DEFAULT_EXCLUDED_SECTIONS):
+            excluded, exclusion_reason = self._listing_exclusion(section_name, mode)
+            if excluded:
                 if test_mode:
-                    raise ValueError(f"La fiche {listing_id} appartient à une section exclue : {section_name}")
+                    raise ValueError(f"La fiche {listing_id} est hors périmètre : {exclusion_reason}")
                 skipped_excluded += len(normalized_languages)
                 continue
             existing = {str(code).lower() for code in (listing.get("translations") or [])}
             for language in normalized_languages:
-                if not test_mode and language in existing:
+                if not test_mode and not force_existing and language in existing:
                     skipped_existing += 1
                     continue
-                if not test_mode and (listing_id, language, row["source_hash"], prompt_version) in reusable_keys:
+                if not test_mode and not force_existing and (listing_id, language, row["source_hash"], prompt_version) in reusable_keys:
                     skipped_duplicate += 1
                     continue
                 jobs.append((listing_id, language, row["source_hash"], stable_json(listing)))
@@ -1492,12 +1748,12 @@ class LocalizationBackfillService:
             connection.execute(
                 """
                 INSERT INTO localization_runs (
-                    run_id, shop_key, state, preview_only, test_mode, selection_hash,
+                    run_id, shop_key, mode, state, preview_only, test_mode, force_existing, selection_hash,
                     model, reasoning_effort, prompt_version, created_at, updated_at
-                ) VALUES (?, ?, 'draft', 1, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, 'draft', 1, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    run_id, shop_key, int(test_mode), selection_hash, model,
+                    run_id, shop_key, mode, int(test_mode), int(force_existing), selection_hash, model,
                     reasoning_effort, prompt_version, now, now,
                 ),
             )
@@ -1524,6 +1780,7 @@ class LocalizationBackfillService:
         listing_ids: list[str],
         *,
         shop_key: str = "grosgeek",
+        mode: str = "collection",
         model: str = "gpt-5.6-terra",
         reasoning_effort: str = "low",
     ) -> dict:
@@ -1531,6 +1788,7 @@ class LocalizationBackfillService:
             listing_ids,
             list(SUPPORTED_LANGUAGE_CODES),
             shop_key=shop_key,
+            mode=mode,
             model=model,
             reasoning_effort=reasoning_effort,
             test_mode=True,
@@ -1551,6 +1809,7 @@ class LocalizationBackfillService:
         model: str,
         *,
         shop_key: str = "grosgeek",
+        mode: str = "collection",
         force_existing: bool = False,
     ) -> dict:
         """Estimation prudente sans appel IA, avant création du lot.
@@ -1560,6 +1819,7 @@ class LocalizationBackfillService:
         ensuite disponible dans les usages du lot.
         """
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         normalized_ids = list(dict.fromkeys(str(value or "").strip() for value in listing_ids if str(value or "").strip()))
         normalized_languages = list(SUPPORTED_LANGUAGE_CODES) if force_existing else [
             code for code in dict.fromkeys(str(value or "").strip().lower() for value in languages)
@@ -1577,11 +1837,13 @@ class LocalizationBackfillService:
             ).fetchall()
         estimated_input = 0
         estimated_output = 0
+        estimated_cost = 0.0
         jobs = 0
         for row in rows:
             listing = json.loads(row["payload_json"])
             section_name = str(row["section_name"] or "")
-            if any(name in section_name.casefold() for name in DEFAULT_EXCLUDED_SECTIONS):
+            excluded, _reason = self._listing_exclusion(section_name, mode)
+            if excluded:
                 continue
             existing = {str(code).lower() for code in (listing.get("translations") or [])}
             source_chars = len(str(listing.get("description") or "")) + len(str(listing.get("title") or ""))
@@ -1589,12 +1851,13 @@ class LocalizationBackfillService:
             for language in normalized_languages:
                 if not force_existing and language in existing:
                     continue
-                prompt_chars = len(self._load_prompt(language, listing, shop_key))
-                estimated_input += max(1, round(prompt_chars / 4))
-                estimated_output += max(256, round(source_chars / 4 * 1.15))
+                prompt_chars = len(self._load_prompt(language, listing, shop_key, mode))
+                job_input = max(1, round(prompt_chars / 4))
+                job_output = max(256, round(source_chars / 4 * 1.15))
+                estimated_input += job_input
+                estimated_output += job_output
+                estimated_cost += model_token_cost(model, job_input, job_output)
                 jobs += 1
-        rates = MODEL_RATES_PER_TOKEN[model]
-        estimated_cost = estimated_input * rates["input"] + estimated_output * rates["output"]
         return {
             "ok": True,
             "model": model,
@@ -1606,12 +1869,13 @@ class LocalizationBackfillService:
             "method": "estimation prudente sans cache, 4 caractères/token ; le réel peut varier",
         }
 
-    def list_runs(self, limit: int = 20, shop_key: str = "grosgeek") -> dict:
+    def list_runs(self, limit: int = 20, shop_key: str = "grosgeek", mode: str = "collection") -> dict:
         shop_key = self._normalize_shop_key(shop_key)
+        mode = self._normalize_mode(mode)
         with self._db_lock, self._connect() as connection:
             rows = connection.execute(
-                "SELECT run_id FROM localization_runs WHERE shop_key=? ORDER BY created_at DESC LIMIT ?",
-                (shop_key, max(1, min(int(limit), 100))),
+                "SELECT run_id FROM localization_runs WHERE shop_key=? AND mode=? ORDER BY created_at DESC LIMIT ?",
+                (shop_key, mode, max(1, min(int(limit), 100))),
             ).fetchall()
         return {"ok": True, "runs": [self.get_run(row["run_id"], include_jobs=False) for row in rows]}
 
@@ -1632,14 +1896,30 @@ class LocalizationBackfillService:
                 (run_id,),
             ).fetchall()
         state_counts = {row["state"]: row["count"] for row in counts}
-        usage = {"inputTokens": 0, "cachedTokens": 0, "outputTokens": 0, "reasoningTokens": 0}
+        usage = {"inputTokens": 0, "cachedTokens": 0, "cacheWriteTokens": 0, "outputTokens": 0, "reasoningTokens": 0}
+        estimated_cost_usd = 0.0
         serialized_jobs = []
         for job in job_rows:
             job_usage = json.loads(job["usage_json"] or "{}")
-            usage["inputTokens"] += int(job_usage.get("input_tokens") or 0)
-            usage["cachedTokens"] += int((job_usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
-            usage["outputTokens"] += int(job_usage.get("output_tokens") or 0)
-            usage["reasoningTokens"] += int((job_usage.get("output_tokens_details") or {}).get("reasoning_tokens") or 0)
+            usage_attempts = job_usage_attempts(job)
+            for attempt_usage in usage_attempts:
+                usage["inputTokens"] += int(attempt_usage.get("input_tokens") or 0)
+                cached_tokens = int((attempt_usage.get("input_tokens_details") or {}).get("cached_tokens") or 0)
+                cache_write_tokens = int(
+                    (attempt_usage.get("input_tokens_details") or {}).get("cache_write_tokens")
+                    or attempt_usage.get("cache_write_tokens") or 0
+                )
+                usage["cachedTokens"] += cached_tokens
+                usage["cacheWriteTokens"] += cache_write_tokens
+                usage["outputTokens"] += int(attempt_usage.get("output_tokens") or 0)
+                usage["reasoningTokens"] += int((attempt_usage.get("output_tokens_details") or {}).get("reasoning_tokens") or 0)
+                estimated_cost_usd += model_token_cost(
+                    str(run["model"]),
+                    int(attempt_usage.get("input_tokens") or 0),
+                    int(attempt_usage.get("output_tokens") or 0),
+                    cached_tokens=cached_tokens,
+                    cache_write_tokens=cache_write_tokens,
+                )
             if include_jobs:
                 source = json.loads(job["source_json"])
                 serialized_jobs.append({
@@ -1652,6 +1932,7 @@ class LocalizationBackfillService:
                     "output": json.loads(job["output_json"] or "{}"),
                     "rawOutput": str(job["raw_output"] or ""),
                     "usage": job_usage,
+                    "usageAttempts": usage_attempts,
                     "qualityWarnings": json.loads(job["quality_warnings_json"] or "[]"),
                     "error": job["error"],
                     "updatedAt": job["updated_at"],
@@ -1662,9 +1943,11 @@ class LocalizationBackfillService:
             "ok": True,
             "runId": run["run_id"],
             "shopKey": run["shop_key"],
+            "mode": run["mode"],
             "state": run["state"],
             "previewOnly": bool(run["preview_only"]),
             "testMode": bool(run["test_mode"]),
+            "forceExisting": bool(run["force_existing"]),
             "model": run["model"],
             "reasoningEffort": run["reasoning_effort"],
             "promptVersion": run["prompt_version"],
@@ -1676,6 +1959,7 @@ class LocalizationBackfillService:
             "counts": state_counts,
             "totalJobs": sum(state_counts.values()),
             "usage": usage,
+            "estimatedCostUsd": round(estimated_cost_usd, 4),
             "jobs": serialized_jobs,
         }
 
@@ -1766,6 +2050,7 @@ class LocalizationBackfillService:
                 "tags": output.get("tags") or [],
                 "description": str(output.get("description") or ""),
                 "usage": json.loads(job["usage_json"] or "{}"),
+                "usageAttempts": job_usage_attempts(job),
                 "qualityWarnings": json.loads(job["quality_warnings_json"] or "[]"),
                 "error": str(job["error"] or ""),
             }
@@ -1780,6 +2065,8 @@ class LocalizationBackfillService:
             "generatedAt": utc_iso(),
             "run": {
                 "runId": run_payload["runId"],
+                "shopKey": run_payload["shopKey"],
+                "mode": run_payload["mode"],
                 "state": run_payload["state"],
                 "model": run_payload["model"],
                 "reasoningEffort": run_payload["reasoningEffort"],
@@ -1789,7 +2076,9 @@ class LocalizationBackfillService:
                 "counts": run_payload["counts"],
                 "usage": run_payload["usage"],
             },
-            "editorialResources": self.config(run_payload["shopKey"])["glossaries"],
+            "editorialResources": self.config(
+                run_payload["shopKey"], run_payload["mode"]
+            )["glossaries"],
             "summary": {
                 "expectedListings": listing_count,
                 "actualListings": listing_count,
@@ -1841,7 +2130,7 @@ class LocalizationBackfillService:
             return
 
         run_id = uuid.uuid4().hex
-        prompt_version = self._prompt_version(entry["shop_key"])
+        prompt_version = self._prompt_version(entry["shop_key"], "collection")
         fingerprint = source_fingerprint(listing)
         selection_hash = hashlib.sha256(stable_json({
             "automationId": entry["automation_id"],
@@ -1864,10 +2153,10 @@ class LocalizationBackfillService:
             connection.execute(
                 """
                 INSERT INTO localization_runs (
-                    run_id, shop_key, state, preview_only, test_mode,
+                    run_id, shop_key, mode, state, preview_only, test_mode,
                     selection_hash, model, reasoning_effort, prompt_version,
                     created_at, updated_at, started_at, automation_id
-                ) VALUES (?, ?, 'running', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, 'collection', 'running', 0, 0, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id, entry["shop_key"], selection_hash, entry["model"],
@@ -2179,7 +2468,7 @@ class LocalizationBackfillService:
         with self._db_lock, self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT jobs.*, runs.shop_key, runs.model, runs.reasoning_effort,
+                SELECT jobs.*, runs.shop_key, runs.mode, runs.model, runs.reasoning_effort,
                        runs.automation_id
                 FROM localization_jobs AS jobs
                 JOIN localization_runs AS runs ON runs.run_id = jobs.run_id
@@ -2240,7 +2529,9 @@ class LocalizationBackfillService:
 
     def _generate_job(self, job: dict):
         listing = json.loads(job["source_json"])
-        prompt = self._load_prompt(job["language"], listing, job["shop_key"])
+        if has_corrupt_iso_reference(listing.get("description")):
+            raise ValueError("Source française corrompue : corriger la ligne ISO/ASTM 52900 et relancer l'audit")
+        prompt = self._load_prompt(job["language"], listing, job["shop_key"], job["mode"])
         payload = {
             "model": job["model"],
             "input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}]}],
@@ -2255,6 +2546,7 @@ class LocalizationBackfillService:
             raise RuntimeError(str(message))
         raw_output = extract_response_text(response)
         usage = stable_json(response.get("usage") or {})
+        usage_history = usage_with_new_attempt(job, response.get("usage") or {})
         try:
             output = parse_localized_listing(
                 raw_output,
@@ -2266,8 +2558,8 @@ class LocalizationBackfillService:
         except ValueError:
             with self._db_lock, self._connect() as connection:
                 connection.execute(
-                    "UPDATE localization_jobs SET raw_output=?, usage_json=?, updated_at=? WHERE job_id=?",
-                    (raw_output, usage, utc_iso(), job["job_id"]),
+                    "UPDATE localization_jobs SET raw_output=?, usage_json=?, usage_history_json=?, updated_at=? WHERE job_id=?",
+                    (raw_output, usage, usage_history, utc_iso(), job["job_id"]),
                 )
             raise
         quality_warnings = localization_quality_warnings(
@@ -2281,11 +2573,11 @@ class LocalizationBackfillService:
                 connection.execute(
                     """
                     UPDATE localization_jobs
-                    SET output_json=?, raw_output=?, usage_json=?, quality_warnings_json=?, updated_at=?, completed_at=?
+                    SET output_json=?, raw_output=?, usage_json=?, usage_history_json=?, quality_warnings_json=?, updated_at=?, completed_at=?
                     WHERE job_id=?
                     """,
                     (
-                        stable_json(output), raw_output, usage,
+                        stable_json(output), raw_output, usage, usage_history,
                         stable_json(quality_warnings), now, now, job["job_id"],
                     ),
                 )
@@ -2294,11 +2586,11 @@ class LocalizationBackfillService:
             connection.execute(
                 """
                 UPDATE localization_jobs
-                SET state='preview_ready', output_json=?, raw_output=?, usage_json=?, quality_warnings_json=?, error='', updated_at=?, completed_at=?
+                SET state='preview_ready', output_json=?, raw_output=?, usage_json=?, usage_history_json=?, quality_warnings_json=?, error='', updated_at=?, completed_at=?
                 WHERE job_id=?
                 """,
                 (
-                    stable_json(output), raw_output, usage,
+                    stable_json(output), raw_output, usage, usage_history,
                     stable_json(quality_warnings), now, now, job["job_id"],
                 ),
             )
@@ -2307,6 +2599,8 @@ class LocalizationBackfillService:
         output = json.loads(job["output_json"] or "{}")
         if not output:
             raise ValueError("Aperçu de localisation absent")
+        if has_corrupt_iso_reference(output.get("description")):
+            raise ValueError("Publication bloquée : ligne ISO/ASTM 52900 dupliquée dans l'aperçu")
         source = json.loads(job["source_json"] or "{}")
         if job["shop_key"] == "doublex":
             output = apply_doublex_tag_policy(source, output)

@@ -4,6 +4,10 @@ STATUS: VALIDATED
 
 Version : `1.0-candidate` · locale cible : `en`.
 
+## Titre Etsy
+
+Le titre anglais conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, objet de collection, résine, état non peint, impression 3D, garage kit et public visé. Ne remplace pas « figurine imprimée en 3D pour fans de vampire » par le seul « vampire figure ». Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en retirant d'abord les répétitions et mots accessoires ; vérifie tous les angles avant de répondre.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché

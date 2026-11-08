@@ -4,17 +4,39 @@
   global.PipelineUI = global.PipelineUI || {};
   const CACHE_AWARE_PRELAUNCH_LABEL = 'cache-aware pré-pipeline';
 
-  function getCostRatesForAgent(agentId = '', modelOverride = '', providerOverride = '') {
+  function getCostRatesForAgent(agentId = '', modelOverride = '', providerOverride = '', rawInputTokens = 0) {
     const model = String(modelOverride || global.getActiveAgentModel?.(agentId) || global.AGENT_MODELS[agentId] || '');
     const provider = String(providerOverride || '').trim().toLowerCase();
     const normalizedModel = String(provider === 'openai' ? model : (global.normalizeClaudeModelId?.(model) || model)).trim().toLowerCase();
 
     if (provider === 'openai' || normalizedModel.startsWith('gpt-')) {
-      if (normalizedModel.includes('luna')) {
-        return { input: 0.20 / 1_000_000, cacheWrite: 0.25 / 1_000_000, cacheRead: 0.02 / 1_000_000, output: 1.20 / 1_000_000 };
+      const longContext = Number(rawInputTokens) > 272000;
+      const openAIRates = {
+        'gpt-6-sol': [2.00, 2.50, 0.20, 10.00],
+        'gpt-6-luna': [0.10, 0.125, 0.01, 0.50],
+        'gpt-5.6-sol': [4.00, 5.00, 0.40, 20.00],
+        'gpt-5.6-terra': [2.00, 2.50, 0.20, 12.00],
+        'gpt-5.6-luna': [0.20, 0.25, 0.02, 1.20],
+      };
+      const modelRates = openAIRates[normalizedModel];
+      if (modelRates) {
+        const [input, cacheWrite, cacheRead, output] = modelRates;
+        return {
+          input: input * (longContext ? 2 : 1) / 1_000_000,
+          cacheWrite: cacheWrite * (longContext ? 2 : 1) / 1_000_000,
+          cacheRead: cacheRead * (longContext ? 2 : 1) / 1_000_000,
+          output: output * (longContext ? 1.5 : 1) / 1_000_000,
+          longContext,
+        };
       }
-      if (normalizedModel.includes('terra')) {
-        return { input: 2.00 / 1_000_000, cacheWrite: 2.50 / 1_000_000, cacheRead: 0.20 / 1_000_000, output: 12.00 / 1_000_000 };
+      if (normalizedModel === 'gpt-6-astra') {
+        return {
+          input: (longContext ? 20.00 : 10.00) / 1_000_000,
+          cacheWrite: (longContext ? 25.00 : 12.50) / 1_000_000,
+          cacheRead: (longContext ? 2.00 : 1.00) / 1_000_000,
+          output: (longContext ? 75.00 : 50.00) / 1_000_000,
+          longContext,
+        };
       }
       return { input: 4.00 / 1_000_000, cacheWrite: 5.00 / 1_000_000, cacheRead: 0.40 / 1_000_000, output: 20.00 / 1_000_000 };
     }
@@ -222,11 +244,12 @@
   }
 
   function buildUsageCostSnapshot(agentId, usage = {}, execution = null) {
-    const rates = getCostRatesForAgent(agentId, execution?.model, execution?.provider);
     const inputTok = toSafeTokenCount(usage.input_tokens);
     const outputTok = toSafeTokenCount(usage.output_tokens);
     const cacheRead = toSafeTokenCount(usage.cache_read_input_tokens);
     const cacheWrite = toSafeTokenCount(usage.cache_creation_input_tokens);
+    const rawInputTokens = toSafeTokenCount(usage.raw_input_tokens) || inputTok + cacheRead + cacheWrite;
+    const rates = getCostRatesForAgent(agentId, execution?.model, execution?.provider, rawInputTokens);
     const reasoningTok = toSafeTokenCount(usage.reasoning_tokens);
     const webSearchCalls = toSafeTokenCount(usage.web_search_calls);
     const webSearchCostCents = webSearchCalls * 1;
@@ -249,6 +272,7 @@
       cacheReadCostCents,
       outputCostCents,
       costCents,
+      longContextPricing: Boolean(rates.longContext),
     };
   }
 
@@ -548,6 +572,8 @@
   }
 
   global.PipelineUICostRuntime = {
+    getCostRatesForAgent,
+    buildUsageCostSnapshot,
     showAgentCost,
     copyTokenReport,
   };

@@ -77,6 +77,8 @@
   const PINTEREST_HEADER_CONTEXT = 'Pinterest - Preparation des epingles';
   const INSTAGRAM_HEADER_CONTEXT = 'Instagram - Test de publication';
   const COST_CALCULATOR_HEADER_CONTEXT = 'Outils - Calculateur de cout figurine';
+  const COMMUNICATION_HEADER_CONTEXT = 'Communication - Messages clients';
+  const RENEWALS_HEADER_CONTEXT = 'Renouvellements - Fiches expirées';
   const DESIGN_SYSTEM_HEADER_CONTEXT = 'Design System - Laboratoire de composants';
   const APP_ROUTE_HASHES = Object.freeze({
     home: '#home',
@@ -84,6 +86,8 @@
     collection: '#collection',
     pinterest: '#pinterest',
     instagram: '#instagram',
+    communication: '#communication',
+    renewals: '#renewals',
     'cost-calculator': '#cost-calculator',
     'design-system': '#design-system',
   });
@@ -93,6 +97,8 @@
     collection: 'Gros Geek Industrie · Collection',
     pinterest: 'Gros Geek Industrie · Pinterest',
     instagram: 'Gros Geek Industrie · Instagram',
+    communication: 'Gros Geek Industrie · Communication',
+    renewals: 'Gros Geek Industrie · Renouvellements',
     'cost-calculator': 'Gros Geek Industrie · Calculateur de coûts',
     'design-system': 'Gros Geek Industrie · Design System',
   });
@@ -239,6 +245,7 @@
     'stop-translation-all': (prefix) => global.stopAllTranslations?.(prefix),
     'publish-translation-all': (prefix) => global.publishAllTranslations?.(prefix),
     'publish-translation-update': (prefix) => global.publishUpdateTranslations?.(prefix),
+    'download-individual-translation-report': (prefix) => global.downloadIndividualTranslationReport?.(prefix),
     'publish-translation-en': (prefix) => global.publishTranslationEn?.(prefix),
     'run-translation-en-listing': (prefix) => global.runTranslationEnListing?.(prefix),
     'copy-translation-en-listing-output': (prefix) => global.copyTranslationEnListingOutput?.(prefix),
@@ -284,6 +291,38 @@
     'publish-translation-pt': (prefix) => global.publishTranslationPt?.(prefix),
     'copy-translation-pt-field': (prefix, fieldKey) => global.copyTranslationPtField?.(prefix, fieldKey),
     'show-translation-pt-listing-input': (prefix) => global.showTranslationPtListingInput?.(prefix),
+    'run-translation-ja-check': (prefix) => global.runTranslationJaCheck?.(prefix),
+    'copy-translation-ja-output': (prefix) => global.copyTranslationJaOutput?.(prefix),
+    'show-translation-ja-input': (prefix) => global.showTranslationJaInput?.(prefix),
+    'run-translation-ja-listing': (prefix) => global.runTranslationJaListing?.(prefix),
+    'copy-translation-ja-listing-output': (prefix) => global.copyTranslationJaListingOutput?.(prefix),
+    'publish-translation-ja': (prefix) => global.publishTranslationJa?.(prefix),
+    'copy-translation-ja-field': (prefix, fieldKey) => global.copyTranslationJaField?.(prefix, fieldKey),
+    'show-translation-ja-listing-input': (prefix) => global.showTranslationJaListingInput?.(prefix),
+    'run-translation-pl-check': (prefix) => global.runTranslationPlCheck?.(prefix),
+    'copy-translation-pl-output': (prefix) => global.copyTranslationPlOutput?.(prefix),
+    'show-translation-pl-input': (prefix) => global.showTranslationPlInput?.(prefix),
+    'run-translation-pl-listing': (prefix) => global.runTranslationPlListing?.(prefix),
+    'copy-translation-pl-listing-output': (prefix) => global.copyTranslationPlListingOutput?.(prefix),
+    'publish-translation-pl': (prefix) => global.publishTranslationPl?.(prefix),
+    'copy-translation-pl-field': (prefix, fieldKey) => global.copyTranslationPlField?.(prefix, fieldKey),
+    'show-translation-pl-listing-input': (prefix) => global.showTranslationPlListingInput?.(prefix),
+    'run-translation-ru-check': (prefix) => global.runTranslationRuCheck?.(prefix),
+    'copy-translation-ru-output': (prefix) => global.copyTranslationRuOutput?.(prefix),
+    'show-translation-ru-input': (prefix) => global.showTranslationRuInput?.(prefix),
+    'run-translation-ru-listing': (prefix) => global.runTranslationRuListing?.(prefix),
+    'copy-translation-ru-listing-output': (prefix) => global.copyTranslationRuListingOutput?.(prefix),
+    'publish-translation-ru': (prefix) => global.publishTranslationRu?.(prefix),
+    'copy-translation-ru-field': (prefix, fieldKey) => global.copyTranslationRuField?.(prefix, fieldKey),
+    'show-translation-ru-listing-input': (prefix) => global.showTranslationRuListingInput?.(prefix),
+    'run-translation-sv-check': (prefix) => global.runTranslationSvCheck?.(prefix),
+    'copy-translation-sv-output': (prefix) => global.copyTranslationSvOutput?.(prefix),
+    'show-translation-sv-input': (prefix) => global.showTranslationSvInput?.(prefix),
+    'run-translation-sv-listing': (prefix) => global.runTranslationSvListing?.(prefix),
+    'copy-translation-sv-listing-output': (prefix) => global.copyTranslationSvListingOutput?.(prefix),
+    'publish-translation-sv': (prefix) => global.publishTranslationSv?.(prefix),
+    'copy-translation-sv-field': (prefix, fieldKey) => global.copyTranslationSvField?.(prefix, fieldKey),
+    'show-translation-sv-listing-input': (prefix) => global.showTranslationSvListingInput?.(prefix),
     'open-biblio-from-settings': () => {
       global.openBiblioLightbox?.();
       closeSettings();
@@ -300,11 +339,21 @@
     'select-mode': (mode) => openAppRoute(mode),
     'open-pinterest': () => openAppRoute('pinterest'),
     'open-instagram-test': () => openAppRoute('instagram'),
+    'open-communication': () => openAppRoute('communication'),
+    'open-renewals': () => openAppRoute('renewals'),
     'open-cost-calculator': () => openAppRoute('cost-calculator'),
     'open-design-system': () => openAppRoute('design-system'),
     'open-design-dialog': () => document.getElementById('designSystemDialog')?.showModal?.(),
     'preview-design-toast': () => showToast('Composant prêt à être validé', getActiveShopKey() === 'doublex' ? '#f2a3c7' : '#e8c547'),
     'open-prompt-lightbox': (agentId) => global.openPromptLightbox?.(agentId),
+    'read-prompt-from-settings': (agentId) => {
+      closeSettings();
+      global.openPromptLightbox?.(agentId, { readOnly: true });
+    },
+    'edit-prompt-from-settings': (agentId) => {
+      closeSettings();
+      global.openPromptLightbox?.(agentId);
+    },
     'copy-section': (key) => global.copySection?.(key),
     'copy-all-outputs': () => global.copyAllOutputs?.(),
     'export-final-outputs': (prefix) => global.exportFinalOutputs?.(prefix),
@@ -555,6 +604,14 @@
       global.PipelineUIPinterest?.open?.();
     } else if (normalizedRoute === 'instagram') {
       global.PipelineUIInstagram?.open?.();
+    } else if (normalizedRoute === 'communication') {
+      showView('communication');
+      global.PipelineUICommunication?.open?.();
+      global.scrollTo({ top: 0, behavior: 'instant' });
+    } else if (normalizedRoute === 'renewals') {
+      showView('renewals');
+      global.PipelineUIRenewals?.open?.();
+      global.scrollTo({ top: 0, behavior: 'instant' });
     } else if (normalizedRoute === 'cost-calculator') {
       showView('cost-calculator');
       global.scrollTo({ top: 0, behavior: 'instant' });
@@ -596,6 +653,12 @@
     } else if (viewName === 'instagram-test') {
       ctx.textContent = INSTAGRAM_HEADER_CONTEXT;
       ctx.classList.add('mode-instagram');
+    } else if (viewName === 'communication') {
+      ctx.textContent = COMMUNICATION_HEADER_CONTEXT;
+      ctx.classList.add('mode-communication');
+    } else if (viewName === 'renewals') {
+      ctx.textContent = RENEWALS_HEADER_CONTEXT;
+      ctx.classList.add('mode-renewals');
     } else if (viewName === 'cost-calculator') {
       ctx.textContent = COST_CALCULATOR_HEADER_CONTEXT;
       ctx.classList.add('mode-calculator');
@@ -715,6 +778,7 @@
   }
 
   function openSettings() {
+    renderSettingsPrompts();
     (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.add('visible');
     (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.add('visible');
   }
@@ -722,6 +786,43 @@
   function closeSettings() {
     (dom.getByData?.('js', 'settings-overlay') || document.getElementById('settingsOverlay')).classList.remove('visible');
     (dom.getByData?.('js', 'settings-panel') || document.getElementById('settingsPanel')).classList.remove('visible');
+  }
+
+  function renderSettingsPrompts() {
+    const host = document.getElementById('settingsPromptList');
+    const context = document.getElementById('settingsPromptContext');
+    if (!host || !context) return;
+    const mode = getCurrentMode();
+    if (!['collection', 'tabletop'].includes(mode)) {
+      context.textContent = 'Sélectionne Collection ou Tabletop pour accéder aux prompts.';
+      host.replaceChildren();
+      return;
+    }
+    const family = global.PipelineUIPromptProfiles?.getPromptFamilyLabel?.(
+      global.PipelineUIAIProfiles?.getActiveProfile?.() || { provider: 'anthropic' },
+    ) || '';
+    context.textContent = `${getActiveShopKey() === 'doublex' ? 'Double X Industrie' : 'Gros Geek Industrie'} · ${mode === 'collection' ? 'Collection' : 'Tabletop'} · ${family}`;
+    const agents = global.PipelineUIDataAgents?.getPipelineAgentsForShop?.(mode) || [];
+    host.replaceChildren();
+    agents.forEach((agent) => {
+      const row = document.createElement('div');
+      row.className = 'settings-prompt-row';
+      const label = document.createElement('span');
+      label.textContent = agent.title.replace(/^\d+\s*-\s*/, '');
+      row.appendChild(label);
+      [['read', 'fileText', 'Lire'], ['edit', 'settings', 'Modifier']].forEach(([action, icon, text]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-muted';
+        button.dataset.uiAction = `${action}-prompt-from-settings`;
+        button.dataset.actionArg = agent.id;
+        button.title = `${text} le prompt ${label.textContent}`;
+        button.setAttribute('aria-label', button.title);
+        button.innerHTML = global.PipelineUIIcons?.renderIcon?.(icon) || text;
+        row.appendChild(button);
+      });
+      host.appendChild(row);
+    });
   }
 
 

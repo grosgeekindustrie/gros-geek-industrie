@@ -1,4 +1,10 @@
 /* ═══ HEADER PRO ═══ */
+.settings-prompts > strong { color:var(--text); font-size:13px; }
+.settings-prompts > p { color:var(--text2); font-size:12px; line-height:1.5; margin:8px 0 16px; }
+.settings-prompt-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:8px; padding:12px 0; border-bottom:1px solid var(--border); }
+.settings-prompt-row > span { color:var(--text); font-size:12px; line-height:1.5; }
+.settings-prompt-row .btn { padding:8px; }
+#promptLightbox .lb-footer[hidden] { display:none; }
 /*
   Couche dédiée au header sticky, au contexte courant et au panneau de paramètres.
   Les hooks JS historiques vivent encore majoritairement dans le HTML via id/onclick legacy.
@@ -159,6 +165,31 @@
 .ai-profile-section[hidden] { display:none; }
 .ai-profile-section h3 { margin:0; font-size:12px; }
 .ai-profile-section p { margin:0; color:var(--muted); font-size:10px; line-height:1.5; }
+.ai-profile-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.ai-profile-section-heading > div { display:grid; gap:5px; }
+.ai-profile-saved-section { background:color-mix(in srgb, #10a37f 5%, rgba(255,255,255,.018)); }
+.ai-profile-saved-list { display:flex; flex-wrap:wrap; gap:8px; }
+.ai-profile-saved-preset {
+  display:grid;
+  gap:3px;
+  min-width:150px;
+  padding:9px 11px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--bg);
+  color:var(--text);
+  text-align:left;
+  cursor:pointer;
+}
+.ai-profile-saved-preset:hover,
+.ai-profile-saved-preset.is-active { border-color:#10a37f; background:color-mix(in srgb, #10a37f 10%, var(--bg)); }
+.ai-profile-saved-preset strong { font-size:11px; }
+.ai-profile-saved-preset small { color:var(--muted); font-size:9px; }
+.ai-profile-preset-editor { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:end; gap:10px; }
+.ai-profile-preset-editor > label { display:grid; gap:6px; color:var(--muted); font-size:10px; }
+.ai-profile-preset-actions { display:flex; gap:8px; }
+.ai-profile-delete-button:not(:disabled) { color:var(--danger, #ff6b6b); }
+.ai-profile-empty-presets { padding:8px 0; }
 .ai-profile-select { width:100%; min-height:38px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); }
 .ai-profile-uniform-controls { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
 .ai-profile-uniform-controls label { display:grid; gap:6px; color:var(--muted); font-size:10px; }
@@ -172,6 +203,8 @@
   .app-ai-profile-btn { max-width:150px; }
   .ai-profile-presets { grid-template-columns:1fr; }
   .ai-profile-uniform-controls { grid-template-columns:1fr; }
+  .ai-profile-preset-editor { grid-template-columns:1fr; }
+  .ai-profile-preset-actions { flex-wrap:wrap; }
   .ai-profile-route { grid-template-columns:1fr; gap:5px; }
   .ai-profile-route.has-reasoning { grid-template-columns:1fr; }
 }
@@ -289,7 +322,7 @@
   top:0;
   right:0;
   bottom:0;
-  width:320px;
+  width:min(368px, 100vw);
   background:var(--surface);
   border-left:1px solid var(--border2);
   z-index:901;
@@ -307,7 +340,7 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:16px 20px;
+  padding:16px 24px;
   border-bottom:1px solid var(--border);
 }
 
@@ -321,14 +354,14 @@
 .settings-body {
   flex:1;
   overflow-y:auto;
-  padding:8px 0;
+  padding:8px 24px;
 }
 
 .settings-section {
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:12px 20px;
+  padding:12px 0;
   gap:12px;
 }
 

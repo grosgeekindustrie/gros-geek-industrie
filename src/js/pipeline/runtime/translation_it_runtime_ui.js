@@ -678,7 +678,11 @@
         .replace(/\[\[SOURCE_TITLE\]\]/g, '[voir TITLE dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_TAGS\]\]/g, '[voir TAGS dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, '[voir bloc SOURCE_FR_LISTING mis en cache]');
-      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Le bloc source « 🎭 Fan Art et artiste : » est dynamique : traduis-le integralement et conserve-le obligatoirement dans description_it avec un titre commencant par « 🎭 Fan Art » et termine par deux-points.\n- Preserve exactement les paragraphes et le nombre de lignes vides de la description source.\n- Les blocs fixes traduits sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes dans description_it.`;
+      const individualPrompt = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Le bloc source « 🎭 Fan Art et artiste : » est dynamique : traduis-le integralement et conserve-le obligatoirement dans description_it avec un titre commencant par « 🎭 Opera ispirata e artista: ». N'utilise pas l'expression anglaise « Fan Art » dans la sortie italienne.\n- Preserve exactement les paragraphes et le nombre de lignes vides de la description source.\n- Les blocs fixes traduits sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes dans description_it.`;
+      const filledWithInjectionNote = await global.PipelineUITranslationGlossaryRuntime.enrichIndividualPrompt(
+        individualPrompt,
+        { prefix, language: 'it' },
+      );
 
       listingDraft.translationInput = filledWithInjectionNote;
       getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;

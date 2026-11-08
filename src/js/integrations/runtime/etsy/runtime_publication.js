@@ -32,25 +32,29 @@
       updatePayload: {
         tags: Array.isArray(originalPayload.updatePayload?.tags) ? originalPayload.updatePayload.tags : [],
       },
+      inventory: originalPayload.inventory && typeof originalPayload.inventory === 'object'
+        ? originalPayload.inventory
+        : {},
       images: Array.isArray(originalPayload.images) ? originalPayload.images : [],
       videos: Array.isArray(originalPayload.videos) ? originalPayload.videos : [],
       mediaPlan: originalPayload.mediaPlan || {},
-      attributes: {},
+      attributes: originalPayload.attributes && typeof originalPayload.attributes === 'object'
+        ? originalPayload.attributes
+        : {},
     };
 
     return {
       ...normalizedSnapshot,
       payload,
-      validationErrors: [
-        ...(!String(createPayload.title || '').trim() ? ['title manquant'] : []),
-        ...(!String(createPayload.description || '').trim() ? ['description manquante'] : []),
-      ],
+      validationErrors: Array.isArray(normalizedSnapshot.validationErrors)
+        ? [...normalizedSnapshot.validationErrors]
+        : [],
       sourceListingId,
       sourceListingState,
       warnings: [
         publicationMode === 'update_expired_listing'
-          ? 'Mode fiche expiree : la fiche chargee mettra a jour titre, description, tags, images, video et ALT, sans publication automatique.'
-          : 'Mode mise a jour : seuls le titre, la description, les tags, les images, la video et les ALT seront renvoyes.',
+          ? 'Mode fiche expiree : contenu, tarifs, variations, dimensions, attributs et medias seront remis a jour, puis la fiche sera reactivee sur Etsy.'
+          : 'Mode mise a jour : contenu, tarifs, variations, dimensions, attributs et medias seront remis a jour.',
         ...(Array.isArray(normalizedSnapshot.warnings) ? normalizedSnapshot.warnings : []),
       ],
     };
@@ -81,10 +85,16 @@
     const explicitTarget = String(options?.targetShopKey || '').trim();
     if (explicitTarget) return normalizeShopKey(explicitTarget);
 
+    const activeShopKey = String(
+      deps.getActiveShopKey?.()
+      || global.PipelineUIApp?.getActiveShopKey?.()
+      || ''
+    ).trim();
+    if (activeShopKey) return normalizeShopKey(activeShopKey);
+
     const sourceShopKey = String(state?.sourceShopKey || '').trim();
     if (sourceShopKey) return normalizeShopKey(sourceShopKey);
-
-    return normalizeShopKey(deps.getActiveShopKey?.() || global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek');
+    return 'grosgeek';
   }
 
   function getPublicationModeFromRequest(state, options = {}) {
@@ -119,6 +129,49 @@
 
     const snapshot = buildPublicationPayloadSnapshot(state);
     const publicationMode = getPublicationModeFromRequest(state, options);
+    if (publicationMode === 'update_expired_listing' && options.renewalPayload) {
+      const renewal = options.renewalPayload;
+      const errors = snapshot.validationErrors;
+      if (String(snapshot.sourceListingId || '') !== String(renewal.listingId || '')) {
+        errors.push('la fiche Etsy chargée ne correspond pas au dossier de renouvellement');
+      }
+      snapshot.payload.createPayload = {
+        title: String(renewal.title || '').trim(),
+        description: String(renewal.description || ''),
+      };
+      snapshot.payload.updatePayload = {
+        tags: Array.isArray(renewal.tags) ? renewal.tags : [],
+      };
+      snapshot.payload.images = Array.isArray(renewal.images) ? renewal.images : [];
+      snapshot.payload.mediaPlan = {
+        ...(snapshot.payload.mediaPlan || {}),
+        plannedImageCount: snapshot.payload.images.length,
+        plannedVideoCount: snapshot.payload.videos.length,
+        orderedMediaCount: snapshot.payload.images.length + snapshot.payload.videos.length,
+      };
+      if (!snapshot.payload.createPayload.title) errors.push('titre final manquant');
+      if (!snapshot.payload.createPayload.description.trim()) errors.push('description finale manquante');
+      if (!snapshot.payload.images.length) errors.push('images finales manquantes');
+
+      const products = snapshot.payload.inventory?.products || [];
+      const prices = renewal.pricesByScale || {};
+      if (!products.length) errors.push('variations Etsy manquantes');
+      const inventoryScales = new Set();
+      products.forEach((product) => {
+        const value = String(product.property_values?.[0]?.values?.[0] || '');
+        const label = value.split(/=>|⇒|→/)[0].replace(/\s+/g, '').replace(':', '/').toLowerCase();
+        if (label) inventoryScales.add(label);
+        const price = Number(prices[label]);
+        if (!(price > 0)) {
+          errors.push(`prix Etsy final introuvable pour ${value || 'une variation'}`);
+          return;
+        }
+        (product.offerings || []).forEach((offering) => { offering.price = price; });
+      });
+      if (inventoryScales.size !== Object.keys(prices).length) {
+        errors.push('le nombre de variations Etsy ne correspond pas aux échelles préparées');
+      }
+    }
     const targetShopKey = getPublicationTargetShopKey(state, deps, options);
     const targetShopLabel = getShopLabel(targetShopKey);
     state.publicationSubmitting = true;
@@ -165,14 +218,16 @@
             sourceShopKey: String(state.sourceShopKey || '').trim() || '',
             pipelineMode: String(prefix || '').trim() === 'col' ? 'collection' : 'tabletop',
           });
+      if (!response?.ok) {
+        throw new Error('Aucune confirmation de publication reçue du backend Etsy');
+      }
       state.publicationResult = response || null;
       state.publicationError = '';
-      runtime.workspaceSetStatus?.(
-        prefix,
-        publicationMode === 'update_expired_listing'
-          ? `Fiche Etsy expiree mise a jour sur ${targetShopLabel}.`
-          : (publicationMode === 'update_listing' ? `Fiche Etsy mise a jour sur ${targetShopLabel}.` : `Draft Etsy cree sur ${targetShopLabel}.`)
-      );
+      const successMessage = publicationMode === 'update_expired_listing'
+          ? `Fiche Etsy expiree mise a jour et reactivee sur ${targetShopLabel}.`
+          : (publicationMode === 'update_listing' ? `Fiche Etsy mise a jour sur ${targetShopLabel}.` : `Draft Etsy cree sur ${targetShopLabel}.`);
+      runtime.workspaceSetStatus?.(prefix, successMessage);
+      global.showToast?.(successMessage);
     } catch (error) {
       state.publicationResult = null;
       const errorParts = [];
@@ -188,6 +243,7 @@
         };
       }
       runtime.workspaceSetStatus?.(prefix, `Publication : ${state.publicationError}`);
+      global.showToast?.(`Publication Etsy : ${state.publicationError}`, '#ff4757');
     } finally {
       state.publicationSubmitting = false;
       runtime.workspaceRenderPublicationStep?.(prefix);

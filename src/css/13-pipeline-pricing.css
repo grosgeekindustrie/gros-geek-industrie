@@ -336,6 +336,73 @@
   line-height: 1.5;
 }
 
+.pricing-grid-assistant {
+  margin: 0 0 1.35rem;
+  padding: 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--accent) 4%, rgba(0, 0, 0, 0.17));
+}
+
+.pricing-grid-assistant-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pricing-grid-assistant-head h3 {
+  margin: 0.3rem 0 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.pricing-grid-assistant-head p {
+  max-width: 46rem;
+  margin: 0.45rem 0 0;
+  color: var(--text2);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.pricing-reference-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text2);
+  font-size: 0.7rem;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pricing-reference-toggle input {
+  accent-color: var(--accent);
+}
+
+.pricing-grid-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.pricing-grid-status {
+  min-height: 1rem;
+  margin: 0.75rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.pricing-grid-status.is-ok { color: #a8f0c5; }
+.pricing-grid-status.is-error { color: #ff9aaa; }
+
 .pricing-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -417,6 +484,16 @@
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.pricing-scale-cell span.is-calculated {
+  margin-left: 0.35rem;
+  background: color-mix(in srgb, var(--success) 11%, transparent);
+  color: var(--success);
+}
+
+.pricing-scale-table tr.is-calculated-price {
+  background: color-mix(in srgb, var(--success) 4%, transparent);
 }
 
 .pricing-money-input,
@@ -580,4 +657,6 @@
   .pricing-form-grid { grid-template-columns: minmax(0, 1fr); }
   .pricing-actions { flex-direction: column; }
   .pricing-recommendation-head { flex-direction: column; }
+  .pricing-grid-assistant-head { flex-direction: column; }
+  .pricing-reference-toggle { white-space: normal; }
 }

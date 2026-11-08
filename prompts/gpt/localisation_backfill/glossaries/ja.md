@@ -4,6 +4,12 @@ STATUS: VALIDATED
 
 Version : `1.0-candidate` · locale cible : `ja`.
 
+## Titre Etsy
+
+Le titre japonais conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, collection, résine, état non peint, impression 3D, garage kit et public visé. Rédige naturellement sans résumer le titre au seul personnage et type de figurine. Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en supprimant d'abord les répétitions ; vérifie tous les angles avant de répondre.
+
+Quand le titre français comporte deux virgules, conserve ses trois groupes d'information dans le titre japonais : personnage et univers, caractéristiques du kit, puis public visé. Sépare-les naturellement avec deux virgules japonaises `、` (ou des virgules occidentales si le titre l'exige). Le point médian `・` dans un nom propre ne remplace pas ces séparateurs. Vérifie ce découpage avant le JSON final.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché

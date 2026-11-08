@@ -71,22 +71,24 @@ Pour les tags, la priorité est différente : respecter chaque tag source et le 
 
 ## Caractères autorisés pour le titre et les tags Etsy
 
-Le titre et les tags Etsy doivent respecter strictement les caractères acceptés par Etsy.
+Le titre et les tags ont des besoins distincts : les virgules du titre séparent les groupes d'informations et doivent rester naturelles dans la langue cible.
 
-Dans le titre et les tags, utilise uniquement :
+Dans le titre, utilise uniquement :
 
 - lettres
 - chiffres
 - espaces
+- virgules "," pour séparer les idées
 - tirets simples "-"
 - apostrophes simples "'"
 - underscores "_"
+
+Dans les tags, utilise les mêmes caractères à l'exception des virgules.
 
 Interdiction dans le titre et les tags :
 
 - esperluette "&"
 - slash "/"
-- virgule ","
 - point "."
 - deux-points ":"
 - point-virgule ";"
@@ -96,7 +98,7 @@ Interdiction dans le titre et les tags :
 - symboles spéciaux
 - caractères typographiques décoratifs
 
-Si le titre ou un tag source contient un caractère interdit, remplace-le par un espace ou reformule très légèrement sans changer l’intention.
+Si le titre ou un tag source contient un caractère interdit pour son champ, reformule très légèrement sans changer l’intention. Ne retire pas les virgules du titre uniquement pour nettoyer la ponctuation.
 
 Dans les titres et tags DE, remplace systématiquement "&" par "und" ou reformule légèrement si nécessaire.
 
@@ -105,7 +107,7 @@ Exemples :
 - "D&D" devient "D und D" ou "DND"
 - "Warhammer 40K / 30K" devient "Warhammer 40K 30K"
 - "RPG/Tabletop" devient "RPG Tabletop"
-- "Link, Zelda" devient "Link Zelda"
+- "Link, Zelda" garde sa virgule dans un titre ; un tag individuel peut être reformulé en "Link Zelda"
 - "Hero: Link" devient "Hero Link"
 - "Resin Figure - 3D Print" peut rester avec un tiret simple
 - "Fan Art & Artist" devient "Fan Art und Artist"
@@ -114,6 +116,8 @@ Cette règle concerne uniquement le titre et les tags.
 Elle ne s’applique pas à la description.
 
 ## Titre DE
+
+Le titre français fixe les informations à conserver, même si leur ordre et leur formulation changent en allemand. Préserve chaque élément présent : personnage et œuvre, figurine de collection, résine, état non peint, impression 3D, garage kit et public visé. Une simple « Vampirfigur » ne remplace pas « figurine imprimée en 3D pour fans de vampire ». N'abrège pas le titre par préférence stylistique ; si la traduction dépasse réellement 140 caractères, retire d'abord les redondances et mots accessoires, puis vérifie que les caractéristiques du produit et l'intention commerciale de la source restent explicites.
 
 Le titre allemand doit être clair, naturel et utile pour Etsy.
 
@@ -561,7 +565,8 @@ Avant de produire le JSON final, vérifie mentalement :
 
 - Les noms propres DE validés sont-ils utilisés exactement ?
 - Le titre est-il naturel et exploitable sur Etsy ?
-- Le titre utilise-t-il uniquement les caractères autorisés par Etsy : lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ?
+- Le titre conserve-t-il les virgules qui séparent les idées de la source, avec une ponctuation naturelle dans la langue cible ?
+- Le titre utilise-t-il uniquement lettres, chiffres, espaces, virgules, tirets simples, apostrophes simples et underscores ?
 - Si le titre source contient "à peindre", le titre DE indique-t-il clairement que le produit est vendu non peint, de préférence avec "unbemalt" ?
 - Les tags DE correspondent-ils un par un aux tags source ?
 - Les tags utilisent-ils uniquement les caractères autorisés par Etsy : lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ?

@@ -20,6 +20,8 @@
 <link rel="stylesheet" href="css/13-pipeline-pricing.css">
 <link rel="stylesheet" href="css/14-design-system.css">
 <link rel="stylesheet" href="css/15-localization-backfill.css">
+<link rel="stylesheet" href="css/16-communication.css">
+<link rel="stylesheet" href="css/17-renewal-workshop.css">
 <!-- Ordre CSS : base legacy → overrides UI → header/settings → layout forms → lightboxes/library → résidu inline temporaire -->
 </head>
 <body>
@@ -61,6 +63,12 @@
     <button class="lb-close" type="button" data-ui-action="close-settings"><span data-svg-icon="close"></span></button>
   </div>
   <div class="settings-body">
+    <section class="settings-prompts" aria-label="Prompts du pipeline">
+      <strong>Prompts du pipeline</strong>
+      <p id="settingsPromptContext"></p>
+      <div id="settingsPromptList"></div>
+    </section>
+    <div class="settings-sep"></div>
         <div class="settings-section">
       <label class="settings-label">URL boutique Etsy</label>
       <input type="text" id="shopUrl" class="settings-input" value="https://grosgeekindustrie.etsy.com" autocomplete="off"/>
@@ -137,6 +145,18 @@
           <div class="home-card-title">Calculateur de coûts</div>
           <div class="home-card-desc">Calculer rapidement le prix conseillé<br>d’une figurine imprimée.</div>
           <div class="home-card-tag">Résine · Plateaux · Marge</div>
+        </a>
+        <a class="home-card home-card-communication" href="#communication" data-ui-action="open-communication">
+          <div class="home-card-icon" data-svg-icon="message"></div>
+          <div class="home-card-title">Communication</div>
+          <div class="home-card-desc">Composer les messages clients<br>dans toutes les langues de la boutique.</div>
+          <div class="home-card-tag">Modèles · Personnalisation · Copie</div>
+        </a>
+        <a class="home-card home-card-renewals" href="#renewals" data-ui-action="open-renewals">
+          <div class="home-card-icon" data-svg-icon="refresh"></div>
+          <div class="home-card-title">Renouvellements</div>
+          <div class="home-card-desc">Préparer et régénérer les fiches expirées<br>dans une file de travail persistante.</div>
+          <div class="home-card-tag">Images · Pipeline · Validation</div>
         </a>
         <a class="home-card home-card-design-system" href="#design-system" data-ui-action="open-design-system">
           <div class="home-card-icon">DS</div>
@@ -454,6 +474,15 @@
       </div>
     </section>
   </main>
+</div>
+
+<!-- VIEW COMMUNICATION CLIENT -->
+<div class="view" id="view-communication" data-js="view" data-view="communication">
+  <main class="communication-workspace" id="communicationWorkspace" aria-labelledby="communicationTitle"></main>
+</div>
+
+<div class="view" id="view-renewals" data-js="view" data-view="renewals">
+  <main class="renewal-workspace" id="renewalWorkspace" aria-labelledby="renewalTitle"></main>
 </div>
 
 <!-- VIEW CALCULATEUR DE COÛTS -->
@@ -856,7 +885,7 @@
   <div class="instagram-recent-modal" id="instagramRecentModal" aria-hidden="true">
     <div class="instagram-media-modal-backdrop" data-instagram-recent-close></div>
     <section class="instagram-recent-dialog" role="dialog" aria-modal="true" aria-labelledby="instagramRecentTitle">
-      <header><div><p class="instagram-kicker">RATTRAPAGE FACEBOOK</p><h2 id="instagramRecentTitle">Publications Instagram récentes</h2></div><button class="instagram-modal-close" type="button" data-instagram-recent-close aria-label="Fermer">×</button></header>
+      <header><div><p class="instagram-kicker">RATTRAPAGE RÉSEAUX</p><h2 id="instagramRecentTitle">Publications Instagram récentes</h2></div><button class="instagram-modal-close" type="button" data-instagram-recent-close aria-label="Fermer">×</button></header>
       <p class="instagram-inline-status" id="instagramRecentStatus">Chargement des publications Instagram…</p>
       <div class="instagram-recent-list" id="instagramRecentList"></div>
     </section>
@@ -1519,10 +1548,15 @@ Cache : —</pre>
       </section>
 
       <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="translation" hidden>
+        <div class="localization-view-switch" role="tablist" aria-label="Mode de localisation Tabletop">
+          <button class="localization-view-switch-button is-active" type="button" role="tab" aria-selected="true" data-js="localization-view-switch" data-localization-mode="tabletop" data-localization-view="single">Fiche unique</button>
+          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-mode="tabletop" data-localization-view="catalog">Catalogue / Backfill</button>
+        </div>
+        <div data-js="localization-single-workflow" data-localization-mode="tabletop">
         <div class="form-section translation-en-panel" id="translationEnPanel-tt">
           <div class="collection-stepper-heading">
             <span class="collection-stepper-kicker">Traduction · Workflow multi-langue</span>
-            <h2 class="collection-stepper-title">FR source puis EN</h2>
+            <h2 class="collection-stepper-title">FR source puis 10 localisations</h2>
             <p class="collection-stepper-subtitle">Prépare d’abord la matière FR, puis passe sur l’anglais pour le contrôle sémantique et la traduction.</p>
           </div>
           <div class="translation-en-subtabs" role="tablist" aria-label="Sous-onglets traduction">
@@ -1548,9 +1582,10 @@ Cache : —</pre>
                 <button class="btn btn-muted" type="button" id="tt-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="tt" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
                 <button class="btn btn-muted" type="button" id="tt-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="tt" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
                 <button class="btn btn-muted" type="button" id="tt-translation-update-publish" data-ui-action="publish-translation-update" data-action-arg="tt" title="Publier uniquement les traductions italienne, néerlandaise et portugaise" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Publication update IT/NL/PT</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="download-individual-translation-report" data-action-arg="tt"><span data-svg-icon="copy"></span><span class="ui-icon-label">Rapport JSON</span></button>
               </div>
               <p class="fetch-status" id="tt-translation-en-source-status">En attente d’une fiche Etsy source.</p>
-              <p class="fetch-status" id="tt-translation-bulk-status">En attente d’un lancement global EN / DE / ES / IT / NL / PT.</p>
+              <p class="fetch-status" id="tt-translation-bulk-status">En attente d’un lancement global des 10 langues.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">
@@ -1891,6 +1926,8 @@ Cache : —</pre>
           </div>
           </div>
         </div>
+        </div>
+        <div data-js="localization-backfill-host" data-localization-mode="tabletop"></div>
       </section>
 
       <section class="collection-solo-tab-panel" role="tabpanel" data-dnd-tab-panel="audit" hidden>
@@ -2520,15 +2557,15 @@ Cache : —</pre>
 
       <section class="collection-solo-tab-panel" role="tabpanel" data-collection-tab-panel="translation" hidden>
         <div class="localization-view-switch" role="tablist" aria-label="Mode de localisation">
-          <button class="localization-view-switch-button is-active" type="button" role="tab" aria-selected="true" data-js="localization-view-switch" data-localization-view="single">Fiche unique</button>
-          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-view="catalog">Catalogue / Backfill</button>
-          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-view="automation">Automatisation</button>
+          <button class="localization-view-switch-button is-active" type="button" role="tab" aria-selected="true" data-js="localization-view-switch" data-localization-mode="collection" data-localization-view="single">Fiche unique</button>
+          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-mode="collection" data-localization-view="catalog">Catalogue / Backfill</button>
+          <button class="localization-view-switch-button" type="button" role="tab" aria-selected="false" data-js="localization-view-switch" data-localization-mode="collection" data-localization-view="automation">Automatisation</button>
         </div>
-        <div data-js="localization-single-workflow">
+        <div data-js="localization-single-workflow" data-localization-mode="collection">
         <div class="form-section translation-en-panel" id="translationEnPanel-col">
           <div class="collection-stepper-heading">
             <span class="collection-stepper-kicker">Traduction · Workflow multi-langue</span>
-            <h2 class="collection-stepper-title">FR source puis EN</h2>
+            <h2 class="collection-stepper-title">FR source puis 10 localisations</h2>
             <p class="collection-stepper-subtitle">Prépare d’abord la matière FR, puis passe sur l’anglais pour le contrôle sémantique et la traduction.</p>
           </div>
           <div class="translation-en-subtabs" role="tablist" aria-label="Sous-onglets traduction">
@@ -2554,9 +2591,10 @@ Cache : —</pre>
                 <button class="btn btn-muted" type="button" id="col-translation-bulk-stop" data-ui-action="stop-translation-all" data-action-arg="col" disabled><span data-svg-icon="stop"></span><span class="ui-icon-label">Stop</span></button>
                 <button class="btn btn-muted" type="button" id="col-translation-bulk-publish" data-ui-action="publish-translation-all" data-action-arg="col" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Tout publier</span></button>
                 <button class="btn btn-muted" type="button" id="col-translation-update-publish" data-ui-action="publish-translation-update" data-action-arg="col" title="Publier uniquement les traductions italienne, néerlandaise et portugaise" disabled><span data-svg-icon="upload"></span><span class="ui-icon-label">Publication update IT/NL/PT</span></button>
+                <button class="btn btn-muted" type="button" data-ui-action="download-individual-translation-report" data-action-arg="col"><span data-svg-icon="copy"></span><span class="ui-icon-label">Rapport JSON</span></button>
               </div>
               <p class="fetch-status" id="col-translation-en-source-status">En attente d’une fiche Etsy source.</p>
-              <p class="fetch-status" id="col-translation-bulk-status">En attente d’un lancement global EN / DE / ES / IT / NL / PT.</p>
+              <p class="fetch-status" id="col-translation-bulk-status">En attente d’un lancement global des 10 langues.</p>
             </div>
             <div class="translation-en-grid translation-en-grid-single">
               <div class="fg full">
@@ -2899,29 +2937,44 @@ Cache : —</pre>
         </div>
         </div>
 
+        <div data-js="localization-backfill-host" data-localization-mode="collection">
         <div class="form-section localization-backfill" data-js="localization-backfill" hidden>
           <div class="collection-stepper-heading">
             <span class="collection-stepper-kicker" data-js="localization-backfill-kicker">Localisation · Catalogue Gros Geek Industrie</span>
             <h2 class="collection-stepper-title">Backfill persistant des fiches actives</h2>
-            <p class="collection-stepper-subtitle">Audite les langues existantes, prépare uniquement les localisations manquantes et conserve la file après fermeture de l’onglet ou redémarrage du PC.</p>
+            <p class="collection-stepper-subtitle">Recharge le catalogue Etsy à chaque ouverture, prépare uniquement les localisations manquantes et conserve la file après fermeture de l’onglet ou redémarrage du PC.</p>
           </div>
 
           <div class="localization-backfill-safety" data-js="localization-backfill-safety">
             <strong>Aperçu sécurisé</strong>
-            <span>La génération s’arrête avant Etsy. La publication exige une validation séparée du lot.</span>
+            <span>Aucune publication automatique : le rapport est téléchargeable après génération, puis le bouton de publication reste une action distincte.</span>
           </div>
 
           <div class="localization-backfill-actions">
             <button class="btn btn-accent" type="button" data-js="localization-catalog-refresh">Auditer le catalogue</button>
+            <button class="btn btn-muted" type="button" data-js="localization-create-full-run" disabled>Tout retraduire</button>
             <button class="btn btn-accent" type="button" data-js="localization-create-run" disabled>Préparer le lot</button>
-            <button class="btn btn-success" type="button" data-js="localization-run-start" disabled>Lancer les traductions</button>
+            <button class="btn btn-success" type="button" data-js="localization-run-start" disabled>Lancer les localisations</button>
             <button class="btn btn-muted" type="button" data-js="localization-run-pause" disabled>Pause</button>
             <button class="btn btn-muted" type="button" data-js="localization-run-retry" disabled>Relancer les erreurs</button>
             <button class="btn btn-success" type="button" data-js="localization-run-export" disabled>Télécharger le rapport du lot</button>
-            <button class="btn btn-error" type="button" data-js="localization-run-publish" disabled>Publier les traductions prêtes</button>
+            <button class="btn btn-error" type="button" data-js="localization-run-publish" disabled>Publier les localisations prêtes</button>
           </div>
           <p class="fetch-status" data-js="localization-backfill-status">Aucun audit catalogue chargé.</p>
 
+          <div class="localization-backfill-run" data-js="localization-run" hidden>
+            <div class="localization-run-completion" data-js="localization-run-completion" hidden></div>
+            <div class="collection-stepper-heading">
+              <span class="collection-stepper-kicker">Lot actif</span>
+              <h3 class="collection-stepper-title" data-js="localization-run-title">Aucun lot</h3>
+              <p class="collection-stepper-subtitle" data-js="localization-run-summary"></p>
+              <p class="collection-stepper-subtitle" data-js="localization-run-timing"></p>
+            </div>
+            <div class="localization-backfill-run-progress" data-js="localization-run-progress"></div>
+            <div class="localization-backfill-job-list" data-js="localization-job-list"></div>
+          </div>
+
+          <div class="localization-catalog-workspace" data-js="localization-catalog-workspace">
           <div class="localization-backfill-config">
             <div class="fg">
               <label for="localization-backfill-search">Rechercher</label>
@@ -2936,15 +2989,19 @@ Cache : —</pre>
             <div class="fg">
               <label for="localization-backfill-missing">Langue manquante</label>
               <select id="localization-backfill-missing" data-js="localization-filter-language">
-                <option value="">Au moins une langue</option>
+                <option value="">Toutes les langues</option>
               </select>
             </div>
+            <label class="localization-missing-only-filter">
+              <input type="checkbox" data-js="localization-filter-missing-only">
+              <span>Afficher uniquement les fiches avec au moins une langue manquante</span>
+            </label>
             <div class="fg">
               <label for="localization-backfill-page-size">Fiches par page</label>
               <select id="localization-backfill-page-size" data-js="localization-page-size">
-                <option value="25">25</option>
+                <option value="25" selected>25</option>
                 <option value="50">50</option>
-                <option value="100" selected>100</option>
+                <option value="100">100</option>
               </select>
             </div>
           </div>
@@ -2986,17 +3043,8 @@ Cache : —</pre>
             <span data-js="localization-page-label">Page 1 / 1</span>
             <button class="btn btn-muted" type="button" data-js="localization-page-next" disabled>Suivant</button>
           </div>
-
-          <div class="localization-backfill-run" data-js="localization-run" hidden>
-            <div class="collection-stepper-heading">
-              <span class="collection-stepper-kicker">Lot actif</span>
-              <h3 class="collection-stepper-title" data-js="localization-run-title">Aucun lot</h3>
-              <p class="collection-stepper-subtitle" data-js="localization-run-summary"></p>
-              <p class="collection-stepper-subtitle" data-js="localization-run-timing"></p>
-            </div>
-            <div class="localization-backfill-run-progress" data-js="localization-run-progress"></div>
-            <div class="localization-backfill-job-list" data-js="localization-job-list"></div>
           </div>
+        </div>
         </div>
 
         <div class="form-section localization-automation" data-js="localization-automation" hidden>

@@ -4,6 +4,10 @@ STATUS: VALIDATED
 
 Version : `1.1` · locale cible : `nl`.
 
+## Titre Etsy
+
+Le titre néerlandais conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, collection, résine, état non peint, impression 3D, garage kit et public visé. Ne réduis pas une figurine imprimée en 3D pour fans de vampire à un simple « vampierfiguur ». Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en supprimant d'abord les répétitions et mots accessoires ; vérifie tous les angles avant de répondre.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché
@@ -20,6 +24,7 @@ Use natural Dutch compounds. Both 'ongeverfd' and 'ongeschilderd' occur; use one
 - Le nom commun français `figurine` ne doit jamais rester tel quel dans une localisation néerlandaise. Employer **figuur** pour une formulation générale et **verzamelfiguur** lorsqu'il s'agit explicitement d'une figurine de collection.
 - `collectible_statue` : **verzamelbeeld** · **beeld van hars**
 - `paintable` : **ongeverfd figuur** · **figuur om te schilderen**
+- Dans un tag Etsy, **verzamelfiguur om te schilderen** fait 31 caractères : employer **beschilderbare verzamelfiguur** (29). Pour un personnage, préférer **Metroid beschilderbaar figuur** (29) ou **Deadpool beschilderbaar figuur** (30) à `… figuur om te schilderen` lorsque le tag dépasserait 30 caractères. Compter les espaces avant de répondre ; ne pas supprimer l'intention « à peindre ».
 - `ready_to_paint` : **klaar voor primer en schilderwerk** · **voorbereid en klaar om te schilderen**
 - `garage_kit` : **garagekit van hars** · **ongeverfde garagekit**
 - `resin_kit` : **harsmodelbouwkit** · **figuurkit van hars**

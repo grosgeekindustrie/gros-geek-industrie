@@ -12,7 +12,8 @@
   const REEL_VIDEO_LIMITS = Object.freeze({
     minDurationSeconds: 3,
     maxDurationSeconds: 15 * 60,
-    maxFileBytes: 1024 * 1024 * 1024,
+    maxInputFileBytes: 1_000_000_000,
+    maxApiFileBytes: 300_000_000,
     maxWidthPixels: 1920,
     maxAverageBitrateMbps: 25,
   });
@@ -685,7 +686,7 @@
     const duration = Number(state.video.duration);
     const width = Number(state.video.width);
     const averageBitrateMbps = Number(state.video.averageBitrateMbps);
-    if (state.video.size > REEL_VIDEO_LIMITS.maxFileBytes) {
+    if (state.video.size > REEL_VIDEO_LIMITS.maxInputFileBytes) {
       return { ready: false, status: 'error', message: 'La vidéo dépasse la limite Instagram de 1 Go.' };
     }
     if (!Number.isFinite(duration) || duration <= 0) {
@@ -710,10 +711,13 @@
         message: 'Débit moyen estimé à ' + averageBitrateMbps.toFixed(2) + ' Mb/s : Instagram impose 25 Mb/s maximum. Réencode la vidéo avant de générer le post.',
       };
     }
+    const requiresSizePreparation = state.video.size > REEL_VIDEO_LIMITS.maxApiFileBytes;
     return {
       ready: true,
-      status: 'success',
-      message: 'Vidéo compatible avec les contrôles automatiques · débit moyen estimé ' + averageBitrateMbps.toFixed(2) + ' Mb/s sur 25 Mb/s maximum.',
+      status: requiresSizePreparation ? 'warning' : 'success',
+      message: requiresSizePreparation
+        ? 'Vidéo de ' + (state.video.size / 1_000_000).toFixed(0) + ' Mo : elle sera automatiquement préparée sous la limite API de 300 Mo avant publication.'
+        : 'Vidéo compatible avec les contrôles automatiques Instagram · débit moyen estimé ' + averageBitrateMbps.toFixed(2) + ' Mb/s sur 25 Mb/s maximum.',
     };
   };
 
@@ -824,7 +828,7 @@
     if (state.mode !== 'reel') return;
 
     if (!state.video) {
-      stage.innerHTML = '<div class="instagram-empty-media"><strong>Dépose une vidéo</strong><span>MP4 ou MOV · 3 s à 15 min · 25 Mb/s · 1 Go maximum.</span></div>';
+      stage.innerHTML = '<div class="instagram-empty-media"><strong>Dépose une vidéo</strong><span>MP4 ou MOV · 3 s à 15 min · 25 Mb/s · préparation automatique au-delà de 300 Mo.</span></div>';
       return;
     }
 
@@ -1444,7 +1448,9 @@
     const ready = !message;
     title.textContent = ready ? 'Brouillon prêt pour le prochain jet' : 'Préparation incomplète';
     detail.textContent = ready
-      ? 'Ordre, ratio et texte sont prêts. Rien ne sera publié depuis cet écran aujourd’hui.'
+      ? (reelVideoValidation?.status === 'warning'
+        ? reelVideoValidation.message
+        : 'Ordre, ratio et texte sont prêts. Rien ne sera publié depuis cet écran aujourd’hui.')
       : message;
     dot.classList.toggle('is-ready', ready);
     const testButton = getElement('instagramTestPublishBtn');
@@ -1529,6 +1535,15 @@
       const listing = normalized?.data || null;
       if (!listing) throw new Error('La réponse Etsy ne contient aucune fiche exploitable.');
 
+      const detectedShopKey = envelope?.payload?.source_shop_key === 'doublex' ? 'doublex' : 'grosgeek';
+      const shopChanged = state.shopKey !== detectedShopKey;
+      state.shopKey = detectedShopKey;
+      syncShopPicker();
+      if (shopChanged) {
+        closeRecentInstagramModal();
+        verifyFacebookConnection();
+      }
+
       state.listingId = listingId;
       state.rawPayload = envelope;
       state.listing = listing;
@@ -1564,7 +1579,7 @@
       syncSummaries();
       saveDraft();
       setListingStatus(
-        'Fiche chargée · ' + state.images.length + ' image(s) · ' + cleanup.removedBlocks + ' bloc(s) commun(s) retiré(s).',
+        'Fiche chargée · ' + SHOP_LABELS[state.shopKey] + ' détectée automatiquement · ' + state.images.length + ' image(s) · ' + cleanup.removedBlocks + ' bloc(s) commun(s) retiré(s).',
         cleanup.removedBlocks ? 'success' : ''
       );
 
@@ -1671,7 +1686,7 @@
       renderMedia();
       saveDraft();
       const validation = getReelVideoValidation();
-      setResult(validation.message, validation.ready ? 'success' : 'error');
+      setResult(validation.message, validation.ready ? validation.status : 'error');
     };
     video.onerror = () => {
       if (!state.video || state.video.url !== url) return;
@@ -1933,7 +1948,32 @@
         body: state.video.file,
       });
       const payload = await readJson(response);
-      state.preparedPublication = { signature, mediaIds: [payload.mediaId] };
+      setResult(
+        state.video.size > REEL_VIDEO_LIMITS.maxApiFileBytes
+          ? 'Mise aux normes Instagram en cours : compression sous 300 Mo, cela peut prendre quelques minutes…'
+          : 'Vérification de la structure MP4 pour Instagram…',
+      );
+      const preparation = await requestJson('/instagram/test/video/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaId: payload.mediaId,
+          durationSeconds: Number(state.video.duration) || 0,
+        }),
+      });
+      if (preparation.prepared) {
+        const originalMegabytes = Number(preparation.originalBytes || state.video.size) / 1_000_000;
+        const preparedMegabytes = Number(preparation.bytes || 0) / 1_000_000;
+        setResult(
+          'Vidéo prête pour Instagram : ' + originalMegabytes.toFixed(0) + ' Mo → ' + preparedMegabytes.toFixed(0) + ' Mo.',
+          'success',
+        );
+      }
+      state.preparedPublication = {
+        signature,
+        mediaIds: [payload.mediaId],
+        videoPreparation: preparation,
+      };
       return state.preparedPublication;
     }
 
@@ -1983,12 +2023,16 @@
           firstComment: String(getElement('instagramFirstComment')?.value || '').trim(),
           thumbOffsetMs: state.mode === 'reel' ? Math.round(state.reelCoverTime * 1000) : null,
           coverMediaId,
+          shopKey: state.shopKey,
           dryRun,
         }),
       });
       if (dryRun) {
-        setResult('Préparation validée : ' + payload.mediaCount + ' média(s), tunnel HTTPS prêt.', 'success');
-        global.showToast?.('Carrousel prêt à publier');
+        const transportStatus = payload.uploadMode === 'facebook-draft-relay'
+          ? 'relais vidéo Meta prêt'
+          : 'tunnel HTTPS prêt';
+        setResult('Préparation validée : ' + payload.mediaCount + ' média(s), ' + transportStatus + '.', 'success');
+        global.showToast?.(state.mode === 'reel' ? 'Reel prêt à publier' : 'Carrousel prêt à publier');
       } else {
         state.preparedPublication = null;
         const suffix = payload.commentError
@@ -2114,24 +2158,45 @@
     const button = getElement('instagramPublishAllBtn');
     const results = [];
 
-    const runNetwork = async (label, requestPublication) => {
+    const runNetwork = async (
+      label,
+      requestPublication,
+      { prepareMedia = true, clearPreparedMedia = true } = {},
+    ) => {
       if (button) button.textContent = 'Publication ' + (results.length + 1) + ' / 3…';
       setResult('Publication sur ' + label + '…');
       try {
-        const prepared = await preparePublicationMedia();
+        const prepared = prepareMedia ? await preparePublicationMedia() : { mediaIds: [] };
         const outcome = await requestPublication(prepared);
-        results.push({ label, ok: true, warning: outcome.warning || '' });
+        const result = { label, ok: true, warning: outcome.warning || '', outcome };
+        results.push(result);
+        return result;
       } catch (error) {
-        results.push({ label, ok: false, error: error.message });
+        const result = { label, ok: false, error: error.message };
+        results.push(result);
+        return result;
       } finally {
-        // Chaque endpoint supprime ses médias temporaires après publication.
-        // Le réseau suivant doit donc recevoir une nouvelle copie préparée.
-        state.preparedPublication = null;
+        if (prepareMedia && clearPreparedMedia) {
+          // Chaque endpoint supprime ses médias temporaires après publication.
+          // Le réseau suivant doit donc recevoir une nouvelle copie préparée.
+          state.preparedPublication = null;
+        }
       }
     };
 
+    const skipRemainingNetworks = (labels, failedLabel) => {
+      labels.forEach((label) => {
+        results.push({
+          label,
+          ok: false,
+          skipped: true,
+          error: 'non tenté après l’échec ' + failedLabel,
+        });
+      });
+    };
+
     try {
-      await runNetwork('Instagram', async (prepared) => {
+      const instagramResult = await runNetwork('Instagram', async (prepared) => {
         const coverMediaId = await prepareCustomReelCoverMediaId();
         const payload = await requestJson('/instagram/test/publish', {
           method: 'POST',
@@ -2143,47 +2208,63 @@
             firstComment: String(getElement('instagramFirstComment')?.value || '').trim(),
             thumbOffsetMs: state.mode === 'reel' ? Math.round(state.reelCoverTime * 1000) : null,
             coverMediaId,
+            shopKey: state.shopKey,
+            preserveMedia: true,
             dryRun: false,
           }),
         });
         return {
+          publicationId: payload.publicationId,
           warning: payload.commentError
             ? 'publication créée, premier commentaire non publié : ' + payload.commentError
             : '',
         };
-      });
+      }, { clearPreparedMedia: false });
 
-      await runNetwork('Threads', async (prepared) => {
-        await requestJson('/threads/publish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mediaIds: prepared.mediaIds,
-            text: getThreadsPublicationText(),
-            mode: state.mode,
-          }),
-        });
-        return {};
-      });
+      if (!instagramResult.ok) {
+        skipRemainingNetworks(['Threads', 'Facebook'], 'Instagram');
+      } else {
+        const instagramPublicationId = String(instagramResult.outcome?.publicationId || '');
+        const reuseInstagramReel = state.mode === 'reel' && Boolean(instagramPublicationId);
+        const threadsResult = await runNetwork('Threads', async (prepared) => {
+          await requestJson('/threads/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mediaIds: prepared.mediaIds,
+              instagramMediaId: instagramPublicationId,
+              text: getThreadsPublicationText(),
+              mode: state.mode,
+            }),
+          });
+          return {};
+        }, { prepareMedia: !reuseInstagramReel });
 
-      await runNetwork('Facebook', async (prepared) => {
-        await requestJson('/facebook/publish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mediaIds: prepared.mediaIds,
-            message: String(getElement('instagramCaption')?.value || '').trim(),
-            mode: state.mode,
-            shopKey: state.shopKey,
-          }),
-        });
-        return {};
-      });
+        if (!threadsResult.ok) {
+          skipRemainingNetworks(['Facebook'], 'Threads');
+        } else {
+          await runNetwork('Facebook', async (prepared) => {
+            await requestJson('/facebook/publish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                mediaIds: prepared.mediaIds,
+                message: String(getElement('instagramCaption')?.value || '').trim(),
+                mode: state.mode,
+                shopKey: state.shopKey,
+              }),
+            });
+            return {};
+          });
+        }
+      }
 
       const successful = results.filter(({ ok }) => ok).length;
       const warnings = results.filter(({ warning }) => warning);
-      const failures = results.filter(({ ok }) => !ok);
+      const failures = results.filter(({ ok, skipped }) => !ok && !skipped);
+      const skipped = results.filter(({ skipped: wasSkipped }) => wasSkipped);
       const summary = results.map((result) => {
+        if (result.skipped) return result.label + ' — (' + result.error + ')';
         if (!result.ok) return result.label + ' ✗ (' + result.error + ')';
         if (result.warning) return result.label + ' ✓ (' + result.warning + ')';
         return result.label + ' ✓';
@@ -2191,7 +2272,11 @@
       const resultType = failures.length ? (successful ? 'warning' : 'error') : (warnings.length ? 'warning' : 'success');
       setResult('Publications terminées : ' + summary, resultType);
       if (failures.length) {
-        global.showToast?.(successful + ' réseau(x) publié(s), ' + failures.length + ' en échec', successful ? '#f0b35d' : '#ff4757');
+        const skippedSuffix = skipped.length ? ', ' + skipped.length + ' non tenté(s)' : '';
+        global.showToast?.(
+          successful + ' réseau(x) publié(s), ' + failures.length + ' en échec' + skippedSuffix,
+          successful ? '#f0b35d' : '#ff4757',
+        );
       } else {
         global.showToast?.('Publication créée sur les trois réseaux');
       }
@@ -2217,7 +2302,10 @@
       return '<article class="instagram-recent-card">' +
         (previewUrl ? '<img src="' + escapeHtml(previewUrl) + '" alt="Aperçu Instagram">' : '<div class="instagram-review-empty">Sans aperçu</div>') +
         '<div><strong>' + escapeHtml(type) + ' · ' + escapeHtml(timestamp) + '</strong><p>' + escapeHtml(caption) + '</p>' +
-        '<button class="btn btn-muted" type="button" data-instagram-republish-id="' + escapeHtml(media.id) + '"' + (state.publishing ? ' disabled' : '') + '>Publier sur Facebook</button></div>' +
+        '<button class="btn btn-muted" type="button" data-instagram-republish-id="' + escapeHtml(media.id) + '"' + (state.publishing ? ' disabled' : '') + '>Publier sur Facebook</button>' +
+        (['CAROUSEL_ALBUM', 'VIDEO'].includes(String(media.media_type || '').toUpperCase())
+          ? '<button class="btn btn-muted" type="button" data-instagram-threads-id="' + escapeHtml(media.id) + '"' + (state.publishing ? ' disabled' : '') + '>Publier sur Threads</button>'
+          : '') + '</div>' +
       '</article>';
     }).join('');
   };
@@ -2243,7 +2331,7 @@
     try {
       const payload = await requestJson('/instagram/media/recent?limit=30');
       state.recentInstagramMedia = Array.isArray(payload.media) ? payload.media : [];
-      status.textContent = state.recentInstagramMedia.length + ' publication(s) Instagram disponible(s). Choisis uniquement celles absentes de Facebook.';
+      status.textContent = state.recentInstagramMedia.length + ' publication(s) Instagram disponible(s). Choisis uniquement celles qui manquent sur le réseau cible.';
       status.classList.add('is-success');
       renderRecentInstagramMedia();
     } catch (error) {
@@ -2276,6 +2364,47 @@
       closeRecentInstagramModal();
       setResult('Publication Instagram rattrapée sur Facebook (' + payload.mediaCount + ' média(s)).', 'success');
       global.showToast?.('Publication Instagram rattrapée sur Facebook');
+    } catch (error) {
+      const status = getElement('instagramRecentStatus');
+      if (status) {
+        status.textContent = error.message;
+        status.className = 'instagram-inline-status is-error';
+      }
+      global.showToast?.(error.message, '#ff4757');
+    } finally {
+      state.publishing = false;
+      syncPreflight();
+      renderRecentInstagramMedia();
+    }
+  };
+
+  const publishRecentInstagramToThreads = async (instagramMediaId) => {
+    if (state.publishing) return;
+    const media = state.recentInstagramMedia.find((item) => String(item.id) === String(instagramMediaId));
+    if (!media) return;
+    const validationError = validateThreadsPublicationText();
+    if (validationError) {
+      reportThreadsValidationError(validationError);
+      return;
+    }
+    if (!global.confirm('Publier sur Threads cette publication Instagram avec le texte Threads du formulaire ? Cette action crée une vraie publication.')) return;
+
+    state.publishing = true;
+    syncPreflight();
+    renderRecentInstagramMedia();
+    try {
+      const payload = await requestJson('/threads/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instagramMediaId: media.id,
+          text: getThreadsPublicationText(),
+          mode: String(media.media_type || '').toUpperCase() === 'VIDEO' ? 'reel' : 'carousel',
+        }),
+      });
+      closeRecentInstagramModal();
+      setResult('Publication Instagram rattrapée sur Threads (' + payload.mediaCount + ' média(s)).', 'success');
+      global.showToast?.('Publication Instagram rattrapée sur Threads');
     } catch (error) {
       const status = getElement('instagramRecentStatus');
       if (status) {
@@ -2649,6 +2778,8 @@
     getElement('instagramRecentList')?.addEventListener('click', (event) => {
       const button = event.target.closest('[data-instagram-republish-id]');
       if (button) publishRecentInstagramToFacebook(button.dataset.instagramRepublishId);
+      const threadsButton = event.target.closest('[data-instagram-threads-id]');
+      if (threadsButton) publishRecentInstagramToThreads(threadsButton.dataset.instagramThreadsId);
     });
     getElement('instagramLoadListingBtn')?.addEventListener('click', loadListing);
     getElement('instagramListingId')?.addEventListener('keydown', (event) => {

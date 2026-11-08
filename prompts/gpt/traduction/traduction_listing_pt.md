@@ -20,11 +20,14 @@ Produis une fiche complète en portugais européen naturel, avec des termes neut
 
 ## Titre et tags
 
+Le titre portugais doit conserver chaque élément distinct du titre FR lorsqu'il est présent : personnage et œuvre, figurine de collection, résine, état non peint, impression 3D, garage kit et public visé. Ne transforme pas « figurine imprimée en 3D para fãs de vampiros » en simple « figura de vampiro ». Ne raccourcis que si la traduction dépasse réellement 140 caractères ; retire d'abord les répétitions et les mots accessoires. Vérifie que les caractéristiques du produit et le public visé restent explicites avant le JSON final.
+
 - Titre : 140 caractères maximum.
 - Chaque tag : 30 caractères maximum, espaces compris. Cette limite de 30 est contractuelle pour cet outil : ne la réduis jamais à 20.
 - Conserve le nombre, l'ordre et l'intention des tags source, avec 13 tags maximum.
 - N'invente, ne fusionne et ne supprime aucun angle SEO.
-- Dans le titre et les tags, utilise uniquement lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores.
+- Dans le titre, conserve les virgules qui séparent les idées de la source FR, avec une ponctuation naturelle en langue cible. Utilise lettres, chiffres, espaces, virgules, tirets simples, apostrophes simples et underscores.
+- Dans les tags, utilise uniquement lettres, chiffres, espaces, tirets simples, apostrophes simples et underscores ; pas de virgule à l'intérieur d'un tag.
 
 ## Terminologie portugaise obligatoire
 

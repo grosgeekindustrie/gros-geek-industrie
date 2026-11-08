@@ -3,18 +3,21 @@
 (function initLocalizationBackfillRuntime(global) {
   const state = {
     shopKey: 'grosgeek',
+    mode: 'collection',
     config: null,
     catalog: null,
     selectedIds: new Set(),
     selectedLanguages: new Set(),
     page: 1,
-    pageSize: 100,
+    pageSize: 25,
     activeRun: null,
     pollTimer: 0,
     timingTimer: 0,
     estimateTimer: 0,
     estimateKey: '',
     estimate: null,
+    catalogRefreshId: 0,
+    viewByMode: { collection: 'single', tabletop: 'single' },
     initialized: false,
   };
 
@@ -22,12 +25,16 @@
   const queryAll = (hook) => [...document.querySelectorAll(`[data-js="${hook}"]`)];
   const getActiveShopKey = () => global.PipelineUIApp?.getActiveShopKey?.() || 'grosgeek';
   const shopLabel = () => (state.shopKey === 'doublex' ? 'Double X Industrie' : 'Gros Geek Industrie');
-  const shopUrl = (path) => `${path}${path.includes('?') ? '&' : '?'}shop=${encodeURIComponent(state.shopKey)}`;
+  const modeLabel = () => (state.mode === 'tabletop' ? 'Tabletop / JDR / wargame' : 'Collection');
+  const contextUrl = (path) => {
+    const separator = path.includes('?') ? '&' : '?';
+    return `${path}${separator}shop=${encodeURIComponent(state.shopKey)}&mode=${encodeURIComponent(state.mode)}`;
+  };
   const languageLabel = (code) => state.config?.languages?.find((item) => item.code === code)?.label || code.toUpperCase();
   const jobStateLabel = (value) => ({
     pending: 'en attente',
-    generating: 'traduction en cours',
-    preview_ready: 'traduction prête',
+    generating: 'localisation en cours',
+    preview_ready: 'localisation prête',
     publish_pending: 'publication en attente',
     publishing: 'publication en cours',
     published: 'publiée',
@@ -76,6 +83,7 @@
     search: String(query('localization-filter-search')?.value || '').trim().toLocaleLowerCase('fr'),
     section: String(query('localization-filter-section')?.value || ''),
     language: String(query('localization-filter-language')?.value || ''),
+    missingOnly: !!query('localization-filter-missing-only')?.checked,
   });
 
   const getFilteredListings = () => {
@@ -84,6 +92,7 @@
       if (listing.excluded) return false;
       if (filters.section && listing.sectionName !== filters.section) return false;
       if (filters.language && !(listing.missingLanguages || []).includes(filters.language)) return false;
+      if (filters.missingOnly && !(listing.missingLanguages || []).length) return false;
       if (filters.search) {
         const haystack = `${listing.listingId} ${listing.title}`.toLocaleLowerCase('fr');
         if (!haystack.includes(filters.search)) return false;
@@ -201,13 +210,17 @@
   const renderSelectionState = () => {
     const selectedCount = state.selectedIds.size;
     const jobs = countPlannedJobs();
+    const missingListings = (state.catalog?.listings || []).filter(
+      (listing) => !listing.excluded && (listing.missingLanguages || []).length > 0,
+    ).length;
     const metrics = query('localization-catalog-metrics');
     if (metrics) {
       metrics.replaceChildren();
       [
         `${state.catalog?.count || 0} fiche(s) auditée(s)`,
+        `${missingListings} fiche(s) avec au moins une langue manquante`,
         `${selectedCount} fiche(s) sélectionnée(s)`,
-        `${jobs} localisation(s) manquante(s)`,
+        `${jobs} localisation(s) prévues dans la sélection`,
         state.estimate?.jobs
           ? `≈ $${Number(state.estimate.estimatedCostUsd || 0).toFixed(2)} direct · $${Number(state.estimate.economicBatchEstimateUsd || 0).toFixed(2)} Batch`
           : 'Estimation : —',
@@ -227,12 +240,16 @@
     const selectFiltered = query('localization-select-filtered');
     const clear = query('localization-clear-selection');
     const create = query('localization-create-run');
+    const createFull = query('localization-create-full-run');
+    const refresh = query('localization-catalog-refresh');
     const start = query('localization-run-start');
-    if (selectPage) selectPage.disabled = !hasCatalog;
-    if (selectFiltered) selectFiltered.disabled = !hasCatalog;
-    if (clear) clear.disabled = selectedCount === 0;
     const runIsBusy = state.activeRun?.state === 'running';
+    if (refresh) refresh.disabled = runIsBusy;
+    if (selectPage) selectPage.disabled = !hasCatalog || runIsBusy;
+    if (selectFiltered) selectFiltered.disabled = !hasCatalog || runIsBusy;
+    if (clear) clear.disabled = selectedCount === 0 || runIsBusy;
     if (create) create.disabled = jobs === 0 || runIsBusy;
+    if (createFull) createFull.disabled = selectedCount === 0 || runIsBusy;
     if (start) {
       const hasPreparedRun = !!state.activeRun?.runId
         && Number(state.activeRun?.totalJobs || 0) > 0
@@ -247,7 +264,7 @@
     if (!container || !state.config) return;
     container.replaceChildren();
     if (filter) {
-      filter.replaceChildren(new Option('Au moins une langue', ''));
+      filter.replaceChildren(new Option('Toutes les langues', ''));
     }
     if (!state.selectedLanguages.size) {
       state.config.languages.forEach(({ code }) => state.selectedLanguages.add(code));
@@ -295,6 +312,7 @@
     const execution = getActiveTranslationExecution();
     const signature = JSON.stringify({
       shopKey: state.shopKey,
+      mode: state.mode,
       listingIds: [...state.selectedIds].sort(),
       languages: [...state.selectedLanguages].sort(),
       model: execution.model,
@@ -329,11 +347,15 @@
   };
 
   const refreshCatalog = async () => {
+    const refreshId = ++state.catalogRefreshId;
+    const refreshContext = `${state.shopKey}:${state.mode}`;
     setStatus('Audit Etsy en cours… Cette lecture ne lance aucun modèle IA.');
     const button = query('localization-catalog-refresh');
     if (button) button.disabled = true;
     try {
-      state.catalog = await fetchJson(shopUrl('/localization-backfill/catalog?refresh=1'));
+      const catalog = await fetchJson(contextUrl('/localization-backfill/catalog?refresh=1'));
+      if (refreshId !== state.catalogRefreshId || refreshContext !== `${state.shopKey}:${state.mode}`) return;
+      state.catalog = catalog;
       state.selectedIds.clear();
       state.estimate = null;
       state.estimateKey = '';
@@ -341,20 +363,40 @@
       renderCatalogConfig();
       setStatus(`${shopLabel()} · ${state.catalog.count} fiche(s) active(s) auditée(s), ${state.catalog.eligibleCount} éligible(s).`);
     } catch (error) {
-      setStatus(`Audit impossible : ${error.message}`, true);
+      if (refreshId !== state.catalogRefreshId || refreshContext !== `${state.shopKey}:${state.mode}`) return;
+      const cachedCatalogLoaded = await loadCachedCatalog({
+        renderStatus: false,
+        expectedRefreshId: refreshId,
+        expectedContext: refreshContext,
+      });
+      if (cachedCatalogLoaded) {
+        setStatus(`Audit Etsy impossible : ${error.message}. Snapshot local du ${state.catalog.scannedAt || 'dernier audit'} affiché en secours.`, true);
+      } else {
+        setStatus(`Audit impossible : ${error.message}`, true);
+      }
     } finally {
-      if (button) button.disabled = false;
+      if (button && refreshId === state.catalogRefreshId) button.disabled = false;
     }
   };
 
-  const loadCachedCatalog = async () => {
+  const loadCachedCatalog = async ({
+    renderStatus = true,
+    expectedRefreshId = state.catalogRefreshId,
+    expectedContext = `${state.shopKey}:${state.mode}`,
+  } = {}) => {
     try {
-      state.catalog = await fetchJson(shopUrl('/localization-backfill/catalog'));
-      if (state.catalog.count) {
+      const catalog = await fetchJson(contextUrl('/localization-backfill/catalog'));
+      if (expectedRefreshId !== state.catalogRefreshId || expectedContext !== `${state.shopKey}:${state.mode}`) return false;
+      state.catalog = catalog;
+      if (catalog.count) {
         renderCatalogConfig();
-        setStatus(`Audit du ${state.catalog.scannedAt || 'cache local'} chargé · ${state.catalog.count} fiche(s).`);
+        if (renderStatus) {
+          setStatus(`Snapshot local du ${state.catalog.scannedAt || 'dernier audit'} chargé en secours · ${state.catalog.count} fiche(s).`, true);
+        }
+        return true;
       }
     } catch (error) {}
+    return false;
   };
 
   const createRun = async () => {
@@ -368,6 +410,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shopKey: state.shopKey,
+          mode: state.mode,
           listingIds: [...state.selectedIds],
           languages: [...state.selectedLanguages],
           model: execution.model,
@@ -378,6 +421,42 @@
       setStatus(`Lot préparé : ${state.activeRun.createdJobs || state.activeRun.totalJobs} traduction(s) en attente. Clique sur Lancer les traductions quand tu es prêt.`);
     } catch (error) {
       setStatus(`Création du lot impossible : ${error.message}`, true);
+    }
+  };
+
+  const createFullRun = async () => {
+    if (!state.selectedIds.size) return;
+    const jobCount = state.selectedIds.size * Number(state.config?.languages?.length || 10);
+    const confirmed = global.confirm(
+      `Retraduire intégralement ${state.selectedIds.size} fiche(s), soit ${jobCount} traductions ?\n\nLes résultats resteront en aperçu et le rapport sera téléchargeable dès la fin. Rien ne sera publié automatiquement sur Etsy.`,
+    );
+    if (!confirmed) return;
+    const execution = getActiveTranslationExecution();
+    setStatus(`Retraduction complète · ${jobCount} traduction(s) · ${execution.model}…`);
+    try {
+      const preparedRun = await fetchJson('/localization-backfill/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopKey: state.shopKey,
+          mode: state.mode,
+          listingIds: [...state.selectedIds],
+          languages: (state.config?.languages || []).map(({ code }) => code),
+          model: execution.model,
+          reasoningEffort: execution.reasoningEffort,
+          forceExisting: true,
+        }),
+      });
+      state.activeRun = await fetchJson('/localization-backfill/run/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: preparedRun.runId, action: 'start' }),
+      });
+      renderRun();
+      scheduleRunPoll();
+      setStatus(`Retraduction complète lancée : ${jobCount} aperçu(s) à générer. Les traductions Etsy existantes restent intactes jusqu'à la publication séparée.`);
+    } catch (error) {
+      setStatus(`Retraduction complète impossible : ${error.message}`, true);
     }
   };
 
@@ -501,11 +580,29 @@
     const run = state.activeRun;
     const container = query('localization-run');
     if (!container || !run) return;
+    const isRunning = run.state === 'running';
+    const workspace = query('localization-catalog-workspace');
+    if (workspace) workspace.hidden = isRunning;
     container.hidden = false;
     const title = query('localization-run-title');
     const summary = query('localization-run-summary');
-    if (title) title.textContent = `${run.testMode ? 'TEST 4 × 10' : 'Lot'} ${run.runId.slice(0, 8)} · ${run.state}`;
+    const runKind = run.testMode ? 'TEST 4 × 10' : (run.forceExisting ? 'Retraduction complète' : 'Lot');
+    if (title) title.textContent = `${runKind} ${run.runId.slice(0, 8)} · ${run.state}`;
     if (summary) summary.textContent = `${run.totalJobs} job(s) · ${run.model} · réflexion ${run.reasoningEffort} · prompt ${run.promptVersion}${run.testMode ? ' · publication verrouillée' : ''}`;
+    const completion = query('localization-run-completion');
+    if (completion) {
+      const previewReadyCount = Number(run.counts?.preview_ready || 0);
+      const publishedCount = Number(run.counts?.published || 0);
+      const isCompleted = run.state === 'completed';
+      const isFailed = run.state === 'failed';
+      completion.hidden = !isCompleted && !isFailed;
+      completion.classList.toggle('is-error', isFailed);
+      completion.textContent = isFailed
+        ? `Traitement du lot terminé avec ${Number(run.counts?.failed || 0)} erreur(s) · ${previewReadyCount} aperçu(s) prêt(s).`
+        : (previewReadyCount > 0
+          ? `Traduction du lot terminée · ${previewReadyCount} aperçu(s) prêt(s) à contrôler.`
+          : (publishedCount > 0 ? `Publication du lot terminée · ${publishedCount} traduction(s) publiée(s).` : 'Traitement du lot terminé.'));
+    }
     const progress = query('localization-run-progress');
     if (progress) {
       progress.replaceChildren(
@@ -536,14 +633,31 @@
         card.append(header);
         if (job.output?.title) {
           const output = document.createElement('div');
-          const outputTitle = document.createElement('strong');
-          outputTitle.textContent = job.output.title;
-          const outputTags = document.createElement('p');
-          outputTags.textContent = (job.output.tags || []).join(' · ');
+          output.className = 'localization-job-output';
+          const createField = (label, value) => {
+            const field = document.createElement('div');
+            field.className = 'localization-job-field';
+            const heading = document.createElement('strong');
+            heading.textContent = label;
+            const content = document.createElement('p');
+            content.textContent = value || '—';
+            field.append(heading, content);
+            return field;
+          };
+          output.append(
+            createField('Titre français', job.listingTitle || ''),
+            createField(`Titre ${job.language.toUpperCase()} · ${job.output.title.length}/140`, job.output.title),
+            createField(`Tags ${job.language.toUpperCase()} · ${(job.output.tags || []).length}`, (job.output.tags || []).join(' · ')),
+          );
+          const descriptionField = document.createElement('div');
+          descriptionField.className = 'localization-job-field';
+          const descriptionLabel = document.createElement('strong');
+          descriptionLabel.textContent = `Description ${job.language.toUpperCase()}`;
           const outputDescription = document.createElement('pre');
           outputDescription.className = 'output-box';
           outputDescription.textContent = job.output.description || '';
-          output.append(outputTitle, outputTags, outputDescription);
+          descriptionField.append(descriptionLabel, outputDescription);
+          output.append(descriptionField);
           card.append(output);
         }
         if (job.error) {
@@ -574,7 +688,6 @@
         jobList.append(card);
       });
     }
-    const isRunning = run.state === 'running';
     const start = query('localization-run-start');
     const pause = query('localization-run-pause');
     const retry = query('localization-run-retry');
@@ -585,7 +698,7 @@
     if (start) start.disabled = isRunning || !['draft', 'paused', 'failed'].includes(run.state);
     if (pause) pause.disabled = !isRunning;
     if (retry) retry.disabled = isRunning || failed === 0;
-    if (exportButton) exportButton.disabled = !run.runId;
+    if (exportButton) exportButton.disabled = isRunning || !run.runId;
     if (publish) {
       publish.hidden = !!run.testMode;
       publish.disabled = !!run.testMode || isRunning || previewReady === 0;
@@ -614,29 +727,66 @@
     if (state.activeRun?.state === 'running') state.pollTimer = global.setTimeout(pollRun, 2500);
   };
 
-  const switchView = (view) => {
+  const mountCatalogPanel = (mode) => {
+    const catalog = query('localization-backfill');
+    const host = queryAll('localization-backfill-host')
+      .find((node) => node.dataset.localizationMode === mode);
+    if (catalog && host && catalog.parentElement !== host) host.append(catalog);
+  };
+
+  const applyView = (mode, view) => {
     const normalizedView = ['single', 'catalog', 'automation'].includes(view) ? view : 'single';
-    const single = query('localization-single-workflow');
+    const normalizedMode = mode === 'tabletop' ? 'tabletop' : 'collection';
+    const effectiveView = normalizedMode === 'tabletop' && normalizedView === 'automation'
+      ? 'single'
+      : normalizedView;
+    state.viewByMode[normalizedMode] = effectiveView;
+    mountCatalogPanel(normalizedMode);
     const catalog = query('localization-backfill');
     const automation = query('localization-automation');
-    if (single) single.hidden = normalizedView !== 'single';
-    if (catalog) catalog.hidden = normalizedView !== 'catalog';
-    if (automation) automation.hidden = normalizedView !== 'automation';
+    queryAll('localization-single-workflow').forEach((workflow) => {
+      if (workflow.dataset.localizationMode === normalizedMode) {
+        workflow.hidden = effectiveView !== 'single';
+      }
+    });
+    if (catalog) catalog.hidden = effectiveView !== 'catalog';
+    if (automation) automation.hidden = !(normalizedMode === 'collection' && effectiveView === 'automation');
     queryAll('localization-view-switch').forEach((button) => {
-      const active = button.dataset.localizationView === normalizedView;
+      const buttonMode = button.dataset.localizationMode || 'collection';
+      const active = button.dataset.localizationView === state.viewByMode[buttonMode];
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-selected', String(active));
     });
     global.dispatchEvent(new CustomEvent('pipeline:localization-view-changed', {
-      detail: { view: normalizedView, shopKey: state.shopKey },
+      detail: { view: effectiveView, shopKey: state.shopKey, mode: normalizedMode },
     }));
   };
 
+  const switchView = async (view, mode = state.mode) => {
+    const normalizedMode = mode === 'tabletop' ? 'tabletop' : 'collection';
+    if (state.mode !== normalizedMode) await loadContext(state.shopKey, normalizedMode);
+    applyView(normalizedMode, view);
+    if (view === 'catalog' && state.activeRun?.state !== 'running') await refreshCatalog();
+  };
+
   const handleClick = (event) => {
+    const translationTab = event.target.closest('[data-collection-tab="translation"], [data-dnd-tab="translation"]');
+    if (translationTab) {
+      const mode = translationTab.hasAttribute('data-dnd-tab') ? 'tabletop' : 'collection';
+      if (state.viewByMode[mode] === 'catalog') {
+        switchView('catalog', mode).catch((error) => {
+          setStatus(`Ouverture du backfill impossible : ${error.message}`, true);
+        });
+      }
+    }
     const trigger = event.target.closest('[data-js]');
     if (!trigger) return;
     const hook = trigger.dataset.js;
-    if (hook === 'localization-view-switch') switchView(trigger.dataset.localizationView);
+    if (hook === 'localization-view-switch') {
+      switchView(trigger.dataset.localizationView, trigger.dataset.localizationMode).catch((error) => {
+        setStatus(`Ouverture du backfill impossible : ${error.message}`, true);
+      });
+    }
     if (hook === 'localization-catalog-refresh') refreshCatalog();
     if (hook === 'localization-select-page') {
       getPagedListings().listings.forEach((listing) => state.selectedIds.add(listing.listingId));
@@ -653,6 +803,7 @@
       renderCatalogRows();
       scheduleEstimate();
     }
+    if (hook === 'localization-create-full-run') createFullRun();
     if (hook === 'localization-create-run') createRun();
     if (hook === 'localization-run-start') runAction(state.activeRun?.state === 'paused' ? 'resume' : 'start');
     if (hook === 'localization-run-pause') runAction('pause');
@@ -684,12 +835,12 @@
       renderSelectionState();
       scheduleEstimate();
     }
-    if (['localization-filter-section', 'localization-filter-language'].includes(hook)) {
+    if (['localization-filter-section', 'localization-filter-language', 'localization-filter-missing-only'].includes(hook)) {
       state.page = 1;
       renderCatalogRows();
     }
     if (hook === 'localization-page-size') {
-      state.pageSize = Number(trigger.value) || 100;
+      state.pageSize = Number(trigger.value) || 25;
       state.page = 1;
       renderCatalogRows();
     }
@@ -703,7 +854,7 @@
 
   const restoreLatestRun = async () => {
     try {
-      const payload = await fetchJson(shopUrl('/localization-backfill/runs'));
+      const payload = await fetchJson(contextUrl('/localization-backfill/runs'));
       const latest = payload.runs?.[0];
       if (!latest) return;
       state.activeRun = await fetchJson(`/localization-backfill/run?id=${encodeURIComponent(latest.runId)}`);
@@ -712,8 +863,10 @@
     } catch (error) {}
   };
 
-  const loadShopContext = async (shopKey = getActiveShopKey()) => {
+  const loadContext = async (shopKey = getActiveShopKey(), mode = state.mode) => {
+    state.catalogRefreshId += 1;
     state.shopKey = shopKey === 'doublex' ? 'doublex' : 'grosgeek';
+    state.mode = mode === 'tabletop' ? 'tabletop' : 'collection';
     state.catalog = null;
     state.selectedIds.clear();
     state.selectedLanguages.clear();
@@ -724,13 +877,16 @@
     global.clearTimeout(state.pollTimer);
     const runContainer = query('localization-run');
     if (runContainer) runContainer.hidden = true;
+    const catalogWorkspace = query('localization-catalog-workspace');
+    if (catalogWorkspace) catalogWorkspace.hidden = false;
     const kicker = query('localization-backfill-kicker');
-    if (kicker) kicker.textContent = `Localisation · Catalogue ${shopLabel()}`;
+    if (kicker) kicker.textContent = `Localisation · ${modeLabel()} · ${shopLabel()}`;
+    mountCatalogPanel(state.mode);
     try {
-      state.config = await fetchJson(shopUrl('/localization-backfill/config'));
+      state.config = await fetchJson(contextUrl('/localization-backfill/config'));
       renderLanguagePicker();
       renderSelectionState();
-      await Promise.all([loadCachedCatalog(), restoreLatestRun()]);
+      await restoreLatestRun();
     } catch (error) {
       setStatus(`Initialisation backfill impossible : ${error.message}`, true);
     }
@@ -744,9 +900,17 @@
     document.addEventListener('change', handleChange);
     document.addEventListener('input', handleInput);
     global.addEventListener('pipeline:shop-changed', (event) => {
-      loadShopContext(event.detail?.shopKey).catch(() => {});
+      loadContext(event.detail?.shopKey, state.mode)
+        .then(() => {
+          if (state.viewByMode[state.mode] === 'catalog' && state.activeRun?.state !== 'running') return refreshCatalog();
+          return null;
+        })
+        .catch(() => {});
     });
-    await loadShopContext();
+    await loadContext();
+    applyView('collection', state.viewByMode.collection);
+    applyView('tabletop', state.viewByMode.tabletop);
+    mountCatalogPanel(state.mode);
   };
 
   global.PipelineUILocalizationBackfill = Object.freeze({ init, refreshCatalog, switchView });

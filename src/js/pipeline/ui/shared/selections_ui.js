@@ -1180,6 +1180,7 @@
   bindSelectionDelegation();
 
   global.PipelineUISelections = {
+    getCommonProductTags,
     getPipelineSeedStorageKey,
     buildPipelineSeedSnapshot,
     persistPipelineSeedSnapshot,

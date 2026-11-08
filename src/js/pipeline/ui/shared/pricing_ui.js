@@ -28,6 +28,7 @@
       stateByPrefix.set(prefix, {
         calculator: createDefaultCalculator(),
         rows: {},
+        gridAssistant: { useReferences: true },
       });
     }
     return stateByPrefix.get(prefix);
@@ -181,6 +182,26 @@
           </div>
           <p>Jusqu’à 100 €, palier .99 inférieur. Entre 100 € et 200 €, palier le plus proche. À partir de 200 €, palier supérieur.</p>
         </div>
+        <div class="pricing-grid-assistant">
+          <div class="pricing-grid-assistant-head">
+            <div>
+              <span class="pricing-eyebrow">AIDE À LA GRILLE FR</span>
+              <h3>Calculer tous les prix par échelle</h3>
+              <p>Deux prix saisis suffisent pour interpoler ou extrapoler les autres échelles. Tes prix manuels restent prioritaires.</p>
+            </div>
+            <label class="pricing-reference-toggle">
+              <input type="checkbox" data-grid-use-references checked>
+              <span>Utiliser mes grilles validées</span>
+            </label>
+          </div>
+          <div class="pricing-grid-actions">
+            <button class="btn btn-accent" type="button" data-grid-calculate>Calculer toute la grille</button>
+            <button class="btn btn-muted" type="button" data-grid-validate>Valider comme référence</button>
+            <button class="btn btn-muted" type="button" data-grid-clear>Vider les prix</button>
+            <button class="btn btn-muted" type="button" data-grid-clear-history>Effacer les références</button>
+          </div>
+          <p class="pricing-grid-status" data-grid-status aria-live="polite"></p>
+        </div>
         <div class="pricing-table-wrap">
           <table class="pricing-scale-table">
             <thead><tr><th>Scale</th><th>Prix FR</th><th>US sans compensation</th><th>Compensation logistique</th><th>US final client</th><th>EUR à saisir dans Etsy</th></tr></thead>
@@ -222,7 +243,7 @@
   };
 
   const copyValue = async (value) => {
-    const text = String(value || '');
+    const text = String(value || '').replace(',', '.');
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
@@ -249,7 +270,7 @@
       const key = row.dataset.pricingRow;
       const price = row.querySelector('[data-price-fr]')?.value || '';
       const compensation = row.querySelector('[data-compensation-value]')?.value || '0';
-      state.rows[key] = { priceFr: price, compensation };
+      state.rows[key] = { ...(state.rows[key] || {}), priceFr: price, compensation };
     });
   };
 
@@ -296,6 +317,13 @@
     };
 
     priceInput.addEventListener('input', () => {
+      const key = row.dataset.pricingRow;
+      getState(prefix).rows[key] = {
+        ...(getState(prefix).rows[key] || {}),
+        source: priceInput.value ? 'manual' : '',
+      };
+      row.classList.remove('is-calculated-price');
+      row.querySelector('[data-price-source]')?.remove();
       updatePricingRow(row);
       persist(prefix);
     });
@@ -342,8 +370,8 @@
         compensation: '0',
       };
       return `
-        <tr data-pricing-row="${entry.key}" tabindex="0" title="Cliquer pour copier la valeur EUR Etsy">
-          <td class="pricing-scale-cell"><strong>${escapeHtml(entry.label)}</strong>${entry.isOrigin ? '<span>Origine</span>' : ''}</td>
+        <tr data-pricing-row="${entry.key}" class="${rowState.source === 'calculated' ? 'is-calculated-price' : ''}" tabindex="0" title="Cliquer pour copier la valeur EUR Etsy">
+          <td class="pricing-scale-cell"><strong>${escapeHtml(entry.label)}</strong>${entry.isOrigin ? '<span>Origine</span>' : ''}${rowState.source === 'calculated' ? '<span class="is-calculated" data-price-source>Calculé</span>' : ''}</td>
           <td><label class="pricing-money-input"><input data-price-fr type="number" min="0" step="5" inputmode="decimal" value="${escapeHtml(rowState.priceFr)}"><span>€</span></label></td>
           <td data-us-natural>—</td>
           <td>
@@ -365,6 +393,97 @@
       updatePricingRow(row);
     });
 
+  };
+
+  const getReferenceScope = (prefix) => ({
+    shop: global.PipelineUIForms?.getActiveShopKey?.() || 'grosgeek',
+    mode: prefix === 'col' ? 'collection' : 'tabletop',
+  });
+
+  const setGridStatus = (prefix, message, type = '') => {
+    const status = document.querySelector(`[data-pricing-prefix="${prefix}"] [data-grid-status]`);
+    if (!status) return;
+    status.textContent = message;
+    status.className = `pricing-grid-status${type ? ` is-${type}` : ''}`;
+  };
+
+  const updateGridAssistantUi = (prefix) => {
+    const root = document.querySelector(`[data-pricing-prefix="${prefix}"]`);
+    if (!root) return;
+    const assistant = getState(prefix).gridAssistant || { useReferences: true };
+    const toggle = root.querySelector('[data-grid-use-references]');
+    if (toggle) toggle.checked = assistant.useReferences !== false;
+    const count = global.PipelinePricingGridAssistant?.getReferenceCount(getReferenceScope(prefix)) || 0;
+    setGridStatus(prefix, `${count} grille${count > 1 ? 's' : ''} validée${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''} pour cette boutique et ce mode.`);
+  };
+
+  const calculateFullPriceGrid = (prefix) => {
+    captureRows(prefix);
+    const state = getState(prefix);
+    const result = global.PipelinePricingGridAssistant?.calculate({
+      entries: getSelectedScales(prefix),
+      rows: state.rows,
+      scope: getReferenceScope(prefix),
+      useReferences: state.gridAssistant?.useReferences !== false,
+    });
+    if (!result || result.error) {
+      setGridStatus(prefix, result?.error || 'Le moteur de calcul de grille est indisponible.', 'error');
+      return;
+    }
+    Object.entries(result.updates).forEach(([key, update]) => {
+      state.rows[key] = {
+        ...(state.rows[key] || {}),
+        ...update,
+        compensation: state.rows[key]?.compensation || '0',
+      };
+    });
+
+    renderScaleRows(prefix, { captureExisting: false });
+    persist(prefix);
+    const method = result.historyCount
+      ? `${result.historyCount} prix appuyé${result.historyCount > 1 ? 's' : ''} sur tes références, le reste en progression proportionnelle`
+      : 'progression proportionnelle, sans règle de volume';
+    const ignored = result.ignoredCount ? ` · ${result.ignoredCount} échelle${result.ignoredCount > 1 ? 's' : ''} non fractionnaire ignorée${result.ignoredCount > 1 ? 's' : ''}` : '';
+    setGridStatus(prefix, `${result.calculatedCount} prix calculé${result.calculatedCount > 1 ? 's' : ''} · ${method}${ignored}`, result.calculatedCount ? 'ok' : 'error');
+  };
+
+  const validateCurrentGrid = (prefix) => {
+    captureRows(prefix);
+    const state = getState(prefix);
+    const result = global.PipelinePricingGridAssistant?.saveReference({
+      entries: getSelectedScales(prefix),
+      rows: state.rows,
+      scope: getReferenceScope(prefix),
+    });
+    if (!result || result.error) {
+      setGridStatus(prefix, result?.error || 'Le moteur de référence est indisponible.', 'error');
+      return;
+    }
+    setGridStatus(prefix, `Grille validée · ${result.priceCount} prix mémorisés · ${result.referenceCount} référence(s) disponible(s).`, 'ok');
+  };
+
+  const clearCurrentGrid = (prefix) => {
+    if (!global.confirm('Vider tous les prix FR de la grille actuelle ?')) return;
+    captureRows(prefix);
+    const state = getState(prefix);
+    Object.keys(state.rows).forEach((key) => {
+      state.rows[key] = { ...state.rows[key], priceFr: '', source: '' };
+    });
+    renderScaleRows(prefix, { captureExisting: false });
+    persist(prefix);
+    setGridStatus(prefix, 'Prix de la grille actuelle vidés. Les références mémorisées sont intactes.', 'ok');
+  };
+
+  const clearReferenceHistory = (prefix) => {
+    const scope = getReferenceScope(prefix);
+    const scopedCount = global.PipelinePricingGridAssistant?.getReferenceCount(scope) || 0;
+    if (!scopedCount) {
+      setGridStatus(prefix, 'Aucune grille validée à effacer pour cette boutique et ce mode.');
+      return;
+    }
+    if (!global.confirm(`Effacer ${scopedCount} grille(s) de référence pour cette boutique et ce mode ?`)) return;
+    global.PipelinePricingGridAssistant.clearReferences(scope);
+    setGridStatus(prefix, 'Historique des grilles de référence effacé.', 'ok');
   };
 
   const getCalculatedRecommendation = (prefix) => {
@@ -512,6 +631,7 @@
       ...(state.rows[origin.key] || {}),
       priceFr: Number(total).toFixed(2),
       compensation: state.rows[origin.key]?.compensation || '0',
+      source: 'manual',
     };
     renderScaleRows(prefix, { captureExisting: false });
     return true;
@@ -634,6 +754,15 @@
     root.querySelector('[data-recommendation-copy]').addEventListener('click', (event) => {
       copyValue(event.currentTarget.dataset.copyValue);
     });
+    root.querySelector('[data-grid-use-references]').addEventListener('change', (event) => {
+      getState(prefix).gridAssistant = { useReferences: event.currentTarget.checked };
+      persist(prefix);
+      updateGridAssistantUi(prefix);
+    });
+    root.querySelector('[data-grid-calculate]').addEventListener('click', () => calculateFullPriceGrid(prefix));
+    root.querySelector('[data-grid-validate]').addEventListener('click', () => validateCurrentGrid(prefix));
+    root.querySelector('[data-grid-clear]').addEventListener('click', () => clearCurrentGrid(prefix));
+    root.querySelector('[data-grid-clear-history]').addEventListener('click', () => clearReferenceHistory(prefix));
     root.querySelector('[data-usd-rate]').addEventListener('input', (event) => {
       const rate = readNumber(event.target.value);
       if (!Number.isFinite(rate) || rate <= 0) return;
@@ -656,6 +785,7 @@
     if (savedRateDate) setRateStatus(`Dernier taux BCE vérifié • ${savedRateDate} • 1 USD = ${getRate().toFixed(6)} EUR`, 'ok');
     renderScaleRows(prefix);
     renderReferenceTable(prefix);
+    updateGridAssistantUi(prefix);
   };
 
   const initialize = () => PREFIXES.forEach(initializePrefix);
@@ -688,15 +818,21 @@
     if (savedState && typeof savedState === 'object') {
       const calculator = { ...createDefaultCalculator(), ...(savedState.calculator || {}) };
       const rows = savedState.rows && typeof savedState.rows === 'object' ? savedState.rows : {};
-      stateByPrefix.set(prefix, { calculator, rows });
+      const gridAssistant = { useReferences: true, ...(savedState.gridAssistant || {}) };
+      stateByPrefix.set(prefix, { calculator, rows, gridAssistant });
     }
     restoreCalculatorUi(prefix);
     renderScaleRows(prefix, { captureExisting: false });
+    updateGridAssistantUi(prefix);
   };
 
   document.addEventListener('pipeline:scales-changed', (event) => {
     const prefix = event.detail?.prefix;
     if (PREFIXES.includes(prefix)) renderScaleRows(prefix);
+  });
+
+  global.addEventListener('pipeline:shop-changed', () => {
+    PREFIXES.forEach(updateGridAssistantUi);
   });
 
   global.PipelineUIPricing = {
@@ -706,6 +842,7 @@
     restore,
     getPublicationRows,
     suggestedUsdFromEuro,
+    calculateFullPriceGrid,
   };
   global.PipelineUI.pricing = global.PipelineUIPricing;
 

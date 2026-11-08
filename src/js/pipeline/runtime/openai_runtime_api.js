@@ -9,6 +9,8 @@
     traduction_listing_en: 10000, traduction_listing_de: 10000,
     traduction_listing_es: 10000, traduction_listing_it: 12000,
     traduction_listing_nl: 12000, traduction_listing_pt: 12000,
+    traduction_listing_ja: 12000, traduction_listing_pl: 12000,
+    traduction_listing_ru: 12000, traduction_listing_sv: 12000,
   });
 
   const getMaxOutputTokens = (agentId = '') => Number(MAX_OUTPUT_TOKENS[String(agentId).trim()]) || 8000;
@@ -129,7 +131,7 @@
     const rawInput = Math.max(0, Number(usage.input_tokens) || 0);
     const details = usage.input_tokens_details || {};
     const cached = Math.max(0, Number(details.cached_tokens) || 0);
-    const cacheWrite = Math.max(0, Number(details.cache_write_tokens) || 0);
+    const cacheWrite = Math.max(0, Number(details.cache_write_tokens ?? usage.cache_write_tokens ?? usage.cache_creation_input_tokens) || 0);
     const ordinaryInput = Math.max(0, rawInput - cached - cacheWrite);
     const reasoningTokens = Math.max(0, Number(usage.output_tokens_details?.reasoning_tokens) || 0);
     return {

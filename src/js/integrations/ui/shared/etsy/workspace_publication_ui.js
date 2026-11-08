@@ -68,7 +68,7 @@
         getActiveShopKey: deps.getActiveShopKey,
       }) || sourceShopKey
     );
-    const canTransferToDoublex = sourceShopKey === 'grosgeek';
+    const canTransferToDoublex = sourceShopKey === 'grosgeek' && primaryPublishShopKey !== 'doublex';
     const transferTargetShopKey = 'doublex';
     const transferDisabled = state.publicationSubmitting || publicationMode !== 'create_draft';
     const sourceListingState = String(snapshot.sourceListingState || state.sourceListingState || '').trim().toLowerCase();

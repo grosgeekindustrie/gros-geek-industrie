@@ -56,9 +56,10 @@
     return stripOuterBlankLines(rawValue);
   }
 
-  function resolveDescriptionFamilyFromPrefix(prefix = '') {
+  function resolveDescriptionFamilyFromPrefix(prefix = '', shopKeyOverride = '') {
     const baseFamily = PREFIX_TO_FAMILY[String(prefix || '').trim()] || 'collection';
-    if (getActiveShopKey() === 'doublex') {
+    const resolvedShopKey = String(shopKeyOverride || getActiveShopKey()).trim();
+    if (resolvedShopKey === 'doublex') {
       if (baseFamily === 'collection') return 'collection_doublex';
       if (baseFamily === 'tabletop') return 'tabletop_doublex';
     }
@@ -230,18 +231,23 @@
       .join('');
   }
 
-  function assertDynamicFanArtBlockPreserved(rawSource, rawTranslation) {
+  function assertDynamicFanArtBlockPreserved(rawSource, rawTranslation, language = '') {
     const sourceHasDynamicFanArt = /^(?:🎭\s*)?Fan Art et artiste\s*:/im.test(String(rawSource || ''));
     if (!sourceHasDynamicFanArt) return;
 
-    const translationHasDynamicFanArt = /^(?:🎭\s*)?Fan[ -]?Art\b[^\n]*:/im.test(String(rawTranslation || ''));
+    const translationHasDynamicFanArt = String(language || '').toLowerCase() === 'it'
+      ? /^(?:🎭\s*)?Opera ispirata e artista\s*:/im.test(String(rawTranslation || ''))
+      : /^(?:🎭\s*)?Fan[ -]?Art\b[^\n]*:/im.test(String(rawTranslation || ''));
     if (!translationHasDynamicFanArt) {
-      throw new Error('La traduction a supprimé le bloc dynamique Fan Art et artiste. Relance cette langue.');
+      throw new Error('La traduction a supprimé le bloc dynamique de présentation de l’artiste. Relance cette langue.');
     }
   }
 
   function buildTranslatedDescriptionWithFixedBlocks(dynamicDescription, family = '', language = '', sourceDescription = '') {
-    assertDynamicFanArtBlockPreserved(sourceDescription, dynamicDescription);
+    if (String(language || '').toLowerCase() === 'it' && /fan[\s-]?art/i.test(String(dynamicDescription || ''))) {
+      throw new Error('La description italienne contient le terme interdit « Fan Art ». Relance cette langue.');
+    }
+    assertDynamicFanArtBlockPreserved(sourceDescription, dynamicDescription, language);
     const spacedDescription = restoreTranslationSourceSpacing(dynamicDescription, sourceDescription);
     const dynamicOnly = stripDecorativeFixedBlocks(spacedDescription, family, language).description;
     const introBlocks = getIntroBlocksForFamilyAndLanguage(family, language);
@@ -275,12 +281,12 @@
     return remaining.replace(/^(?:[ \t]*\n)+/g, '');
   }
 
-  function buildFinalPipelineDescription(prefix, dynamicDescription) {
+  function buildFinalPipelineDescriptionForContext(prefix, dynamicDescription, context = {}) {
     const rawDynamicDescription = stripLeadingDescriptionHeading(dynamicDescription);
     if (!rawDynamicDescription) return '';
 
-    const family = resolveDescriptionFamilyFromPrefix(prefix);
-    const ctx = buildDescriptionAssemblyContext(prefix);
+    const family = resolveDescriptionFamilyFromPrefix(prefix, context.shopKey);
+    const ctx = context && Object.keys(context).length ? context : buildDescriptionAssemblyContext(prefix);
     const introBlocks = family === 'collection'
       ? [buildWhatYouReceiveBlock(ctx)]
       : getIntroBlocksForFamilyAndLanguage(family, 'fr');
@@ -296,6 +302,10 @@
       rawDynamicDescription,
       ...fixedClientBlocks,
     ]);
+  }
+
+  function buildFinalPipelineDescription(prefix, dynamicDescription) {
+    return buildFinalPipelineDescriptionForContext(prefix, dynamicDescription, buildDescriptionAssemblyContext(prefix));
   }
 
   global.PipelineUIDescriptionAssembly = {
@@ -315,6 +325,7 @@
     buildTranslatedDescriptionWithFixedBlocks,
     buildDescriptionAssemblyContext,
     stripLeadingDescriptionHeading,
+    buildFinalPipelineDescriptionForContext,
     buildFinalPipelineDescription,
   };
 

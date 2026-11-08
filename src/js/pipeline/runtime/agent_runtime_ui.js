@@ -152,6 +152,29 @@
 
   async function continuePipelineAfterSelection(agentId) {
     const prefix = global.pfx();
+    const renewalReview = global.state?.renewalWorkshopReview;
+    if (renewalReview?.active) {
+      if (agentId === 'titre') {
+        global.buildTagsUI?.(String(renewalReview.outputs?.tags_raw || ''));
+        document.getElementById(`${prefix}-card-tags`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (agentId === 'tags') {
+        global.buildAccrocheCTASelectionUI?.('description', String(renewalReview.outputs?.description || ''));
+        document.getElementById(`${prefix}-card-description`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (agentId === 'description') {
+        global.state.outputs.alt = String(renewalReview.outputs?.alt || '');
+        global.setPipelineRunEntry?.(prefix, 'alt', global.state.outputs.alt, {
+          quality: 'net', validation: 'valide', origin: 'auto', sourceAgentId: 'alt',
+        });
+        global.assembleFinal?.();
+        await global.PipelineUIRenewals?.captureReviewFromPipeline?.();
+        global.showToast?.('Sélections du renouvellement enregistrées', '#4caf7d', 3200);
+        return;
+      }
+    }
     const continuationAgents = getContinuationAgentsAfterSelection(prefix, agentId);
 
     if (!continuationAgents.length) {
@@ -278,15 +301,52 @@
   }
 
   function normalizeAgentRunOptions(options = {}) {
-    if (typeof options === 'boolean') return { isRetry: options, aiProfileSnapshot: null };
+    if (typeof options === 'boolean') return { isRetry: options, aiProfileSnapshot: null, candidateFlow: false };
     return {
       isRetry: options?.isRetry === true,
       aiProfileSnapshot: options?.aiProfileSnapshot || null,
+      candidateFlow: options?.candidateFlow === true,
     };
   }
 
+  function storeCandidateFlowOutput(prefix, agent, result) {
+    const normalizedResult = String(result || '').trim();
+    const commonTags = agent.id === 'tags'
+      ? (global.getCommonProductTags?.() || []).map((tag) => String(tag || '').trim()).filter(Boolean)
+      : [];
+    if (agent.id === 'titre') {
+      global.state.outputs.titre = normalizedResult;
+      global.state.outputs.titre_valide = `TITRES_CANDIDATS:\n${normalizedResult}`;
+      global.setPipelineRunEntry(prefix, 'TITRES_CANDIDATS', normalizedResult, {
+        quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id,
+      });
+      return;
+    }
+    if (agent.id === 'tags') {
+      global.state.outputs.tags_raw = normalizedResult;
+      global.state.outputs.tags = [
+        `TAGS_CANDIDATS:\n${normalizedResult}`,
+        commonTags.length ? `TAGS_METIER:\n${commonTags.map((tag) => `- ${tag}`).join('\n')}` : '',
+      ].filter(Boolean).join('\n\n');
+      global.setPipelineRunEntry(prefix, 'TAGS_CANDIDATS', normalizedResult, {
+        quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id,
+      });
+      if (commonTags.length) {
+        global.setPipelineRunEntry(prefix, 'TAGS_METIER', commonTags.join('\n'), {
+          quality: 'net', validation: 'metier', origin: 'bibliotheque', sourceAgentId: agent.id,
+        });
+      }
+      return;
+    }
+    global.state.outputs[agent.id] = normalizedResult;
+    if (agent.id === 'description') global.state.outputs.description_assembled = normalizedResult;
+    global.setPipelineRunEntry(prefix, `${agent.id.toUpperCase()}_CANDIDAT`, normalizedResult, {
+      quality: 'brut', validation: 'non_valide', origin: 'auto', sourceAgentId: agent.id,
+    });
+  }
+
   async function runAgent(agent, correction = '', options = {}) {
-    const { isRetry, aiProfileSnapshot: explicitProfileSnapshot } = normalizeAgentRunOptions(options);
+    const { isRetry, aiProfileSnapshot: explicitProfileSnapshot, candidateFlow } = normalizeAgentRunOptions(options);
     const prefix = global.pfx();
     const refs = global.beginAgentExecution(prefix, agent, { isRetry });
 
@@ -317,7 +377,9 @@
       const result = response.text;
       const usage = response.usage || null;
 
-      if (agent.selectionType === 'tags') {
+      if (candidateFlow) {
+        storeCandidateFlowOutput(prefix, agent, result);
+      } else if (agent.selectionType === 'tags') {
         global.state.outputs.tags_raw = result;
         global.state.outputs.tags = '';
       } else {
@@ -327,7 +389,7 @@
         }
       }
 
-      if (!agent.hasSelection) {
+      if (!agent.hasSelection && !candidateFlow) {
         global.appendPipelineRunEntry(prefix, agent.id, result, {
           quality: PIPELINE_RUN_AUTO_ENTRY_DEFAULTS.quality,
           validation: PIPELINE_RUN_AUTO_ENTRY_DEFAULTS.validation,
@@ -373,6 +435,7 @@
     rerunAgent,
     rerunSuite,
     normalizeAgentRunOptions,
+    storeCandidateFlowOutput,
     runAgent,
   };
 

@@ -1,0 +1,420 @@
+.home-card-communication::after {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 64%);
+}
+
+.home-card-communication .home-card-icon {
+  color: var(--accent);
+}
+
+.communication-workspace {
+  --com-canvas: #111318;
+  --com-surface: #181b22;
+  --com-raised: #20242d;
+  --com-border: rgba(255, 255, 255, 0.1);
+  --com-border-strong: rgba(255, 255, 255, 0.16);
+  --com-accent: #ff7a18;
+  --com-accent-soft: #ffb347;
+  --com-text: #f5f7fb;
+  --com-text-soft: #c5ccda;
+  --com-muted: #929bad;
+  --com-success: #58d68d;
+  min-height: 100vh;
+  padding: clamp(1.5rem, 3.5vw, 4rem);
+  background:
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--com-accent) 9%, transparent), transparent 29rem),
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--com-accent-soft) 7%, transparent), transparent 26rem),
+    var(--com-canvas);
+  color: var(--com-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.shop-doublex .communication-workspace {
+  --com-canvas: #140f15;
+  --com-surface: #1d151d;
+  --com-raised: #291d29;
+  --com-border: rgba(255, 235, 246, 0.11);
+  --com-border-strong: rgba(255, 235, 246, 0.18);
+  --com-accent: #f39ac3;
+  --com-accent-soft: #f0b37e;
+  --com-text: #fff7fb;
+  --com-text-soft: #d9c2d0;
+  --com-muted: #a98b9e;
+}
+
+.communication-workspace *,
+.communication-workspace *::before,
+.communication-workspace *::after {
+  box-sizing: border-box;
+}
+
+.communication-workspace :where(h1, h2, h3, p) {
+  margin: 0;
+}
+
+.communication-workspace :where(button, input, textarea) {
+  font: inherit;
+}
+
+.communication-shell {
+  width: min(76rem, 100%);
+  margin: 0 auto;
+}
+
+.communication-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: flex-end;
+  padding: clamp(1.75rem, 4vw, 3.5rem);
+  border: 1px solid color-mix(in srgb, var(--com-accent) 24%, var(--com-border));
+  border-radius: 1.6rem;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--com-accent) 9%, transparent), transparent 46%),
+    color-mix(in srgb, var(--com-surface) 96%, transparent);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.3);
+}
+
+.communication-kicker,
+.communication-field-label,
+.communication-template-meta {
+  color: var(--com-accent);
+  font: 750 0.72rem/1.5 "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.communication-hero h1 {
+  margin-top: 0.55rem;
+  font-size: clamp(2.35rem, 5vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.communication-hero p:last-child {
+  max-width: 48rem;
+  margin-top: 1rem;
+  color: var(--com-text-soft);
+  line-height: 1.7;
+}
+
+.communication-language-count {
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--com-border-strong);
+  border-radius: 999px;
+  color: var(--com-text-soft);
+  background: color-mix(in srgb, var(--com-canvas) 70%, transparent);
+  font: 700 0.72rem/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.communication-template-list {
+  display: grid;
+  gap: 1rem;
+  width: min(54rem, 100%);
+  margin: 3rem auto 0;
+}
+
+.communication-template-card {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: 1.25rem;
+  align-items: center;
+  width: 100%;
+  padding: 1.35rem;
+  border: 1px solid var(--com-border);
+  border-radius: 1.15rem;
+  color: var(--com-text);
+  background: var(--com-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.communication-template-card:hover,
+.communication-template-card:focus-visible {
+  border-color: color-mix(in srgb, var(--com-accent) 62%, var(--com-border));
+  transform: translateY(-2px);
+  box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.22);
+  outline: none;
+}
+
+.communication-template-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--com-accent) 35%, transparent);
+  border-radius: 0.9rem;
+  color: var(--com-accent);
+  background: color-mix(in srgb, var(--com-accent) 10%, transparent);
+  font-size: 1.35rem;
+}
+
+.communication-template-card h2 {
+  margin: 0.25rem 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+.communication-template-card p {
+  color: var(--com-text-soft);
+  line-height: 1.55;
+}
+
+.communication-template-arrow {
+  color: var(--com-accent);
+  font-size: 1.5rem;
+}
+
+.communication-editor {
+  display: grid;
+  grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.communication-controls,
+.communication-message-panel {
+  border: 1px solid var(--com-border);
+  border-radius: 1.2rem;
+  background: color-mix(in srgb, var(--com-surface) 96%, transparent);
+}
+
+.communication-controls {
+  align-self: start;
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  position: sticky;
+  top: 5.5rem;
+}
+
+.communication-back {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  color: var(--com-accent);
+  background: transparent;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.communication-controls h2 {
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.communication-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+fieldset.communication-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+fieldset.communication-field > legend {
+  margin-bottom: 0.5rem;
+  padding: 0;
+}
+
+.communication-field input[type="text"] {
+  width: 100%;
+  padding: 0.82rem 0.9rem;
+  border: 1px solid var(--com-border-strong);
+  border-radius: 0.75rem;
+  color: var(--com-text);
+  background: var(--com-canvas);
+  outline: none;
+}
+
+.communication-field input[type="text"]:focus {
+  border-color: var(--com-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--com-accent) 13%, transparent);
+}
+
+.communication-radio-group,
+.communication-checks {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.communication-radio,
+.communication-check {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  color: var(--com-text-soft);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.communication-radio input,
+.communication-check input {
+  margin-top: 0.18rem;
+  accent-color: var(--com-accent);
+}
+
+.communication-fixed-note {
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--com-accent) 24%, var(--com-border));
+  border-radius: 0.75rem;
+  color: var(--com-text-soft);
+  background: color-mix(in srgb, var(--com-accent) 7%, transparent);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.communication-message-panel {
+  min-width: 0;
+  padding: 1.25rem;
+}
+
+.communication-language-tabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0 0 0.85rem;
+  scrollbar-width: thin;
+}
+
+.communication-language-tab {
+  flex: 0 0 auto;
+  min-width: 3rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--com-border);
+  border-radius: 0.65rem;
+  color: var(--com-muted);
+  background: var(--com-canvas);
+  cursor: pointer;
+  font: 750 0.7rem/1 "JetBrains Mono", monospace;
+}
+
+.communication-language-tab:hover,
+.communication-language-tab.is-active {
+  border-color: var(--com-accent);
+  color: var(--com-text);
+}
+
+.communication-language-tab.is-active {
+  background: color-mix(in srgb, var(--com-accent) 13%, var(--com-canvas));
+}
+
+.communication-message-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin: 0.2rem 0 0.9rem;
+}
+
+.communication-message-head div {
+  min-width: 0;
+}
+
+.communication-message-head h3 {
+  margin-top: 0.25rem;
+  font-size: 1.1rem;
+}
+
+.communication-message-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.communication-action {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid var(--com-border-strong);
+  border-radius: 0.72rem;
+  color: var(--com-text);
+  background: var(--com-raised);
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.communication-action.is-primary {
+  border-color: var(--com-accent);
+  color: #15120e;
+  background: var(--com-accent);
+}
+
+.communication-action:hover {
+  filter: brightness(1.08);
+}
+
+.communication-message {
+  display: block;
+  width: 100%;
+  min-height: 43rem;
+  resize: vertical;
+  padding: 1.2rem;
+  border: 1px solid var(--com-border-strong);
+  border-radius: 0.85rem;
+  color: var(--com-text);
+  background: var(--com-canvas);
+  font: 500 0.94rem/1.65 Inter, system-ui, sans-serif;
+  outline: none;
+  white-space: pre-wrap;
+}
+
+.communication-message:focus {
+  border-color: var(--com-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--com-accent) 12%, transparent);
+}
+
+.communication-copy-status {
+  min-height: 1.4rem;
+  margin-top: 0.65rem;
+  color: var(--com-success);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+@media (max-width: 840px) {
+  .communication-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .communication-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-controls {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .communication-workspace {
+    padding: 1rem;
+  }
+
+  .communication-template-card {
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+  }
+
+  .communication-template-arrow {
+    display: none;
+  }
+
+  .communication-message-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .communication-message-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}

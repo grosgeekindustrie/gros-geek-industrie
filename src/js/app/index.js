@@ -9,6 +9,8 @@ const appBootstrapManifest = Object.freeze({
   ]),
   boot: Object.freeze([
     'app/shell/app_ui.js',
+    'app/shell/communication_ui.js',
+    'app/shell/renewal_workshop_ui.js',
     'app/shell/ai_profile_ui.js',
     'app/boot/integrations_bootstrap_ui.js',
     'app/boot/pipeline_bootstrap_ui.js',

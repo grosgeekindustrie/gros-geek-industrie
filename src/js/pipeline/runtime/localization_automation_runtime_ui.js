@@ -89,8 +89,13 @@
     if (Number(entry.processingSeconds) > 0) parts.push(`traitement ${formatDuration(entry.processingSeconds)}`);
     const totalTokens = Number(entry.usage?.inputTokens || 0) + Number(entry.usage?.outputTokens || 0);
     if (totalTokens > 0) parts.push(`${totalTokens.toLocaleString('fr-FR')} tokens`);
-    if (Number(entry.estimatedCostUsd) > 0) parts.push(`coût estimé $${Number(entry.estimatedCostUsd).toFixed(3)}`);
     return parts.length ? ` · ${parts.join(' · ')}` : '';
+  };
+
+  const costLabel = (entry) => {
+    const cost = Number(entry.estimatedCostUsd || 0);
+    const prefix = entry.costIncomplete ? 'Coût IA connu : au moins' : 'Coût IA estimé :';
+    return `${prefix} $${cost.toFixed(4)}`;
   };
 
   const filteredEntries = () => (state.payload?.entries || []).filter((entry) => {
@@ -103,7 +108,7 @@
   const renderLanguageChips = (entry) => (entry.languages || LANGUAGE_CODES.map((code) => ({ code, state: 'waiting' })))
     .map((language) => `
       <span class="localization-automation-language ${languageClass(language.state)}"
-            title="${escapeHtml(language.label || language.code.toUpperCase())} · ${escapeHtml(languageStateLabel(language.state))}">
+            title="${escapeHtml(language.label || language.code.toUpperCase())} · ${escapeHtml(languageStateLabel(language.state))}${Number(language.estimatedCostUsd) > 0 ? ` · coût connu $${Number(language.estimatedCostUsd).toFixed(4)}` : ''}">
         ${escapeHtml(String(language.code || '').toUpperCase())}
       </span>
     `).join('');
@@ -116,6 +121,7 @@
       <div class="localization-automation-entry-copy">
         <strong>${escapeHtml(entry.title || `Fiche Etsy ${entry.listingId}`)}</strong>
         <span>${escapeHtml(strategyLabel(entry.translationStrategy))} · ${escapeHtml(statusLabel(entry.state))}${escapeHtml(stableTimeLabel(entry))}${escapeHtml(activityLabel(entry))}</span>
+        <span class="localization-automation-cost${entry.costIncomplete ? ' is-incomplete' : ''}" title="${entry.costIncomplete ? 'Une ancienne tentative de génération a été écrasée avant l’ajout du suivi des relances.' : 'Somme des générations enregistrées, relances comprises.'}">${escapeHtml(costLabel(entry))}</span>
         <div class="localization-automation-languages" aria-label="État des langues">
           ${renderLanguageChips(entry)}
         </div>
@@ -132,6 +138,7 @@
             <strong>${escapeHtml(error.label || String(error.language || '').toUpperCase() || 'Automatisation')}</strong>
             <span>${escapeHtml(error.error || 'Erreur sans message détaillé')}</span>
           </div>
+          ${error.outputTitle ? `<div class="localization-automation-error-output-title"><span>Titre ${escapeHtml(error.label || String(error.language || '').toUpperCase())} généré</span><strong>${escapeHtml(error.outputTitle)}</strong></div>` : ''}
           ${(error.qualityWarnings || []).length
             ? `<ul>${error.qualityWarnings.map((warning) => `<li><code>${escapeHtml(warning.code)}</code> ${escapeHtml(warning.message)}</li>`).join('')}</ul>`
             : ''}
@@ -147,6 +154,7 @@
           : `<button class="btn btn-accent" type="button" data-automation-action="check_now" data-automation-id="${escapeHtml(entry.automationId)}">Vérifier maintenant</button>`}
         <button class="btn btn-muted" type="button" data-automation-action="open_single" data-automation-id="${escapeHtml(entry.automationId)}" data-listing-id="${escapeHtml(entry.listingId)}">Ouvrir dans la fiche unique</button>
         <button class="btn btn-muted" type="button" data-automation-action="export" data-automation-id="${escapeHtml(entry.automationId)}">Télécharger le rapport</button>
+        <button class="btn btn-muted" type="button" data-automation-action="delete" data-automation-id="${escapeHtml(entry.automationId)}">Supprimer le suivi</button>
         ${entry.url ? `<a class="btn btn-muted" href="${escapeHtml(entry.url)}" target="_blank" rel="noopener">Ouvrir sur Etsy</a>` : ''}
       </div>
     </div>
@@ -167,6 +175,10 @@
             ${renderEntryHead(entry)}
             <div class="localization-automation-entry-links">
               ${entry.url ? `<a href="${escapeHtml(entry.url)}" target="_blank" rel="noopener">Ouvrir sur Etsy</a>` : `<span>Listing ${escapeHtml(entry.listingId)}</span>`}
+              ${['waiting_activation', 'stabilizing'].includes(entry.state)
+                ? `<button class="btn btn-accent" type="button" data-automation-action="start_now" data-automation-id="${escapeHtml(entry.automationId)}">Lancer maintenant</button>`
+                : ''}
+              <button class="btn btn-muted" type="button" data-automation-action="delete" data-automation-id="${escapeHtml(entry.automationId)}">Supprimer le suivi</button>
             </div>
           </article>
         `;
@@ -281,9 +293,18 @@
     try {
       if (action === 'export') await downloadReport(actionButton.dataset.automationId);
       else if (action === 'open_single') openSingleWorkflow(actionButton.dataset.listingId);
-      else await postAction(actionButton.dataset.automationId, action, actionButton.dataset.language || '');
+      else if (action === 'delete') {
+        if (!global.confirm?.('Supprimer ce suivi automatique ? Les traductions déjà publiées sur Etsy restent en place.')) return;
+        actionButton.disabled = true;
+        await postAction(actionButton.dataset.automationId, action);
+      }
+      else {
+        actionButton.disabled = true;
+        await postAction(actionButton.dataset.automationId, action, actionButton.dataset.language || '');
+      }
     } catch (error) {
       setStatus(`Action impossible : ${error.message}`, true);
+      actionButton.disabled = false;
     }
   };
 

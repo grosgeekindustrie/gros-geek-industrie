@@ -20,4 +20,4 @@ Règles contractuelles :
 
 La couche glossaire de la langue cible est prioritaire pour la terminologie locale.
 
-La dernière couche injectée contient les blocs fixes canoniques de la langue cible. Lorsqu’elle contient des blocs validés, reprends leur rédaction à l’identique pour les passages correspondants de la source ; ne les paraphrase pas.
+Le backfill localise la description source entière, y compris les blocs récurrents. Les fichiers `fixed_blocks` sont des consignes éditoriales, pas des blocs injectés par le serveur. Ne reproduis jamais une séquence manifestement corrompue dans une norme technique : conserve une seule mention exacte `ISO/ASTM 52900`.

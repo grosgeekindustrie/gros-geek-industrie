@@ -11,7 +11,9 @@
 - moteur IA : OpenAI uniquement ;
 - comportement par défaut : créer uniquement les langues manquantes, ne jamais écraser une localisation existante.
 
-Le workflow historique « fiche unique » reste autonome et inchangé. Le backfill possède son propre écran, ses propres prompts et sa propre base SQLite.
+Le workflow historique « fiche unique » conserve son écran, ses prompts de sortie et sa publication autonome. Pour éviter deux qualités éditoriales divergentes, ses dix langues disponibles (EN, DE, ES, IT, NL, PT, JA, PL, RU et SV) injectent désormais le socle commun, la couche métier, la couche boutique et les glossaires validés du backfill. Ses blocs fixes restent assemblés algorithmiquement par le workflow individuel et sa persistance reste indépendante de la base SQLite du backfill.
+
+À chaque ouverture de la vue Catalogue / Backfill, l'interface relit le catalogue Etsy avant de l'afficher, pour Collection comme Tabletop et pour les deux boutiques. Le snapshot SQLite sert uniquement de secours si Etsy est indisponible ; dans ce cas, l'interface affiche explicitement un avertissement et la date du snapshot au lieu de le présenter comme un audit actuel.
 
 ## Sécurité du flux
 
@@ -298,3 +300,36 @@ le détail du validateur ou le corps de la réponse Etsy, la sortie générée e
 les usages. Les actions permettent de relancer une langue, toutes les langues
 échouées, de préparer la fiche dans le traducteur individuel et de télécharger
 un rapport JSON ciblé.
+
+## Mode Tabletop commun aux deux boutiques
+
+Le backfill manuel sait désormais isoler deux univers métier : `collection` et
+`tabletop`. Le choix est persistant dans chaque lot et participe à sa version de
+prompt ; un lot Collection ne peut donc jamais être repris ou affiché comme un
+lot Tabletop. Le catalogue Tabletop cible les sections Nerikson, Energixon,
+Rescale Miniatures et les libellés explicites Tabletop, TTRPG, D&D, DND ou
+wargame. Les autres sections restent dans le périmètre Collection.
+
+Le glossaire Tabletop fourni pour Gros Geek et Double X est injecté comme couche
+métier commune, puis complété par une couche boutique Tabletop distincte. Cette
+séparation évite notamment que les anciennes consignes Collection de Gros Geek
+interdisent le nom `Nerikson` dans son propre catalogue Tabletop.
+
+Le bouton **Tout retraduire** force une nouvelle génération des dix langues pour
+toutes les fiches sélectionnées, y compris si les localisations existent déjà
+sur Etsy. Il démarre la génération après confirmation, mais conserve les
+résultats en aperçu : Etsy n'est modifié que par l'action de publication séparée.
+Le flux normal **Préparer le lot**, puis **Lancer les traductions**, continue à
+ne traiter que les langues manquantes.
+
+Pendant une génération ou une publication, le catalogue et ses filtres sont
+masqués afin de remonter immédiatement le suivi, le chrono et l'estimation. Les
+actions incompatibles, dont l'audit et l'export du rapport, restent désactivées.
+Le catalogue réapparaît automatiquement dès que le traitement se termine ; un
+bandeau vert confirme le succès et un bandeau rouge signale une fin avec
+erreurs.
+
+État au 5 septembre 2026 : Collection Double X est clôturé et publié ; aucun
+backfill Tabletop Double X n'a encore été exécuté. L'automatisation après
+publication reste volontairement limitée à Collection jusqu'à validation des
+premiers lots Tabletop.

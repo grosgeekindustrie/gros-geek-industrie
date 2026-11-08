@@ -27,6 +27,7 @@ from threading import Lock, Thread, Timer, local
 
 from pinterest_service import PinterestAPIError, PinterestService
 from localization_backfill_service import LocalizationBackfillService
+from renewal_workshop_service import RenewalWorkshopService
 
 PORT = 8080
 ROOT = Path(__file__).parent.resolve()
@@ -57,7 +58,9 @@ TIKTOK_OAUTH_SCOPES = ('user.info.basic', 'video.publish')
 INSTAGRAM_MEDIA_CACHE_DIR = ROOT / '.instagram_media_cache'
 INSTAGRAM_MEDIA_LOCAL_PORT = 8766
 INSTAGRAM_MEDIA_MAX_BYTES = 10 * 1024 * 1024
-INSTAGRAM_VIDEO_MAX_BYTES = 1024 * 1024 * 1024
+INSTAGRAM_VIDEO_MAX_BYTES = 1_000_000_000
+INSTAGRAM_VIDEO_API_MAX_BYTES = 300_000_000
+INSTAGRAM_VIDEO_TARGET_BYTES = 270_000_000
 INSTAGRAM_MEDIA_PUBLIC_BASE = ''
 INSTAGRAM_MEDIA_TUNNEL_PROCESS = None
 INSTAGRAM_MEDIA_TUNNEL_LOG = None
@@ -93,6 +96,7 @@ ETSY_SHOP_KEYS = ('grosgeek', 'doublex')
 REQUEST_CONTEXT = local()
 PINTEREST_SERVICE = None
 LOCALIZATION_BACKFILL_SERVICE = None
+RENEWAL_WORKSHOP_SERVICE = None
 
 
 def get_pinterest_service() -> PinterestService:
@@ -105,6 +109,12 @@ def get_localization_backfill_service() -> LocalizationBackfillService:
     if LOCALIZATION_BACKFILL_SERVICE is None:
         raise RuntimeError('Le service de backfill localisation n’est pas encore démarré')
     return LOCALIZATION_BACKFILL_SERVICE
+
+
+def get_renewal_workshop_service() -> RenewalWorkshopService:
+    if RENEWAL_WORKSHOP_SERVICE is None:
+        raise RuntimeError('Le service de renouvellement n’est pas encore démarré')
+    return RENEWAL_WORKSHOP_SERVICE
 
 
 def load_dotenv_file(path: Path = ENV_FILE):
@@ -1024,6 +1034,8 @@ def wait_for_threads_container(container_id: str, attempts: int = 30, delay_seco
     """Attendre qu'un conteneur Threads soit prêt avant sa publication."""
     last_status = ''
     last_detail = ''
+    previous_status = None
+    previous_detail = None
     for attempt in range(attempts):
         try:
             payload = perform_threads_request(f'{container_id}?fields=status,error_message')
@@ -1040,6 +1052,14 @@ def wait_for_threads_container(container_id: str, attempts: int = 30, delay_seco
         detail = str(payload.get('error_message') or '').strip()
         last_status = status
         last_detail = detail
+
+        if attempt == 0 or status != previous_status or detail != previous_detail:
+            print(
+                f'[Threads] Conteneur {container_id} statut={status or "ABSENT"} '
+                f'détail={detail or "—"}'
+            )
+        previous_status = status
+        previous_detail = detail
 
         if status in {'FINISHED', 'PUBLISHED'}:
             return
@@ -1182,11 +1202,13 @@ def get_instagram_profile() -> dict:
 
 
 def build_instagram_reel_container_data(
-    video_url: str,
     caption: str,
     thumb_offset_ms: int,
     cover_url: str = '',
+    video_url: str = '',
 ) -> dict:
+    if not video_url:
+        raise ValueError('Le Reel Instagram exige une URL vidéo')
     payload = {
         'media_type': 'REELS',
         'video_url': video_url,
@@ -1219,22 +1241,62 @@ def get_instagram_media_item(media_id: str) -> dict:
     )
 
 
-def wait_for_instagram_container(container_id: str, attempts: int = 5, delay_seconds: float = 60.0):
-    """Suivre le rythme Meta recommandé : un contrôle/minute, cinq au maximum."""
+def threads_carousel_image_urls_from_instagram(media: dict, expected_count: int) -> list[str]:
+    if str(media.get('media_type') or '').upper() != 'CAROUSEL_ALBUM':
+        raise ValueError('La publication Instagram source n’est pas un carrousel')
+    children = (media.get('children') or {}).get('data') or []
+    if expected_count and len(children) != expected_count:
+        raise ValueError(
+            f'Le carrousel Instagram contient {len(children)} images au lieu des {expected_count} médias préparés'
+        )
+    if not 2 <= len(children) <= 20:
+        raise ValueError('Le carrousel Instagram doit contenir entre 2 et 20 images')
+    image_urls = []
+    for index, child in enumerate(children, start=1):
+        if str(child.get('media_type') or '').upper() != 'IMAGE':
+            raise ValueError(f'Le média Instagram {index}/{expected_count} n’est pas une image')
+        url = str(child.get('media_url') or '').strip()
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != 'https' or not parsed.hostname:
+            raise ValueError(f'L’image Instagram {index}/{expected_count} n’a pas d’URL HTTPS exploitable')
+        image_urls.append(url)
+    return image_urls
+
+
+def wait_for_instagram_container(
+    container_id: str,
+    timeout_seconds: float = 5 * 60,
+    delay_seconds: float = 15.0,
+):
+    """Attendre que Meta rende le conteneur publiable, avec un vrai délai mural."""
+    deadline = time.monotonic() + max(delay_seconds, timeout_seconds)
     last_status = ''
-    for attempt in range(attempts):
+    previous_diagnostic = None
+    while True:
         payload = perform_instagram_request(f'{container_id}?fields=status_code,status')
         status_code = str(payload.get('status_code') or '').strip().upper()
         status = str(payload.get('status') or '').strip()
         last_status = status or status_code
+        diagnostic = (status_code, status)
+        if diagnostic != previous_diagnostic:
+            print(
+                f'[Instagram] Conteneur {container_id} '
+                f'status_code={status_code or "ABSENT"} statut={status or "—"}'
+            )
+            previous_diagnostic = diagnostic
         if status_code == 'FINISHED':
             return
         if status_code in {'ERROR', 'EXPIRED'}:
             raise ValueError(f'Conteneur Instagram non publiable : {last_status}')
-        if attempt < attempts - 1:
-            time.sleep(delay_seconds)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(delay_seconds, remaining))
     suffix = f' (dernier statut : {last_status})' if last_status else ''
-    raise ValueError(f'Le traitement du média Instagram a dépassé cinq minutes{suffix}')
+    minutes = max(1, round(timeout_seconds / 60))
+    raise ValueError(
+        f'Le traitement du média Instagram a dépassé le délai de {minutes} minutes{suffix}'
+    )
 
 
 def clear_instagram_media_cache():
@@ -1280,6 +1342,155 @@ def store_instagram_video_stream(source, length: int, content_type: str) -> str:
         target.unlink(missing_ok=True)
         raise
     return media_id
+
+
+def get_local_ffmpeg_executable() -> Path:
+    bundled = sorted((ROOT / '.tools' / 'python' / 'imageio_ffmpeg' / 'binaries').glob('ffmpeg*.exe'))
+    if bundled:
+        return bundled[0]
+    discovered = shutil.which('ffmpeg')
+    if discovered:
+        return Path(discovered)
+    raise ValueError(
+        'FFmpeg est absent : impossible de mettre automatiquement la vidéo aux normes Instagram'
+    )
+
+
+def mp4_contains_edit_list(video_path: Path) -> bool:
+    """Détecter la boîte MP4 `elst`, explicitement refusée par l’API Instagram."""
+    marker = b'elst'
+    overlap = b''
+    with video_path.open('rb') as source:
+        while True:
+            chunk = source.read(1024 * 1024)
+            if not chunk:
+                return False
+            data = overlap + chunk
+            if marker in data:
+                return True
+            overlap = data[-(len(marker) - 1):]
+
+
+def get_video_duration_with_ffmpeg(video_path: Path, ffmpeg_path: Path) -> float:
+    result = subprocess.run(
+        [str(ffmpeg_path), '-hide_banner', '-i', str(video_path)],
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+        timeout=30,
+        check=False,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+    match = re.search(r'Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)', result.stderr or '')
+    if not match:
+        raise ValueError('La durée de la vidéo est illisible pour la préparation Instagram')
+    hours, minutes, seconds = match.groups()
+    return (int(hours) * 3600) + (int(minutes) * 60) + float(seconds)
+
+
+def prepare_instagram_reel_video(video_path: Path, duration_seconds: float = 0) -> dict:
+    """Remuxer ou réencoder un Reel selon les contraintes actuelles de l’API Meta."""
+    original_bytes = video_path.stat().st_size
+    had_edit_list = mp4_contains_edit_list(video_path)
+    needs_transcode = original_bytes > INSTAGRAM_VIDEO_API_MAX_BYTES
+    if not needs_transcode and not had_edit_list:
+        return {
+            'prepared': False,
+            'reason': 'already-compatible',
+            'bytes': original_bytes,
+        }
+
+    ffmpeg_path = get_local_ffmpeg_executable()
+    duration = float(duration_seconds or 0)
+    if not (duration > 0):
+        duration = get_video_duration_with_ffmpeg(video_path, ffmpeg_path)
+    output_path = video_path.with_name(f'.{video_path.stem}.instagram-ready.mp4')
+    output_path.unlink(missing_ok=True)
+
+    common_output = [
+        '-movflags', '+faststart',
+        '-use_editlist', '0',
+        str(output_path),
+    ]
+    command_prefix = [
+        str(ffmpeg_path), '-hide_banner', '-loglevel', 'error', '-y',
+        '-i', str(video_path),
+        '-map', '0:v:0', '-map', '0:a:0?',
+    ]
+    if needs_transcode:
+        # Garder une marge sous les 300 Mo : l’ABR reste très proche de la cible,
+        # mais le conteneur et l’audio ajoutent eux aussi quelques octets.
+        total_bitrate = max(1_200_000, int((INSTAGRAM_VIDEO_TARGET_BYTES * 8) / duration))
+        audio_bitrate = 128_000
+        video_bitrate = max(1_000_000, total_bitrate - audio_bitrate - 64_000)
+        max_rate = min(24_000_000, int(video_bitrate * 1.15))
+        buffer_size = max_rate * 2
+        shared_transcode = [
+            '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+            '-b:v', str(video_bitrate), '-maxrate', str(max_rate), '-bufsize', str(buffer_size),
+            '-c:a', 'aac', '-b:a', str(audio_bitrate), '-ar', '48000', '-ac', '2',
+            *common_output,
+        ]
+        commands = [
+            (
+                'NVIDIA NVENC',
+                [*command_prefix, '-c:v', 'h264_nvenc', '-preset', 'p4', '-g', '120', *shared_transcode],
+            ),
+            (
+                'CPU libx264',
+                [
+                    *command_prefix,
+                    '-c:v', 'libx264', '-preset', 'veryfast', '-x264-params', 'open-gop=0',
+                    *shared_transcode,
+                ],
+            ),
+        ]
+        reason = 'size-and-edit-list' if had_edit_list else 'size'
+    else:
+        commands = [('remux', [*command_prefix, '-c', 'copy', *common_output])]
+        reason = 'edit-list'
+
+    try:
+        result = None
+        encoder = ''
+        failures = []
+        for encoder, command in commands:
+            output_path.unlink(missing_ok=True)
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                timeout=max(20 * 60, int(duration * 6)),
+                check=False,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+            if result.returncode == 0 and output_path.is_file() and output_path.stat().st_size > 0:
+                break
+            failures.append(f'{encoder}: {(result.stderr or "FFmpeg a échoué").strip()[-600:]}')
+        else:
+            raise ValueError('Échec de la mise aux normes Instagram : ' + ' | '.join(failures))
+        prepared_bytes = output_path.stat().st_size
+        if prepared_bytes > INSTAGRAM_VIDEO_API_MAX_BYTES:
+            raise ValueError(
+                f'La vidéo préparée pèse encore {prepared_bytes / 1_000_000:.1f} Mo '
+                'au lieu de 300 Mo maximum'
+            )
+        if mp4_contains_edit_list(output_path):
+            raise ValueError('La vidéo préparée contient encore une edit list MP4 interdite par Instagram')
+        output_path.replace(video_path)
+        return {
+            'prepared': True,
+            'reason': reason,
+            'originalBytes': original_bytes,
+            'bytes': prepared_bytes,
+            'durationSeconds': duration,
+            'encoder': encoder,
+        }
+    finally:
+        output_path.unlink(missing_ok=True)
 
 
 def resolve_instagram_media_path(media_id: str) -> Path:
@@ -1474,6 +1685,29 @@ def cache_etsy_media_url(url: str) -> str:
 
     extension = guess_media_extension(content_type, url)
     filename = build_etsy_media_cache_filename(url, extension)
+    ETSY_MEDIA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    target = ETSY_MEDIA_CACHE_DIR / filename
+    if not target.exists():
+        target.write_bytes(payload)
+    return filename
+
+
+def cache_renewal_media_data_url(data_url: str, media_type: str = '') -> str:
+    match = re.fullmatch(r'data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\r\n]+)', str(data_url or ''), re.IGNORECASE)
+    if not match:
+        raise ValueError('Format image non pris en charge (PNG, JPEG ou WebP)')
+    detected_type = match.group(1).lower()
+    requested_type = str(media_type or '').strip().lower()
+    if requested_type and requested_type != detected_type:
+        raise ValueError('Type image incohérent')
+    try:
+        payload = base64.b64decode(match.group(2), validate=True)
+    except ValueError as error:
+        raise ValueError('Image encodée invalide') from error
+    if not payload or len(payload) > 25 * 1024 * 1024:
+        raise ValueError('Image vide ou supérieure à 25 Mo')
+    extension = {'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp'}[detected_type]
+    filename = f'renewal-{hashlib.sha256(payload).hexdigest()}{extension}'
     ETSY_MEDIA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     target = ETSY_MEDIA_CACHE_DIR / filename
     if not target.exists():
@@ -1962,10 +2196,13 @@ def encode_etsy_form_items(form_data: dict) -> list[tuple[str, str]]:
     return encoded_items
 
 
+def build_etsy_form_body(form_data: dict) -> bytes:
+    return urllib.parse.urlencode(encode_etsy_form_items(form_data)).encode('utf-8')
+
+
 def perform_etsy_form_request(path: str, form_data: dict, *, include_oauth: bool, method: str = 'POST', shop_key: str | None = None) -> dict:
     url = f'{ETSY_API_BASE_URL}/application/{path.lstrip("/")}'
-    encoded_items = encode_etsy_form_items(form_data)
-    request_body = urllib.parse.urlencode(encoded_items).encode('utf-8')
+    request_body = build_etsy_form_body(form_data)
     headers = build_etsy_request_headers(include_oauth=include_oauth, shop_key=shop_key)
     headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
 
@@ -2657,6 +2894,219 @@ def build_listing_property_payload(property_entry: dict) -> dict:
     return payload
 
 
+def normalize_etsy_inventory_payload(inventory_payload: dict, fallback_readiness_state_id: int = 0) -> dict:
+    if not isinstance(inventory_payload, dict):
+        return {'products': []}
+
+    normalized = {
+        'products': [],
+        'price_on_property': [
+            int(value) for value in (inventory_payload.get('price_on_property') or [])
+            if str(value).strip().isdigit()
+        ],
+        'sku_on_property': [
+            int(value) for value in (inventory_payload.get('sku_on_property') or [])
+            if str(value).strip().isdigit()
+        ],
+        'quantity_on_property': [
+            int(value) for value in (inventory_payload.get('quantity_on_property') or [])
+            if str(value).strip().isdigit()
+        ],
+        'readiness_state_on_property': [
+            int(value) for value in (inventory_payload.get('readiness_state_on_property') or [])
+            if str(value).strip().isdigit()
+        ],
+    }
+
+    for product in inventory_payload.get('products') or []:
+        if not isinstance(product, dict):
+            continue
+
+        offerings = []
+        for offering in product.get('offerings') or []:
+            if not isinstance(offering, dict):
+                continue
+            normalized_offering = {
+                'price': float(offering.get('price') or 0),
+                'quantity': int(offering.get('quantity') or 0),
+                'is_enabled': bool(offering.get('is_enabled', True)),
+            }
+            readiness_state_id = int(
+                offering.get('readiness_state_id') or fallback_readiness_state_id or 0
+            ) or 0
+            if readiness_state_id:
+                normalized_offering['readiness_state_id'] = readiness_state_id
+            offerings.append(normalized_offering)
+
+        property_values = []
+        for property_value in product.get('property_values') or []:
+            if not isinstance(property_value, dict):
+                continue
+            normalized_property_value = {
+                'property_id': int(property_value.get('property_id') or 0),
+                'property_name': str(property_value.get('property_name') or '').strip(),
+                'values': [
+                    str(value or '').strip()
+                    for value in (property_value.get('values') or [])
+                    if str(value or '').strip()
+                ],
+            }
+            scale_id = int(property_value.get('scale_id') or 0) or 0
+            if scale_id:
+                normalized_property_value['scale_id'] = scale_id
+            value_ids = [
+                int(value) for value in (property_value.get('value_ids') or [])
+                if str(value).strip().isdigit()
+            ]
+            if value_ids:
+                normalized_property_value['value_ids'] = value_ids
+            if normalized_property_value['property_id'] or normalized_property_value['values']:
+                property_values.append(normalized_property_value)
+
+        if offerings:
+            normalized['products'].append({
+                'sku': str(product.get('sku') or '').strip(),
+                'property_values': property_values,
+                'offerings': offerings,
+            })
+
+    return normalized
+
+
+def update_etsy_listing_inventory(
+    shop_id: str,
+    listing_id: str,
+    inventory_payload: dict,
+    *,
+    shop_key: str,
+    fallback_readiness_state_id: int = 0,
+) -> dict | None:
+    normalized = normalize_etsy_inventory_payload(
+        inventory_payload,
+        fallback_readiness_state_id=fallback_readiness_state_id,
+    )
+    if not normalized['products']:
+        return None
+
+    pause_etsy_publication_requests()
+    response = perform_etsy_put_json_request(
+        f'listings/{listing_id}/inventory',
+        normalized,
+        include_oauth=True,
+        shop_key=shop_key,
+    )
+    return {
+        'step': 'update_listing_inventory',
+        'endpoint': f'listings/{listing_id}/inventory',
+        'payload_sent': normalized,
+        'response': response,
+    }
+
+
+def update_etsy_listing_attributes(
+    shop_id: str,
+    listing_id: str,
+    taxonomy_id: str,
+    attributes_payload: dict,
+    *,
+    shop_key: str,
+) -> list[dict]:
+    operations = []
+    safe_attributes = attributes_payload if isinstance(attributes_payload, dict) else {}
+    dimension_properties = safe_attributes.get('dimension_properties')
+
+    if isinstance(dimension_properties, list):
+        for property_entry in dimension_properties:
+            if not isinstance(property_entry, dict):
+                continue
+            property_id = int(property_entry.get('property_id') or 0) or 0
+            property_payload = build_listing_property_payload(property_entry)
+            if not property_id or not property_payload:
+                continue
+
+            try:
+                pause_etsy_publication_requests()
+                property_response = perform_etsy_put_form_request(
+                    f'shops/{shop_id}/listings/{listing_id}/properties/{property_id}',
+                    property_payload,
+                    include_oauth=True,
+                    shop_key=shop_key,
+                )
+                operations.append({
+                    'step': 'update_listing_property_dimension',
+                    'endpoint': f'shops/{shop_id}/listings/{listing_id}/properties/{property_id}',
+                    'payload_sent': property_payload,
+                    'response': property_response,
+                    'property_name': str(property_entry.get('property_name') or '').strip(),
+                })
+            except urllib.error.HTTPError as property_error:
+                try:
+                    property_error_payload = decode_json_bytes(property_error.read())
+                except Exception:
+                    property_error_payload = {'error': str(property_error)}
+                operations.append({
+                    'step': 'update_listing_property_dimension',
+                    'endpoint': f'shops/{shop_id}/listings/{listing_id}/properties/{property_id}',
+                    'payload_sent': property_payload,
+                    'status': 'failed',
+                    'error_status': property_error.code,
+                    'error_payload': property_error_payload,
+                    'property_name': str(property_entry.get('property_name') or '').strip(),
+                })
+
+    occasion_value = str(safe_attributes.get('occasion') or '').strip().lower()
+    if taxonomy_id and occasion_value:
+        assignment = resolve_occasion_taxonomy_assignment(taxonomy_id, occasion_value)
+        if assignment:
+            property_payload = {
+                'value_ids': [assignment['value_id']],
+                'values': [assignment['value_name']],
+            }
+            if assignment.get('scale_id'):
+                property_payload['scale_id'] = assignment['scale_id']
+
+            try:
+                pause_etsy_publication_requests()
+                property_response = perform_etsy_put_form_request(
+                    f'shops/{shop_id}/listings/{listing_id}/properties/{assignment["property_id"]}',
+                    property_payload,
+                    include_oauth=True,
+                    shop_key=shop_key,
+                )
+                operations.append({
+                    'step': 'update_listing_property_occasion',
+                    'endpoint': f'shops/{shop_id}/listings/{listing_id}/properties/{assignment["property_id"]}',
+                    'payload_sent': property_payload,
+                    'response': property_response,
+                    'resolved_property': assignment,
+                })
+            except urllib.error.HTTPError as property_error:
+                try:
+                    property_error_payload = decode_json_bytes(property_error.read())
+                except Exception:
+                    property_error_payload = {'error': str(property_error)}
+                operations.append({
+                    'step': 'update_listing_property_occasion',
+                    'endpoint': f'shops/{shop_id}/listings/{listing_id}/properties/{assignment["property_id"]}',
+                    'payload_sent': property_payload,
+                    'status': 'failed',
+                    'error_status': property_error.code,
+                    'error_payload': property_error_payload,
+                    'resolved_property': assignment,
+                })
+        else:
+            operations.append({
+                'step': 'update_listing_property_occasion',
+                'status': 'skipped',
+                'reason': (
+                    f'Property/value introuvable pour occasion={occasion_value} '
+                    f'taxonomy_id={taxonomy_id}'
+                ),
+            })
+
+    return operations
+
+
 def get_seller_taxonomy_entry_by_id(taxonomy_id: str) -> dict:
     normalized = str(taxonomy_id or '').strip()
     if not normalized:
@@ -3241,6 +3691,110 @@ def load_etsy_localization_catalog(shop_key: str = 'grosgeek') -> dict:
     }
 
 
+def load_etsy_renewal_catalog(shop_key: str = 'grosgeek') -> dict:
+    """Read expired listings fresh for the renewal workshop.
+
+    Full legacy copy is returned only to the preparation UI. Generation jobs
+    persist the operator-approved structured form and selected images, never
+    this title/description/tags payload.
+    """
+    normalized_shop_key = normalize_etsy_shop_key(shop_key)
+    require_etsy_scope('listings_r', normalized_shop_key)
+    shop_context = get_etsy_shop_context(normalized_shop_key)
+    shop_id = shop_context['shop_id']
+    sections_payload = perform_etsy_get_request(
+        f'shops/{shop_id}/sections', include_oauth=True, shop_key=normalized_shop_key
+    )
+    section_names = {
+        str(section.get('shop_section_id') or section.get('section_id') or '').strip():
+        str(section.get('title') or section.get('name') or '').strip()
+        for section in extract_etsy_results_collection(sections_payload)
+        if isinstance(section, dict)
+    }
+
+    base_listings = []
+    offset = 0
+    while True:
+        page_payload = perform_etsy_get_request(
+            f'shops/{shop_id}/listings?state=expired&limit=100&offset={offset}',
+            include_oauth=True,
+            shop_key=normalized_shop_key,
+        )
+        page = extract_etsy_results_collection(page_payload)
+        base_listings.extend(page)
+        if len(page) < 100:
+            break
+        offset += 100
+
+    listing_by_id = {
+        str(item.get('listing_id') or '').strip(): dict(item)
+        for item in base_listings
+        if isinstance(item, dict) and str(item.get('listing_id') or '').strip()
+    }
+    for listing_ids_chunk in chunk_list(list(listing_by_id), 100):
+        batch_query = urllib.parse.urlencode({
+            'listing_ids': ','.join(listing_ids_chunk),
+            'includes': 'Images',
+            'legacy': 'true',
+            'allow_suggested_title': 'true',
+        })
+        batch_payload = perform_etsy_get_request(
+            f'listings/batch?{batch_query}', include_oauth=True, shop_key=normalized_shop_key
+        )
+        for detail in extract_etsy_results_collection(batch_payload):
+            listing_id = str(detail.get('listing_id') or '').strip()
+            if listing_id in listing_by_id:
+                listing_by_id[listing_id].update(detail)
+
+        # Etsy n'accepte pas Inventory dans l'enum `includes` de
+        # /listings/batch. L'inventaire possède sa propre route groupée.
+        inventory_query = urllib.parse.urlencode({
+            'listing_ids': ','.join(listing_ids_chunk),
+        })
+        inventory_payload = perform_etsy_get_request(
+            f'listings/batch/inventory?{inventory_query}',
+            include_oauth=True,
+            shop_key=normalized_shop_key,
+        )
+        for entry in extract_etsy_results_collection(inventory_payload):
+            listing_id = str(entry.get('listing_id') or '').strip()
+            if listing_id in listing_by_id:
+                listing_by_id[listing_id]['inventory'] = entry.get('inventory') or {}
+
+    listings = []
+    for raw in listing_by_id.values():
+        normalized = normalize_etsy_localization_listing(raw, section_names)
+        images = normalize_etsy_association_collection(raw.get('images') or raw.get('Images'))
+        normalized['images'] = [
+            {
+                'id': str(image.get('listing_image_id') or image.get('image_id') or index),
+                'rank': int(image.get('rank') or index + 1),
+                'url': str(
+                    image.get('url_fullxfull') or image.get('url_570xN')
+                    or image.get('url_570xn') or image.get('url_170x135') or ''
+                ).strip(),
+                'thumbnailUrl': str(
+                    image.get('url_170x135') or image.get('url_570xN')
+                    or image.get('url_570xn') or image.get('url_fullxfull') or ''
+                ).strip(),
+            }
+            for index, image in enumerate(images)
+            if isinstance(image, dict)
+        ]
+        normalized['inventory'] = raw.get('inventory') or raw.get('Inventory') or {}
+        normalized['quantity'] = int(raw.get('quantity') or 0)
+        normalized['expiresTimestamp'] = int(raw.get('ending_timestamp') or 0)
+        listings.append(normalized)
+
+    listings.sort(key=lambda item: int(item.get('expiresTimestamp') or 0), reverse=True)
+    return {
+        'shopKey': normalized_shop_key,
+        'shopId': str(shop_id),
+        'sections': [{'id': key, 'name': value} for key, value in section_names.items()],
+        'listings': listings,
+    }
+
+
 def request_openai_localization(payload: dict) -> tuple[int, dict]:
     return forward_openai_json_request('https://api.openai.com/v1/responses', payload, timeout=240)
 
@@ -3324,6 +3878,36 @@ def append_localization_automation_registration(
             'status': 'failed',
             'error': str(automation_error),
         })
+
+
+def build_updated_listing_localization_source(
+    listing_id: str,
+    submitted: dict,
+    current: dict,
+    state: str,
+) -> dict:
+    images = sorted(
+        (image for image in (current.get('images') or []) if isinstance(image, dict)),
+        key=lambda image: int(image.get('rank') or 0),
+    )
+    cover = images[0] if images else {}
+    return {
+        'listingId': listing_id,
+        'title': str(submitted.get('title') or current.get('title') or '').strip(),
+        'description': str(submitted.get('description') or current.get('description') or ''),
+        'tags': [
+            str(tag or '').strip()
+            for tag in (submitted.get('tags') or current.get('tags') or [])
+            if str(tag or '').strip()
+        ],
+        'state': state,
+        'imageUrl': str(
+            cover.get('url_170x135') or cover.get('url_570xN')
+            or cover.get('url_fullxfull') or ''
+        ).strip(),
+        'url': str(current.get('url') or '').strip(),
+        'translations': [],
+    }
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -3424,11 +4008,48 @@ class Handler(http.server.BaseHTTPRequestHandler):
         raw_qs = self.path.split('?', 1)[1] if '?' in self.path else ''
         query_params = urllib.parse.parse_qs(raw_qs)
         requested_shop_key = resolve_requested_shop_key(query_params=query_params, headers=self.headers)
+        requested_localization_mode = str(
+            query_params.get('mode', ['collection'])[0] or 'collection'
+        ).strip().lower()
         set_current_request_shop_key(requested_shop_key)
+
+        if path == '/renewal-workshop/catalog':
+            try:
+                refresh = str(query_params.get('refresh', ['0'])[0]).lower() in {'1', 'true', 'yes'}
+                service = get_renewal_workshop_service()
+                payload = service.refresh_catalog(requested_shop_key) if refresh else service.catalog(requested_shop_key)
+                self.send_json(200, payload)
+            except ValueError as error:
+                self.send_json(400, {'error': str(error)})
+            except urllib.error.HTTPError as error:
+                try:
+                    payload = decode_json_bytes(error.read())
+                except Exception:
+                    payload = {'error': str(error)}
+                self.send_json(error.code, payload or {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/renewal-workshop/jobs':
+            try:
+                self.send_json(200, get_renewal_workshop_service().list_jobs(requested_shop_key))
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
+        if path == '/renewal-workshop/next':
+            try:
+                self.send_json(200, {'job': get_renewal_workshop_service().claim_next()})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
 
         if path == '/localization-backfill/config':
             try:
-                self.send_json(200, get_localization_backfill_service().config(requested_shop_key))
+                self.send_json(200, get_localization_backfill_service().config(
+                    requested_shop_key, requested_localization_mode
+                ))
             except ValueError as error:
                 self.send_json(400, {'error': str(error)})
             except Exception as error:
@@ -3439,7 +4060,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             try:
                 refresh = str(query_params.get('refresh', ['0'])[0]).lower() in {'1', 'true', 'yes'}
                 service = get_localization_backfill_service()
-                payload = service.refresh_catalog(requested_shop_key) if refresh else service.catalog(requested_shop_key)
+                payload = (
+                    service.refresh_catalog(requested_shop_key, requested_localization_mode)
+                    if refresh
+                    else service.catalog(requested_shop_key, requested_localization_mode)
+                )
                 self.send_json(200, payload)
             except ValueError as error:
                 self.send_json(400, {'error': str(error)})
@@ -3455,7 +4080,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == '/localization-backfill/runs':
             try:
-                self.send_json(200, get_localization_backfill_service().list_runs(shop_key=requested_shop_key))
+                self.send_json(200, get_localization_backfill_service().list_runs(
+                    shop_key=requested_shop_key,
+                    mode=requested_localization_mode,
+                ))
             except Exception as error:
                 self.send_json(500, {'error': str(error)})
             return
@@ -4459,6 +5087,54 @@ class Handler(http.server.BaseHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(raw_qs)
         set_current_request_shop_key(resolve_requested_shop_key(query_params=query_params, headers=self.headers))
 
+        if path.startswith('/renewal-workshop/'):
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                service = get_renewal_workshop_service()
+                if path == '/renewal-workshop/prepare':
+                    self.send_json(201, service.save_preparation(data))
+                elif path == '/renewal-workshop/action':
+                    self.send_json(200, service.action(
+                        str(data.get('jobId') or ''), str(data.get('action') or '')
+                    ))
+                elif path == '/renewal-workshop/complete':
+                    self.send_json(200, service.complete(str(data.get('jobId') or ''), data))
+                elif path == '/renewal-workshop/fail':
+                    self.send_json(200, service.fail(
+                        str(data.get('jobId') or ''), str(data.get('error') or '')
+                    ))
+                elif path == '/renewal-workshop/review':
+                    self.send_json(200, service.save_review(
+                        str(data.get('jobId') or ''), data.get('review') or {}
+                    ))
+                elif path == '/renewal-workshop/form':
+                    self.send_json(200, service.save_form(
+                        str(data.get('jobId') or ''), data.get('form') or {}
+                    ))
+                elif path == '/renewal-workshop/media':
+                    job_id = str(data.get('jobId') or '').strip()
+                    if not job_id or not any(job.get('jobId') == job_id for job in service.list_jobs().get('jobs', [])):
+                        raise ValueError('Dossier de renouvellement introuvable')
+                    filename = cache_renewal_media_data_url(data.get('dataUrl'), data.get('mediaType'))
+                    self.send_json(201, {
+                        'ok': True,
+                        'id': f'local-{Path(filename).stem}',
+                        'name': str(data.get('name') or 'Image locale'),
+                        'url': f'/etsy/media-cache/{filename}',
+                    })
+                elif path == '/renewal-workshop/resume':
+                    self.send_json(200, service.recover_running())
+                elif path == '/renewal-workshop/delete':
+                    self.send_json(200, service.delete(str(data.get('jobId') or '')))
+                else:
+                    self.send_json(404, {'error': 'Route de renouvellement inconnue'})
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
+
         if path.startswith('/pinterest/'):
             try:
                 length = int(self.headers.get('Content-Length', 0))
@@ -4548,6 +5224,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except Exception as error:
                 self.send_json(500, {'error': str(error)})
             return
+        if path == '/instagram/test/video/prepare':
+            length = int(self.headers.get('Content-Length', 0))
+            try:
+                data = json.loads(self.rfile.read(length).decode('utf-8') or '{}')
+                media_id = str(data.get('mediaId') or '').strip()
+                try:
+                    duration_seconds = float(data.get('durationSeconds') or 0)
+                except (TypeError, ValueError):
+                    duration_seconds = 0
+                video_path = resolve_instagram_media_path(media_id)
+                if video_path.suffix not in {'.mp4', '.mov'}:
+                    raise ValueError('Le média à préparer n’est pas une vidéo')
+                preparation = prepare_instagram_reel_video(video_path, duration_seconds)
+                self.send_json(200, {
+                    'ok': True,
+                    'mediaId': media_id,
+                    **preparation,
+                })
+            except (ValueError, json.JSONDecodeError) as error:
+                self.send_json(400, {'error': str(error)})
+            except subprocess.TimeoutExpired:
+                self.send_json(504, {
+                    'error': 'La mise aux normes Instagram a dépassé son délai maximal',
+                })
+            except Exception as error:
+                self.send_json(500, {'error': str(error)})
+            return
 
         if path == '/tiktok/publish':
             length = int(self.headers.get('Content-Length', 0))
@@ -4612,10 +5315,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     for media_id in raw_media_ids
                     if str(media_id or '').strip()
                 ]
+                instagram_media_id = str(data.get('instagramMediaId') or '').strip()
                 text = str(data.get('text') or '').strip()
                 mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
 
-                if not media_ids:
+                if not media_ids and not instagram_media_id:
                     raise ValueError('Aucun média préparé pour Threads')
                 if len(media_ids) > 20:
                     raise ValueError('Threads accepte 20 médias maximum dans un carrousel')
@@ -4624,12 +5328,37 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         f'Le texte Threads contient {len(text)} caractères ; '
                         f'{THREADS_TEXT_MAX_LENGTH} maximum sont autorisés'
                     )
-
                 stage = 'vérification des médias locaux'
                 media_paths = [resolve_instagram_media_path(media_id) for media_id in media_ids]
-                stage = 'vérification du tunnel HTTPS'
-                ensure_instagram_media_tunnel(media_ids[0])
-                image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
+                image_urls = []
+                if mode == 'reel' and instagram_media_id:
+                    stage = 'récupération de la vidéo publiée sur Instagram'
+                    instagram_media = get_instagram_media_item(instagram_media_id)
+                    instagram_media_url = str(instagram_media.get('media_url') or '').strip()
+                    parsed_instagram_media_url = urllib.parse.urlparse(instagram_media_url)
+                    if parsed_instagram_media_url.scheme != 'https' or not parsed_instagram_media_url.hostname:
+                        raise ValueError(
+                            'Instagram n’a pas encore retourné une URL vidéo réutilisable pour Threads'
+                        )
+                    image_urls = [instagram_media_url]
+                    print(
+                        f'[Threads] Réutilisation du Reel Instagram publié '
+                        f'{instagram_media_id} comme source vidéo'
+                    )
+                elif mode == 'carousel' and instagram_media_id:
+                    stage = 'récupération du carrousel publié sur Instagram'
+                    instagram_media = get_instagram_media_item(instagram_media_id)
+                    image_urls = threads_carousel_image_urls_from_instagram(
+                        instagram_media, len(media_ids)
+                    )
+                    print(
+                        f'[Threads] Réutilisation des {len(image_urls)} images Instagram '
+                        f'du carrousel {instagram_media_id}'
+                    )
+                else:
+                    stage = 'vérification du tunnel HTTPS'
+                    ensure_instagram_media_tunnel(media_ids[0])
+                    image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
 
                 stage = 'lecture du profil Threads'
                 profile = get_threads_profile()
@@ -4639,7 +5368,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if mode == 'reel':
                     if len(image_urls) != 1:
                         raise ValueError('Une publication vidéo Threads exige un seul fichier')
-                    if media_paths[0].suffix not in {'.mp4', '.mov'}:
+                    if media_paths and media_paths[0].suffix not in {'.mp4', '.mov'}:
                         raise ValueError('Le média Threads préparé n’est pas une vidéo')
                     stage = 'création du conteneur vidéo'
                     container = perform_threads_request(
@@ -4664,7 +5393,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     total_children = len(image_urls)
                     for index, image_url in enumerate(image_urls, start=1):
                         stage = f'création du conteneur enfant {index}/{total_children}'
-                        stage_details = {'childIndex': index, 'childCount': total_children}
+                        stage_details = {
+                            'childIndex': index,
+                            'childCount': total_children,
+                            'mediaSource': 'instagram' if instagram_media_id else 'tunnel',
+                        }
                         child = perform_threads_request(
                             f'{profile["id"]}/threads',
                             method='POST',
@@ -4710,8 +5443,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 stage_details = {'containerId': container_id}
                 wait_for_threads_container(
                     container_id,
-                    attempts=90 if mode == 'reel' else 30,
-                    delay_seconds=2.0,
+                    attempts=120 if mode == 'reel' else 30,
+                    delay_seconds=5.0 if mode == 'reel' else 2.0,
                 )
 
                 stage = 'publication du conteneur Threads'
@@ -4728,7 +5461,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     'containerId': container_id,
                     'childContainerIds': child_container_ids,
                     'publicationId': publication_id,
-                    'mediaCount': len(media_ids),
+                    'mediaCount': len(image_urls),
                 })
             except json.JSONDecodeError:
                 self.send_json(400, {'error': 'Corps JSON invalide', 'stage': stage})
@@ -5124,6 +5857,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             body = self.rfile.read(length).decode('utf-8')
             media_paths = []
             dry_run = False
+            container_id = ''
+            publication_id = ''
+            preserve_media = False
+            stage = 'lecture de la demande'
             try:
                 data = json.loads(body or '{}')
                 raw_media_ids = data.get('mediaIds') or [data.get('mediaId')]
@@ -5132,6 +5869,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 first_comment = str(data.get('firstComment') or '').strip()
                 cover_media_id = str(data.get('coverMediaId') or '').strip()
                 dry_run = bool(data.get('dryRun'))
+                preserve_media = bool(data.get('preserveMedia'))
                 mode = 'reel' if str(data.get('mode') or '').strip().lower() == 'reel' else 'carousel'
                 if cover_media_id and mode != 'reel':
                     raise ValueError('Une couverture personnalisée est réservée aux Reels Instagram')
@@ -5161,9 +5899,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if cover_path.suffix != '.jpg':
                         raise ValueError('La couverture personnalisée Instagram doit être une image JPEG')
                     media_paths.append(cover_path)
-                ensure_instagram_media_tunnel(media_ids[0])
-                image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
-                cover_url = get_instagram_media_public_url(cover_media_id) if cover_media_id else ''
+                image_urls = []
+                cover_url = ''
+                if mode == 'reel':
+                    ensure_instagram_media_tunnel(media_ids[0])
+                    if cover_media_id:
+                        cover_url = get_instagram_media_public_url(cover_media_id)
+                else:
+                    ensure_instagram_media_tunnel(media_ids[0])
+                    image_urls = [get_instagram_media_public_url(media_id) for media_id in media_ids]
                 if dry_run:
                     self.send_json(200, {
                         'ok': True,
@@ -5171,31 +5915,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'mediaIds': media_ids,
                         'mediaCount': len(media_ids),
                         'imageUrls': image_urls,
+                        'uploadMode': 'normalized-hosted-url' if mode == 'reel' else 'hosted-url',
                         'thumbOffsetMs': thumb_offset_ms if mode == 'reel' else None,
                         'coverMediaId': cover_media_id or None,
                         'coverUrl': cover_url or None,
                     })
                     return
 
+                stage = 'lecture du profil Instagram'
                 profile = get_instagram_profile()
                 child_container_ids = []
                 if mode == 'reel':
-                    if len(image_urls) != 1:
+                    if len(media_ids) != 1:
                         raise ValueError('Un Reel Instagram exige une seule vidéo')
                     if media_paths[0].suffix not in {'.mp4', '.mov'}:
                         raise ValueError('Le média Instagram préparé n’est pas une vidéo')
+                    stage = 'mise aux normes de la vidéo Instagram'
+                    prepare_instagram_reel_video(media_paths[0])
+                    stage = 'préparation de l’URL vidéo Instagram'
+                    ensure_instagram_media_tunnel(media_ids[0])
+                    hosted_video_url = get_instagram_media_public_url(media_ids[0])
                     reel_data = build_instagram_reel_container_data(
-                        image_urls[0],
                         caption,
                         thumb_offset_ms,
                         cover_url,
+                        video_url=hosted_video_url,
                     )
+                    stage = 'création du conteneur Reel Instagram'
                     container = perform_instagram_request(
                         f'{profile["id"]}/media',
                         method='POST',
                         data=reel_data,
                     )
                     container_id = str(container.get('id') or '').strip()
+                    print(f'[Instagram] Conteneur Reel créé : {container_id}')
                 elif len(image_urls) == 1:
                     container = perform_instagram_request(
                         f'{profile["id"]}/media',
@@ -5228,7 +5981,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
                 if not container_id:
                     raise ValueError('Instagram n’a pas retourné d’identifiant de conteneur')
-                wait_for_instagram_container(container_id)
+                if mode != 'reel':
+                    print(f'[Instagram] Conteneur créé : {container_id}')
+                stage = 'traitement du conteneur Instagram'
+                wait_for_instagram_container(
+                    container_id,
+                    timeout_seconds=15 * 60 if mode == 'reel' else 5 * 60,
+                )
+                stage = 'publication du conteneur Instagram'
                 publication = perform_instagram_request(
                     f'{profile["id"]}/media_publish',
                     method='POST',
@@ -5262,13 +6022,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     'mediaCount': len(media_ids),
                 })
             except json.JSONDecodeError:
-                self.send_json(400, {'error': 'Corps JSON invalide'})
+                self.send_json(400, {'error': 'Corps JSON invalide', 'stage': stage})
             except ValueError as error:
-                self.send_json(400, {'error': str(error)})
+                diagnostic = {
+                    'error': f'Échec Instagram pendant {stage} : {error}',
+                    'stage': stage,
+                    'containerId': container_id or None,
+                }
+                print(f'[Instagram] ÉCHEC étape={stage} conteneur={container_id or "—"} erreur={error}')
+                self.send_json(400, diagnostic)
             except Exception as error:
-                self.send_json(500, {'error': str(error)})
+                diagnostic = {
+                    'error': f'Échec Instagram pendant {stage} : {type(error).__name__}: {error}',
+                    'stage': stage,
+                    'containerId': container_id or None,
+                }
+                print(
+                    f'[Instagram] ERREUR INATTENDUE étape={stage} '
+                    f'conteneur={container_id or "—"} type={type(error).__name__} erreur={error}'
+                )
+                self.send_json(500, diagnostic)
             finally:
-                if not dry_run:
+                if publication_id and not dry_run and not preserve_media:
                     for media_path in media_paths:
                         try:
                             media_path.unlink()
@@ -5315,6 +6090,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     languages,
                     str(data.get('model') or 'gpt-5.6-terra').strip(),
                     shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    mode=str(data.get('mode') or 'collection').strip(),
                     force_existing=bool(data.get('testMode')),
                 )
                 self.send_json(200, payload)
@@ -5337,8 +6113,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     listing_ids,
                     languages,
                     shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    mode=str(data.get('mode') or 'collection').strip(),
                     model=str(data.get('model') or 'gpt-5.6-terra').strip(),
                     reasoning_effort=str(data.get('reasoningEffort') or 'low').strip(),
+                    force_existing=bool(data.get('forceExisting')),
                 )
                 self.send_json(201, payload)
             except (ValueError, json.JSONDecodeError) as error:
@@ -5358,6 +6136,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 payload = get_localization_backfill_service().create_test_run(
                     listing_ids,
                     shop_key=str(data.get('shopKey') or 'grosgeek').strip(),
+                    mode=str(data.get('mode') or 'collection').strip(),
                     model=str(data.get('model') or 'gpt-5.6-terra').strip(),
                     reasoning_effort=str(data.get('reasoningEffort') or 'low').strip(),
                 )
@@ -5525,6 +6304,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/etsy/test/listing/draft':
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8')
+            publication_debug = {
+                'stage': 'decode_request',
+                'endpoint': path,
+            }
             try:
                 data = json.loads(body or '{}')
                 requested_shop_key = resolve_requested_shop_key(query_params=query_params, body_data=data, headers=self.headers)
@@ -5620,20 +6403,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             if key in {'tags'}
                         },
                     }
-
-                    if publication_mode == 'update_expired_listing':
-                        current_listing_response = perform_etsy_get_request(
-                            f'listings/{target_listing_id}?includes=Images,Videos&legacy=true&allow_suggested_title=true',
-                            include_oauth=True,
-                            shop_key=requested_shop_key,
-                        )
-                    else:
-                        current_listing_response = perform_etsy_get_request(
-                            f'shops/{shop_id}/listings/{target_listing_id}?includes=Images,Videos',
-                            include_oauth=True,
-                            shop_key=requested_shop_key,
-                        )
+                    current_listing_response = perform_etsy_get_request(
+                        f'listings/{target_listing_id}?includes=Images,Videos&legacy=true&allow_suggested_title=true',
+                        include_oauth=True,
+                        shop_key=requested_shop_key,
+                    )
                     current_listing_data = current_listing_response.get('results', [{}])[0] if isinstance(current_listing_response.get('results'), list) and current_listing_response.get('results') else current_listing_response.get('data', current_listing_response)
+                    if str(current_listing_data.get('shop_id') or '') != str(shop_id):
+                        self.send_json(400, {
+                            'error': 'Cette fiche Etsy n appartient pas a la boutique selectionnee',
+                            'listing_id': target_listing_id,
+                            'selected_shop_id': shop_id,
+                        })
+                        return
                     current_listing_state = str(current_listing_data.get('state') or '').strip().lower()
 
                     operations = [{
@@ -5673,84 +6455,153 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         })
                         return
 
+                    publication_plan = {
+                        'listingFrench': normalized_update_listing_payload,
+                        'inventoryRequested': inventory_payload,
+                        'attributesRequested': attributes_payload,
+                        'imagesPrepared': [
+                            {
+                                'order': image['fields_sent']['rank'],
+                                'filename': image['filename'],
+                                'mode': image['mode'],
+                                'sourceUrl': str((images_payload[image['index'] - 1] or {}).get('remote_url') or ''),
+                                'bytes': len(image['payload']),
+                                'alt_text': image['fields_sent']['alt_text'],
+                            }
+                            for image in prepared_images
+                        ],
+                        'videosPrepared': [
+                            {
+                                'order': video['index'],
+                                'filename': video['filename'],
+                                'mode': video['mode'],
+                                'bytes': len(video['payload']),
+                            }
+                            for video in prepared_videos
+                        ],
+                        'mediaPlan': media_plan_payload,
+                    }
+
                     if normalized_update_listing_payload:
                         update_tags = normalized_update_listing_payload.get('tags') or []
-                        has_long_tag = any(len(str(tag or '').strip()) > 20 for tag in update_tags)
-                        use_french_translation_tags = (
-                            publication_mode == 'update_expired_listing'
-                            and current_listing_state == 'expired'
-                            and has_long_tag
+                        is_french_source_update = str(current_listing_data.get('language') or '').strip().lower() == 'fr'
+                        update_endpoint = (
+                            f'shops/{shop_id}/listings/{target_listing_id}/translations/fr'
+                            if is_french_source_update
+                            else f'shops/{shop_id}/listings/{target_listing_id}'
                         )
-                        main_update_payload = (
-                            {
-                                key: value
+                        update_method = 'PUT' if is_french_source_update else 'PATCH'
+                        debug_title = str(normalized_update_listing_payload.get('title') or '')
+                        encoded_form_body = build_etsy_form_body(normalized_update_listing_payload)
+                        publication_debug = {
+                            'stage': 'update_listing_french_source' if is_french_source_update else 'update_listing',
+                            'endpoint': update_endpoint,
+                            'method': update_method,
+                            'publicationMode': publication_mode,
+                            'sourceListingId': target_listing_id,
+                            'sourceState': current_listing_state,
+                            'sourceTitle': str(current_listing_data.get('title') or ''),
+                            'submittedTitle': debug_title,
+                            'submittedTitleLength': len(debug_title),
+                            'submittedFields': {
+                                key: type(value).__name__
                                 for key, value in normalized_update_listing_payload.items()
-                                if key != 'tags'
-                            }
-                            if use_french_translation_tags
-                            else normalized_update_listing_payload
+                            },
+                            'tagCount': len(update_tags),
+                            'tagLengths': [len(str(tag or '').strip()) for tag in update_tags],
+                            'contentType': 'application/x-www-form-urlencoded; charset=utf-8',
+                            'publicationPlan': publication_plan,
+                            'submittedPayload': normalized_update_listing_payload,
+                            'encodedFormBody': encoded_form_body.decode('utf-8'),
+                            'encodedFormBodyBytes': len(encoded_form_body),
+                            'encodedFormBodySha256': hashlib.sha256(encoded_form_body).hexdigest(),
+                            'descriptionLength': len(str(normalized_update_listing_payload.get('description') or '')),
+                        }
+                        log_server_event(
+                            'ETSY publication debug '
+                            + json.dumps({
+                                key: value for key, value in publication_debug.items()
+                                if key not in {'submittedPayload', 'encodedFormBody', 'publicationPlan'}
+                            }, ensure_ascii=False)
                         )
-
-                        if main_update_payload:
-                            pause_etsy_publication_requests()
-                            update_response = perform_etsy_patch_form_request(
-                                f'shops/{shop_id}/listings/{target_listing_id}',
-                                main_update_payload,
-                                include_oauth=True,
+                        pause_etsy_publication_requests()
+                        update_request = perform_etsy_put_form_request if is_french_source_update else perform_etsy_patch_form_request
+                        update_response = update_request(
+                            update_endpoint, normalized_update_listing_payload,
+                            include_oauth=True, shop_key=requested_shop_key,
+                        )
+                        operations.append({
+                            'step': publication_debug['stage'],
+                            'endpoint': update_endpoint,
+                            'method': update_method,
+                            'mode': publication_mode,
+                            'payload_sent': normalized_update_listing_payload,
+                            'response': update_response,
+                        })
+                        if publication_mode == 'update_listing':
+                            # Le texte français est déjà écrit sur Etsy. Conserver son
+                            # suivi même si une étape ultérieure (variations ou médias)
+                            # échoue sur cette fiche active.
+                            append_localization_automation_registration(
+                                operations,
                                 shop_key=requested_shop_key,
+                                listing_id=target_listing_id,
+                                pipeline_mode=pipeline_mode,
+                                translation_strategy='rework_all',
+                                initial_source=build_updated_listing_localization_source(
+                                    target_listing_id,
+                                    normalized_update_listing_payload,
+                                    current_listing_data,
+                                    current_listing_state,
+                                ),
                             )
-                            operations.append({
-                                'step': 'update_listing',
-                                'endpoint': f'shops/{shop_id}/listings/{target_listing_id}',
-                                'mode': publication_mode,
-                                'payload_sent': main_update_payload,
-                                'response': update_response,
-                            })
 
-                        if use_french_translation_tags:
-                            translation_path = f'shops/{shop_id}/listings/{target_listing_id}/translations/fr'
-                            translation_payload = {
-                                'title': str(normalized_update_listing_payload.get('title') or '').strip(),
-                                'description': str(normalized_update_listing_payload.get('description') or ''),
-                                'tags': [str(tag or '').strip() for tag in update_tags if str(tag or '').strip()],
-                            }
-                            try:
-                                perform_etsy_get_request(
-                                    translation_path,
-                                    include_oauth=True,
-                                    shop_key=requested_shop_key,
-                                )
-                                translation_method = 'PUT'
-                            except urllib.error.HTTPError as translation_get_error:
-                                if translation_get_error.code != 404:
-                                    raise
-                                translation_method = 'POST'
+                    if isinstance(inventory_payload, dict) and inventory_payload.get('products'):
+                        publication_debug = {
+                            'stage': 'update_listing_inventory',
+                            'endpoint': f'listings/{target_listing_id}/inventory',
+                            'method': 'PUT',
+                            'publicationMode': publication_mode,
+                            'sourceListingId': target_listing_id,
+                            'sourceState': current_listing_state,
+                            'contentType': 'application/json',
+                            'publicationPlan': publication_plan,
+                            'submittedPayload': normalize_etsy_inventory_payload(
+                                inventory_payload,
+                                fallback_readiness_state_id=(
+                                    int(listing_payload.get('readiness_state_id') or 0)
+                                    or int(current_listing_data.get('readiness_state_id') or 0)
+                                    or 0
+                                ),
+                            ),
+                            'operationsCompleted': [operation['step'] for operation in operations],
+                        }
+                    inventory_operation = update_etsy_listing_inventory(
+                        shop_id,
+                        target_listing_id,
+                        inventory_payload,
+                        shop_key=requested_shop_key,
+                        fallback_readiness_state_id=(
+                            int(listing_payload.get('readiness_state_id') or 0)
+                            or int(current_listing_data.get('readiness_state_id') or 0)
+                            or 0
+                        ),
+                    )
+                    if inventory_operation:
+                        operations.append(inventory_operation)
 
-                            pause_etsy_publication_requests()
-                            if translation_method == 'PUT':
-                                translation_response = perform_etsy_put_form_request(
-                                    translation_path,
-                                    translation_payload,
-                                    include_oauth=True,
-                                    shop_key=requested_shop_key,
-                                )
-                            else:
-                                translation_response = perform_etsy_post_form_request(
-                                    translation_path,
-                                    translation_payload,
-                                    include_oauth=True,
-                                    shop_key=requested_shop_key,
-                                )
-                            operations.append({
-                                'step': 'update_expired_listing_french_tags',
-                                'endpoint': translation_path,
-                                'method': translation_method,
-                                'payload_sent': translation_payload,
-                                'response': translation_response,
-                            })
-
-                        if not main_update_payload and not use_french_translation_tags:
-                            raise ValueError('Aucun champ de mise a jour Etsy exploitable')
+                    target_taxonomy_id = str(
+                        listing_payload.get('taxonomy_id')
+                        or current_listing_data.get('taxonomy_id')
+                        or ''
+                    ).strip()
+                    operations.extend(update_etsy_listing_attributes(
+                        shop_id,
+                        target_listing_id,
+                        target_taxonomy_id,
+                        attributes_payload,
+                        shop_key=requested_shop_key,
+                    ))
 
                     if images_payload:
                         deleted_image_ids = []
@@ -5876,37 +6727,63 @@ class Handler(http.server.BaseHTTPRequestHandler):
                             'videos': uploaded_videos,
                         })
 
-                    append_localization_automation_registration(
-                        operations,
-                        shop_key=requested_shop_key,
-                        listing_id=target_listing_id,
-                        pipeline_mode=pipeline_mode,
-                        translation_strategy='rework_all',
-                        initial_source={
-                            'listingId': target_listing_id,
-                            'title': str(
-                                normalized_update_listing_payload.get('title')
-                                or current_listing_data.get('title')
-                                or ''
-                            ).strip(),
-                            'description': str(
-                                normalized_update_listing_payload.get('description')
-                                or current_listing_data.get('description')
-                                or ''
+                    final_listing_response = current_listing_response
+                    final_listing_state = current_listing_state
+                    if publication_mode == 'update_expired_listing':
+                        activation_endpoint = f'shops/{shop_id}/listings/{target_listing_id}'
+                        activation_payload = {'state': 'active'}
+                        publication_debug = {
+                            'stage': 'activate_expired_listing',
+                            'endpoint': activation_endpoint,
+                            'method': 'PATCH',
+                            'publicationPlan': publication_plan,
+                            'submittedPayload': activation_payload,
+                            'encodedFormBody': build_etsy_form_body(activation_payload).decode('utf-8'),
+                        }
+                        pause_etsy_publication_requests()
+                        activation_response = perform_etsy_patch_form_request(
+                            activation_endpoint,
+                            activation_payload,
+                            include_oauth=True,
+                            shop_key=requested_shop_key,
+                        )
+                        final_listing_state = str(activation_response.get('state') or '').strip().lower()
+                        final_listing_response = activation_response
+                        if final_listing_state != 'active':
+                            final_listing_response = perform_etsy_get_request(
+                                f'listings/{target_listing_id}',
+                                include_oauth=True,
+                                shop_key=requested_shop_key,
+                            )
+                            final_listing_state = str(final_listing_response.get('state') or '').strip().lower()
+                        publication_debug['etsyStateAfterActivation'] = final_listing_state
+                        if final_listing_state != 'active':
+                            self.send_json(502, {
+                                'error': 'Etsy n’a pas confirmé la réactivation de la fiche expirée',
+                                'publication_debug': publication_debug,
+                            })
+                            return
+                        operations.append({
+                            'step': 'activate_expired_listing',
+                            'endpoint': activation_endpoint,
+                            'payload_sent': activation_payload,
+                            'response': activation_response,
+                        })
+
+                    if publication_mode == 'update_expired_listing':
+                        append_localization_automation_registration(
+                            operations,
+                            shop_key=requested_shop_key,
+                            listing_id=target_listing_id,
+                            pipeline_mode=pipeline_mode,
+                            translation_strategy='rework_all',
+                            initial_source=build_updated_listing_localization_source(
+                                target_listing_id,
+                                normalized_update_listing_payload,
+                                current_listing_data,
+                                final_listing_state,
                             ),
-                            'tags': [
-                                str(tag or '').strip()
-                                for tag in (
-                                    normalized_update_listing_payload.get('tags')
-                                    or current_listing_data.get('tags')
-                                    or []
-                                )
-                                if str(tag or '').strip()
-                            ],
-                            'state': current_listing_state,
-                            'translations': [],
-                        },
-                    )
+                        )
 
                     self.send_json(200, {
                         'ok': True,
@@ -5914,7 +6791,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'mode': publication_mode,
                         'listing_id': target_listing_id,
                         'payload_sent': normalized_update_listing_payload,
-                        'payload': current_listing_response,
+                        'payload': final_listing_response,
                         'operations': operations,
                     })
                     return
@@ -6048,92 +6925,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'response': update_response,
                     })
 
-                inventory_products = inventory_payload.get('products') if isinstance(inventory_payload, dict) else None
-                if isinstance(inventory_products, list) and inventory_products:
-                    normalized_inventory_payload = {
-                        'products': [],
-                        'price_on_property': [
-                            int(value) for value in (inventory_payload.get('price_on_property') or [])
-                            if str(value).strip().isdigit()
-                        ],
-                        'sku_on_property': [
-                            int(value) for value in (inventory_payload.get('sku_on_property') or [])
-                            if str(value).strip().isdigit()
-                        ],
-                        'quantity_on_property': [
-                            int(value) for value in (inventory_payload.get('quantity_on_property') or [])
-                            if str(value).strip().isdigit()
-                        ],
-                        'readiness_state_on_property': [
-                            int(value) for value in (inventory_payload.get('readiness_state_on_property') or [])
-                            if str(value).strip().isdigit()
-                        ],
-                    }
-                    fallback_readiness_state_id = int(create_payload.get('readiness_state_id') or 0) or None
-
-                    for product in inventory_products:
-                        if not isinstance(product, dict):
-                            continue
-                        offerings = []
-                        for offering in (product.get('offerings') or []):
-                            if not isinstance(offering, dict):
-                                continue
-                            normalized_offering = {
-                                'price': float(offering.get('price') or 0),
-                                'quantity': int(offering.get('quantity') or 0),
-                                'is_enabled': bool(offering.get('is_enabled', True)),
-                            }
-                            readiness_state_id = int(offering.get('readiness_state_id') or fallback_readiness_state_id or 0) or 0
-                            if readiness_state_id:
-                                normalized_offering['readiness_state_id'] = readiness_state_id
-                            offerings.append(normalized_offering)
-
-                        property_values = []
-                        for property_value in (product.get('property_values') or []):
-                            if not isinstance(property_value, dict):
-                                continue
-                            normalized_property_value = {
-                                'property_id': int(property_value.get('property_id') or 0),
-                                'property_name': str(property_value.get('property_name') or '').strip(),
-                                'values': [
-                                    str(value or '').strip()
-                                    for value in (property_value.get('values') or [])
-                                    if str(value or '').strip()
-                                ],
-                            }
-                            scale_id = int(property_value.get('scale_id') or 0) or 0
-                            if scale_id:
-                                normalized_property_value['scale_id'] = scale_id
-                            value_ids = [
-                                int(value) for value in (property_value.get('value_ids') or [])
-                                if str(value).strip().isdigit()
-                            ]
-                            if value_ids:
-                                normalized_property_value['value_ids'] = value_ids
-                            if normalized_property_value['property_id'] or normalized_property_value['values']:
-                                property_values.append(normalized_property_value)
-
-                        if offerings:
-                            normalized_inventory_payload['products'].append({
-                                'sku': str(product.get('sku') or '').strip(),
-                                'property_values': property_values,
-                                'offerings': offerings,
-                            })
-
-                    if normalized_inventory_payload['products']:
-                        pause_etsy_publication_requests()
-                        inventory_response = perform_etsy_put_json_request(
-                            f'listings/{created_listing_id}/inventory',
-                            normalized_inventory_payload,
-                            include_oauth=True,
-                            shop_key=requested_shop_key,
-                        )
-                        operations.append({
-                            'step': 'update_listing_inventory',
-                            'endpoint': f'listings/{created_listing_id}/inventory',
-                            'payload_sent': normalized_inventory_payload,
-                            'response': inventory_response,
-                        })
+                inventory_operation = update_etsy_listing_inventory(
+                    shop_id,
+                    created_listing_id,
+                    inventory_payload,
+                    shop_key=requested_shop_key,
+                    fallback_readiness_state_id=int(create_payload.get('readiness_state_id') or 0) or 0,
+                )
+                if inventory_operation:
+                    operations.append(inventory_operation)
 
                 uploaded_images = upload_listing_image_payloads(
                     shop_id,
@@ -6181,93 +6981,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         'videos': uploaded_videos,
                     })
 
-                occasion_value = str(attributes_payload.get('occasion') or '').strip().lower()
-                taxonomy_id = str(create_payload.get('taxonomy_id') or '').strip()
-                dimension_properties = attributes_payload.get('dimension_properties') if isinstance(attributes_payload, dict) else None
-                if isinstance(dimension_properties, list):
-                    for property_entry in dimension_properties:
-                        if not isinstance(property_entry, dict):
-                            continue
-                        property_id = int(property_entry.get('property_id') or 0) or 0
-                        property_payload = build_listing_property_payload(property_entry)
-                        if not property_id or not property_payload:
-                            continue
-
-                        try:
-                            pause_etsy_publication_requests()
-                            property_response = perform_etsy_put_form_request(
-                                f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
-                                property_payload,
-                                include_oauth=True,
-                                shop_key=requested_shop_key,
-                            )
-                            operations.append({
-                                'step': 'update_listing_property_dimension',
-                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
-                                'payload_sent': property_payload,
-                                'response': property_response,
-                                'property_name': str(property_entry.get('property_name') or '').strip(),
-                            })
-                        except urllib.error.HTTPError as property_error:
-                            try:
-                                property_error_payload = decode_json_bytes(property_error.read())
-                            except Exception:
-                                property_error_payload = {'error': str(property_error)}
-                            operations.append({
-                                'step': 'update_listing_property_dimension',
-                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{property_id}',
-                                'payload_sent': property_payload,
-                                'status': 'failed',
-                                'error_status': property_error.code,
-                                'error_payload': property_error_payload,
-                                'property_name': str(property_entry.get('property_name') or '').strip(),
-                            })
-
-                if taxonomy_id and occasion_value:
-                    assignment = resolve_occasion_taxonomy_assignment(taxonomy_id, occasion_value)
-                    if assignment:
-                        property_payload = {
-                            'value_ids': [assignment['value_id']],
-                            'values': [assignment['value_name']],
-                        }
-                        if assignment.get('scale_id'):
-                            property_payload['scale_id'] = assignment['scale_id']
-
-                        try:
-                            pause_etsy_publication_requests()
-                            property_response = perform_etsy_put_form_request(
-                                f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
-                                property_payload,
-                                include_oauth=True,
-                                shop_key=requested_shop_key,
-                            )
-                            operations.append({
-                                'step': 'update_listing_property_occasion',
-                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
-                                'payload_sent': property_payload,
-                                'response': property_response,
-                                'resolved_property': assignment,
-                            })
-                        except urllib.error.HTTPError as property_error:
-                            try:
-                                property_error_payload = decode_json_bytes(property_error.read())
-                            except Exception:
-                                property_error_payload = {'error': str(property_error)}
-                            operations.append({
-                                'step': 'update_listing_property_occasion',
-                                'endpoint': f'shops/{shop_id}/listings/{created_listing_id}/properties/{assignment["property_id"]}',
-                                'payload_sent': property_payload,
-                                'status': 'failed',
-                                'error_status': property_error.code,
-                                'error_payload': property_error_payload,
-                                'resolved_property': assignment,
-                            })
-                    else:
-                        operations.append({
-                            'step': 'update_listing_property_occasion',
-                            'status': 'skipped',
-                            'reason': f'Property/value introuvable pour occasion={occasion_value} taxonomy_id={taxonomy_id}',
-                        })
+                operations.extend(update_etsy_listing_attributes(
+                    shop_id,
+                    created_listing_id,
+                    str(create_payload.get('taxonomy_id') or '').strip(),
+                    attributes_payload,
+                    shop_key=requested_shop_key,
+                ))
 
                 append_localization_automation_registration(
                     operations,
@@ -6305,10 +7025,31 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except ValueError as e:
                 self.send_json(400, {'error': str(e)})
             except urllib.error.HTTPError as e:
+                raw_etsy_response = e.read().decode('utf-8', errors='replace')
                 try:
-                    payload = decode_json_bytes(e.read())
+                    payload = json.loads(raw_etsy_response)
                 except Exception:
                     payload = {'error': str(e)}
+                if not isinstance(payload, dict):
+                    payload = {'error': payload or str(e)}
+                publication_debug['etsyHttpStatus'] = e.code
+                publication_debug['etsyResponseRaw'] = raw_etsy_response
+                publication_debug['etsyRequestId'] = (
+                    e.headers.get('x-etsy-request-uuid')
+                    or e.headers.get('x-request-id')
+                    or ''
+                )
+                payload['publication_debug'] = publication_debug
+                log_server_event(
+                    f'ETSY publication HTTP {e.code} '
+                    + json.dumps({
+                        **payload,
+                        'publication_debug': {
+                            key: value for key, value in publication_debug.items()
+                            if key not in {'submittedPayload', 'encodedFormBody', 'publicationPlan'}
+                        },
+                    }, ensure_ascii=False)
+                )
                 self.send_json(e.code, payload or {'error': str(e)})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
@@ -6482,12 +7223,19 @@ class InstagramMediaHandler(http.server.BaseHTTPRequestHandler):
     def copy_range(source, destination, byte_count: int):
         """Copier uniquement la plage annoncée, sans repartir jusqu’à la fin du fichier."""
         remaining = byte_count
+        transferred = 0
         while remaining > 0:
             chunk = source.read(min(1024 * 1024, remaining))
             if not chunk:
                 break
-            destination.write(chunk)
-            remaining -= len(chunk)
+            try:
+                destination.write(chunk)
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError) as error:
+                return transferred, error
+            chunk_length = len(chunk)
+            transferred += chunk_length
+            remaining -= chunk_length
+        return transferred, None
 
     def send_media(self, include_body: bool):
         path = urllib.parse.unquote(self.path.split('?', 1)[0])
@@ -6503,35 +7251,53 @@ class InstagramMediaHandler(http.server.BaseHTTPRequestHandler):
 
         size = media_path.stat().st_size
         content_type = {'.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.mov': 'video/quicktime'}[media_path.suffix]
-        try:
-            byte_range = self.parse_range_header(self.headers.get('Range'), size)
-        except ValueError:
-            self.send_response(416)
-            self.send_header('Content-Range', f'bytes */{size}')
-            self.send_header('Accept-Ranges', 'bytes')
-            self.end_headers()
-            return
+        requested_range = str(self.headers.get('Range') or '').strip()
+        is_video = media_path.suffix in {'.mp4', '.mov'}
+        byte_range = None
+        # Le flux historique fiable renvoyait les vidéos en 200 complet. Meta se
+        # bloque sur IN_PROGRESS lorsqu'il découpe les gros fichiers en plages
+        # 206 à travers le tunnel temporaire, tout en annulant chaque flux.
+        if not is_video:
+            try:
+                byte_range = self.parse_range_header(requested_range, size)
+            except ValueError:
+                self.send_response(416)
+                self.send_header('Content-Range', f'bytes */{size}')
+                self.send_header('Accept-Ranges', 'bytes')
+                self.end_headers()
+                return
 
         start, end = byte_range or (0, size - 1)
         content_length = end - start + 1
         self.send_response(206 if byte_range else 200)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(content_length))
-        self.send_header('Accept-Ranges', 'bytes')
+        if not is_video:
+            self.send_header('Accept-Ranges', 'bytes')
         if byte_range:
             self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         if include_body:
-            try:
-                with media_path.open('rb') as source:
-                    source.seek(start)
-                    self.copy_range(source, self.wfile, content_length)
-            except (BrokenPipeError, ConnectionResetError):
-                # Les fetchers vidéo ouvrent parfois plusieurs plages puis
-                # abandonnent celles devenues inutiles. Ce n’est pas une panne serveur.
+            started_at = time.monotonic()
+            transferred = 0
+            with media_path.open('rb') as source:
+                source.seek(start)
+                transferred, transfer_error = self.copy_range(source, self.wfile, content_length)
+            if transfer_error is not None:
+                if is_video:
+                    print(
+                        f'[Instagram Media] Flux vidéo interrompu après {transferred}/{content_length} octets '
+                        f'(Range demandé : {requested_range or "aucun"}, {type(transfer_error).__name__})'
+                    )
                 return
+            if is_video:
+                elapsed = max(0.001, time.monotonic() - started_at)
+                print(
+                    f'[Instagram Media] Vidéo transmise : {transferred}/{content_length} octets '
+                    f'en {elapsed:.1f}s (Range demandé : {requested_range or "aucun"}, réponse 200)'
+                )
 
     def do_GET(self):
         self.send_media(include_body=True)
@@ -6556,7 +7322,7 @@ def start_instagram_media_server() -> ThreadingLocalServer:
 
 def main():
     global INSTAGRAM_MEDIA_PUBLIC_BASE, INSTAGRAM_MEDIA_TUNNEL_PROCESS, INSTAGRAM_MEDIA_TUNNEL_LOG
-    global PINTEREST_SERVICE, LOCALIZATION_BACKFILL_SERVICE
+    global PINTEREST_SERVICE, LOCALIZATION_BACKFILL_SERVICE, RENEWAL_WORKSHOP_SERVICE
 
     load_dotenv_file()
     PINTEREST_SERVICE = PinterestService(ROOT)
@@ -6571,6 +7337,7 @@ def main():
         automation_stability_seconds=int(os.getenv('LOCALIZATION_AUTOMATION_STABILITY_SECONDS') or 1200),
     )
     LOCALIZATION_BACKFILL_SERVICE.start()
+    RENEWAL_WORKSHOP_SERVICE = RenewalWorkshopService(ROOT, load_etsy_renewal_catalog)
     try:
         sys.stdout.reconfigure(errors='replace')
     except Exception:

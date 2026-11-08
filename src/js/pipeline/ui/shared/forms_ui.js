@@ -802,6 +802,26 @@
       ].filter(Boolean).join('\n\n');
     }
 
+    const renewalContext = state.renewalWorkshopRun;
+    if (renewalContext?.active) {
+      const renewalFrame = [
+        'CADRE_REWORK:',
+        'Cette mission consiste à produire une nouvelle version complète d’une fiche produit existante.',
+        'Travaille exclusivement à partir du formulaire validé, des quatre images sélectionnées et des sorties candidates fournies par les agents précédents.',
+        'La sortie doit être autonome et prête à remplacer la fiche actuelle.',
+        '',
+        'CONTRAT_DES_DONNEES_CUMULATIVES:',
+        '- TITRES_CANDIDATS : propositions générées par l’agent Titres ; elles constituent un corpus sémantique et ne sont pas encore validées.',
+        '- TAGS_CANDIDATS : propositions générées par l’agent Tags ; elles constituent un corpus sémantique et ne sont pas encore validées.',
+        '- TAGS_METIER : tags structurels issus des bibliothèques métier ; ils sont distincts des tags candidats.',
+        '- Ne concatène jamais mécaniquement ces blocs et ne les traite pas comme plusieurs produits.',
+      ].join('\n');
+      base.correction = [String(base.correction || '').trim(), renewalFrame]
+        .filter(Boolean)
+        .join('\n\n');
+      base.renewal_workshop_job_id = String(renewalContext.jobId || '');
+    }
+
     return base;
   }
 

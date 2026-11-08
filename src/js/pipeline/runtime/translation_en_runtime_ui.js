@@ -9,12 +9,12 @@
   const TRANSLATION_LISTING_PROMPT_PATH = 'prompts/traduction/traduction_listing_en.md';
   const STORAGE_KEY_PREFIX = 'pipeline.translation.en.';
   const PREFIXES = ['tt', 'col'];
-  const TRANSLATION_LANGUAGES = ['en', 'de', 'es', 'it', 'nl', 'pt'];
+  const TRANSLATION_LANGUAGES = ['en', 'de', 'es', 'it', 'nl', 'pt', 'ja', 'pl', 'ru', 'sv'];
   const UPDATE_TRANSLATION_LANGUAGES = ['it', 'nl', 'pt'];
   const TRANSLATION_SUBTABS = ['fr', ...TRANSLATION_LANGUAGES];
   const TITLE_MAX_LENGTH = 140;
   const TAG_MAX_LENGTH = 30;
-  const DEFAULT_BULK_STATUS = 'En attente d’un lancement global EN / DE / ES / IT / NL / PT.';
+  const DEFAULT_BULK_STATUS = 'En attente d’un lancement global des 10 langues.';
   const DEFAULT_MAPPING_OUTPUT = '— pas encore vérifié —';
   const DEFAULT_MAPPING_STATUS = 'En attente d’un check FR -> EN.';
   const DEFAULT_SOURCE_STATUS = 'En attente d’une fiche Etsy source.';
@@ -40,6 +40,7 @@
     listingRef: '',
     sourceTitle: '',
     sourceDescription: '',
+    sourceDescriptionRaw: '',
     sourceTags: [],
     pendingSourceTagsInput: '',
     sourceStatus: '',
@@ -64,6 +65,10 @@
       it: 'idle',
       nl: 'idle',
       pt: 'idle',
+      ja: 'idle',
+      pl: 'idle',
+      ru: 'idle',
+      sv: 'idle',
     },
     retryCounts: {
       en: 0,
@@ -72,6 +77,10 @@
       it: 0,
       nl: 0,
       pt: 0,
+      ja: 0,
+      pl: 0,
+      ru: 0,
+      sv: 0,
     },
     timers: {
       en: { startedAt: 0, lastDurationMs: 0 },
@@ -80,6 +89,10 @@
       it: { startedAt: 0, lastDurationMs: 0 },
       nl: { startedAt: 0, lastDurationMs: 0 },
       pt: { startedAt: 0, lastDurationMs: 0 },
+      ja: { startedAt: 0, lastDurationMs: 0 },
+      pl: { startedAt: 0, lastDurationMs: 0 },
+      ru: { startedAt: 0, lastDurationMs: 0 },
+      sv: { startedAt: 0, lastDurationMs: 0 },
     },
   });
 
@@ -133,6 +146,7 @@
         listingRef: String(listingDraft.listingRef || ''),
         sourceTitle: String(listingDraft.sourceTitle || ''),
         sourceDescription: String(listingDraft.sourceDescription || ''),
+        sourceDescriptionRaw: String(listingDraft.sourceDescriptionRaw || listingDraft.sourceDescription || ''),
         sourceTags: Array.isArray(listingDraft.sourceTags)
           ? listingDraft.sourceTags.map((value) => String(value || '').trim()).filter(Boolean)
           : [],
@@ -150,53 +164,34 @@
         translationDebug: String(listingDraft.translationDebug || ''),
       };
       const bulk = parsed.bulk && typeof parsed.bulk === 'object' ? parsed.bulk : {};
+      const validBulkStatuses = ['idle', 'running', 'success', 'error'];
+      const restoredLanguageStatuses = {};
+      const restoredRetryCounts = {};
+      const restoredTimers = {};
+      TRANSLATION_LANGUAGES.forEach((language) => {
+        restoredLanguageStatuses[language] = validBulkStatuses.includes(bulk.languages?.[language])
+          ? bulk.languages[language]
+          : 'idle';
+        restoredRetryCounts[language] = Number.isFinite(Number(bulk.retryCounts?.[language]))
+          ? Number(bulk.retryCounts[language])
+          : 0;
+        restoredTimers[language] = {
+          startedAt: Number.isFinite(Number(bulk.timers?.[language]?.startedAt))
+            ? Number(bulk.timers[language].startedAt)
+            : 0,
+          lastDurationMs: Number.isFinite(Number(bulk.timers?.[language]?.lastDurationMs))
+            ? Number(bulk.timers[language].lastDurationMs)
+            : 0,
+        };
+      });
       entry.bulk = {
         ...createEmptyBulkState(),
         running: bulk.running === true,
         cancelRequested: bulk.cancelRequested === true,
         status: String(bulk.status || ''),
-        languages: {
-          en: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.en) ? bulk.languages.en : 'idle',
-          de: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.de) ? bulk.languages.de : 'idle',
-          es: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.es) ? bulk.languages.es : 'idle',
-          it: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.it) ? bulk.languages.it : 'idle',
-          nl: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.nl) ? bulk.languages.nl : 'idle',
-          pt: ['idle', 'running', 'success', 'error'].includes(bulk.languages?.pt) ? bulk.languages.pt : 'idle',
-        },
-        retryCounts: {
-          en: Number.isFinite(Number(bulk.retryCounts?.en)) ? Number(bulk.retryCounts.en) : 0,
-          de: Number.isFinite(Number(bulk.retryCounts?.de)) ? Number(bulk.retryCounts.de) : 0,
-          es: Number.isFinite(Number(bulk.retryCounts?.es)) ? Number(bulk.retryCounts.es) : 0,
-          it: Number.isFinite(Number(bulk.retryCounts?.it)) ? Number(bulk.retryCounts.it) : 0,
-          nl: Number.isFinite(Number(bulk.retryCounts?.nl)) ? Number(bulk.retryCounts.nl) : 0,
-          pt: Number.isFinite(Number(bulk.retryCounts?.pt)) ? Number(bulk.retryCounts.pt) : 0,
-        },
-        timers: {
-          en: {
-            startedAt: Number.isFinite(Number(bulk.timers?.en?.startedAt)) ? Number(bulk.timers.en.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.en?.lastDurationMs)) ? Number(bulk.timers.en.lastDurationMs) : 0,
-          },
-          de: {
-            startedAt: Number.isFinite(Number(bulk.timers?.de?.startedAt)) ? Number(bulk.timers.de.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.de?.lastDurationMs)) ? Number(bulk.timers.de.lastDurationMs) : 0,
-          },
-          es: {
-            startedAt: Number.isFinite(Number(bulk.timers?.es?.startedAt)) ? Number(bulk.timers.es.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.es?.lastDurationMs)) ? Number(bulk.timers.es.lastDurationMs) : 0,
-          },
-          it: {
-            startedAt: Number.isFinite(Number(bulk.timers?.it?.startedAt)) ? Number(bulk.timers.it.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.it?.lastDurationMs)) ? Number(bulk.timers.it.lastDurationMs) : 0,
-          },
-          nl: {
-            startedAt: Number.isFinite(Number(bulk.timers?.nl?.startedAt)) ? Number(bulk.timers.nl.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.nl?.lastDurationMs)) ? Number(bulk.timers.nl.lastDurationMs) : 0,
-          },
-          pt: {
-            startedAt: Number.isFinite(Number(bulk.timers?.pt?.startedAt)) ? Number(bulk.timers.pt.startedAt) : 0,
-            lastDurationMs: Number.isFinite(Number(bulk.timers?.pt?.lastDurationMs)) ? Number(bulk.timers.pt.lastDurationMs) : 0,
-          },
-        },
+        languages: restoredLanguageStatuses,
+        retryCounts: restoredRetryCounts,
+        timers: restoredTimers,
       };
     } catch (error) {}
     return entry;
@@ -207,14 +202,7 @@
     entry.bulk = entry.bulk || createEmptyBulkState();
     entry.bulk.languages = entry.bulk.languages || createEmptyBulkState().languages;
     entry.bulk.retryCounts = entry.bulk.retryCounts || createEmptyBulkState().retryCounts;
-    entry.bulk.timers = entry.bulk.timers || {
-      en: { startedAt: 0, lastDurationMs: 0 },
-      de: { startedAt: 0, lastDurationMs: 0 },
-      es: { startedAt: 0, lastDurationMs: 0 },
-      it: { startedAt: 0, lastDurationMs: 0 },
-      nl: { startedAt: 0, lastDurationMs: 0 },
-      pt: { startedAt: 0, lastDurationMs: 0 },
-    };
+    entry.bulk.timers = entry.bulk.timers || createEmptyBulkState().timers;
     return entry.bulk;
   };
 
@@ -450,9 +438,10 @@
     global.finalizeCacheDebugRun?.(prefix, finalStatus);
   };
 
-  const validatePublishedTranslationDraft = (draft) => {
+  const validatePublishedTranslationDraft = (draft, language = '') => {
     const title = String(draft?.translatedTitle || '').trim();
     const description = String(draft?.translatedDescription || '');
+    const sourceTitle = String(draft?.sourceTitle || '').trim();
     const tags = Array.isArray(draft?.translatedTags) ? draft.translatedTags : [];
     const normalizedTags = tags
       .map((value) => String(value || '').trim())
@@ -461,6 +450,17 @@
 
     if (!title) reasons.push('titre vide');
     if (title.length > TITLE_MAX_LENGTH) reasons.push(`titre > ${TITLE_MAX_LENGTH}`);
+    if (sourceTitle.includes(',') && !(language === 'ja' ? /[,、，]/ : /,/).test(title)) {
+      reasons.push('virgules séparatrices absentes du titre');
+    }
+    if (['en', 'de', 'es', 'it', 'nl', 'pt', 'pl', 'sv'].includes(language)
+      && sourceTitle.length >= 100 && title.length / sourceTitle.length < 0.65) {
+      reasons.push('titre anormalement court par rapport au français');
+    }
+    if (/3D/i.test(sourceTitle) && !/3D/i.test(title)) reasons.push('mention 3D absente du titre');
+    if (language === 'it' && /fan[\s-]?art/i.test([title, description, ...normalizedTags].join(' '))) {
+      reasons.push('terme « Fan Art » interdit en italien');
+    }
     if (!description.trim()) reasons.push('description vide');
     if (!normalizedTags.length) reasons.push('tags vides');
     if (normalizedTags.length > 13) reasons.push('plus de 13 tags');
@@ -625,7 +625,15 @@
     const listingDraft = ensurePrefixState(prefix).listingDraft;
     listingDraft.listingRef = getTrimmedValue(prefix, 'translation-en-listing-ref');
     listingDraft.sourceTitle = String(readField(prefix, 'translation-en-source-title')?.value || '');
-    listingDraft.sourceDescription = String(readField(prefix, 'translation-en-source-description')?.value || '');
+    const previousSourceDescription = String(listingDraft.sourceDescription || '');
+    const nextSourceDescription = String(readField(prefix, 'translation-en-source-description')?.value || '');
+    const currentRawDescription = String(listingDraft.sourceDescriptionRaw || '');
+    if (!currentRawDescription) {
+      listingDraft.sourceDescriptionRaw = nextSourceDescription;
+    } else if (previousSourceDescription && previousSourceDescription !== nextSourceDescription && currentRawDescription.includes(previousSourceDescription)) {
+      listingDraft.sourceDescriptionRaw = currentRawDescription.replace(previousSourceDescription, nextSourceDescription);
+    }
+    listingDraft.sourceDescription = nextSourceDescription;
     listingDraft.translatedTitle = String(readField(prefix, 'translation-en-translated-title')?.value || '');
     listingDraft.translatedDescription = String(readField(prefix, 'translation-en-translated-description')?.value || '');
     persistPrefixState(prefix);
@@ -967,6 +975,7 @@
       const normalizedTags = getEtsyData().normalizeAttributeTags?.(sourceTags) || sourceTags;
 
       listingDraft.sourceTitle = String(data.title || '').trim();
+      listingDraft.sourceDescriptionRaw = String(data.description || '').replace(/\r\n?/g, '\n');
       listingDraft.sourceDescription = normalizeSourceDescriptionForTranslation(prefix, data.description).description;
       listingDraft.sourceTags = normalizedTags;
       listingDraft.pendingSourceTagsInput = '';
@@ -1000,6 +1009,7 @@
           listingRef: listingDraft.listingRef,
           sourceTitle: listingDraft.sourceTitle,
           sourceDescription: listingDraft.sourceDescription,
+          sourceDescriptionRaw: listingDraft.sourceDescriptionRaw,
           sourceTags: [...listingDraft.sourceTags],
           pendingSourceTagsInput: '',
           sourceStatus: listingDraft.sourceStatus,
@@ -1026,6 +1036,7 @@
           listingRef: listingDraft.listingRef,
           sourceTitle: listingDraft.sourceTitle,
           sourceDescription: listingDraft.sourceDescription,
+          sourceDescriptionRaw: listingDraft.sourceDescriptionRaw,
           sourceTags: [...listingDraft.sourceTags],
           pendingSourceTagsInput: '',
           sourceStatus: listingDraft.sourceStatus,
@@ -1042,6 +1053,10 @@
         [global.PipelineUITranslationItRuntime, 'ensureTranslationItState'],
         [global.PipelineUITranslationNlRuntime, 'ensureTranslationNlState'],
         [global.PipelineUITranslationPtRuntime, 'ensureTranslationPtState'],
+        [global.PipelineUITranslationJaRuntime, 'ensureTranslationJaState'],
+        [global.PipelineUITranslationPlRuntime, 'ensureTranslationPlState'],
+        [global.PipelineUITranslationRuRuntime, 'ensureTranslationRuState'],
+        [global.PipelineUITranslationSvRuntime, 'ensureTranslationSvState'],
       ].forEach(([runtime, ensureStateMethod]) => {
         const targetEntry = runtime?.[ensureStateMethod]?.(prefix);
         if (!targetEntry) return;
@@ -1058,6 +1073,7 @@
             listingRef: listingDraft.listingRef,
             sourceTitle: listingDraft.sourceTitle,
             sourceDescription: listingDraft.sourceDescription,
+            sourceDescriptionRaw: listingDraft.sourceDescriptionRaw,
             sourceTags: [...listingDraft.sourceTags],
             pendingSourceTagsInput: '',
             sourceStatus: listingDraft.sourceStatus,
@@ -1084,7 +1100,15 @@
       global.PipelineUITranslationNlRuntime?.persistTranslationNlState?.(prefix);
       global.PipelineUITranslationPtRuntime?.renderTranslationPtState?.(prefix);
       global.PipelineUITranslationPtRuntime?.persistTranslationPtState?.(prefix);
-      global.showToast('Fiche source EN chargee');
+      global.PipelineUITranslationJaRuntime?.renderTranslationJaState?.(prefix);
+      global.PipelineUITranslationJaRuntime?.persistTranslationJaState?.(prefix);
+      global.PipelineUITranslationPlRuntime?.renderTranslationPlState?.(prefix);
+      global.PipelineUITranslationPlRuntime?.persistTranslationPlState?.(prefix);
+      global.PipelineUITranslationRuRuntime?.renderTranslationRuState?.(prefix);
+      global.PipelineUITranslationRuRuntime?.persistTranslationRuState?.(prefix);
+      global.PipelineUITranslationSvRuntime?.renderTranslationSvState?.(prefix);
+      global.PipelineUITranslationSvRuntime?.persistTranslationSvState?.(prefix);
+      global.showToast('Fiche source FR chargée');
     } catch (error) {
       setSourceStatus(prefix, `Lecture Etsy impossible : ${error.message}`);
       global.showToast(`Etsy API : ${error.message}`, '#ff4757');
@@ -1126,7 +1150,11 @@
         .replace(/\[\[SOURCE_TITLE\]\]/g, '[voir TITLE dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_TAGS\]\]/g, '[voir TAGS dans SOURCE_FR_LISTING mis en cache]')
         .replace(/\[\[SOURCE_DESCRIPTION\]\]/g, '[voir bloc SOURCE_FR_LISTING mis en cache]');
-      const filledWithInjectionNote = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Le bloc source « 🎭 Fan Art et artiste : » est dynamique : traduis-le integralement et conserve-le obligatoirement dans description_en avec un titre commencant par « 🎭 Fan Art » et termine par deux-points.\n- Preserve exactement les paragraphes et le nombre de lignes vides de la description source.\n- Les blocs fixes de fin sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes de fin dans description_en.`;
+      const individualPrompt = `${filled}\n\nNOTE TECHNIQUE:\n- Traduis uniquement la partie variable de la description.\n- Le bloc source « 🎭 Fan Art et artiste : » est dynamique : traduis-le integralement et conserve-le obligatoirement dans description_en avec un titre commencant par « 🎭 Fan Art » et termine par deux-points.\n- Preserve exactement les paragraphes et le nombre de lignes vides de la description source.\n- Les blocs fixes de fin sont injectes automatiquement apres traduction.\n- Ne reecris pas les blocs fixes de fin dans description_en.`;
+      const filledWithInjectionNote = await global.PipelineUITranslationGlossaryRuntime.enrichIndividualPrompt(
+        individualPrompt,
+        { prefix, language: 'en' },
+      );
 
       listingDraft.translationInput = filledWithInjectionNote;
       getState().inputs[`${prefix}:${TRANSLATION_LISTING_AGENT_ID}`] = filledWithInjectionNote;
@@ -1206,6 +1234,10 @@
       it: 'traduction_listing_it',
       nl: 'traduction_listing_nl',
       pt: 'traduction_listing_pt',
+      ja: 'traduction_listing_ja',
+      pl: 'traduction_listing_pl',
+      ru: 'traduction_listing_ru',
+      sv: 'traduction_listing_sv',
     };
     const ownsCacheRun = beginTranslationCacheRun(
       prefix,
@@ -1236,6 +1268,10 @@
       ['it', () => global.runTranslationItListing?.(prefix, { silent: true })],
       ['nl', () => global.runTranslationNlListing?.(prefix, { silent: true })],
       ['pt', () => global.runTranslationPtListing?.(prefix, { silent: true })],
+      ['ja', () => global.runTranslationJaListing?.(prefix, { silent: true })],
+      ['pl', () => global.runTranslationPlListing?.(prefix, { silent: true })],
+      ['ru', () => global.runTranslationRuListing?.(prefix, { silent: true })],
+      ['sv', () => global.runTranslationSvListing?.(prefix, { silent: true })],
     ].filter(([language]) => selectedLanguages.includes(language));
 
     for (const [language, job] of jobs) {
@@ -1293,6 +1329,14 @@
       'traduction_listing_nl',
       'traduction_pt',
       'traduction_listing_pt',
+      'traduction_ja',
+      'traduction_listing_ja',
+      'traduction_pl',
+      'traduction_listing_pl',
+      'traduction_ru',
+      'traduction_listing_ru',
+      'traduction_sv',
+      'traduction_listing_sv',
     ].forEach((agentId) => {
       const controller = global.abortControllers?.[agentId];
       if (controller) controller.abort();
@@ -1316,6 +1360,10 @@
       traduction_listing_it: 'it',
       traduction_listing_nl: 'nl',
       traduction_listing_pt: 'pt',
+      traduction_listing_ja: 'ja',
+      traduction_listing_pl: 'pl',
+      traduction_listing_ru: 'ru',
+      traduction_listing_sv: 'sv',
     })[agentId] || '';
     if (!language) return;
     incrementTranslationRetryCount(prefix, language);
@@ -1352,6 +1400,10 @@
     const itEntry = global.PipelineUITranslationItRuntime?.ensureTranslationItState?.(prefix);
     const nlEntry = global.PipelineUITranslationNlRuntime?.ensureTranslationNlState?.(prefix);
     const ptEntry = global.PipelineUITranslationPtRuntime?.ensureTranslationPtState?.(prefix);
+    const jaEntry = global.PipelineUITranslationJaRuntime?.ensureTranslationJaState?.(prefix);
+    const plEntry = global.PipelineUITranslationPlRuntime?.ensureTranslationPlState?.(prefix);
+    const ruEntry = global.PipelineUITranslationRuRuntime?.ensureTranslationRuState?.(prefix);
+    const svEntry = global.PipelineUITranslationSvRuntime?.ensureTranslationSvState?.(prefix);
     const jobs = [
       {
         language: 'en',
@@ -1383,6 +1435,26 @@
         state: getBulkState(prefix).languages.pt,
         draft: ptEntry?.listingDraft || null,
       },
+      {
+        language: 'ja',
+        state: getBulkState(prefix).languages.ja,
+        draft: jaEntry?.listingDraft || null,
+      },
+      {
+        language: 'pl',
+        state: getBulkState(prefix).languages.pl,
+        draft: plEntry?.listingDraft || null,
+      },
+      {
+        language: 'ru',
+        state: getBulkState(prefix).languages.ru,
+        draft: ruEntry?.listingDraft || null,
+      },
+      {
+        language: 'sv',
+        state: getBulkState(prefix).languages.sv,
+        draft: svEntry?.listingDraft || null,
+      },
     ].filter((job) => selectedLanguages.includes(job.language));
 
     const results = [];
@@ -1392,7 +1464,7 @@
         continue;
       }
 
-      const validated = validatePublishedTranslationDraft(job.draft);
+      const validated = validatePublishedTranslationDraft(job.draft, job.language);
       if (!validated.ok) {
         setTranslationLanguageStatus(prefix, job.language, 'error');
         results.push({
@@ -1476,7 +1548,7 @@
       ? String(language || '').trim().toLowerCase()
       : 'en';
     const draft = draftOverride && typeof draftOverride === 'object' ? draftOverride : entry.listingDraft;
-    const validated = validatePublishedTranslationDraft(draft);
+    const validated = validatePublishedTranslationDraft(draft, normalizedLanguage);
     if (!validated.ok) {
       setTranslationLanguageStatus(prefix, normalizedLanguage, 'error');
       const message = `${normalizedLanguage.toUpperCase()} non publiable : ${validated.reasons.join(', ')}`;
@@ -1517,6 +1589,86 @@
 
   async function publishTranslationEn(prefix = global.pfx()) {
     return publishSingleTranslation(prefix, 'en', ensurePrefixState(prefix).listingDraft);
+  }
+
+  const getIndividualTranslationEntry = (prefix, language) => {
+    const resolvers = {
+      en: () => ensurePrefixState(prefix),
+      de: () => global.PipelineUITranslationDeRuntime?.ensureTranslationDeState?.(prefix),
+      es: () => global.PipelineUITranslationEsRuntime?.ensureTranslationEsState?.(prefix),
+      it: () => global.PipelineUITranslationItRuntime?.ensureTranslationItState?.(prefix),
+      nl: () => global.PipelineUITranslationNlRuntime?.ensureTranslationNlState?.(prefix),
+      pt: () => global.PipelineUITranslationPtRuntime?.ensureTranslationPtState?.(prefix),
+      ja: () => global.PipelineUITranslationJaRuntime?.ensureTranslationJaState?.(prefix),
+      pl: () => global.PipelineUITranslationPlRuntime?.ensureTranslationPlState?.(prefix),
+      ru: () => global.PipelineUITranslationRuRuntime?.ensureTranslationRuState?.(prefix),
+      sv: () => global.PipelineUITranslationSvRuntime?.ensureTranslationSvState?.(prefix),
+    };
+    return resolvers[language]?.() || null;
+  };
+
+  function downloadIndividualTranslationReport(prefix = global.pfx()) {
+    updateListingStateFromFields(prefix);
+    const sourceEntry = ensurePrefixState(prefix);
+    const source = sourceEntry.listingDraft;
+    const listingId = getEtsyData().extractListingId?.(source.listingRef) || '';
+    if (!source.sourceTitle && !source.sourceDescription && !source.sourceTags.length) {
+      global.showToast('Charge une fiche source avant de télécharger le rapport', '#ff4757');
+      return { ok: false, reason: 'missing_source' };
+    }
+
+    const bulkState = getBulkState(prefix);
+    const translations = Object.fromEntries(TRANSLATION_LANGUAGES.map((language) => {
+      const entry = getIndividualTranslationEntry(prefix, language);
+      const draft = entry?.listingDraft || createEmptyListingDraft();
+      const validation = validatePublishedTranslationDraft(draft, language);
+      const hasGeneratedContent = Boolean(
+        String(draft.translatedTitle || '').trim()
+        || String(draft.translatedDescription || '').trim()
+        || (Array.isArray(draft.translatedTags) && draft.translatedTags.length),
+      );
+      const storedStatus = String(bulkState.languages?.[language] || 'idle');
+      return [language, {
+        status: storedStatus === 'idle' && hasGeneratedContent
+          ? (validation.ok ? 'success' : 'error')
+          : storedStatus,
+        message: String(draft.translationStatus || ''),
+        validForPublication: validation.ok,
+        validationErrors: validation.reasons,
+        title: String(draft.translatedTitle || ''),
+        tags: Array.isArray(draft.translatedTags) ? [...draft.translatedTags] : [],
+        description: String(draft.translatedDescription || ''),
+        rawOutput: String(draft.translationOutput || ''),
+        debug: String(draft.translationDebug || ''),
+      }];
+    }));
+    const report = {
+      exportType: 'individual_listing_localization_report',
+      generatedAt: new Date().toISOString(),
+      shopKey: global.PipelineUIForms?.getActiveShopKey?.() === 'doublex' ? 'doublex' : 'grosgeek',
+      mode: String(prefix || '').trim().toLowerCase() === 'col' ? 'collection' : 'tabletop',
+      listingId: String(listingId),
+      listingRef: String(source.listingRef || ''),
+      source: {
+        language: 'fr',
+        title: String(source.sourceTitle || ''),
+        tags: Array.isArray(source.sourceTags) ? [...source.sourceTags] : [],
+        description: String(source.sourceDescriptionRaw || source.sourceDescription || ''),
+      },
+      translations,
+    };
+    const safeListing = String(listingId || 'sans-id').replace(/[^a-z0-9_-]+/gi, '-');
+    const filename = `localisations-fiche-${safeListing}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    global.showToast('Rapport JSON de la fiche téléchargé');
+    return { ok: true, report, filename };
   }
 
   function copyTranslationEnOutput(prefix = global.pfx()) {
@@ -1724,6 +1876,7 @@
     publishUpdateTranslations,
     publishSingleTranslation,
     publishTranslationEn,
+    downloadIndividualTranslationReport,
     stopAllTranslations,
     beginTranslationCacheRun,
     finalizeTranslationCacheRun,

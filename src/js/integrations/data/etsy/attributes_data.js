@@ -91,7 +91,9 @@
         depth: normalizeDimensionValue(data.item_length),
         unit: normalizeDimensionUnit(data.item_dimensions_unit),
       },
-      occasion: inferOccasionFromListingData(data),
+      // La boutique utilise Noël comme occasion permanente pour ses fiches.
+      // L'utilisateur peut encore le modifier explicitement dans l'interface.
+      occasion: 'christmas',
     };
   }
 

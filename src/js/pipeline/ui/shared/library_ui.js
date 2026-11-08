@@ -110,7 +110,9 @@
     }
   }
 
-  async function openPromptLightbox(id) {
+  async function openPromptLightbox(id, { readOnly = false } = {}) {
+    document.getElementById('lbTextarea').readOnly = readOnly;
+    document.querySelector('#promptLightbox .lb-footer').hidden = readOnly;
     currentLbAgentId = id;
     currentLbPromptSpec = null;
     const mode = getCurrentMode();
@@ -154,7 +156,7 @@
       tags_select: 'Axel · Select Tags',
     };
     const agents = getConfig().getPipelineAgents();
-    const label = tagLabels[id] || agents.find((a) => a.id === id)?.title || id;
+    const label = agents.find((a) => a.id === id)?.title || tagLabels[id] || id;
     const promptProfile = getActivePromptProfile();
     const promptBucket = getPromptBucket(mode, promptProfile);
     let promptValue = promptBucket[id] || '';
@@ -198,6 +200,7 @@
   }
 
   async function saveLbPrompt() {
+    if (document.getElementById('lbTextarea').readOnly) return;
     if (!currentLbAgentId) return;
 
     if (currentLbPromptSpec?.path) {

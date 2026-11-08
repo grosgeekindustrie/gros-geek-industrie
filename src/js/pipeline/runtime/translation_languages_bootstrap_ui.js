@@ -2,9 +2,13 @@
 
 (function initTranslationLanguagePanels() {
   const languages = Object.freeze([
-    { code: 'it', label: 'IT', adjective: 'italienne' },
-    { code: 'nl', label: 'NL', adjective: 'néerlandaise' },
-    { code: 'pt', label: 'PT', adjective: 'portugaise' },
+    { code: 'it', label: 'IT', adjective: 'italienne', masculine: 'italien' },
+    { code: 'nl', label: 'NL', adjective: 'néerlandaise', masculine: 'néerlandais' },
+    { code: 'pt', label: 'PT', adjective: 'portugaise', masculine: 'portugais' },
+    { code: 'ja', label: 'JA', adjective: 'japonaise', masculine: 'japonais' },
+    { code: 'pl', label: 'PL', adjective: 'polonaise', masculine: 'polonais' },
+    { code: 'ru', label: 'RU', adjective: 'russe', masculine: 'russe' },
+    { code: 'sv', label: 'SV', adjective: 'suédoise', masculine: 'suédois' },
   ]);
 
   function adaptClone(root, language) {
@@ -24,7 +28,7 @@
         .replaceAll('traduction_listing_es', `traduction_listing_${language.code}`)
         .replaceAll('traduction_es', `traduction_${language.code}`)
         .replaceAll('espagnole', language.adjective)
-        .replaceAll('espagnol', language.adjective.replace(/e$/, ''))
+        .replaceAll('espagnol', language.masculine)
         .replace(/\bES\b/g, language.label);
     }
   }

@@ -4,6 +4,10 @@ STATUS: VALIDATED
 
 Version : `1.0-candidate` · locale cible : `sv`.
 
+## Titre Etsy
+
+Le titre suédois conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, collection, résine, état non peint, impression 3D, garage kit et public visé. Rédige naturellement sans résumer le titre au seul personnage et type de figurine. Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en supprimant d'abord les répétitions ; vérifie tous les angles avant de répondre.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché

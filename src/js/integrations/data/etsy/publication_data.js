@@ -440,6 +440,31 @@
     const errors = [];
     const products = [];
     const seenSkus = new Set();
+    const sourceInventory = data?.inventory && typeof data.inventory === 'object' ? data.inventory : {};
+    const sourceProducts = Array.isArray(sourceInventory.products) ? sourceInventory.products : [];
+    const preserveSecondaryVariations = state?.publicationMode === 'update_expired_listing';
+    const secondaryVariants = [];
+    const seenSecondaryVariants = new Set();
+    if (preserveSecondaryVariations) {
+      sourceProducts.forEach((product) => {
+        const properties = (Array.isArray(product?.property_values) ? product.property_values : [])
+          .filter((entry) => Number(entry?.property_id || 0) !== propertyId)
+          .map((entry) => ({
+            property_id: Number(entry?.property_id || 0) || 0,
+            property_name: String(entry?.property_name || '').trim(),
+            values: Array.isArray(entry?.values) ? entry.values.map((value) => String(value || '').trim()).filter(Boolean) : [],
+          }));
+        const signature = JSON.stringify(properties.map((entry) => [entry.property_id, entry.values]));
+        if (properties.length && !seenSecondaryVariants.has(signature)) {
+          seenSecondaryVariants.add(signature);
+          secondaryVariants.push(properties);
+        }
+      });
+      if (secondaryVariants.length && (sourceInventory.sku_on_property || []).some((id) => Number(id) !== propertyId)) {
+        errors.push('Les SKU de la fiche source dépendent d’une autre variation que l’échelle.');
+      }
+    }
+    const variantsPerScale = secondaryVariants.length ? secondaryVariants : [[]];
 
     if (!pricingRows.length) errors.push('aucune echelle selectionnee pour la variation Etsy');
 
@@ -464,14 +489,16 @@
       };
       if (readinessStateId) offering.readiness_state_id = readinessStateId;
 
-      products.push({
-        sku,
-        property_values: [{
-          property_id: propertyId,
-          property_name: ETSY_SCALE_PROPERTY_NAME,
-          values: [`${scaleLabel} => ${formatDimensionValue(height)}mm`],
-        }],
-        offerings: [offering],
+      variantsPerScale.forEach((secondaryProperties) => {
+        products.push({
+          sku,
+          property_values: [{
+            property_id: propertyId,
+            property_name: ETSY_SCALE_PROPERTY_NAME,
+            values: [`${scaleLabel} => ${formatDimensionValue(height)}mm`],
+          }, ...secondaryProperties],
+          offerings: [{ ...offering }],
+        });
       });
     });
 

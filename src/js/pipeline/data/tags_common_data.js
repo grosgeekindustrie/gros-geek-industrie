@@ -7,7 +7,17 @@
   global.PipelineUIData = global.PipelineUIData || {};
   global.PipelineUIDataTagsCommon = global.PipelineUIDataTagsCommon || {};
 
-  const tabletopCommonProductTags = Object.freeze([
+  const universalCommonProductTags = Object.freeze([
+    'imprimé en 3D',
+    'kit résine',
+  ]);
+
+  const withUniversalProductTags = (tags) => Object.freeze([
+    ...universalCommonProductTags,
+    ...tags.filter((tag) => !universalCommonProductTags.includes(tag)),
+  ]);
+
+  const tabletopCommonProductTags = withUniversalProductTags([
     'miniature tabletop',
     'miniature ttrpg',
     'miniature dnd',
@@ -30,7 +40,7 @@
     'cadeau Dungeon Master',
   ]);
 
-  const collectionCommonProductTags = Object.freeze([
+  const collectionCommonProductTags = withUniversalProductTags([
     'impression 3D en r\u00e9sine',
     'figurine de collection',
     'statue de collection',
@@ -53,7 +63,7 @@
     'cadeau collectionneur',
   ]);
 
-  const doublexTabletopCommonProductTags = Object.freeze([
+  const doublexTabletopCommonProductTags = withUniversalProductTags([
     'cadeau donjon dragon',
     'cadeau Dungeon Master',
     'donjons et dragons',
@@ -88,7 +98,7 @@
     'waifu miniature',
   ]);
 
-  const doublexCollectionCommonProductTags = Object.freeze([
+  const doublexCollectionCommonProductTags = withUniversalProductTags([
     'mature',
     'impression 3D',
     'impression 3D en r\u00e9sine',
@@ -130,6 +140,7 @@
   }
 
   Object.assign(global.PipelineUIDataTagsCommon, {
+    UNIVERSAL_COMMON_PRODUCT_TAGS: universalCommonProductTags,
     TABLETOP_COMMON_PRODUCT_TAGS: tabletopCommonProductTags,
     COLLECTION_COMMON_PRODUCT_TAGS: collectionCommonProductTags,
     DOUBLEX_TABLETOP_COMMON_PRODUCT_TAGS: doublexTabletopCommonProductTags,

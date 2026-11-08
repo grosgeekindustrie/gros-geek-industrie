@@ -4,6 +4,10 @@ STATUS: VALIDATED
 
 Version : `1.0-candidate` · locale cible : `es`.
 
+## Titre Etsy
+
+Le titre espagnol conserve chaque angle distinct du titre FR lorsqu'il est présent : personnage et œuvre, collection, résine, état non peint, impression 3D, garage kit et public visé. Ne réduis pas une figurine imprimée en 3D pour fans de vampire à une simple « figura de vampiro ». Ne raccourcis qu'en cas de dépassement réel de 140 caractères, en supprimant d'abord les répétitions et mots accessoires ; vérifie tous les angles avant de répondre.
+
 > Validé sur le lot test de quatre fiches et quarante localisations, note globale 8,5/10.
 
 ## Note de marché
